@@ -39,6 +39,16 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 - `knowledge_base_auto_update`: `true`
 - `merge_strategy`: `merge`
 - `business_domain`: `general` (驱动模板选择 — 见 template-router.md)
+- `architecture`: `monolith` (架构类型: `monolith` / `microservices`)
+
+### 架构适配 (Architecture Adaptation)
+
+加载模板之前，检查 `architecture` 配置:
+
+1. 若 `architecture: "microservices"` → Load `references/microservice-adaptation.md` 获取微服务适配规则
+2. 若 `architecture: "monolith"` (默认) → 跳过，使用基础模板
+3. 适配层叠加在基础模板之上——不替换，只注入扩展章节和规则
+4. 微服务模式要求 `service-registry.yaml` 存在（首次运行需人工创建或通过 hw-setup 初始化）
 
 ### 模板解析 (Template Resolution)
 
@@ -48,9 +58,10 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 2. 查 `business_domain` → 对应的模板文件
 3. 若领域无专属模板 → fallback 到 `general` 的通用模板
 4. 若 `config.yaml` 指定了 `custom_templates` → 优先加载自定义模板
-5. 加载解析后的模板，开始当前阶段工作
+5. 若 `architecture: "microservices"` → 在模板基础上叠加微服务适配章节
+6. 加载解析后的模板，开始当前阶段工作
 
-**示例:** `business_domain: "fintech"` → 需求阶段自动加载 `requirements-spec-template-fintech.md`（含合规/审计/SLA 章节），而不是通用模板。
+**示例:** `business_domain: "fintech"` → 需求阶段自动加载 `requirements-spec-template-fintech.md`（含合规/审计/SLA 章节），而不是通用模板。若同时 `architecture: "microservices"` → 再叠加服务影响分析表。
 
 不同的 `business_domain` 还会影响门禁检查的严格度（fintech 最严，internal-tools 最简）。
 
@@ -73,6 +84,8 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 | `delivery/acceptance-gate-{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 交付验收门禁 |
 | `knowledge-base/decisions/ADR-*.md` | `{project-root}/_bmad/memory/hw-shared/` | 架构决策记录 |
 | `value-assessment/{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 需求价值评估 |
+| `service-registry.yaml` | `{project-root}/_bmad/memory/hw-shared/` | 微服务注册表 (microservices 模式) |
+| `contracts/{service-id}-openapi.yaml` | `{project-root}/contracts/` | 跨服务 API 契约 (microservices 模式) |
 
 ## Capabilities
 
@@ -135,6 +148,7 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 ### 通用
 | Capability | Route |
 | ---------- | ----- |
+| 微服务架构适配 | Load `references/microservice-adaptation.md` |
 | 人工介入判断 | Load `references/human-intervention.md` |
 
 ## State Reporting Contract
@@ -169,16 +183,21 @@ decomposition → execution:
   ✅ All tasks defined in tasks.yaml
   ✅ No circular dependencies between tasks
   ✅ Each task has acceptance criteria from requirements
+  ✅ [microservices] Service registry complete, cross-service contracts defined
+  ✅ [microservices] Tasks grouped by service, CONTRACT-type dependencies identified
 
 execution → merge:
   ✅ All worktrees report DONE or human-approved DONE_WITH_CONCERNS
   ✅ Code review passed: 0 P0, 0 P1 (logic + security + performance)
   ✅ Unit tests + API tests: 100% PASS (UT layer + API layer)
+  ✅ [microservices] Contract tests PASS (all cross-service contracts verified)
+  ✅ [microservices] Per-service worktrees merged to their respective base branches
 
 merge → test:
-  ✅ Merge complete, no conflicts
+  ✅ Merge complete, no conflicts (per service in microservices mode)
   ✅ Integration test plan filled (integration-test-plan.md)
   ✅ All integration tests PASS
+  ✅ [microservices] Multi-service integration environment healthy, all health checks UP
 
 test → delivery:
   ✅ Delivery checklist all ✅ (delivery-checklist.md)
@@ -186,6 +205,7 @@ test → delivery:
   ✅ Delivery acceptance gate PASS (delivery-acceptance-gate.md)
   ✅ Integration tests PASS
   ✅ Rollback plan confirmed
+  ✅ [microservices] Per-service release sequence planned, contract versions tagged
 ```
 
 Any transition requires explicit acceptance criteria verification. If criteria not met, iterate within phase until met or human override.

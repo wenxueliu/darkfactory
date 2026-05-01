@@ -9,17 +9,26 @@
 ```
 _bmad/config.yaml
   business_domain: "{domain}"
+  architecture: "monolith | microservices"
          │
-         ▼
-  template-router.md (本文件)
+         ├──────────────────────────────────────┐
+         ▼                                      ▼
+  template-router.md (本文件)          microservice-adaptation.md
+         │                              (若 architecture = microservices)
          │
          ├── 需求阶段 → 加载 {domain} 对应的 requirements-spec-template
          ├── 设计阶段 → 加载 {domain} 对应的 design-doc-template (如有)
-         └── 门禁检查 → 加载 {domain} 对应的 gate 规则 (如有)
+         ├── 门禁检查 → 加载 {domain} 对应的 gate 规则 (如有)
+         ├── 若 architecture = microservices → 叠加适配层 (服务影响分析/契约/多 repo)
          │
          ▼
   若 {domain} 无专属模板 → fallback 到 default (通用模板)
 ```
+
+**双层路由:**
+1. **业务领域层** (business_domain): 决定模板内容和门禁严格度
+2. **架构适配层** (architecture): 决定单体 vs 微服务的执行方式和注入规则
+3. 两层独立叠加——fintech × microservices = fintech 模板 + 合规要求 + 服务契约 + 多 repo 协调
 
 ## 领域映射表
 
