@@ -45,7 +45,8 @@
 | 问题陈述 | 问题是否用 1-3 句话清晰描述？痛点可量化？ | Clear/Partial/Missing |
 | 范围定义 | In/Out scope 是否明确？依赖项已识别？ | Clear/Partial/Missing |
 | 用户故事 | 角色是否具体？每个故事有明确的价值？ | Clear/Partial/Missing |
-| 验收标准 | 每个 US 有 ≥ 2 个 AC？AC 可测量？ | Clear/Partial/Missing |
+| 用户旅程 | 至少 3 个旅程阶段？每阶段有触点/情感/成功指标？关键交互时刻已识别？异常路径已覆盖？ | Clear/Partial/Missing |
+| 验收标准 | 每个 US 有 ≥ 1 个 AC？AC 可测量？ | Clear/Partial/Missing |
 | 非功能需求 | 性能/安全/可用性要求已定义？有度量阈值？ | Clear/Partial/Missing |
 | 约束 | 技术/时间/预算/合规约束已明确？ | Clear/Partial/Missing |
 | 风险与假设 | ≥ 3 个关键假设已识别？高风险项有缓解？ | Clear/Partial/Missing |
