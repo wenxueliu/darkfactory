@@ -11,6 +11,73 @@
 微服务:   N repos × M worktrees (per service) → 独立 merge (per service) → 协调 deploy
 ```
 
+## 设计决策: 服务 Co-location
+
+**所有服务必须放在同一个项目根目录下（monorepo-style co-location），不引入服务级 Agent。**
+
+### 目录结构
+
+```
+{project-root}/
+├── services/                        # 所有服务 co-locate 在此
+│   ├── user-service/                # git clone git@...org/user-service.git
+│   │   ├── src/
+│   │   ├── build.gradle
+│   │   └── .git/                    # 独立 git 仓库
+│   ├── order-service/               # git clone git@...org/order-service.git
+│   └── web-frontend/                # git clone git@...org/web-frontend.git
+├── _bmad/memory/                    # 统一共享状态 (不变)
+│   └── hw-shared/
+├── .worktree/                       # 所有 worktree 在此 (按服务分目录)
+│   ├── user-service/
+│   │   ├── hw-task-001/
+│   │   └── hw-task-002/
+│   ├── order-service/
+│   │   └── hw-task-003/
+│   └── web-frontend/
+│       └── hw-task-004/
+└── contracts/                       # 跨服务 API 契约 (共享)
+    ├── user-service-openapi.yaml
+    └── order-service-openapi.yaml
+```
+
+### 为什么 co-locate
+
+| 维度 | co-locate (推荐) | 分散目录 (复杂) |
+|------|-----------------|---------------|
+| Agent 拓扑 | hw-controller → worktree-controller × N (不变) | 需要 hw-service-context 协调层 |
+| 共享状态 | `_bmad/memory/` 天然共享 | 需要分布式状态或远程存储 |
+| Worktree 路径 | `.worktree/{service}/hw-task-{id}` (多一层前缀) | 跨文件系统，git worktree 不支持 |
+| 契约文件 | `contracts/` 一目录共享 | 需要显式同步或远程 fetch |
+| 成本追踪 | 一处汇总 | 跨进程/跨机器聚合 |
+| Git 独立性 | 每个 `services/{id}/` 是独立 git 仓库，独立 remote、独立历史 | 同左 |
+| CI/CD 独立性 | 每个服务独立 CI，与 co-locate 不冲突 | 同左 |
+
+### 关于 git 独立性
+
+Co-location 不影响服务的 git 独立性。`services/user-service` 和 `services/order-service` 是不同的 git 仓库，有不同的 remote、不同的提交历史、不同的分支策略。它们只是在同一个父目录下——就像一个 IDE 里同时打开多个项目。
+
+```bash
+# 初始化: 克隆服务到 services/ 下
+cd {project-root}
+git clone git@github.com:org/user-service.git services/user-service
+git clone git@github.com:org/order-service.git services/order-service
+git clone git@github.com:org/web-frontend.git services/web-frontend
+
+# 每个服务独立操作
+cd services/user-service && git log --oneline    # user-service 的历史
+cd services/order-service && git log --oneline   # order-service 的历史, 完全独立
+```
+
+### 何时考虑服务级 Agent
+
+以下场景在 v1 中不会出现，标记为未来扩展点:
+- 服务分布在不同的机器/集群上（→ 需要分布式编排，超出文件系统范围）
+- 单个服务需要独立的 budget/cost 追踪（→ 需要服务级成本会计）
+- 不同服务有不同的 hw-controller 配置策略（→ 需要配置隔离）
+
+这些场景出现时，方案不是加 `hw-service-context` 协调层，而是在每个服务目录下跑独立的 hw-controller 实例 + controller-to-controller 通信协议。
+
 ## 配置
 
 ```yaml
@@ -39,8 +106,8 @@ created_at: "{timestamp}"
 services:
   - id: "{service-id}"               # kebab-case, 如 user-service
     name: "{服务名称}"
-    repo: "git@github.com:{org}/{service-id}.git"
-    local_path: "{project-root}/services/{service-id}"
+    repo: "git@github.com:{org}/{service-id}.git"   # git remote (clone 目标)
+    local_path: "services/{service-id}"              # 相对于 project-root
     base_branch: "main"
     language: "java-springboot|typescript-react|python-fastapi|go-gin|..."
     port: {port_number}
@@ -264,20 +331,26 @@ service_groups:
 #### 多仓库 Worktree 创建
 
 ```bash
-# 微服务模式: 为每个服务在各自的 repo 中创建 worktree
+# 微服务模式: 为每个服务在 services/{service-id} 下创建 worktree
+# 所有 worktree 统一在 {project-root}/.worktree/{service-id}/ 下
 
-# 服务: user-service
+# 服务: user-service (repo root = services/user-service)
 cd {project-root}/services/user-service
-git worktree add {worktree_base}/user-service/hw-task-001 -b hw-task-001-user-service main
+git worktree add ../../.worktree/user-service/hw-task-001 -b hw-task-001 main
 
-# 服务: order-service
+# 服务: order-service (repo root = services/order-service)  
 cd {project-root}/services/order-service
-git worktree add {worktree_base}/order-service/hw-task-002 -b hw-task-002-order-service main
+git worktree add ../../.worktree/order-service/hw-task-003 -b hw-task-003 main
 
-# 服务: web-frontend
+# 服务: web-frontend (repo root = services/web-frontend)
 cd {project-root}/services/web-frontend
-git worktree add {worktree_base}/web-frontend/hw-task-003 -b hw-task-003-web-frontend main
+git worktree add ../../.worktree/web-frontend/hw-task-004 -b hw-task-004 main
 ```
+
+**路径规则:**
+- 服务 repo root: `{project-root}/services/{service-id}/`
+- Worktree 路径: `{project-root}/.worktree/{service-id}/hw-task-{id}/`
+- Worktree 创建命令在服务 repo root 下执行，worktree 路径用相对路径指回 `.worktree/`
 
 #### 服务级 Worktree 注册表
 
@@ -287,28 +360,30 @@ architecture: "microservices"
 
 services:
   user-service:
-    repo: "git@github.com:org/user-service.git"
-    base_path: "{project-root}/services/user-service"
-    worktree_base: "{project-root}/.worktree/user-service"
+    repo_root: "services/user-service"          # 相对于 project-root
+    worktree_base: ".worktree/user-service"      # 相对于 project-root
+    base_branch: "main"
+    language: "java-springboot"
+    port: 8081
     worktrees:
       hw-task-001:
-        branch: "hw-task-001-user-service"
+        branch: "hw-task-001"
         task_id: "hw-001"
-        path: "{project-root}/.worktree/user-service/hw-task-001"
+        path: ".worktree/user-service/hw-task-001"
         status: "running"
-        port: 8081   # 服务运行端口（集成测试需要）
         
   order-service:
-    repo: "git@github.com:org/order-service.git"
-    base_path: "{project-root}/services/order-service"
-    worktree_base: "{project-root}/.worktree/order-service"
+    repo_root: "services/order-service"
+    worktree_base: ".worktree/order-service"
+    base_branch: "main"
+    language: "java-springboot"
+    port: 8082
     worktrees:
-      hw-task-002:
-        branch: "hw-task-002-order-service"
-        task_id: "hw-002"
-        path: "{project-root}/.worktree/order-service/hw-task-002"
-        status: "running"
-        port: 8082
+      hw-task-003:
+        branch: "hw-task-003"
+        task_id: "hw-003"
+        path: ".worktree/order-service/hw-task-003"
+        status: "pending"
 ```
 
 #### 服务独立环境搭建
