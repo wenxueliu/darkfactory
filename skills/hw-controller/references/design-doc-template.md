@@ -236,12 +236,59 @@ fields:
 
 Harness Engineering 的自动执行依赖三层反馈循环驱动。本章为每一层定义**可执行的测试用例规格**——不是策略摘要，而是 agent 可以直接照着写的测试规格。执行阶段的铁律: **没有 failing test 之前，不写生产代码。**
 
-### 10.1 测试策略概述
+### 10.1 测试数据构造原则 (Test Data Construction)
+
+**这是 AI 能够自动验证的前提。** 占位符 `{field}` 对 agent 没有任何价值——agent 需要的是可以写入代码的具体值。每层测试设计的输入/输出列必须包含**具体的数据值**，而非描述。
+
+**数据构造规范:**
+
+| 原则 | 要求 | 反例 | 正例 |
+|------|------|------|------|
+| **具体到值** | 输入和预期输出必须是具体值 | `"email": "{有效邮箱}"` | `"email": "test-tc001@example.com"` |
+| **唯一性** | 每个用例的数据有唯一标识，避免并行冲突 | `"username": "admin"` | `"username": "ut-user-001-1706000000"` |
+| **可预测** | 给定相同输入 → 相同输出 | 依赖随机数/当前时间戳 | 用固定种子或显式时间戳 |
+| **边界可见** | 边界值直接写出来 | `"age": {边界值}` | `"age": 0`, `"age": 150`, `"age": -1` |
+| **类型精确** | 值与 Section 6.2 数据模型类型一致 | `"id": "123"` (当 id 是 integer) | `"id": 123` |
+| **自包含** | 每个用例自己构造前置数据，自己清理 | 用例 B 依赖用例 A 的执行结果 | `pm.sendRequest` 在 prerequest 中创建依赖 |
+
+**UT 数据构造格式:**
+```
+# 输入数据构造
+var input = new CreateUserRequest(
+    username: "ut-user-001",       // 正常用户名
+    email: "ut-001@example.com",   // 正常邮箱
+    password: "Test@123456",       // 满足密码策略
+    role: UserRole.MEMBER          // 默认角色
+);
+
+# Mock 依赖行为
+when(userRepository.existsByEmail("ut-001@example.com")).thenReturn(false);
+when(passwordEncoder.encode("Test@123456")).thenReturn("$2a$10$encrypted...");
+
+# 预期输出
+var expected = new User(
+    id: 1L,
+    username: "ut-user-001",
+    email: "ut-001@example.com",
+    role: UserRole.MEMBER,
+    status: UserStatus.ACTIVE,
+    createdAt: testClock.instant()  // 固定时钟，可预测
+);
+```
+
+**API 数据构造格式 (Postman prerequest):**
+```javascript
+// 见 api-test-postman-schema.md 完整规范
+// API 测试数据在 Postman Collection JSON 文件中以具体值存在
+// 以下为设计视图中的摘要格式:
+```
+
+### 10.2 测试策略概述
 
 | 层次 | 目的 | 反馈速度 | 覆盖目标 | 框架/工具 | 预估用例数 |
 |------|------|---------|---------|----------|-----------|
 | **L1: UT** | 验证每个函数/方法的逻辑正确性 | 秒级 | 核心业务逻辑 ≥ 90%, 工具类 ≥ 80% | {JUnit/pytest/Jest/...} | ~{N} |
-| **L2: API** | 验证接口契约、数据一致性、错误处理 | 秒~分钟级 | 所有 API 端点(正常+异常+边界) | {Supertest/REST Assured/pytest API/...} | ~{N} |
+| **L2: API** | 验证接口契约、数据一致性、错误处理 | 秒~分钟级 | 所有 API 端点(正常+异常+边界) | Newman (Postman Collection v2.1) | ~{N} |
 | **L3: E2E** | 验证完整用户旅程、跨组件协作、UI 交互 | 分钟级 | 关键用户旅程(每个旅程至少 1 条) | {Playwright/Cypress/Selenium/...} | ~{N} |
 
 **测试金字塔约束:**
@@ -249,18 +296,43 @@ Harness Engineering 的自动执行依赖三层反馈循环驱动。本章为每
 - L2 不重复 L1 覆盖的逻辑（L2 验证集成，不验证算法细节）
 - L3 不重复 L2 覆盖的 API（L3 验证旅程，不验证每个端点）
 
-### 10.2 第一层: UT 设计 (单元测试)
+### 10.3 第一层: UT 设计 (单元测试)
 
 对每个架构组件（Section 5.3），定义具体的单元测试用例。TDD Agent 按此表执行 RED → GREEN → REFACTOR。
 
+**输入/输出必须是具体值，不能是 `{占位符}`。** Agent 需要能直接写入测试代码的数据。参考 10.1 数据构造原则。
+
 **UT 用例规格:**
 
-| 用例 ID | 组件 | 被测方法 | 场景类型 | 输入 | Mock/Stub 依赖 | 预期输出/行为 |
-|---------|------|---------|---------|------|---------------|-------------|
-| UT-{组件缩写}-001 | {组件名} | {方法签名} | happy | {具体输入值} | {mock 什么, 返回什么} | {返回值/状态变化} |
-| UT-{组件缩写}-002 | {组件名} | {方法签名} | error | {异常输入} | {mock 什么, 返回什么} | {抛出的异常} |
-| UT-{组件缩写}-003 | {组件名} | {方法签名} | boundary | {边界值} | {mock 什么, 返回什么} | {返回值} |
-| UT-{组件缩写}-004 | {组件名} | {方法签名} | edge | {并发/重入/超时} | {mock 什么, 返回什么} | {行为} |
+| 用例 ID | 组件 | 被测方法 | 场景类型 | 输入 (具体值) | Mock/Stub 依赖 (含返回值) | 预期输出/行为 (具体值) |
+|---------|------|---------|---------|-------------|------------------------|---------------------|
+| UT-{组件缩写}-001 | {组件名} | `{方法签名}` | happy | 见下方数据构造 | `{mockObj}.{method}()` → `{具体返回值}` | `{具体对象/值}` 或 `void (无异常)` |
+| UT-{组件缩写}-002 | {组件名} | `{方法签名}` | error | `null` / `""` / invalid object | `{mockObj}.{method}()` → `{具体返回值}` | `throws {具体异常类型}("{消息}")` |
+| UT-{组件缩写}-003 | {组件名} | `{方法签名}` | boundary | `{边界值: 0, -1, MAX, 空集合}` | `{mockObj}.{method}()` → `{具体返回值}` | `{具体返回值}` 或 `throws {异常}` |
+| UT-{组件缩写}-004 | {组件名} | `{方法签名}` | edge | `{并发线程数}/{重入次数}/{超时ms}` | `{mockObj}.{method}()` → `{模拟行为}` | `{预期行为描述 + 验证方法}` |
+
+**每条 UT 用例必须附带数据构造代码块:**
+
+```
+// UT-{组件缩写}-001: {场景}
+// === 输入数据构造 ===
+var input = new {Type}(
+    field1: "{concrete_value}",
+    field2: {numeric_value},
+    field3: {enum_value}
+);
+// === Mock 依赖 ===
+when({dependency}.{method}({argumentMatcher})).thenReturn({returnValue});
+// === 预期输出 ===
+var expected = new {Type}(
+    field1: "{expected_value}",
+    field2: {expected_numeric}
+);
+// === 执行 + 断言 ===
+var result = {component}.{method}(input);
+assertThat(result).isEqualTo(expected);
+// 或: assertThrows({Exception}.class, () -> {component}.{method}(input));
+```
 
 **场景类型说明:**
 - **happy:** 正常输入 → 正常输出（至少 1 个）
@@ -276,48 +348,85 @@ Harness Engineering 的自动执行依赖三层反馈循环驱动。本章为每
 |---------|-------------|-------------|
 | UT-{id} | AC-{N} | D-{N} |
 
-### 10.3 第二层: API 测试设计 (接口测试)
+### 10.4 第二层: API 测试设计 (接口测试 — Newman/Postman)
 
-对每个 API 端点（Section 6.1），定义 API 级别的验收用例。这层验证接口契约和数据一致性——不关注内部实现，关注输入/输出正确性。
+对每个 API 端点（Section 6.1），定义 API 级别的验收用例。API 测试通过 **Newman** 执行 Postman Collection JSON 文件。
 
-**API 测试用例规格:**
+**双重载体:**
+- **设计视图 (本章):** Markdown 表格 — 给人读的测试设计，描述场景和验证意图
+- **执行视图 (JSON 文件):** Postman Collection v2.1 — 给 Newman 跑的，含具体请求体、测试脚本、数据构造
 
-| 用例 ID | 端点 | 场景 | 前置条件 | 请求 | 预期状态码 | 预期响应体 (关键字段) | 预期副作用 |
-|---------|------|------|---------|------|-----------|---------------------|-----------|
-| API-{资源缩写}-001 | POST /api/v1/{r} | 创建成功 | {数据不存在} | `{body}` | 201 | `{id, status, ...}` | DB 中新增记录 |
-| API-{资源缩写}-002 | POST /api/v1/{r} | 字段校验失败 | — | `{缺少必填字段}` | 400 | `{error, message}` | 无 |
-| API-{资源缩写}-003 | POST /api/v1/{r} | 重复创建 | {数据已存在} | `{相同唯一键}` | 409 | `{error, message}` | 无 |
-| API-{资源缩写}-004 | POST /api/v1/{r} | 认证失败 | — | `{无/过期 token}` | 401 | `{error}` | 无 |
-| API-{资源缩写}-005 | POST /api/v1/{r} | 权限不足 | {非授权角色} | `{body}` | 403 | `{error}` | 无 |
-| API-{资源缩写}-006 | GET /api/v1/{r}/{id} | 查询存在 | {已创建} | — | 200 | `{完整对象}` | 无 |
-| API-{资源缩写}-007 | GET /api/v1/{r}/{id} | 查询不存在 | — | — | 404 | `{error, message}` | 无 |
+JSON 文件格式规范见 `references/api-test-postman-schema.md`。
+
+**API 测试用例规格 (设计视图):**
+
+| 用例 ID | 端点 | 场景 | 前置条件 | 请求 (具体值) | 预期状态码 | 预期响应体 (具体字段+值) | 预期副作用 | Postman JSON 对应 |
+|---------|------|------|---------|-------------|-----------|---------------------|-----------|-----------------|
+| API-{资源缩写}-001 | POST /api/v1/{r} | 创建成功 | DB 中不存在 `{unique_key}` | `{"field": "concrete_value", "field2": 123}` | 201 | `id: {非空}, status: "ACTIVE", field: "concrete_value"` | DB 新增 1 行，`field` = 请求值 | `item[].name` = "API-{资源缩写}-001: ..." |
+| API-{资源缩写}-002 | POST /api/v1/{r} | 字段校验失败 | — | `{"field": ""}` 或 `{}` | 400 | `error: "VALIDATION_ERROR", message: "field is required"` | 无 DB 变更 | 同上 |
+| API-{资源缩写}-003 | POST /api/v1/{r} | 重复创建 | DB 中存在 `{unique_key}` | `{"field": "same_value"}` | 409 | `error: "CONFLICT", message: "already exists"` | DB 记录数不变 | 同上 |
+| API-{资源缩写}-004 | POST /api/v1/{r} | 认证失败 | — | 无 `Authorization` header | 401 | `error: "UNAUTHORIZED"` | 无 | 同上 |
+| API-{资源缩写}-005 | POST /api/v1/{r} | 权限不足 | 使用非授权角色 token | `{"field": "valid", ...}` | 403 | `error: "FORBIDDEN"` | 无 | 同上 |
+| API-{资源缩写}-006 | GET /api/v1/{r}/{id} | 查询存在 | 通过 prerequest 创建 | — (使用上一步返回的 id) | 200 | `{完整对象, 与创建时一致}` | 无 | 同上 |
+| API-{资源缩写}-007 | GET /api/v1/{r}/{id} | 查询不存在 | — | `/api/v1/{r}/999999` | 404 | `error: "NOT_FOUND", message: "resource not found"` | 无 | 同上 |
 
 **最少要求:** 每个端点 ≥ 3 个用例。必须覆盖: 正常 ×1 + 异常(4xx) ×1 + 认证/权限 ×1。
 
-**跨端点场景:**
+**请求列必须是具体的 JSON 值:**
+```json
+// 正例 ✅
+{"username": "api-test-001", "email": "api-001@example.com", "password": "Test@123456"}
 
-| 用例 ID | 场景 | 步骤 | 验证点 |
-|---------|------|------|--------|
-| API-FLOW-001 | {如: 创建→查询→更新→删除} | 1. POST 创建 2. GET 验证 3. PUT 更新 4. GET 验证 5. DELETE 6. GET 验证 404 | 每步状态码和响应体 |
+// 反例 ❌
+{"field": "{value}"}
+{"body": "..."}
+```
 
-### 10.4 第三层: E2E 测试设计 (端到端集成)
+**跨端点场景 (流程测试):**
+
+| 用例 ID | 场景 | 步骤 (在 Postman 中用 folder 组织) | 验证点 | Postman JSON |
+|---------|------|------|--------|-------------|
+| API-FLOW-001 | 创建→查询→更新→删除 | 1. POST 创建 2. `pm.collectionVariables.set('id', ...)` 3. GET 验证 4. PUT 更新 5. GET 验证 6. DELETE 7. GET 验证 404 | 每步状态码和响应体一致 | `item[].item[]` (folder) |
+
+**产出文件 (每个需求生成):**
+
+| 文件 | 路径 | 用途 |
+|------|------|------|
+| Postman Collection | `_bmad/memory/hw-shared/tests/api-{requirement_id}.json` | Newman 执行 |
+| Environment 文件 | `_bmad/memory/hw-shared/tests/api-{requirement_id}-env.json` | 环境变量 (baseUrl, tokens) |
+| Newman 报告 | `_bmad/memory/hw-shared/tests/api-{requirement_id}-report.xml` | CI 集成 |
+
+### 10.5 第三层: E2E 测试设计 (端到端集成)
 
 对用户旅程（Section 2.1 + Section 3），定义端到端集成测试用例。这层验证完整流程——从用户入口到数据库再返回用户。
 
 **E2E 场景规格:**
 
-| 用例 ID | 用户旅程 | 场景 | 起始状态 | 操作步骤 | 验证点 | UI 验证 (如有) | 数据清理 |
-|---------|---------|------|---------|---------|--------|-------------|---------|
-| E2E-{缩写}-001 | {旅程名} | happy | {初始数据} | 1. {步骤} 2. {步骤} | {验证状态/数据} | {页面元素/文案} | {清理 SQL/API} |
-| E2E-{缩写}-002 | {旅程名} | 失败恢复 | {初始数据} | 1. {步骤} 2. {触发失败} 3. {重试} | {数据一致性} | {错误提示} | {清理 SQL/API} |
-| E2E-{缩写}-003 | {旅程名} | 中断续作 | {中途状态} | 1. {继续} 2. {完成} | {状态正确} | {页面状态} | {清理 SQL/API} |
+| 用例 ID | 用户旅程 | 场景 | 起始状态 (具体数据) | 操作步骤 (具体值) | 验证点 (具体断言) | UI 验证 (如有) | 数据清理 (具体 SQL/API) |
+|---------|---------|------|-------------------|-----------------|-----------------|-------------|----------------------|
+| E2E-{缩写}-001 | {旅程名} | happy | DB: `users` 表有测试用户 `id=e2e-user-001`<br>余额: `1000.00` | 1. 打开 `/products`<br>2. 搜索 `"test-product-e2e"`<br>3. 点击第一个结果<br>4. 点击「购买」<br>5. 确认支付 | `orders` 表新增 1 条记录<br>状态: `PAID`<br>余额: `1000.00 - price`<br>库存: `stock - 1` | 页面显示「支付成功」<br>订单号可见 | `DELETE FROM orders WHERE user_id='e2e-user-001'`<br>`UPDATE inventory SET stock=original` |
+| E2E-{缩写}-002 | {旅程名} | 失败恢复 | 同上 | 1-4. 同上<br>5. 支付时模拟网络断开<br>6. 刷新页面<br>7. 从「我的订单」继续支付 | 订单状态: `PENDING` → `PAID`<br>无重复扣款 | 页面显示「继续支付」<br>刷新后不丢失订单 | 同上 |
 
 **最少要求:** 每个用户旅程 ≥ 1 条 happy path。关键旅程（支付/数据修改/权限变更）≥ 1 条失败恢复。
 
+**数据构造必须写具体值:**
+```
+# 正例 ✅
+起始状态: INSERT INTO users VALUES ('e2e-user-001', 'e2e@test.com', balance=1000.00)
+操作步骤: 搜索框输入 "test-product-e2e" → 验证结果显示 ≥ 1 条
+验证点: GET /api/v1/orders?userId=e2e-user-001 → 返回 list 中 status=PAID, amount=299.00
+
+# 反例 ❌
+起始状态: {初始数据}
+操作步骤: {步骤}
+验证点: {验证状态/数据}
+```
+
 **E2E 执行契约:**
-- 每个 E2E 用例必须自包含: 自己准备数据 + 自己清理
+- 每个 E2E 用例必须自包含: 用具体的 SQL/API 准备数据 + 用具体的 SQL/API 清理
 - 用例之间不能有顺序依赖（可并行执行）
-- UI 验证描述必须具体到元素和文案——agent 不能猜
+- 起始状态的每个数据值必须是具体的——表名、字段名、值
+- 清理必须恢复到测试前的状态——不能留脏数据污染后续测试
 
 **UI 自动化要素 (当涉及 UI 时):**
 
@@ -328,7 +437,7 @@ Harness Engineering 的自动执行依赖三层反馈循环驱动。本章为每
 
 **`data-testid` 命名规范:** 所有可交互元素必须在页面设计中标注 `data-testid`，E2E 用例仅通过 `data-testid` 定位元素（不依赖 CSS class 或 XPath）。
 
-### 10.5 三层追溯矩阵
+### 10.6 三层追溯矩阵
 
 确保每个需求 AC 在三层测试中都有对应覆盖:
 
@@ -345,7 +454,7 @@ Harness Engineering 的自动执行依赖三层反馈循环驱动。本章为每
 - 涉及算法/逻辑的 AC → L1 UT 必须有
 - 如果某 AC 在某一层标注为空，需要给出理由（不是漏了）
 
-### 10.6 测试数据策略
+### 10.7 测试数据策略
 
 - **测试数据来源:** { fixtures 文件 / factory 方法 / 内存数据库 / 实际 DB 快照 }
 - **敏感数据处理:** { 脱敏策略: 假名化 / 合成数据 / 专用测试账号 }

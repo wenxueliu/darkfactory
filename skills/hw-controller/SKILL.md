@@ -121,6 +121,7 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 | Capability | Route |
 | ---------- | ----- |
 | 测试环境协调 | Load `references/test-environment.md` |
+| API 测试 Postman 规范 | Load `references/api-test-postman-schema.md` |
 | 集成测试计划 | Load `references/integration-test-plan.md` |
 
 ### 交付阶段 (Delivery)
