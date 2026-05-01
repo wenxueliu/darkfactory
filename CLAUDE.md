@@ -123,6 +123,7 @@ This project's skills MUST run identically on three agent platforms:
 - **Language:** This project uses Chinese for agent communication and documentation. Config defaults to `document_output_language: Chinese`.
 - **Dual instruction files:** This repo maintains both `CLAUDE.md` (Claude Code) and `AGENTS.md` (Codex). `AGENTS.md` is the canonical instruction file — `CLAUDE.md` points to it via `@AGENTS.md`. Keep them in sync; when in doubt, `AGENTS.md` is the source of truth.
 - **No platform-specific variables:** NEVER use `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_SKILL_DIR}`, `${CLAUDE_SESSION_ID}`, `${CODEX_SANDBOX}`, `${CODEX_SESSION_ID}`, or any other platform-only environment variable in skill content. See Platform-Agnostic Skill Design below.
+- **Cross-OS compatibility:** All skills, scripts, and tooling MUST run on **Windows**, **Linux**, and **macOS**. Use forward-slash (`/`) path separators (works on all three OSes with modern tooling). Avoid shell-specific syntax (bashisms, PowerShell-only constructs) in skill scripts — prefer POSIX-compatible commands. When OS-specific behavior is unavoidable, use `references/` pattern files per OS (e.g., `references/setup-windows.md`, `references/setup-linux.md`, `references/setup-macos.md`), not code branches in agent core logic. Never assume a case-sensitive filesystem — verify file existence rather than relying on case distinctions.
 
 ## Directory Layout
 
