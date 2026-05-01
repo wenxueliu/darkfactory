@@ -99,6 +99,7 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 | 设计文档协调 | Load `references/design-coordination.md` |
 | 设计文档模板 | Load `references/design-doc-template.md` |
 | 架构决策记录 (ADR) | Load `references/adr-template.md` |
+| 多模型交叉验证 | Load `references/design-validator.md` |
 | 设计门禁检查 | Load `references/design-gate.md` |
 
 ### 知识库 (Knowledge)
@@ -158,6 +159,7 @@ ideation → design:
 design → decomposition:
   ✅ Design doc filled (design-doc-template.md)
   ✅ ADR written for key decisions (adr-template.md)
+  ✅ Multi-model validation complete (design-validator.md) — if enabled for domain
   ✅ Design gate PASS (design-gate.md)
   ✅ Knowledge base updated with design decisions
   ❌ FAIL → re-design, max 3 iterations → escalate to human
