@@ -52,20 +52,70 @@ Initialize shared memory structure if not exists:
 | `tasks.yaml` | `{project-root}/_bmad/memory/hw-shared/` | Task definitions, dependencies, completion status |
 | `design-decisions.md` | `{project-root}/_bmad/memory/hw-shared/` | Architecture and design decision records |
 | `human-interventions.md` | `{project-root}/_bmad/memory/hw-shared/` | Human intervention history and decisions |
+| `requirements/{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 需求规格文档 |
+| `requirements/{id}-gate.md` | `{project-root}/_bmad/memory/hw-shared/` | 需求门禁结果 |
+| `designs/{id}-design.md` | `{project-root}/_bmad/memory/hw-shared/` | 设计文档 |
+| `designs/{id}-design-gate.md` | `{project-root}/_bmad/memory/hw-shared/` | 设计门禁结果 |
+| `tests/integration-plan-{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 集成测试计划 |
+| `delivery/checklist-{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 交付检查清单 |
+| `delivery/release-notes-{ver}.md` | `{project-root}/_bmad/memory/hw-shared/` | Release Notes |
+| `delivery/acceptance-gate-{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 交付验收门禁 |
+| `knowledge-base/decisions/ADR-*.md` | `{project-root}/_bmad/memory/hw-shared/` | 架构决策记录 |
+| `value-assessment/{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 需求价值评估 |
 
 ## Capabilities
 
+### 需求阶段 (Ideation)
 | Capability | Route |
 | ---------- | ----- |
 | 需求理解与澄清 | Load `references/requirement-clarification.md` |
+| 需求规格模板 | Load `references/requirements-spec-template.md` |
+| 需求价值判断 | Load `../hw-value-judgment/references/value-assessment.md` |
+| ROI 评估 | Load `../hw-value-judgment/references/roi-evaluation.md` |
+| 优先级排序 | Load `../hw-value-judgment/references/priority-ranking.md` |
+| 需求门禁检查 | Load `references/requirements-gate.md` |
+
+### 设计阶段 (Design)
+| Capability | Route |
+| ---------- | ----- |
 | 头脑风暴协调 | Load `references/brainstorming-coordination.md` |
 | 设计文档协调 | Load `references/design-coordination.md` |
+| 设计文档模板 | Load `references/design-doc-template.md` |
+| 架构决策记录 (ADR) | Load `references/adr-template.md` |
+| 设计门禁检查 | Load `references/design-gate.md` |
+
+### 知识库 (Knowledge)
+| Capability | Route |
+| ---------- | ----- |
+| 知识查询 | Load `../hw-knowledge-agent/references/knowledge-query.md` |
+| 知识更新 | Load `../hw-knowledge-agent/references/knowledge-update.md` |
+| 知识索引 | Load `../hw-knowledge-agent/references/knowledge-index.md` |
+
+### 执行阶段 (Execution)
+| Capability | Route |
+| ---------- | ----- |
 | 任务拆分 | Load `references/task-decomposition.md` |
 | Worktree管理 | Load `references/worktree-management.md` |
 | 并行执行协调 | Load `references/parallel-execution.md` |
 | 质量门禁验证 | Load `references/quality-gates.md` |
-| 合并管理 | Load `references/merge-management.md` |
+
+### 集成与测试 (Integration & Test)
+| Capability | Route |
+| ---------- | ----- |
 | 测试环境协调 | Load `references/test-environment.md` |
+| 集成测试计划 | Load `references/integration-test-plan.md` |
+
+### 交付阶段 (Delivery)
+| Capability | Route |
+| ---------- | ----- |
+| 合并管理 | Load `references/merge-management.md` |
+| 交付检查清单 | Load `references/delivery-checklist.md` |
+| Release Notes | Load `references/release-notes-template.md` |
+| 交付验收门禁 | Load `references/delivery-acceptance-gate.md` |
+
+### 通用
+| Capability | Route |
+| ---------- | ----- |
 | 人工介入判断 | Load `references/human-intervention.md` |
 
 ## State Reporting Contract
@@ -82,12 +132,40 @@ When Worktree Controllers report status, respond according to:
 ## Phase Transition Rules
 
 ```
-ideation → design: Human confirms requirements are clear
-design → decomposition: Design document passes review gates
-decomposition → execution: All tasks defined, no circular dependencies
-execution → merge: All worktrees report DONE or human-approved
-merge → test: Merge complete, no conflicts
-test → delivery: All integration tests pass
+ideation → design:
+  ✅ Requirements spec filled (requirements-spec-template.md)
+  ✅ Value assessment complete (value-assessment.md)
+  ✅ Requirements gate PASS (requirements-gate.md)
+  ❌ FAIL → re-clarify, max 3 iterations → escalate to human
+
+design → decomposition:
+  ✅ Design doc filled (design-doc-template.md)
+  ✅ ADR written for key decisions (adr-template.md)
+  ✅ Design gate PASS (design-gate.md)
+  ✅ Knowledge base updated with design decisions
+  ❌ FAIL → re-design, max 3 iterations → escalate to human
+
+decomposition → execution:
+  ✅ All tasks defined in tasks.yaml
+  ✅ No circular dependencies between tasks
+  ✅ Each task has acceptance criteria from requirements
+
+execution → merge:
+  ✅ All worktrees report DONE or human-approved DONE_WITH_CONCERNS
+  ✅ Code review passed: 0 P0, 0 P1 (logic + security + performance)
+  ✅ Unit tests + API tests: 100% PASS (UT layer + API layer)
+
+merge → test:
+  ✅ Merge complete, no conflicts
+  ✅ Integration test plan filled (integration-test-plan.md)
+  ✅ All integration tests PASS
+
+test → delivery:
+  ✅ Delivery checklist all ✅ (delivery-checklist.md)
+  ✅ Release notes written (release-notes-template.md)
+  ✅ Delivery acceptance gate PASS (delivery-acceptance-gate.md)
+  ✅ Integration tests PASS
+  ✅ Rollback plan confirmed
 ```
 
 Any transition requires explicit acceptance criteria verification. If criteria not met, iterate within phase until met or human override.
