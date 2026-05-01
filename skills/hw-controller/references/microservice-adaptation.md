@@ -13,6 +13,51 @@
 
 ## 设计决策: 服务 Co-location
 
+### 设计决策: 服务知识从代码中学习 (Service Knowledge from Code)
+
+**服务元数据不应由人工配置。** `service-registry.yaml` 是自动生成的产物，不是手写的输入。
+
+每个服务的知识（语言、框架、API 端点、DB Schema、基础设施依赖）都编码在代码中——`build.gradle` 告诉你语言，`*Controller.java` 告诉你 API，`V*__.sql` 告诉你数据库。系统应该从代码中学习这些信息，而不是让人重复录入。
+
+**知识治理分工:**
+
+| 知识类型 | 来源 | 负责 Agent | 更新时机 |
+|---------|------|-----------|---------|
+| 服务元数据 (language, port, APIs, schema) | 代码自动检测 | hw-knowledge-agent (service-discovery) | 服务引导 + 每次需求完成后 |
+| 服务依赖关系 | 代码检测 + 交叉分析 | hw-knowledge-agent (service-discovery) | 同上 |
+| 共享模式 (patterns) | 设计阶段沉淀 | hw-knowledge-agent (knowledge-update) | 设计决策后 |
+| 架构决策 (ADRs) | 设计阶段决策 | hw-controller (设计阶段) | 决策产生时 |
+| 经验教训 (lessons) | 开发/审查中发现 | hw-controller (审查阶段) | 发现时 |
+| 跨服务契约 | 设计阶段定义 | hw-controller (设计阶段) | 契约变更时 |
+
+**知识库结构:**
+
+```
+knowledge-base/
+├── shared/                    ← 跨服务共享 (不变)
+│   ├── patterns/              ← 可复用模式
+│   ├── decisions/             ← ADRs
+│   └── lessons/               ← 经验教训
+├── services/                  ← 每服务专属 (新增)
+│   ├── {id}/overview.md       ← auto-generated
+│   ├── {id}/api-endpoints.md  ← auto-generated
+│   ├── {id}/db-schema.md      ← auto-generated
+│   └── {id}/patterns/         ← 服务专属模式
+└── contracts/                 ← 跨服务契约
+```
+
+**前置约束 (冷启动解决方案):**
+
+在 黑灯工厂 执行任何需求之前:
+
+1. `services/` 下所有相关服务已克隆，在 base_branch 上，代码最新
+2. `hw-setup` → `ServiceBootstrap` 完成: 环境搭建 + 基线验证
+3. `hw-knowledge-agent` → `ServiceDiscovery` 完成: 所有服务元数据已发现
+4. `service-registry.yaml` 已生成，服务依赖图无循环
+5. 基线测试全部 PASS（已知 flaky 已标记）
+
+详见 `skills/hw-setup/references/service-bootstrap.md` 和 `skills/hw-knowledge-agent/references/service-discovery.md`。
+
 **所有服务必须放在同一个项目根目录下（monorepo-style co-location），不引入服务级 Agent。**
 
 ### 目录结构
@@ -87,7 +132,7 @@ hw:
   
   # 微服务专属配置
   microservices:
-    service_registry: "_bmad/memory/hw-shared/service-registry.yaml"
+    service_registry: "_bmad/memory/hw-shared/service-registry.yaml"  # auto-generated, do not edit manually
     contract_testing: true          # 是否启用跨服务契约测试
     integration_test_mode: "docker-compose"  # "docker-compose" | "k8s" | "manual"
     max_parallel_services: 4        # 最多同时开发的服务数

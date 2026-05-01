@@ -79,6 +79,7 @@ Config is written to:
 | InitializeMemory | Load `references/init-memory.md` |
 | ConfigureWorktree | Load `references/config-worktree.md` |
 | RegisterModule | Load `references/register-module.md` |
+| ServiceBootstrap | Load `references/service-bootstrap.md` |
 
 ## Verification
 

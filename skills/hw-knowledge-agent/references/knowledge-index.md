@@ -9,40 +9,62 @@ The knowledge base is organized, searchable, and entries are properly linked.
 ```markdown
 # Knowledge Base Index
 
-## Patterns
-- [Pattern Name](patterns/{name}.md)
+## Shared Knowledge (跨服务共享)
+### Patterns
+- [Pattern Name](shared/patterns/{name}.md)
 - ...
 
-## Decisions
-- [Decision Title](decisions/{id}.md)
+### Architecture Decisions
+- [ADR-{NNNN}: Decision Title](shared/decisions/ADR-{NNNN}-{slug}.md)
 - ...
 
-## Lessons Learned
-- [Lesson Title](lessons/{id}.md)
+### Lessons Learned
+- [Lesson Title](shared/lessons/{id}.md)
 - ...
 
-## API Contracts
-- [Contract Name](api-contracts/{name}.md)
+## Service Knowledge (每服务专属)
+### {service-id} — {服务名称}
+- [Overview](services/{service-id}/overview.md) (auto-generated)
+- [API Endpoints](services/{service-id}/api-endpoints.md) (auto-generated)
+- [DB Schema](services/{service-id}/db-schema.md) (auto-generated)
+- Service Patterns: {列表} (manual)
 - ...
 
-## Recent Updates
-- {date} - {entry} - {type}
+### {another-service-id} — {另一服务名称}
 - ...
+
+## Cross-Service Contracts
+- [{service-id} OpenAPI](contracts/{service-id}-openapi.yaml)
+- ...
+
+## Service Dependency Graph
+```
+{service-id} ←── {consumer-id}
+     ↑
+     └── {another-consumer}
 ```
 
-## Maintenance Tasks
+## Recent Updates
+- {date} — {service-id} 服务发现更新 (commit: {sha})
+- {date} — ADR-{NNNN} created
+- {date} — {entry} — {type}
+```
 
-| Task | Frequency | Action |
-|------|-----------|--------|
-| Add new entries | On event | Link in index |
-| Check orphans | Weekly | Link or remove |
-| Update recency | Monthly | Refresh dates |
-| Merge duplicates | Quarterly | Consolidate |
+## 索引维护任务
 
-## Quality Checklist
+| 任务 | 频率 | 操作 |
+|------|------|------|
+| 新知识条目 | 事件驱动 | 在对应 section 添加链接 |
+| 服务发现重新生成 | 每个需求完成后 | 更新 services/{id}/* 下的 auto-generated 文件 |
+| 孤儿条目检查 | 每周 | 链接或移除 |
+| 服务依赖图更新 | 服务发现后 | 从 service-registry.yaml 重新生成 |
+| 重复合并 | 每季度 | 合并类似条目 |
 
-- [ ] All entries have type
-- [ ] All entries have dates
-- [ ] All entries are linked from index
-- [ ] No orphaned entries
-- [ ] Index is well-organized by type
+## 质量检查清单
+
+- [ ] 所有共享知识条目有类型、日期、作者
+- [ ] 所有服务有 auto-generated 概览文件 (monolith 模式跳过)
+- [ ] 所有条目在索引中可发现
+- [ ] 服务依赖图与 service-registry.yaml 一致
+- [ ] 无孤儿条目
+- [ ] Auto-generated 文件标注 `DO NOT EDIT MANUALLY`

@@ -28,16 +28,27 @@ The institutional memory keeper. Ensures lessons learned aren't forgotten and pa
 | KnowledgeQuery | Load `references/knowledge-query.md` |
 | KnowledgeUpdate | Load `references/knowledge-update.md` |
 | KnowledgeIndex | Load `references/knowledge-index.md` |
+| ServiceDiscovery | Load `references/service-discovery.md` |
 
 ## Knowledge Base Structure
 
 ```
 {project-root}/_bmad/memory/hw-shared/knowledge-base/
-├── index.md                      # Knowledge index
-├── patterns/                     # Reusable patterns
-├── decisions/                    # Architecture decisions
-├── lessons/                      # Lessons learned
-└── api-contracts/               # API documentation
+├── index.md                           # 全局知识索引
+├── shared/                            # 跨服务共享知识
+│   ├── patterns/                      # 可复用模式
+│   ├── decisions/                     # 架构决策 (ADRs)
+│   └── lessons/                       # 经验教训
+├── services/                          # 每服务知识 (auto-discovered + 服务专属)
+│   ├── {service-id}/
+│   │   ├── overview.md                # 服务概览 (auto-generated)
+│   │   ├── api-endpoints.md           # API 端点列表 (auto-generated)
+│   │   ├── db-schema.md               # 数据库 Schema (auto-generated)
+│   │   └── patterns/                  # 服务专属模式 (manual)
+│   └── {another-service-id}/
+│       └── ...
+└── contracts/                         # 跨服务 API 契约
+    └── {service-id}-openapi.yaml
 ```
 
 ## When to Query

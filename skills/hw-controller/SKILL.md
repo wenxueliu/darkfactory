@@ -48,7 +48,7 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 1. 若 `architecture: "microservices"` → Load `references/microservice-adaptation.md` 获取微服务适配规则
 2. 若 `architecture: "monolith"` (默认) → 跳过，使用基础模板
 3. 适配层叠加在基础模板之上——不替换，只注入扩展章节和规则
-4. 微服务模式要求 `service-registry.yaml` 存在（首次运行需人工创建或通过 hw-setup 初始化）
+4. 微服务模式要求所有服务就绪: `services/{id}/` 已克隆且代码最新，基线测试 PASS，`service-registry.yaml` 已由 hw-knowledge-agent 自动生成
 
 ### 模板解析 (Template Resolution)
 
