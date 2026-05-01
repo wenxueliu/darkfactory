@@ -1,51 +1,204 @@
-# 头脑风暴协调
+# 头脑风暴协调 (Brainstorming Coordination)
 
-## What Success Looks Like
+参考: BMAD brainstorming (4阶段结构化引导 + 62技法库 + 100+想法数量目标) +
+      Compound Engineering brainstorms (结构化问题框架 + 需求编号 + 成功标准 + 决策记录)
 
-Through collaborative exploration, the human's vague idea becomes a concrete understanding:
-- All critical questions have been answered
-- Edge cases and failure modes have been surfaced
-- The "why" behind the requirement is clear
-- Hidden assumptions are exposed and documented
-- The human feels heard and confident the vision is captured
+## 核心理念
 
-## Your Approach
+你不是在替人类思考。你是在**引导人类思考**。头脑风暴的目标不是产出完美的设计文档，而是**穷尽可能性空间**——把模糊的想法变成具体的选择，把隐含的假设暴露出来，把边缘情况摊在桌面上。
 
-**Facilitate, don't dominate.** Your job is to draw out the human's thinking, not fill the space with yours. Use questions as tools, not statements.
+当以下条件满足时，头脑风暴就完成了:
+- 问题空间被充分探索（不只一种视角）
+- 至少识别了 3 个可行的技术方向
+- 关键假设和风险被显式记录
+- 人类感到被听见、被理解，对接下来要做什么有信心
 
-**Exploration lenses:**
-- **First principles** — "What problem is this REALLY solving at its core?"
-- **What if** — Expand possibility: "What if we also..."
-- **Reverse** — Find constraints through inversion: "What would make this terrible?"
-- **Perspective shift** — "How would X see this differently?"
+## 协调流程 (4 步)
 
-**Capture tangentially.** Things the human says in passing are often the most important. Note them without derailing.
+### 第 1 步: 问题空间探索 (Problem Space Exploration)
 
-**Soft gates.** At natural pauses: "Anything else, or are we ready to move forward?"
+**目标:** 在进入解决方案模式之前，确保完全理解问题。
 
-**Signal quality.** When the human lands on something great, acknowledge it genuinely.
+使用四个探索镜头轮流审视需求:
 
-## Integration with Brainstorming Skill
+| 镜头 | 核心问题 | 典型追问 |
+|------|---------|---------|
+| **第一性原理** | 这到底在解决什么根本问题？ | "如果去掉所有现有方案的限制，最简单的解决方式是什么？" |
+| **假设反转** | 如果反过来会怎样？ | "什么会让这个需求变得完全不合理？" "最坏情况下会发生什么？" |
+| **视角切换** | 不同角色怎么看这个问题？ | "用户关心什么？运维关心什么？安全团队关心什么？" |
+| **时间推移** | 6 个月后回头看？ | "不做会怎样？做了一半会怎样？做了但没人用会怎样？" |
 
-Use the BMad `bmad-brainstorming` skill as a collaborator if available. It brings structured techniques:
-- Random word association
-- Progressive elaboration
-- AI-recommended exploration paths
+**引导原则:**
+- **问，不要说。** 用问题引出人类的思考，而不是用陈述填满空间。
+- **捕捉随口说的话。** 人类不经意间提到的细节往往最重要——记录下来，不要打断。
+- **信号质量。** 当人类提出了一个特别好的想法，真诚地肯定它。"这个方向有意思——能展开说说吗？"
+- **禁止:**
+  - 在问题空间没探索完之前跳到方案
+  - 假装理解你不熟悉的领域
+  - 只从一个视角看问题
 
-Invoke via skill tool if available, or facilitate directly using the same principles.
+**输出:** 问题空间探索完成后，你应该能回答:
+- 核心问题是什么？（一句话）
+- 影响谁？（具体角色，不是"用户"）
+- 为什么现在要解决？（紧迫性）
+- 不解决会怎样？（后果）
 
-## Output
+### 第 2 步: 技术方向发散 (Technical Direction Divergence)
 
-When brainstorming is complete, update `{project-root}/_bmad/memory/hw-shared/tasks.yaml`:
-- Mark requirements as `brainstorming_complete`
-- Note any critical decisions or constraints discovered
-- Flag items that need design-phase attention
+**目标:** 生成至少 3 个可行的技术方向，不急于收敛。
 
-## Transition Gate
+**技法选择:**
+根据问题特征选择合适的探索技法。不需要调 `bmad-brainstorming` 的 62 个技法——选 2-3 个最合适的即可:
 
-Brainstorming is complete when:
-1. Human confirms requirements are clear
-2. No critical questions remain unanswered
-3. Edge cases have been documented
+| 问题特征 | 推荐技法 | 做什么 |
+|---------|---------|--------|
+| 没有明显方案 | 类比迁移 | "其他行业/项目怎么解决类似问题？可以借鉴什么？" |
+| 只有一个方案 | 强制发散 | "除了这个方案，还能怎么做？哪怕更差也行——先列出来。" |
+| 方案间无法取舍 | 极端对比 | "把每个方案推到极致——最好的情况和最坏的情况分别是什么？" |
+| 技术选型纠结 | 约束反转 | "如果时间无限？如果预算为零？如果必须用 Rust？" |
+| 架构设计 | 分层拆解 | "如果必须分成 3 个独立服务？如果必须合并成一个单体？" |
 
-Ask: "Are we ready to move to design, or is there more to explore?"
+**发散规则:**
+- 先追求数量（至少 3 个方向），再追求质量
+- 每个方向至少列出 2 个优点 + 2 个缺点 + 2 个未知
+- 不要提前评价——发散阶段批评会扼杀创意
+- 记录所有方向，包括"看起来不靠谱的"——有时最好的方案藏在看似荒谬的想法里
+
+**输出格式:**
+
+```
+方向 A: {名称}
+  核心思路: {一句话}
+  优点: {至少 2 个}
+  缺点: {至少 2 个}
+  未知: {至少 2 个需要调研的问题}
+
+方向 B: ...
+方向 C: ...
+```
+
+### 第 3 步: 方案收敛与比较 (Convergence & Comparison)
+
+**目标:** 从 3+ 个方向中筛选出 1-2 个推荐方案。
+
+**收敛方法:**
+
+1. **建立评估维度**（与人类一起确定哪些维度重要）:
+   - 实施成本（人天）
+   - 技术风险（不确定性高低）
+   - 可维护性（长期维护成本）
+   - 可扩展性（未来变化空间）
+   - 团队匹配度（现有能力契合度）
+   - 时间约束（能否满足截止日期）
+
+2. **逐方向打分**（不是选赢家，是暴露差异）:
+
+| 维度 | 方向 A | 方向 B | 方向 C |
+|------|--------|--------|--------|
+| 实施成本 | 低/中/高 | 低/中/高 | 低/中/高 |
+| 技术风险 | 低/中/高 | 低/中/高 | 低/中/高 |
+| 可维护性 | 低/中/高 | 低/中/高 | 低/中/高 |
+| ... | ... | ... | ... |
+
+3. **识别关键差异化因素:**
+   - 哪个维度是"一票否决"的？（如: 如果有合规要求，不满足的方案直接淘汰）
+   - 哪个维度的差异最大？（如: 三个方向在其他维度差不多，但实施成本差 3 倍）
+
+4. **做出推荐:**
+   - 💡 推荐方向 X，因为 {关键差异化因素}
+   - ⚠️ 主要风险: {最大的未知}
+   - 🔄 备选方案: 如果推荐方案在设计中遇到不可逾越的障碍，方向 Y 是退路
+
+**软门禁:** 在自然停顿点——"还有其他需要考虑的方向吗？还是我们可以收敛了？"
+
+### 第 4 步: 假设与风险显式化 (Assumptions & Risk Surfacing)
+
+**目标:** 把隐含的假设变成显式的记录，防止后续阶段踩坑。
+
+**假设扫描:**
+
+| # | 假设 | 如果错了会怎样 | 验证方式 | 优先级 |
+|---|------|--------------|---------|--------|
+| 1 | {假设内容} | {影响} | {如何在设计/实现中验证} | P0/P1/P2 |
+
+**风险扫描:**
+
+| # | 风险 | 概率 (H/M/L) | 影响 (H/M/L) | 缓解措施 | 负责人 |
+|---|------|-------------|-------------|---------|--------|
+| 1 | {描述} | H/M/L | H/M/L | {做什么来降低概率或影响} | {角色} |
+
+**最少要求:** 至少 3 个假设 + 3 个风险。如果识别不出来，说明探索不够深入。
+
+## 与其他阶段的集成
+
+| 上游 | 下游 | 集成方式 |
+|------|------|---------|
+| 需求澄清 (requirement-clarification.md) | 头脑风暴 | 澄清完成的 `requirements/{id}.md` 作为头脑风暴的输入 |
+| 头脑风暴 | 设计协调 (design-coordination.md) | 头脑风暴输出的技术方向 + 假设/风险列表，作为设计阶段的种子 |
+| 头脑风暴 | 价值评估 (value-assessment.md) | 头脑风暴中确定的评估维度，可复用到 ROI 评估 |
+
+## 输出产物
+
+| 产物 | 路径 | 内容 |
+|------|------|------|
+| 头脑风暴记录 | `{project-root}/_bmad/memory/hw-shared/designs/{id}-brainstorm.md` | 问题空间探索结果 + 技术方向列表 + 评估矩阵 + 假设/风险列表 |
+| 设计种子 | 传递给 design-coordination.md | 推荐方案 + 关键风险 + 开放问题 |
+
+### 头脑风暴记录模板
+
+```markdown
+# 头脑风暴记录: {需求标题}
+
+**关联需求:** `{REQ-YYYYMMDD-NNN}`
+**时间:** `{timestamp}`
+**参与者:** Human + hw-controller
+
+## 1. 问题空间
+- 核心问题: {一句话}
+- 受影响角色: {列表}
+- 紧迫性: {为什么现在}
+- 不做后果: {6个月后}
+
+## 2. 技术方向
+
+### 方向 A: {名称}
+- 核心思路: {一句话}
+- 优点: {列表}
+- 缺点: {列表}
+- 未知: {列表}
+
+### 方向 B: ...
+### 方向 C: ...
+
+## 3. 评估矩阵
+| 维度 | 方向 A | 方向 B | 方向 C |
+|------|--------|--------|--------|
+| ... | ... | ... | ... |
+
+## 4. 推荐
+- 推荐: 方向 X
+- 理由: {关键差异化因素}
+- 主要风险: {最大未知}
+- 备选: 方向 Y
+
+## 5. 假设与风险
+| # | 假设/风险 | 类型 | 影响 | 验证/缓解 |
+|---|----------|------|------|----------|
+
+## 6. 开放问题
+- {进入设计前需要回答的问题}
+```
+
+## 过渡门禁
+
+头脑风暴完成，可以进入设计阶段的条件:
+
+- [ ] 至少探索了 3 个技术方向
+- [ ] 每个方向有优点 + 缺点 + 未知
+- [ ] 评估矩阵完成，推荐方案有清晰理由
+- [ ] 至少 3 个假设和 3 个风险被显式记录
+- [ ] 人类确认:"准备好了，进入设计"
+
+**如果条件不满足:** 回到对应步骤继续探索。最多 3 轮迭代，3 轮后仍未满足 → 升级到人工决策（记录当前进展，由人类决定是强行推进还是继续探索）。
+
+**完成确认语:** "我们已经探索了 {N} 个方向，推荐 {X}。假设和风险已记录。准备好进入设计阶段了吗？还是有更多方向需要探索？"

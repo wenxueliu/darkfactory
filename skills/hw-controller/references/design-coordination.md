@@ -1,64 +1,230 @@
-# 设计文档协调
+# 设计文档协调 (Design Coordination)
 
-## What Success Looks Like
+参考: Compound Engineering design workflow (知识库优先 + 渐进细化 + 跨关注点扫描) +
+      BMAD design methodology (ADR 驱动 + 人类决策 + 知识沉淀)
 
-A design document that:
-- Captures the architecture and approach decisions
-- References relevant existing knowledge from the knowledge base
-- Is reviewed and approved by heterogeneous agents (security, logic, performance)
-- Has explicit acceptance criteria for each task that will be extracted
-- Documents why decisions were made, not just what was decided
+## 核心理念
 
-## Your Approach
+设计阶段的目标不是写一份完美的文档，而是**做出一组可辩护的技术决策**。你在协调这个过程——人类做关键决策，你负责信息聚合、交叉检查、审查编排和知识沉淀。
 
-**Coordinate, don't author alone.** The human is the primary author. You facilitate and refine.
+**设计文档是开发阶段的唯一技术事实源。** 代码实现必须能回溯到设计决策。
 
-**Knowledge base first.** Before drafting, query the knowledge base for:
-- Similar past designs (lessons learned)
-- Existing patterns to reuse
-- Architectural decisions that constrain this work
+## 协调流程 (5 步)
 
-**Structure for review.** Design for heterogeneous parallel review:
-- Security implications explicitly addressed
-- Performance considerations quantified
-- Logic flow is traceable
-- Edge cases handled
+### 第 1 步: 知识库优先 (Knowledge Base First)
 
-**Document decisions, not just outcomes.** For each major decision:
-- What were the alternatives considered?
-- Why was this approach chosen?
-- What are the implications for other components?
+**目标:** 在开始设计之前，先理解已有的约束和可复用的模式。不做重复决策，不违反已建立的架构原则。
 
-## Design Review Gates
+**查询清单:**
 
-After initial draft, coordinate parallel heterogeneous review:
+| 查询目标 | 在知识库中的位置 | 要回答的问题 |
+|---------|----------------|-------------|
+| 架构决策 | `knowledge-base/decisions/ADR-*.md` | 哪些已有决策会约束本次设计？ |
+| 可复用模式 | `knowledge-base/patterns/` | 有没有已经解决过类似问题的模式？ |
+| 经验教训 | `knowledge-base/lessons/` | 过去类似场景踩过什么坑？ |
+| API 契约 | `knowledge-base/api-contracts/` | 有哪些 API 契约不能破坏？ |
+| 需求规格 | `requirements/{id}.md` | 需求的具体约束是什么？ |
+| 头脑风暴输出 | `designs/{id}-brainstorm.md` | 推荐方向是什么？关键假设有哪些？ |
 
-| Reviewer | Focus | Blocking? |
-|----------|-------|-----------|
-| Security Agent | Vulnerabilities, data handling, authentication | Yes (P0/P1/P2) |
-| Logic Agent | Correctness, edge cases, error handling | Yes (P0/P1/P2) |
-| Performance Agent | Scalability, resource usage, bottlenecks | Yes (P0/P1/P2) |
-| Human | Architecture approval, conflict resolution | Yes (for conflicts) |
+**查询后行动:**
+1. 在开始设计文档前，先给人类一个简短摘要: "根据知识库，已有 {N} 个相关 ADR 和 {N} 个可复用模式。本次设计受以下约束: ..."
+2. 如果有冲突——新需求与已有 ADR 矛盾——立即标记，不要默默绕过
+3. 如果知识库中缺乏相关信息——记录下来，设计完成后回填
 
-## Conflict Resolution
+### 第 2 步: 渐进式设计细化 (Progressive Design Elaboration)
 
-If reviewers disagree:
-1. Log the conflict to `{project-root}/_bmad/memory/hw-shared/reviews/{design-id}-conflicts.md`
-2. Present conflict + options to human
-3. Human makes final decision
-4. Record decision in `{project-root}/_bmad/memory/hw-shared/design-decisions.md`
+**目标:** 从粗到细，从结构到细节，逐层展开设计。不是一次写完 11 个章节。
 
-## Knowledge Base Integration
+**三个细化轮次:**
 
-After design is finalized, optionally update the knowledge base:
-- New patterns discovered
-- Architecture decisions made
-- Lessons learned
+#### 轮次 1: 骨架 (Architecture Skeleton) — 30%
+以 `design-doc-template.md` 为结构，先填充宏观部分:
+- **第 1 节 设计概述:** 2-3 句话核心思路
+- **第 3 节 架构设计:** 组件图 + 数据流 + 组件职责表
+- **第 2 节 技术决策:** 前 2-3 个最重要的决策
 
-## Transition Gate
+**检查点:** "这个架构骨架是否合理？有没有明显的结构性问题？" —— 让人类确认大方向。
 
-Design is complete when:
-1. Document draft is complete
-2. All reviewer P0/P1/P2 issues are resolved
-3. Human approves architecture decisions
-4. Tasks have been extracted with acceptance criteria
+#### 轮次 2: 接口与行为 (Interfaces & Behavior) — 60%
+- **第 4 节 API/接口设计:** 端点和数据模型
+- **第 5 节 状态管理:** 状态机 + 转换规则
+- **第 6 节 错误处理策略:** 至少 5 种异常场景
+
+**检查点:** "接口契约是否完整？状态机是否覆盖了异常路径？"
+
+#### 轮次 3: 横切关注点 (Cross-cutting Concerns) — 90%
+- **第 7 节 安全设计:** 认证/授权/输入校验/数据保护/审计
+- **第 8 节 测试策略:** 每层覆盖目标和预估用例数
+- **第 9 节 部署注意事项:** 迁移/特性开关/回滚/监控
+
+**检查点:** "横切关注点是否都有明确方案？"
+
+#### 轮次 4: 收尾 (Closure) — 100%
+- **第 10 节 开放问题:** 明确记录未解决的、需要在实现中注意的问题
+- **第 11 节 下游引用:** 确保所有引用路径正确
+- 全文档一致性检查
+
+### 第 3 步: ADR 创建 (Architecture Decision Records)
+
+**目标:** 把设计中的重要决策沉淀为不可变的 ADR。
+
+**创建触发条件（满足任一即创建 ADR）:**
+- 决策涉及两个以上组件的交互方式
+- 决策在技术选型上有实质性权衡（选 A 意味着放弃 B 的重要优势）
+- 决策影响未来其他需求的设计（架构约束）
+- 决策如果在 6 个月后遗忘，会导致错误的重构
+
+**ADR 创建流程:**
+1. 识别设计文档中满足触发条件的决策
+2. 对每个决策，使用 `adr-template.md` 创建 ADR
+3. ADR 编号自动递增（检查知识库中已有 ADR 的最大编号）
+4. 写入 `{project-root}/_bmad/memory/hw-shared/knowledge-base/decisions/ADR-{NNNN}-{slug}.md`
+5. 在设计文档的决策表中引用 ADR 编号
+
+**最少要求:** 每个设计至少 1 个 ADR。如果没有任何决策值得写 ADR——那可能设计粒度太小，或者是过度工程。
+
+### 第 4 步: 并行异质审查 (Parallel Heterogeneous Review)
+
+**目标:** 让不同类型的审查者同时审查设计文档，发现从单一视角看不到的问题。
+
+**审查编排:**
+
+```
+                   ┌──────────────────┐
+                   │  设计文档 (草稿)   │
+                   └────────┬─────────┘
+                            │
+            ┌───────────────┼───────────────┐
+            ▼               ▼               ▼
+    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+    │ 安全审查      │ │ 逻辑审查      │ │ 性能审查      │
+    │ (Security)   │ │ (Logic)      │ │ (Performance)│
+    └──────┬───────┘ └──────┬───────┘ └──────┬───────┘
+           │                │                │
+           ▼                ▼                ▼
+    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+    │ 安全发现      │ │ 逻辑发现      │ │ 性能发现      │
+    │ P0/P1/P2/P3  │ │ P0/P1/P2/P3  │ │ P0/P1/P2/P3  │
+    └──────┬───────┘ └──────┬───────┘ └──────┬───────┘
+           │                │                │
+           └────────────────┼────────────────┘
+                            ▼
+                   ┌──────────────────┐
+                   │  问题汇总 + 分类   │
+                   └────────┬─────────┘
+                            ▼
+                   ┌──────────────────┐
+                   │  冲突检测 + 人类   │
+                   │  裁决（如有冲突）  │
+                   └──────────────────┘
+```
+
+**审查维度:**
+
+| 审查者 | 重点关注 | 阻塞级别 |
+|--------|---------|---------|
+| 安全审查 | 认证/授权漏洞、数据泄露风险、输入校验缺失、敏感数据暴露、审计追踪缺失 | P0/P1/P2 |
+| 逻辑审查 | 状态机遗漏、边界条件、并发问题、错误处理完整性、数据一致性 | P0/P1/P2 |
+| 性能审查 | N+1 查询、缓存策略、连接池配置、资源泄漏、可扩展性瓶颈 | P0/P1/P2 |
+| 人类 | 架构合理性、业务对齐、战略方向、冲突裁决 | 最终决策 |
+
+**并行执行规则:**
+- 安全、逻辑、性能三个审查同时启动（互不依赖）
+- 每个审查者只拿到设计文档的路径（不是内容），自己去读
+- 审查结果写入 `{project-root}/_bmad/memory/hw-shared/reviews/{design-id}-review-{type}.md`
+
+**审查结果汇总:**
+
+| 审查者 | P0 | P1 | P2 | P3 | 状态 |
+|--------|----|----|----|----|------|
+| 安全 | {N} | {N} | {N} | {N} | PASS/FAIL |
+| 逻辑 | {N} | {N} | {N} | {N} | PASS/FAIL |
+| 性能 | {N} | {N} | {N} | {N} | PASS/FAIL |
+
+### 第 5 步: 冲突解决与收敛 (Conflict Resolution & Convergence)
+
+**目标:** 解决审查发现的问题和审查者之间的冲突。
+
+**问题处理优先级:**
+
+| 级别 | 行动 | 时限 |
+|------|------|------|
+| P0 | 立即修复，重新审查受影响章节 | 进入下一阶段前 |
+| P1 | 必须修复，设计修订后确认 | 进入下一阶段前 |
+| P2 | 必须修复，可以进入下一阶段后并行处理 | 实现开始前 |
+| P3 | 记录，不阻塞 | 不限 |
+
+**审查者冲突处理:**
+如果两个审查者的建议互相矛盾（如: 安全要求加密 → 性能担心加密开销）:
+
+1. **记录冲突:** 写入 `{project-root}/_bmad/memory/hw-shared/reviews/{design-id}-conflicts.md`:
+   ```markdown
+   | # | 冲突 | 审查者 A | 审查者 B | 影响 |
+   |---|------|---------|---------|------|
+   | 1 | {描述} | 安全: {观点} | 性能: {观点} | {如果各自采纳的后果} |
+   ```
+
+2. **呈现选项给人类:**
+   - 选项 A: 采纳审查者 A 的建议（附后果）
+   - 选项 B: 采纳审查者 B 的建议（附后果）
+   - 选项 C: 折中方案（如果你能想到）
+   - 选项 D: 自定义方案
+
+3. **记录决策:** 写入 `{project-root}/_bmad/memory/hw-shared/design-decisions.md`，关联 ADR 编号。
+
+## 可追溯性矩阵 (Traceability)
+
+设计完成时，必须建立从需求到设计决策再到任务的追溯链:
+
+| 需求 AC | 设计决策 | 实现任务 | 验证方式 |
+|---------|---------|---------|---------|
+| AC-1: {标准} | D-1: {决策} | Task-{id} | {测试用例} |
+| AC-2: {标准} | D-2: {决策} | Task-{id} | {测试用例} |
+| AC-3: {标准} | D-3: {决策} | Task-{id} | {测试用例} |
+
+**追溯规则:**
+- 每个 AC 至少被一个设计决策覆盖
+- 每个设计决策至少映射到一个实现任务
+- 如果某个 AC 在设计中没有对应决策 → 设计不完整
+- 如果某个设计决策没有对应 AC → 过度工程，考虑移除
+
+## 与其他阶段的集成
+
+| 上游 | 下游 | 集成方式 |
+|------|------|---------|
+| 头脑风暴 | 设计协调 | 头脑风暴输出的推荐方向 + 假设/风险 → 设计的技术决策种子 |
+| 需求规格 | 设计协调 | 需求 AC → 设计决策 → 任务拆分 |
+| 设计协调 | 任务拆分 | 设计完成后的组件/接口 → 分解为 tasks.yaml |
+| 设计协调 | 知识库 | ADR 写入 + 新模式/经验教训回填 |
+
+## 输出产物
+
+| 产物 | 路径 | 何时生成 |
+|------|------|---------|
+| 设计文档 | `designs/{id}-design.md` | 第 2 步完成 |
+| ADR | `knowledge-base/decisions/ADR-{NNNN}-{slug}.md` | 第 3 步完成 |
+| 安全审查报告 | `reviews/{id}-review-security.md` | 第 4 步完成后 |
+| 逻辑审查报告 | `reviews/{id}-review-logic.md` | 第 4 步完成后 |
+| 性能审查报告 | `reviews/{id}-review-performance.md` | 第 4 步完成后 |
+| 冲突记录 | `reviews/{id}-conflicts.md` | 如有审查者冲突 |
+| 设计决策记录 | `design-decisions.md` | 如有冲突裁决 |
+| 设计门禁结果 | `designs/{id}-design-gate.md` | 所有问题解决后 |
+
+## 过渡门禁
+
+设计阶段完成，可以进入任务拆分阶段的条件:
+
+- [ ] 设计文档 11 个章节全部完成（design-doc-template.md）
+- [ ] 至少 1 个 ADR 写入知识库
+- [ ] 安全/逻辑/性能三个审查完成，P0/P1/P2 全部解决
+- [ ] 可追溯性矩阵完成——每个 AC 有对应设计决策和预估任务
+- [ ] 冲突（如有）已由人类裁决
+- [ ] 人类确认:"设计批准，进入任务拆分"
+
+**失败处理:**
+- 如果设计门禁 FAIL → 回到对应步骤修订设计，最多重试 3 轮
+- 3 轮后仍未 PASS → 升级到人工决策:
+  - 人类可以: (a) 手动通过门禁，标记已知风险 (b) 放弃本次设计重新开始 (c) 降级需求范围
+- P0/P1 安全问题不能通过人工决策跳过——必须有具体缓解方案，即使缓解方案是"接受风险 + 记录 + 定期审查"
+
+**完成确认语:** "设计文档完成。{N} 个 ADR 已沉淀。安全/逻辑/性能审查通过。可追溯性矩阵完整。准备好进入任务拆分吗？"
