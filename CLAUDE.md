@@ -322,6 +322,21 @@ _bmad/memory/
     └── worktree-registry.yaml    # Worktree status and task assignments
 ```
 
+## Template Customization (业务模板定制)
+
+不同业务领域使用不同的需求模板。通过 `business_domain` 配置自动切换，无需修改 Agent 代码：
+
+| business_domain | 需求模板 | 特点 |
+|-----------------|---------|------|
+| `general` | `requirements-spec-template.md` | 通用 10 章节，适用大多数场景 |
+| `fintech` | `requirements-spec-template-fintech.md` | 增加合规/监管/审计追踪/交易一致性/SLA 章节 |
+| `ecommerce` | `requirements-spec-template-ecommerce.md` | 增加用户旅程/转化指标/支付结算/A/B 测试/库存状态机 |
+| `internal-tools` | `requirements-spec-template-internal-tools.md` | 简化版，减少 ceremony，专注集成点和运维手册 |
+
+**新增业务领域:** 创建 `requirements-spec-template-{domain}.md` → 在 `template-router.md` 添加一行映射 → 提交 PR。Agent 核心逻辑零改动。
+
+**完全自定义模板:** 在 `_bmad/config.yaml` 中指定 `custom_templates.requirements` 路径，覆盖内置模板。
+
 ## Configuration
 
 黑灯工厂通过配置驱动行为适配，实现一套 Agent 定义支撑多种语言、多种业务场景：
@@ -338,7 +353,8 @@ Default config (overridable in `_bmad/config.yaml` and `_bmad/config.user.yaml`)
 | `document_output_language` | `Chinese` | Agent 通信和文档输出语言 |
 | `communication_language` | `Chinese` | Human-Agent 交互语言 |
 | `supported_languages` | `*` (auto-detect) | 目标编程语言列表，`*` 表示自动检测 |
-| `business_domain` | `general` | 业务领域标记，影响 Reviewer 策略和知识库结构 |
+| `business_domain` | `general` | 业务领域标记，驱动模板选择 + Reviewer 策略 + 门禁严格度。支持: `general`, `fintech`, `ecommerce`, `internal-tools`, `java-springboot-enterprise` |
+| `custom_templates` | (空) | 可选。覆盖内置模板的自定义路径，如 `custom_templates.requirements: "./templates/our-spec.md"`。优先级高于 business_domain |
 
 ### 业务场景适配示例
 

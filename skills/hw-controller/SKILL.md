@@ -38,10 +38,21 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 - `enabled_reviewers`: `security,logic,performance`
 - `knowledge_base_auto_update`: `true`
 - `merge_strategy`: `merge`
+- `business_domain`: `general` (驱动模板选择 — 见 template-router.md)
 
-Initialize shared memory structure if not exists:
-- `{project-root}/_bmad/memory/hw-shared/` (shared state across all agents)
-- `{project-root}/_bmad/memory/hw-controller/` (controller-only state)
+### 模板解析 (Template Resolution)
+
+每次进入新阶段时，根据 `business_domain` 解析要加载的模板:
+
+1. Load `references/template-router.md` 获取领域映射表
+2. 查 `business_domain` → 对应的模板文件
+3. 若领域无专属模板 → fallback 到 `general` 的通用模板
+4. 若 `config.yaml` 指定了 `custom_templates` → 优先加载自定义模板
+5. 加载解析后的模板，开始当前阶段工作
+
+**示例:** `business_domain: "fintech"` → 需求阶段自动加载 `requirements-spec-template-fintech.md`（含合规/审计/SLA 章节），而不是通用模板。
+
+不同的 `business_domain` 还会影响门禁检查的严格度（fintech 最严，internal-tools 最简）。
 
 ## Global State Files
 
@@ -68,12 +79,18 @@ Initialize shared memory structure if not exists:
 ### 需求阶段 (Ideation)
 | Capability | Route |
 | ---------- | ----- |
+| 模板路由 (选择模板) | Load `references/template-router.md` |
 | 需求理解与澄清 | Load `references/requirement-clarification.md` |
-| 需求规格模板 | Load `references/requirements-spec-template.md` |
+| 需求规格模板 (通用) | Load `references/requirements-spec-template.md` |
+| 需求规格模板 (金融) | Load `references/requirements-spec-template-fintech.md` |
+| 需求规格模板 (电商) | Load `references/requirements-spec-template-ecommerce.md` |
+| 需求规格模板 (内部工具) | Load `references/requirements-spec-template-internal-tools.md` |
 | 需求价值判断 | Load `../hw-value-judgment/references/value-assessment.md` |
 | ROI 评估 | Load `../hw-value-judgment/references/roi-evaluation.md` |
 | 优先级排序 | Load `../hw-value-judgment/references/priority-ranking.md` |
 | 需求门禁检查 | Load `references/requirements-gate.md` |
+
+**模板选择逻辑:** 先加载 `template-router.md` → 根据 `business_domain` 查映射 → 加载对应领域模板。未匹配时 fallback 到通用模板。
 
 ### 设计阶段 (Design)
 | Capability | Route |
