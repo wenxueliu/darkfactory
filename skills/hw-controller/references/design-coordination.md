@@ -31,38 +31,55 @@
 2. 如果有冲突——新需求与已有 ADR 矛盾——立即标记，不要默默绕过
 3. 如果知识库中缺乏相关信息——记录下来，设计完成后回填
 
-### 第 2 步: 渐进式设计细化 (Progressive Design Elaboration)
+### 第 2 步: 3 阶段设计委托 (3-Stage Design Delegation)
 
-**目标:** 从粗到细，从结构到细节，逐层展开设计。不是一次写完 11 个章节。
+设计阶段的核心工作由 3 个专用 Agent 依次执行。总控负责串联和验证，不直接编写设计文档。
 
-**三个细化轮次:**
+#### Stage 1: 特性设计 (hw-feature-designer)
 
-#### 轮次 1: 骨架 (Architecture Skeleton) — 30%
-以 `design-doc-template.md` 为结构，先填充宏观部分:
-- **第 1 节 设计概述:** 2-3 句话核心思路
-- **第 3 节 架构设计:** 组件图 + 数据流 + 组件职责表
-- **第 2 节 技术决策:** 前 2-3 个最重要的决策
+**委托:** Delegate to `hw-feature-designer`
+**输入:** 需求规格文档 + 知识库 (ADRs, patterns, lessons) + 服务注册表 (微服务模式)
+**输出:** `designs/{id}-design.md` — 跨服务特性设计文档
+**验证:** 输出后调用 `feature-design-validator.md` 检查 G1-G4
+**内容:**
+- Section 1: 特性总览 (overview, success criteria)
+- Section 2: 服务影响分析 (which services, what changes)
+- Section 3: 用户旅程设计 (交互流程 + 关键时刻 + 状态矩阵)
+- Section 4: 页面设计 (如涉及 UI)
+- Section 5: 服务交互设计 (序列图 + SLA + 降级)
+- Section 6: 跨服务契约 (OpenAPI)
+- Section 7: 部署策略 (发布序列 + 特性开关 + 回滚 + 监控)
+- Section 8-9: 开放问题 + 下游引用
 
-**检查点:** "这个架构骨架是否合理？有没有明显的结构性问题？" —— 让人类确认大方向。
+#### Stage 2: 服务详细设计 (hw-service-designer)
 
-#### 轮次 2: 接口与行为 (Interfaces & Behavior) — 60%
-- **第 6 节 API/接口设计:** 端点和数据模型
-- **第 7 节 状态管理:** 状态机 + 转换规则
-- **第 8 节 错误处理策略:** 至少 5 种异常场景
+**委托:** Delegate to `hw-service-designer` — 对每个受影响服务并行启动
+**输入:** Stage 1 输出 (服务影响分析 + 服务交互 + 跨服务契约) + 服务注册表
+**输出:** `designs/{id}-service-{service_id}-design.md` × N + `tests/api-{id}-{service_id}.json` × N
+**验证:** 对每个服务调用 `service-design-validator.md` 检查 V1-V4
+**内容 (后端):** S1 技术决策 → S2 架构设计 → S3 API/接口 → S4 状态管理 → S5 错误处理 → S6 安全 → S7 UT 设计 → S8 API 测试设计
+**内容 (前端):** S1 技术决策 → S2 组件架构 → S3 API 集成 → S4 客户端状态 → S5 错误 UI → S6 安全 → S7 UT 设计 → S8 集成测试
+**并行度:** 最多 `max_parallel_services` 个服务同时设计 (默认 4)
+**模板选择:** 自动检测服务类型 (backend/frontend/bff/data-pipeline)，加载对应模板
 
-**检查点:** "接口契约是否完整？状态机是否覆盖了异常路径？"
+#### Stage 3: E2E 测试设计 (hw-e2e-designer)
 
-#### 轮次 3: 横切关注点 (Cross-cutting Concerns) — 80%
-- **第 9 节 安全设计:** 认证/授权/输入校验/数据保护/审计
-- **第 10 节 测试设计（三层验收循环）:** UT 数据构造 + UT 用例规格 + API 测试用例规格（设计视图） + API Postman JSON 文件（执行视图） + E2E 场景规格（含具体数据） + 三层追溯矩阵 + 测试数据策略
-- **第 11 节 部署注意事项:** 迁移/特性开关/回滚/监控
+**委托:** Delegate to `hw-e2e-designer`
+**输入:** Stage 1 输出 (用户旅程 + 服务交互 + 降级策略) + 所有 Stage 2 输出 (API 契约 + 错误处理)
+**输出:** `designs/{id}-e2e-design.md`
+**验证:** 调用 `e2e-design-validator.md` 检查 V1-V5
+**内容:**
+- 功能 E2E (每用户旅程 happy + error + boundary)
+- 非功能 E2E (性能/安全/可靠性/无障碍, 按 business_domain 矩阵启用)
+- 兼容性 E2E (浏览器/设备/屏幕/网络, 按 business_domain 矩阵启用)
+- 自定义扩展 (按 hw.e2e_extensions 配置)
 
-**检查点:** "横切关注点是否都有明确方案？三层测试用例是否足够让 agent 自主执行 TDD？"
+#### 阶段协调
 
-#### 轮次 4: 收尾 (Closure) — 100%
-- **第 12 节 开放问题:** 明确记录未解决的、需要在实现中注意的问题
-- **第 13 节 下游引用:** 确保所有引用路径正确
-- 全文档一致性检查
+1. Stage 1 完成 → 总控收集服务影响列表 → 启动 Stage 2 (并行)
+2. 所有 Stage 2 完成 → 总控收集所有 per-service 设计路径 → 启动 Stage 3
+3. Stage 3 完成 → 进入 ADR 创建和多模型验证
+4. 任一步骤失败 → 回到对应步骤修订，最多 3 轮
 
 ### 第 3 步: ADR 创建 (Architecture Decision Records)
 
@@ -199,6 +216,8 @@
 
 ## 输出产物
 
+### 单体模式 (architecture: "monolith")
+
 | 产物 | 路径 | 何时生成 |
 |------|------|---------|
 | 设计文档 | `designs/{id}-design.md` | 第 2 步完成 |
@@ -210,16 +229,45 @@
 | 设计决策记录 | `design-decisions.md` | 如有冲突裁决 |
 | 设计门禁结果 | `designs/{id}-design-gate.md` | 所有问题解决后 |
 
+### 微服务模式 (architecture: "microservices")
+
+| 产物 | 路径 | 何时生成 |
+|------|------|---------|
+| Cross-service 设计文档 | `designs/{id}-design.md` | 第 2 步完成 (含服务交互 + 契约 + E2E) |
+| Per-service 设计文档 × N | `designs/{id}-service-{service_id}-design.md` | 第 2 步 (各服务并行填充) |
+| 跨服务契约 | `contracts/{service_id}-openapi.yaml` | 第 2 步 (提供方定义) |
+| ADR | `knowledge-base/decisions/ADR-{NNNN}-{slug}.md` | 第 3 步完成 |
+| Per-service 安全审查 × N | `reviews/{id}-service-{service_id}-review-security.md` | 第 4 步 (各服务并行) |
+| Per-service 逻辑审查 × N | `reviews/{id}-service-{service_id}-review-logic.md` | 第 4 步 (各服务并行) |
+| Per-service 性能审查 × N | `reviews/{id}-service-{service_id}-review-performance.md` | 第 4 步 (各服务并行) |
+| Cross-service E2E 审查 | `reviews/{id}-review-e2e.md` | 第 4 步 |
+| 冲突记录 | `reviews/{id}-conflicts.md` | 如有审查者冲突 |
+| Per-service 门禁结果 × N | `designs/{id}-service-{service_id}-design-gate.md` | 各服务问题解决后 |
+| Cross-service 门禁结果 | `designs/{id}-design-gate.md` | 全部服务 + E2E 问题解决后 |
+
 ## 过渡门禁
 
 设计阶段完成，可以进入任务拆分阶段的条件:
 
-- [ ] 设计文档 11 个章节全部完成（design-doc-template.md）
+### 单体模式
+
+- [ ] 设计文档 13 个章节全部完成（design-doc-template.md）
 - [ ] 至少 1 个 ADR 写入知识库
 - [ ] 安全/逻辑/性能三个审查完成，P0/P1/P2 全部解决
 - [ ] 可追溯性矩阵完成——每个 AC 有对应设计决策和预估任务
 - [ ] 冲突（如有）已由人类裁决
 - [ ] 人类确认:"设计批准，进入任务拆分"
+
+### 微服务模式 (追加条件)
+
+- [ ] 所有受影响服务的 per-service 设计文档完成 (`designs/{id}-service-{service_id}-design.md` × N)
+- [ ] Cross-service 设计文档完成 (`designs/{id}-design.md`): 服务交互设计 + 跨服务契约 + E2E
+- [ ] Per-service 审查 (安全/逻辑/性能) 全部 PASS — 每个服务的 P0/P1/P2 已解决
+- [ ] Cross-service E2E 审查 PASS — E2E 用例覆盖跨服务用户旅程
+- [ ] 跨服务契约文件就绪 (`contracts/{service_id}-openapi.yaml`)，提供方已签署
+- [ ] Per-service 门禁全部 PASS + Cross-service 门禁 PASS
+- [ ] 服务依赖图无循环，CONTRACT 类型依赖的契约路径已全部指向存在的文件
+- [ ] 人类确认:"全部服务设计批准 + E2E 设计批准，进入任务拆分"
 
 **失败处理:**
 - 如果设计门禁 FAIL → 回到对应步骤修订设计，最多重试 3 轮

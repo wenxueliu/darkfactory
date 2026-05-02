@@ -223,12 +223,164 @@ dependency_graph:
 
 ### 设计阶段 (Design)
 
-**与单体差异:** 设计文档增加服务交互图和跨服务契约设计。
+**与单体差异:** 设计阶段由 3 个独立 Agent 依次执行，天然对齐微服务边界。Stage 1 (特性设计) 和 Stage 3 (E2E) 是跨服务的；Stage 2 (服务设计) 按服务并行，自动检测服务类型并选择对应模板。
 
-**设计模板额外章节:**
+#### 3-Agent 设计流水线
+
+```
+Stage 1: hw-feature-designer  → designs/{id}-design.md (跨服务特性设计)
+Stage 2: hw-service-designer  → designs/{id}-service-{svc}-design.md × N (每服务详细设计, 并行)
+Stage 3: hw-e2e-designer      → designs/{id}-e2e-design.md (E2E 集成测试设计)
+```
+
+**拆分原则:** UT 和 API 测试随服务（测试该服务的代码和端点）。E2E 跨服务（验证完整用户旅程，不归属任何单一服务）。
+
+#### 文档拆分策略
+
+```
+单体 (architecture: "monolith"):
+  designs/{requirement_id}-design.md           ← 一份文档包含全部 13 章
+
+微服务 (architecture: "microservices"):
+  designs/{requirement_id}-design.md           ← 跨服务文档 (cross-service)
+  designs/{requirement_id}-service-{svc}-design.md  ← 每服务文档 (per-service) × N
+```
+
+#### 拆分原则
+
+**UT 和 API 测试随服务——因为测试的是该服务的代码和端点。**
+**E2E 跨服务——因为验证的是完整用户旅程，不归属任何单一服务。**
+
+| 设计文档章节 | 归属 | 原因 |
+|-------------|------|------|
+| 1. 设计概述 | cross-service | 全局概览，先于服务拆分 |
+| 2. 用户旅程设计 | cross-service | 用户旅程跨服务，不感知服务边界 |
+| 3. 页面设计 | cross-service | 页面跨服务（前端调用多个 BFF/API） |
+| 4. 技术决策 | **per-service** | 每个服务独立的技术选型和权衡 |
+| 5. 架构设计 | **per-service** | 每服务内部的组件图、数据流、组件职责 |
+| 6. API/接口设计 | **per-service** | 该服务暴露的端点、数据模型 |
+| 7. 状态管理 | **per-service** | 该服务内部的状态机 |
+| 8. 错误处理策略 | **per-service** | 该服务的异常场景和处理方式 |
+| 9. 安全设计 | **per-service** | 该服务的认证/授权/数据保护/审计 |
+| 10.1 测试数据构造原则 | **per-service** | UT/API 数据构造使用该服务的技术栈 |
+| 10.2 测试策略概述 | **per-service** | 该服务的 L1+L2 策略、框架、覆盖目标 |
+| 10.3 L1 UT 设计 | **per-service** | 测试该服务的组件/方法 |
+| 10.4 L2 API 测试设计 | **per-service** | 测试该服务的端点 |
+| 10.5 L3 E2E 测试设计 | cross-service | 用户旅程跨服务，E2E 不归属任何单一服务 |
+| 10.6 三层追溯矩阵 | cross-service | 全局追溯——AC 到 per-service UT/API/E2E |
+| 10.7 测试数据策略 | cross-service | 集成环境的跨服务数据策略 |
+| 11. 部署注意事项 | cross-service | 多服务协调发布、回滚序列 |
+| 12. 开放问题 | cross-service | 跨服务未解决问题 |
+| 13. 下游引用 | cross-service | 全局引用索引 |
+
+**新增 (微服务专属):**
+| 服务交互设计 | cross-service | 跨服务调用序列、协议、SLA、降级 |
+| 跨服务契约 | cross-service → `contracts/` | OpenAPI 契约文件，提供方维护、消费方审查 |
+
+#### Per-Service 设计文档模板 (按服务类型)
+
+hw-service-designer 自动检测服务类型并加载对应模板。模板文件位于 `skills/hw-service-designer/references/`:
+
+| 服务类型 | 检测依据 | 模板 | 章节 |
+|---------|---------|------|------|
+| backend | `language: java-* / go-* / python-* / ...` | `service-design-template-backend.md` | S1-S8 |
+| frontend | `language: typescript-react / typescript-vue / ...` | `service-design-template-frontend.md` | S1-S8 |
+| bff | `language: typescript-next / *-bff / *-gateway` | `service-design-template-bff.md` | S1-S8 |
+| data-pipeline | `language: python-data / java-spark / *-etl` | `service-design-template-data-pipeline.md` | S1-S8 |
+
+详见 `skills/hw-service-designer/references/service-type-detection.md`。
+
+```markdown
+# Per-Service 设计: {service_id} — {需求标题}
+
+**设计ID:** `{DESIGN-YYYYMMDD-NNN}-{service_id}`
+**关联跨服务设计:** `designs/{requirement_id}-design.md`
+**服务:** `{service_id}` (repo: `services/{service_id}`)
+**状态:** `draft | reviewed | approved | implemented`
+
+## S1. 技术决策 (本服务)
+
+| ID | 决策 | 理由 | 替代方案 | 权衡 |
+|----|------|------|---------|------|
+| D-{svc}-1 | {本服务的技术选择} | {为什么} | {放弃的方案} | {牺牲了什么} |
+
+## S2. 架构设计 (本服务内部)
+
+### 组件图
+```
+┌──────────────────────────────────┐
+│  {service_id}                     │
+│  ┌────────┐  ┌────────┐         │
+│  │ {Comp} │──│ {Comp} │         │
+│  └────────┘  └────────┘         │
+└──────────────────────────────────┘
+```
+
+### 数据流
+### 组件职责
+(按 design-doc-template.md Section 5 格式，限定本服务范围)
+
+## S3. API/接口设计 (本服务暴露)
+
+(按 design-doc-template.md Section 6 格式，仅该服务的端点)
+
+## S4. 状态管理 (本服务内部)
+
+(按 design-doc-template.md Section 7 格式，仅该服务的状态机)
+
+## S5. 错误处理策略 (本服务)
+
+(按 design-doc-template.md Section 8 格式)
+
+## S6. 安全设计 (本服务)
+
+(按 design-doc-template.md Section 9 格式)
+
+## S7. UT 设计 (本服务组件) — L1
+
+加载 `test-case-template.md` (hw-service-designer)，对本服务 S2 中的每个组件设计 UT 用例。
+
+(按 `service-design-template-{type}.md` Section S7 格式)
+
+## S8. API 测试设计 (本服务端点) — L2
+
+加载 `api-test-case-template.json` (hw-service-designer) 和 `api-test-postman-schema.md`，对本服务 S3 中的每个端点设计 API 用例。产出:
+- `tests/api-{requirement_id}-{service_id}.json` — Postman Collection
+- `tests/api-{requirement_id}-{service_id}-env.json` — Environment 文件
+
+(按 `service-design-template-{type}.md` Section S8 格式)
+```
+
+#### Cross-Service 设计文档 + E2E
+
+Cross-service 文档由 hw-feature-designer (Stage 1) 生成，E2E 文档由 hw-e2e-designer (Stage 3) 生成。
+
+**Stage 1 输出** (`designs/{id}-design.md`):
+- 特性总览 + 服务影响分析
+- 用户旅程 + 页面设计
+- 服务交互设计 + 跨服务契约
+- 部署策略
+
+**Stage 3 输出** (`designs/{id}-e2e-design.md`):
+- 基于 Stage 1 用户旅程 + Stage 2 per-service API 契约
+- 功能/非功能/兼容性/自定义扩展场景
+
+```markdown
+## 4. 技术决策 → 见 per-service 文档
+
+| 服务 | Per-Service 设计文档 |
+|------|---------------------|
+| user-service | `designs/{requirement_id}-service-user-service-design.md` |
+| order-service | `designs/{requirement_id}-service-order-service-design.md` |
+
+## 5. 架构设计 → 见 per-service 文档 S2
+## 6. API/接口设计 → 见 per-service 文档 S3
+## 7-9. 状态/错误/安全 → 见 per-service 文档 S4-S6
+```
 
 #### 服务交互设计 (Service Interaction Design)
-(追加到 design-doc-template.md Section 5 架构设计之后)
+
+(放在 cross-service 文档中，替换原 design-doc-template.md Section 5)
 
 ```
 # 服务交互序列
@@ -248,7 +400,8 @@ dependency_graph:
 | 4 | notification-service | kafka | Event | `UserPreferencesUpdated` | 异步 | — | — |
 
 #### 跨服务契约设计 (Cross-Service Contract)
-(追加到 design-doc-template.md Section 6 API/接口设计之后)
+
+(放在 cross-service 文档中，替换原 design-doc-template.md Section 6)
 
 如果需求涉及新增或修改服务间 API 调用，每个跨服务 API 端点需要契约定义:
 
@@ -258,41 +411,7 @@ paths:
   /api/v1/users/{id}/preferences:
     put:
       operationId: updateUserPreferences
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [theme, language, notifications]
-              properties:
-                theme:
-                  type: string
-                  enum: [light, dark, auto]
-                language:
-                  type: string
-                  pattern: '^[a-z]{2}(-[A-Z]{2})?$'
-                notifications:
-                  type: object
-                  properties:
-                    email:
-                      type: boolean
-                    push:
-                      type: boolean
-      responses:
-        '200':
-          description: 更新成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserPreferences'
-        '404':
-          $ref: '#/components/schemas/NotFoundError'
+      ...
 ```
 
 **契约管理规则:**
@@ -300,6 +419,34 @@ paths:
 - 契约文件由**提供方**维护，**消费方**审查
 - 契约变更必须兼容（additive change）或版本升级（breaking change）
 - `contract_first: true` 时，契约必须先于实现代码存在
+
+#### E2E 测试设计 — L3
+
+(放在 cross-service 文档中。E2E 跨服务，不归属任何 per-service 文档)
+
+加载 `e2e-test-case-template.md` (hw-tdd-agent)，填充跨服务 E2E 用例。E2E 验证完整用户旅程——可能跨越 web-frontend → bff-service → user-service → order-service 等多个服务。
+
+```markdown
+## 10.5 L3 E2E 测试设计
+
+加载 e2e-test-case-template.md，对 Section 2 的用户旅程设计 E2E 用例。
+E2E 不归属任何单一服务——执行时需要所有受影响服务部署到集成环境。
+
+(用例规格表 + 功能/非功能/兼容性/自定义扩展 — 按 e2e-test-case-template.md 填充)
+```
+
+#### 设计阶段输出产物 (微服务模式)
+
+| 产物 | 路径 | 生成 Agent |
+|------|------|-----------|
+| 特性设计文档 | `designs/{requirement_id}-design.md` | hw-feature-designer (Stage 1) |
+| Per-service 设计文档 | `designs/{requirement_id}-service-{service_id}-design.md` × N | hw-service-designer (Stage 2, 并行) |
+| API 测试 JSON | `tests/api-{requirement_id}-{service_id}.json` × N | hw-service-designer (Stage 2) |
+| E2E 测试设计 | `designs/{requirement_id}-e2e-design.md` | hw-e2e-designer (Stage 3) |
+| 跨服务契约 | `contracts/{service_id}-openapi.yaml` | hw-feature-designer (Stage 1) |
+| ADR | `knowledge-base/decisions/ADR-{NNNN}-{slug}.md` | hw-controller |
+| Per-service 审查报告 | `reviews/{requirement_id}-service-{service_id}-review-{type}.md` | hw-controller (并行审查) |
+| 设计门禁结果 | `designs/{requirement_id}-design-gate.md` | hw-controller (汇总) |
 
 ### 任务拆分 (Task Decomposition)
 

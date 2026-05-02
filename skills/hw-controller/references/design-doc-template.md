@@ -1,8 +1,58 @@
+# DEPRECATED: 此模板已被 3 阶段设计流程取代
+
+此模板的章节已拆分到 3 个独立 Agent 的模板中。请勿直接加载本文件。
+
+## 章节迁移映射
+
+| 原章节 | 新归属 | Agent | 新模板 |
+|--------|--------|-------|--------|
+| Section 1-3: 概述/用户旅程/页面 | Cross-service 特性设计 | hw-feature-designer | `feature-design-template.md` |
+| Section 4-9: 技术决策/架构/API/状态/错误/安全 | Per-service 详细设计 | hw-service-designer | `service-design-template-{type}.md` |
+| Section 10.1-10.4: UT/API 测试设计 | Per-service 详细设计 | hw-service-designer | `test-case-template.md` + `api-test-case-template.json` |
+| Section 10.5: E2E 测试设计 | Cross-service E2E 设计 | hw-e2e-designer | `e2e-test-case-template.md` |
+| Section 10.6-10.7: 追溯/数据策略 | Cross-service 特性设计 | hw-feature-designer | `feature-design-template.md` |
+| Section 11-13: 部署/问题/引用 | Cross-service 特性设计 | hw-feature-designer | `feature-design-template.md` |
+
+---
+
 # 设计文档模板
 
 ## 使用说明
 
-此模板在需求门禁 PASS 后使用。基于 `requirements/{requirement_id}.md` 创建。填入后写入 `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-design.md`。
+此模板在需求门禁 PASS 后使用。基于 `requirements/{requirement_id}.md` 创建。
+
+### 架构模式适配
+
+| 架构模式 | 文档结构 | 模板使用方式 |
+|---------|---------|------------|
+| `monolith` (默认) | 一份文档包含全部 13 章 | 直接使用本模板 |
+| `microservices` | N 个 per-service 文档 + 1 个 cross-service 文档 | 见 `microservice-adaptation.md` — 本模板章节按拆分原则分属不同文档 |
+
+### 微服务模式下的章节归属
+
+当 `architecture: "microservices"` 时，本模板的章节按以下原则拆分:
+
+**Per-service 文档** (`designs/{id}-service-{service_id}-design.md`) — 使用本模板的 Section 4-10.4:
+- Section 4 技术决策 → per-service S1
+- Section 5 架构设计 → per-service S2
+- Section 6 API/接口设计 → per-service S3
+- Section 7 状态管理 → per-service S4
+- Section 8 错误处理策略 → per-service S5
+- Section 9 安全设计 → per-service S6
+- Section 10.1-10.4 测试设计 (UT + API) → per-service S7-S8
+
+**Cross-service 文档** (`designs/{id}-design.md`) — 使用本模板的其余章节:
+- Section 1-3 设计概述/用户旅程/页面设计
+- Section 10.5 E2E 测试设计
+- Section 10.6-10.7 三层追溯矩阵/测试数据策略
+- Section 11-13 部署/开放问题/下游引用
+- 加上微服务专属: 服务交互设计 + 跨服务契约 + per-service 文档引用指针
+
+**拆分原因:** UT 和 API 测试随服务——测试的是该服务的代码和端点。E2E 跨服务——验证的是完整用户旅程，不归属单一服务。
+
+### 单体模式
+
+填入后写入 `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-design.md`。
 
 设计文档是开发阶段的唯一技术事实源。代码实现必须回溯到设计决策。
 
@@ -400,14 +450,32 @@ JSON 文件格式规范见 `references/api-test-postman-schema.md`。
 
 对用户旅程（Section 2.1 + Section 3），定义端到端集成测试用例。这层验证完整流程——从用户入口到数据库再返回用户。
 
-**E2E 场景规格:**
+**E2E 用例设计使用独立模板 `references/e2e-test-case-template.md` (hw-tdd-agent)。** 该模板覆盖三大类场景:
 
-| 用例 ID | 用户旅程 | 场景 | 起始状态 (具体数据) | 操作步骤 (具体值) | 验证点 (具体断言) | UI 验证 (如有) | 数据清理 (具体 SQL/API) |
-|---------|---------|------|-------------------|-----------------|-----------------|-------------|----------------------|
-| E2E-{缩写}-001 | {旅程名} | happy | DB: `users` 表有测试用户 `id=e2e-user-001`<br>余额: `1000.00` | 1. 打开 `/products`<br>2. 搜索 `"test-product-e2e"`<br>3. 点击第一个结果<br>4. 点击「购买」<br>5. 确认支付 | `orders` 表新增 1 条记录<br>状态: `PAID`<br>余额: `1000.00 - price`<br>库存: `stock - 1` | 页面显示「支付成功」<br>订单号可见 | `DELETE FROM orders WHERE user_id='e2e-user-001'`<br>`UPDATE inventory SET stock=original` |
-| E2E-{缩写}-002 | {旅程名} | 失败恢复 | 同上 | 1-4. 同上<br>5. 支付时模拟网络断开<br>6. 刷新页面<br>7. 从「我的订单」继续支付 | 订单状态: `PENDING` → `PAID`<br>无重复扣款 | 页面显示「继续支付」<br>刷新后不丢失订单 | 同上 |
+| 类别 | 子类型 | 最少要求 |
+|------|--------|---------|
+| **功能测试** | 正常流程 / 异常流程 / 边界条件 / 状态转换 / 权限控制 | 每旅程 ≥1 happy + ≥1 异常，关键旅程 ≥3 异常 |
+| **非功能测试** | 性能 / 安全 / 无障碍 / 可靠性 / 国际化 | 按 business_domain 启用 (见模板 Section 6 场景启用矩阵) |
+| **兼容性测试** | 浏览器 / 设备 / 屏幕尺寸 / 网络条件 | 按 business_domain 启用 |
+| **自定义扩展** | 场景扩类 / 自定义类别 / 脚本钩子 | 按 `_bmad/config.yaml` (hw.e2e_extensions) 配置 |
 
-**最少要求:** 每个用户旅程 ≥ 1 条 happy path。关键旅程（支付/数据修改/权限变更）≥ 1 条失败恢复。
+**使用流程:**
+
+1. 加载 `e2e-test-case-template.md` → 根据 `business_domain` 查 Section 6 场景启用矩阵 → 确定应用哪些类别
+2. 对每个启用的类别，按模板中的 GIVEN/WHEN/THEN/CLEANUP 结构填充具体用例
+3. 填充完成后，用例写入设计文档本节的 "E2E 用例规格" 表中
+4. 用例必须遵循执行契约: 自包含、无相互依赖、具体值、可恢复清理
+
+**E2E 用例规格 (汇总表):**
+
+| 用例 ID | 类别 | 子类型 | 用户旅程 | 优先级 | GIVEN (具体) | WHEN (具体) | THEN (具体) | CLEANUP (具体) |
+|---------|------|--------|---------|--------|-------------|------------|------------|---------------|
+| E2E-{缩写}-001 | functional | happy | {旅程名} | P0 | DB: `users` ... | 1. 打开 `/...`<br>2. `[data-testid="..."]` click | UI: "..." 可见<br>API: 201<br>DB: row+1 | `DELETE FROM ... WHERE ...` |
+| E2E-{缩写}-002 | functional | error | {旅程名} | P0 | 同上 | 1-3. ...<br>4. `page.route()` abort | UI: toast "网络失败"<br>DB: 无变更 | 同上 |
+| E2E-{缩写}-003 | non-functional | perf | {旅程名} | P1 | ... | 加载页面 | LCP < 2.5s | — |
+| E2E-{缩写}-004 | compatibility | browser | {旅程名} | P2 | Firefox 128 | 同 E2E-001 步骤 | UI 同 E2E-001 | 同 E2E-001 |
+
+**最少要求:** 每个用户旅程 ≥ 1 条 happy path (functional)。关键旅程（支付/数据修改/权限变更）≥ 1 条失败恢复 (error) + ≥ 1 条边界 (boundary)。非功能/兼容性按 `business_domain` 矩阵启用。
 
 **数据构造必须写具体值:**
 ```

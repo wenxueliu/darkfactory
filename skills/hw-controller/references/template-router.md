@@ -17,7 +17,7 @@ _bmad/config.yaml
          │                              (若 architecture = microservices)
          │
          ├── 需求阶段 → 加载 {domain} 对应的 requirements-spec-template
-         ├── 设计阶段 → 加载 {domain} 对应的 design-doc-template (如有)
+         ├── 设计阶段 → 3 阶段委托: hw-feature-designer → hw-service-designer → hw-e2e-designer
          ├── 门禁检查 → 加载 {domain} 对应的 gate 规则 (如有)
          ├── 若 architecture = microservices → 叠加适配层 (服务影响分析/契约/多 repo)
          │
@@ -34,11 +34,11 @@ _bmad/config.yaml
 
 | business_domain | 需求模板 | 设计模板 | 门禁规则 | 说明 |
 |-----------------|---------|---------|---------|------|
-| `general` (默认) | `requirements-spec-template.md` | `design-doc-template.md` | `requirements-gate.md` + `design-gate.md` | 通用场景 |
-| `fintech` | `requirements-spec-template-fintech.md` | `design-doc-template.md` + 合规章节 | `requirements-gate.md` + 合规检查 | 金融/支付/保险 |
-| `ecommerce` | `requirements-spec-template-ecommerce.md` | `design-doc-template.md` + 用户旅程 | `requirements-gate.md` + A/B 测试检查 | 电商/交易平台 |
-| `internal-tools` | `requirements-spec-template-internal-tools.md` | `design-doc-template.md` (简化) | `requirements-gate.md` (简化) | 内部工具/脚本 |
-| `java-springboot-enterprise` | `requirements-spec-template.md` (通用) | `design-doc-template.md` | `requirements-gate.md` + `design-gate.md` | v1 默认领域 |
+| `general` (默认) | `requirements-spec-template.md` | `feature-design-template.md` | `requirements-gate.md` + `design-gate.md` | 通用场景 |
+| `fintech` | `requirements-spec-template-fintech.md` | `feature-design-template.md` + 合规章节 | `requirements-gate.md` + 合规检查 | 金融/支付/保险 |
+| `ecommerce` | `requirements-spec-template-ecommerce.md` | `feature-design-template.md` + 用户旅程 | `requirements-gate.md` + A/B 测试检查 | 电商/交易平台 |
+| `internal-tools` | `requirements-spec-template-internal-tools.md` | `feature-design-template.md` (简化) | `requirements-gate.md` (简化) | 内部工具/脚本 |
+| `java-springboot-enterprise` | `requirements-spec-template.md` (通用) | `feature-design-template.md` | `requirements-gate.md` + `design-gate.md` | v1 默认领域 |
 
 ## 模板加载逻辑
 

@@ -1,0 +1,526 @@
+{
+  "info": {
+    "name": "{requirement_id} — {requirement_title}",
+    "description": "关联设计: designs/{requirement_id}-design.md\n关联需求: requirements/{requirement_id}.md\n生成时间: {timestamp}\n校验规范: references/api-test-postman-schema.md (hw-controller)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "{base_url}",
+      "type": "string",
+      "description": "API 基础地址，如 http://localhost:8080"
+    },
+    {
+      "key": "authToken",
+      "value": "{auth_token}",
+      "type": "string",
+      "description": "认证 Token，通过环境变量注入"
+    },
+    {
+      "key": "testTimeout",
+      "value": "10000",
+      "type": "string",
+      "description": "请求超时 (ms)"
+    }
+  ],
+  "item": [
+    {
+      "name": "{resource_name} — POST {endpoint_path}",
+      "description": "端点: POST {endpoint_path}\n对应设计决策: D-{N}\n覆盖需求 AC: AC-{N}",
+      "item": [
+        {
+          "name": "API-{resource_abbr}-001: 创建成功 — 必填字段完整",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "// === 动态变量生成 (保证唯一性，避免并行冲突) ===",
+                  "const ts = Date.now();",
+                  "pm.variables.set('unique_id', ts);",
+                  "pm.variables.set('unique_{field}', `{prefix}-${ts}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "// === [API-{resource_abbr}-001] 状态码验证 ===",
+                  "pm.test('[API-{resource_abbr}-001] 状态码应为 {expected_status}', function () {",
+                  "    pm.response.to.have.status({expected_status});",
+                  "});",
+                  "",
+                  "// === [API-{resource_abbr}-001] 响应体结构验证 ===",
+                  "pm.test('[API-{resource_abbr}-001] 响应体应包含 {field} 字段', function () {",
+                  "    pm.response.to.have.jsonBody('{field}');",
+                  "});",
+                  "",
+                  "// === [API-{resource_abbr}-001] 字段值验证 (与请求数据一致) ===",
+                  "pm.test('[API-{resource_abbr}-001] {field} 应为请求中发送的值', function () {",
+                  "    pm.expect(pm.response.json().{field}).to.eql({expected_value});",
+                  "});",
+                  "",
+                  "// === [API-{resource_abbr}-001] 响应时间验证 ===",
+                  "pm.test('[API-{resource_abbr}-001] 响应时间应 < {sla_ms}ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below({sla_ms});",
+                  "});",
+                  "",
+                  "// === [API-{resource_abbr}-001] 副作用验证 (数据已持久化) ===",
+                  "const createdId = pm.response.json().id;",
+                  "pm.collectionVariables.set('{resource_abbr}_id', createdId);",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: `${pm.variables.get('baseUrl')}{endpoint_path}/${createdId}`,",
+                  "    method: 'GET',",
+                  "    header: { 'Authorization': `Bearer ${pm.variables.get('authToken')}` }",
+                  "}, function (err, res) {",
+                  "    if (err) {",
+                  "        pm.expect.fail(`副作用验证请求失败: ${err}`);",
+                  "        return;",
+                  "    }",
+                  "    pm.expect(res.status).to.eql(200);",
+                  "    pm.expect(res.json().{field}).to.eql({expected_value});",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}{endpoint_path}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{path_segment_1}", "{path_segment_2}", "{resource_plural}"],
+              "query": []
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"{field_1}\": \"{concrete_value_1}\",\n  \"{field_2}\": {concrete_value_2},\n  \"{field_3}\": \"{concrete_value_3}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "API-{resource_abbr}-002: 创建失败 — {validation_scenario}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "// === [API-{resource_abbr}-002] 状态码验证 ===",
+                  "pm.test('[API-{resource_abbr}-002] 状态码应为 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "// === [API-{resource_abbr}-002] 错误结构验证 ===",
+                  "pm.test('[API-{resource_abbr}-002] 响应体应包含 error 字段', function () {",
+                  "    pm.response.to.have.jsonBody('error');",
+                  "});",
+                  "",
+                  "pm.test('[API-{resource_abbr}-002] error 应包含 message', function () {",
+                  "    pm.response.to.have.jsonBody('error.message');",
+                  "});",
+                  "",
+                  "// === [API-{resource_abbr}-002] 错误消息验证 ===",
+                  "pm.test('[API-{resource_abbr}-002] 错误消息应包含 \"{expected_error_keyword}\"', function () {",
+                  "    pm.expect(pm.response.json().error.message.toLowerCase()).to.include('{expected_error_keyword}');",
+                  "});",
+                  "",
+                  "// === [API-{resource_abbr}-002] 无副作用验证 ===",
+                  "pm.test('[API-{resource_abbr}-002] 错误请求不应产生副作用', function () {",
+                  "    pm.expect(pm.response.json().id).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}{endpoint_path}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{path_segment_1}", "{path_segment_2}", "{resource_plural}"],
+              "query": []
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"{field_1}\": \"{invalid_value}\",\n  \"{field_2}\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "API-{resource_abbr}-003: 创建失败 — 认证缺失",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[API-{resource_abbr}-003] 状态码应为 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('[API-{resource_abbr}-003] 响应体应包含 error 字段', function () {",
+                  "    pm.response.to.have.jsonBody('error');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}{endpoint_path}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{path_segment_1}", "{path_segment_2}", "{resource_plural}"],
+              "query": []
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"{field_1}\": \"{concrete_value_1}\",\n  \"{field_2}\": {concrete_value_2}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "API-{resource_abbr}-004: 创建失败 — 权限不足",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[API-{resource_abbr}-004] 状态码应为 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}{endpoint_path}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{path_segment_1}", "{path_segment_2}", "{resource_plural}"],
+              "query": []
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{unauthorizedToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"{field_1}\": \"{concrete_value_1}\",\n  \"{field_2}\": {concrete_value_2}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "API-{resource_abbr}-005: 创建失败 — 资源冲突",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "// === 前置条件: 先创建一个资源，再尝试用相同唯一键创建 ===",
+                  "const ts = Date.now();",
+                  "const duplicateKey = `dup-${ts}`;",
+                  "pm.variables.set('duplicate_key', duplicateKey);",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: `${pm.variables.get('baseUrl')}{endpoint_path}`,",
+                  "    method: 'POST',",
+                  "    header: {",
+                  "        'Content-Type': 'application/json',",
+                  "        'Authorization': `Bearer ${pm.variables.get('authToken')}`",
+                  "    },",
+                  "    body: {",
+                  "        mode: 'raw',",
+                  "        raw: JSON.stringify({",
+                  "            {field_1}: duplicateKey,",
+                  "            {field_2}: {concrete_value_2}",
+                  "        })",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    if (err || res.status !== 201) {",
+                  "        pm.expect.fail(`前置条件失败: 无法创建用于冲突测试的资源`);",
+                  "    }",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[API-{resource_abbr}-005] 状态码应为 409', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('[API-{resource_abbr}-005] 错误类型应为 CONFLICT', function () {",
+                  "    pm.expect(pm.response.json().error).to.eql('CONFLICT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}{endpoint_path}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{path_segment_1}", "{path_segment_2}", "{resource_plural}"],
+              "query": []
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"{field_1}\": \"{{duplicate_key}}\",\n  \"{field_2}\": {concrete_value_2}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "{resource_name} — GET {endpoint_path}/{id_param}",
+      "description": "端点: GET {endpoint_path}/{id_param}\n对应设计决策: D-{N}",
+      "item": [
+        {
+          "name": "API-{resource_abbr}-006: 查询成功 — 资源存在",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "// === 前置条件: 创建测试资源 (如果 cross-case variable 未设置) ===",
+                  "if (!pm.collectionVariables.get('{resource_abbr}_id')) {",
+                  "    const ts = Date.now();",
+                  "    pm.sendRequest({",
+                  "        url: `${pm.variables.get('baseUrl')}{endpoint_path}`,",
+                  "        method: 'POST',",
+                  "        header: {",
+                  "            'Content-Type': 'application/json',",
+                  "            'Authorization': `Bearer ${pm.variables.get('authToken')}`",
+                  "        },",
+                  "        body: {",
+                  "            mode: 'raw',",
+                  "            raw: JSON.stringify({",
+                  "                {field_1}: `test-${ts}`,",
+                  "                {field_2}: {concrete_value_2}",
+                  "            })",
+                  "        }",
+                  "    }, function (err, res) {",
+                  "        if (err) { pm.expect.fail('前置条件失败'); return; }",
+                  "        pm.collectionVariables.set('{resource_abbr}_id', res.json().id);",
+                  "    });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[API-{resource_abbr}-006] 状态码应为 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[API-{resource_abbr}-006] 响应体应包含 {field} 字段', function () {",
+                  "    pm.response.to.have.jsonBody('{field}');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{endpoint_path}/{{%7Bresource_abbr%7D_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{path_segment_1}", "{path_segment_2}", "{resource_plural}", "{{%7Bresource_abbr%7D_id}}"],
+              "query": []
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "API-{resource_abbr}-007: 查询失败 — 资源不存在",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[API-{resource_abbr}-007] 状态码应为 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('[API-{resource_abbr}-007] 错误消息应包含 \"not found\"', function () {",
+                  "    pm.expect(pm.response.json().error.message.toLowerCase()).to.include('not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}{endpoint_path}/{nonexistent_id}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{path_segment_1}", "{path_segment_2}", "{resource_plural}", "{nonexistent_id}"],
+              "query": []
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "{resource_name} — 流程测试",
+      "description": "跨端点流程: 创建 → 查询 → 更新 → 删除 → 验证删除",
+      "item": [
+        {
+          "name": "API-FLOW-001: 完整生命周期 — 创建→查询→更新→删除",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "{uuid}",
+                "type": "text/javascript",
+                "exec": [
+                  "// === 步骤 1: POST 创建 ===",
+                  "const ts = Date.now();",
+                  "const createBody = JSON.stringify({",
+                  "    {field_1}: `flow-${ts}`,",
+                  "    {field_2}: {concrete_value_2}",
+                  "});",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: `${pm.variables.get('baseUrl')}{endpoint_path}`,",
+                  "    method: 'POST',",
+                  "    header: {",
+                  "        'Content-Type': 'application/json',",
+                  "        'Authorization': `Bearer ${pm.variables.get('authToken')}`",
+                  "    },",
+                  "    body: { mode: 'raw', raw: createBody }",
+                  "}, function (err, res) {",
+                  "    if (err) { pm.expect.fail(`步骤1失败: ${err}`); return; }",
+                  "    pm.test('[FLOW-001] 步骤1: POST 应返回 201', () => pm.expect(res.status).to.eql(201));",
+                  "    const id = res.json().id;",
+                  "",
+                  "    // === 步骤 2: GET 查询 ===",
+                  "    pm.sendRequest({",
+                  "        url: `${pm.variables.get('baseUrl')}{endpoint_path}/${id}`,",
+                  "        method: 'GET',",
+                  "        header: { 'Authorization': `Bearer ${pm.variables.get('authToken')}` }",
+                  "    }, function (err, res) {",
+                  "        if (err) { pm.expect.fail(`步骤2失败: ${err}`); return; }",
+                  "        pm.test('[FLOW-001] 步骤2: GET 应返回 200', () => pm.expect(res.status).to.eql(200));",
+                  "        pm.test('[FLOW-001] 步骤2: 数据应与创建时一致', () => pm.expect(res.json().{field_1}).to.eql(`flow-${ts}`));",
+                  "",
+                  "        // === 步骤 3: PUT 更新 ===",
+                  "        const updateBody = JSON.stringify({",
+                  "            {field_1}: `flow-updated-${ts}`,",
+                  "            {field_2}: {updated_value_2}",
+                  "        });",
+                  "        pm.sendRequest({",
+                  "            url: `${pm.variables.get('baseUrl')}{endpoint_path}/${id}`,",
+                  "            method: 'PUT',",
+                  "            header: {",
+                  "                'Content-Type': 'application/json',",
+                  "                'Authorization': `Bearer ${pm.variables.get('authToken')}`",
+                  "            },",
+                  "            body: { mode: 'raw', raw: updateBody }",
+                  "        }, function (err, res) {",
+                  "            if (err) { pm.expect.fail(`步骤3失败: ${err}`); return; }",
+                  "            pm.test('[FLOW-001] 步骤3: PUT 应返回 200', () => pm.expect(res.status).to.eql(200));",
+                  "            pm.test('[FLOW-001] 步骤3: 更新后的值应生效', () => pm.expect(res.json().{field_1}).to.eql(`flow-updated-${ts}`));",
+                  "",
+                  "            // === 步骤 4: DELETE 删除 ===",
+                  "            pm.sendRequest({",
+                  "                url: `${pm.variables.get('baseUrl')}{endpoint_path}/${id}`,",
+                  "                method: 'DELETE',",
+                  "                header: { 'Authorization': `Bearer ${pm.variables.get('authToken')}` }",
+                  "            }, function (err, res) {",
+                  "                if (err) { pm.expect.fail(`步骤4失败: ${err}`); return; }",
+                  "                pm.test('[FLOW-001] 步骤4: DELETE 应返回 204', () => pm.expect(res.status).to.eql(204));",
+                  "",
+                  "                // === 步骤 5: GET 验证删除 ===",
+                  "                pm.sendRequest({",
+                  "                    url: `${pm.variables.get('baseUrl')}{endpoint_path}/${id}`,",
+                  "                    method: 'GET',",
+                  "                    header: { 'Authorization': `Bearer ${pm.variables.get('authToken')}` }",
+                  "                }, function (err, res) {",
+                  "                    pm.test('[FLOW-001] 步骤5: 删除后 GET 应返回 404', () => pm.expect(res.status).to.eql(404));",
+                  "                });",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}{endpoint_path}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{path_segment_1}", "{path_segment_2}", "{resource_plural}"],
+              "query": []
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"{field_1}\": \"flow-{placeholder}\",\n  \"{field_2}\": {concrete_value_2}\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

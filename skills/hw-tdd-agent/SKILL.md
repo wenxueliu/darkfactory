@@ -73,6 +73,8 @@ Confirm test framework available:
 | API-RED | Load `references/api-red.md` |
 | API-GREEN | Load `references/api-green.md` |
 | API-REFACTOR | Load `references/api-refactor.md` |
+| TestCaseTemplate | Load `references/test-case-template.md` |
+| APITestCaseTemplate | Load `references/api-test-case-template.json` |
 | TestVerification | Load `references/test-verification.md` |
 
 ## Layer Transition

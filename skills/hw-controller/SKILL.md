@@ -38,61 +38,24 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 - `enabled_reviewers`: `security,logic,performance`
 - `knowledge_base_auto_update`: `true`
 - `merge_strategy`: `merge`
-- `business_domain`: `general` (驱动模板选择 — 见 template-router.md)
-- `architecture`: `monolith` (架构类型: `monolith` / `microservices`)
+- `business_domain`: `general`
+- `architecture`: `microservices`
 
-### 架构适配 (Architecture Adaptation)
+### 设计阶段 3-Stage 委托
 
-加载模板之前，检查 `architecture` 配置:
+设计阶段由 3 个专用 Agent 依次执行:
 
-1. 若 `architecture: "microservices"` → Load `references/microservice-adaptation.md` 获取微服务适配规则
-2. 若 `architecture: "monolith"` (默认) → 跳过，使用基础模板
-3. 适配层叠加在基础模板之上——不替换，只注入扩展章节和规则
-4. 微服务模式要求所有服务就绪: `services/{id}/` 已克隆且代码最新，基线测试 PASS，`service-registry.yaml` 已由 hw-knowledge-agent 自动生成
+1. **hw-feature-designer** → `designs/{id}-design.md` (跨服务特性设计)
+2. **hw-service-designer** × N → `designs/{id}-service-{svc}-design.md` (per-service 详细设计, 并行)
+3. **hw-e2e-designer** → `designs/{id}-e2e-design.md` (E2E 集成测试设计)
 
-### 模板解析 (Template Resolution)
-
-每次进入新阶段时，根据 `business_domain` 解析要加载的模板:
-
-1. Load `references/template-router.md` 获取领域映射表
-2. 查 `business_domain` → 对应的模板文件
-3. 若领域无专属模板 → fallback 到 `general` 的通用模板
-4. 若 `config.yaml` 指定了 `custom_templates` → 优先加载自定义模板
-5. 若 `architecture: "microservices"` → 在模板基础上叠加微服务适配章节
-6. 加载解析后的模板，开始当前阶段工作
-
-**示例:** `business_domain: "fintech"` → 需求阶段自动加载 `requirements-spec-template-fintech.md`（含合规/审计/SLA 章节），而不是通用模板。若同时 `architecture: "microservices"` → 再叠加服务影响分析表。
-
-不同的 `business_domain` 还会影响门禁检查的严格度（fintech 最严，internal-tools 最简）。
-
-## Global State Files
-
-| File | Location | Purpose |
-|------|----------|---------|
-| `global-state.yaml` | `{project-root}/_bmad/memory/hw-controller/` | Current phase, overall progress, active blockers |
-| `worktree-registry.yaml` | `{project-root}/_bmad/memory/hw-controller/` | All worktree status, task assignments |
-| `tasks.yaml` | `{project-root}/_bmad/memory/hw-shared/` | Task definitions, dependencies, completion status |
-| `design-decisions.md` | `{project-root}/_bmad/memory/hw-shared/` | Architecture and design decision records |
-| `human-interventions.md` | `{project-root}/_bmad/memory/hw-shared/` | Human intervention history and decisions |
-| `requirements/{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 需求规格文档 |
-| `requirements/{id}-gate.md` | `{project-root}/_bmad/memory/hw-shared/` | 需求门禁结果 |
-| `designs/{id}-design.md` | `{project-root}/_bmad/memory/hw-shared/` | 设计文档 |
-| `designs/{id}-design-gate.md` | `{project-root}/_bmad/memory/hw-shared/` | 设计门禁结果 |
-| `tests/integration-plan-{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 集成测试计划 |
-| `delivery/checklist-{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 交付检查清单 |
-| `delivery/release-notes-{ver}.md` | `{project-root}/_bmad/memory/hw-shared/` | Release Notes |
-| `delivery/acceptance-gate-{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 交付验收门禁 |
-| `knowledge-base/decisions/ADR-*.md` | `{project-root}/_bmad/memory/hw-shared/` | 架构决策记录 |
-| `value-assessment/{id}.md` | `{project-root}/_bmad/memory/hw-shared/` | 需求价值评估 |
-| `service-registry.yaml` | `{project-root}/_bmad/memory/hw-shared/` | 微服务注册表 (microservices 模式) |
-| `contracts/{service-id}-openapi.yaml` | `{project-root}/contracts/` | 跨服务 API 契约 (microservices 模式) |
+每阶段完成后调用对应验证器验证。全部 3 阶段通过后，进入 ADR 沉淀 + 多模型验证 + 门禁。
 
 ## Capabilities
 
 ### 需求阶段 (Ideation)
 | Capability | Route |
 | ---------- | ----- |
-| 模板路由 (选择模板) | Load `references/template-router.md` |
 | 需求理解与澄清 | Load `references/requirement-clarification.md` |
 | 需求规格模板 (通用) | Load `references/requirements-spec-template.md` |
 | 需求规格模板 (金融) | Load `references/requirements-spec-template-fintech.md` |
@@ -100,17 +63,17 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 | 需求规格模板 (内部工具) | Load `references/requirements-spec-template-internal-tools.md` |
 | 需求价值判断 | Load `../hw-value-judgment/references/value-assessment.md` |
 | ROI 评估 | Load `../hw-value-judgment/references/roi-evaluation.md` |
-| 优先级排序 | Load `../hw-value-judgment/references/priority-ranking.md` |
 | 需求门禁检查 | Load `references/requirements-gate.md` |
 
-**模板选择逻辑:** 先加载 `template-router.md` → 根据 `business_domain` 查映射 → 加载对应领域模板。未匹配时 fallback 到通用模板。
+### 设计阶段 (Design) — 3-Stage 委托
 
-### 设计阶段 (Design)
 | Capability | Route |
 | ---------- | ----- |
 | 头脑风暴协调 | Load `references/brainstorming-coordination.md` |
-| 设计文档协调 | Load `references/design-coordination.md` |
-| 设计文档模板 | Load `references/design-doc-template.md` |
+| 设计阶段协调 | Load `references/design-coordination.md` |
+| Stage 1: 特性设计 | Delegate to `hw-feature-designer` |
+| Stage 2: 服务详细设计 | Delegate to `hw-service-designer` (并行) |
+| Stage 3: E2E 测试设计 | Delegate to `hw-e2e-designer` |
 | 架构决策记录 (ADR) | Load `references/adr-template.md` |
 | 多模型交叉验证 | Load `references/design-validator.md` |
 | 设计门禁检查 | Load `references/design-gate.md` |
@@ -148,7 +111,6 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 ### 通用
 | Capability | Route |
 | ---------- | ----- |
-| 微服务架构适配 | Load `references/microservice-adaptation.md` |
 | 人工介入判断 | Load `references/human-intervention.md` |
 
 ## State Reporting Contract
@@ -166,16 +128,20 @@ When Worktree Controllers report status, respond according to:
 
 ```
 ideation → design:
-  ✅ Requirements spec filled (requirements-spec-template.md)
-  ✅ Value assessment complete (value-assessment.md)
-  ✅ Requirements gate PASS (requirements-gate.md)
+  ✅ Requirements spec filled
+  ✅ Value assessment complete
+  ✅ Requirements gate PASS
   ❌ FAIL → re-clarify, max 3 iterations → escalate to human
 
 design → decomposition:
-  ✅ Design doc filled (design-doc-template.md)
-  ✅ ADR written for key decisions (adr-template.md)
-  ✅ Multi-model validation complete (design-validator.md) — if enabled for domain
-  ✅ Design gate PASS (design-gate.md)
+  ✅ Feature design doc complete (Stage 1: designs/{id}-design.md)
+  ✅ Feature design validator PASS (V1-V3)
+  ✅ Per-service design docs complete (Stage 2: designs/{id}-service-{svc}-design.md × N)
+  ✅ Per-service validators PASS (V1-V4) for each service
+  ✅ E2E test design complete (Stage 3: designs/{id}-e2e-design.md)
+  ✅ E2E design validator PASS (V1-V5)
+  ✅ ADR written for key decisions
+  ✅ Design gate PASS
   ✅ Knowledge base updated with design decisions
   ❌ FAIL → re-design, max 3 iterations → escalate to human
 
@@ -191,21 +157,15 @@ execution → merge:
   ✅ Code review passed: 0 P0, 0 P1 (logic + security + performance)
   ✅ Unit tests + API tests: 100% PASS (UT layer + API layer)
   ✅ [microservices] Contract tests PASS (all cross-service contracts verified)
-  ✅ [microservices] Per-service worktrees merged to their respective base branches
 
 merge → test:
-  ✅ Merge complete, no conflicts (per service in microservices mode)
-  ✅ Integration test plan filled (integration-test-plan.md)
+  ✅ Merge complete, no conflicts
+  ✅ Integration test plan filled
   ✅ All integration tests PASS
-  ✅ [microservices] Multi-service integration environment healthy, all health checks UP
 
 test → delivery:
-  ✅ Delivery checklist all ✅ (delivery-checklist.md)
-  ✅ Release notes written (release-notes-template.md)
-  ✅ Delivery acceptance gate PASS (delivery-acceptance-gate.md)
-  ✅ Integration tests PASS
+  ✅ Delivery checklist all ✅
+  ✅ Release notes written
+  ✅ Delivery acceptance gate PASS
   ✅ Rollback plan confirmed
-  ✅ [microservices] Per-service release sequence planned, contract versions tagged
 ```
-
-Any transition requires explicit acceptance criteria verification. If criteria not met, iterate within phase until met or human override.

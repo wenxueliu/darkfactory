@@ -1,5 +1,26 @@
 document_output_language: Chinese
 output_folder: '{project-root}/_bmad-output'
+
+# 黑灯工厂 (hw) 配置
+hw:
+  architecture: "microservices"         # "microservices" (默认). 单体是微服务的特例 (N=1 service)
+  business_domain: "general"            # general | fintech | ecommerce | internal-tools
+
+  # 设计阶段 3-Stage 配置
+  design_phase:
+    max_parallel_services: 4            # 并行服务设计最大数
+    custom_templates:
+      feature_design: ""                # 自定义特性设计模板路径 (覆盖默认)
+      service_design: ""                # 自定义服务设计模板路径 (覆盖默认)
+      e2e_design: ""                    # 自定义 E2E 设计模板路径 (覆盖默认)
+    service_design_templates: {}        # 自定义服务类型模板映射 (如: ml-model: "template-ml.md")
+
+  # 阶段配置
+  min_iteration_before_human: 3
+  enabled_reviewers: "security,logic,performance"
+  knowledge_base_auto_update: true
+  merge_strategy: "merge"
+
 bmb:
   name: BMad Builder
   description: Standard Skill Compliant Factory for BMad Agents, Workflows and Modules
