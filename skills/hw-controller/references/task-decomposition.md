@@ -192,6 +192,50 @@ Task-{id}: {名称}
 - E2E 用例分配给独立的 E2E 任务（最后一个 wave），依赖所有服务任务完成
 - UT 用例从 per-service 设计文档 Section 10.3 提取，API 用例从 Section 10.4 提取，E2E 用例从 Stage 3 的 `designs/{id}-e2e-design.md` 提取
 
+**API 测试执行时机（三轮，详见 `quality-gates.md` GATE 1/3）:**
+
+```
+第一轮 — 任务内 TDD 闭环 (GATE 1: API 层验证):
+  前提: 该任务所有 UT 用例已 GREEN
+  步骤:
+    1. 从 per-service 设计文档 Section 10.4 加载 API 测试用例
+    2. 在 worktree 内启动服务 (如 ./gradlew bootRun / npm run dev / go run .)
+    3. 确认服务健康检查通过 (curl /actuator/health or equivalent)
+    4. 执行 API 测试 (newman run tests/api-{id}-{svc}.json)
+    5. RED (API 测试 FAIL) → 实现 API 端点 → GREEN (API 测试 PASS) → REFACTOR
+    6. 所有 API 用例 PASS → GATE 1 通过 → 进入 GATE 2 (审查)
+  环境: worktree 本地 (不需要集成环境)
+
+第二轮 — 任务内回归 (GATE 3: 工作区回归):
+  前提: GATE 2 (审查) 通过，准备标记 DONE
+  步骤:
+    1. git merge {base_branch} (拉取最新代码)
+    2. 重跑本 worktree 全量 UT
+    3. 重跑本 worktree 全量 API 测试
+    4. 确认 PASS 率未下降
+  环境: worktree 本地 (已合并最新代码)
+
+第三轮 — 跨服务全量回归 (GATE 3: 跨 worktree 回归 + E2E Wave):
+  前提: 所有服务任务 DONE，已合并到 staging 分支
+  步骤:
+    1. provider = load_provider(config.environments.integration.provider)
+       可以是 local-process / docker-compose / kubernetes — 框架不感知具体技术
+    2. provider.start(all_affected_services)
+    3. provider.wait_healthy(all_affected_services)
+    4. 运行全量 UT (所有服务)
+    5. 运行全量 API 测试 (所有服务, baseUrl 通过 provider.get_endpoint() 获取)
+    6. 运行 E2E 测试 (跨服务用户旅程)
+    7. 全部 PASS → 合并到主分支
+    8. provider.stop(all_services)
+  环境: integration (由 config.environments.integration.provider 决定部署技术)
+  详见: environment-abstraction.md
+
+关键区别:
+  - 第一轮 API 测试: 只验证本任务涉及的端点 (new service endpoints)
+  - 第二轮 API 测试: 验证本任务 + 检测 base_branch 变更是否破坏本任务
+  - 第三轮 API 测试: 全量回归，验证所有服务的端点互不破坏 + E2E 跨服务验证
+```
+
 ### 第 4 步: 确定并行执行批次 (Parallelization Batching)
 
 对 DAG 做拓扑排序，确定哪些任务可以并行:

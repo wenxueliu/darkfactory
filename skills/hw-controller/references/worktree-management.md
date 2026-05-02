@@ -75,27 +75,35 @@ cd {worktree_base}/hw-task-{task_id}
 
 ### 3. 环境搭建
 
-根据项目类型执行对应的环境搭建:
+环境搭建命令从 `service-registry.yaml` → `lifecycle.{provider}.build` 读取，不硬编码。
 
-| 项目类型 | 环境搭建命令 |
-|---------|------------|
-| Java/Maven | `mvn install -DskipTests` |
+详见 `environment-abstraction.md`。
+
+| 语言 | 默认构建命令 (lifecycle 未配置时自动检测) |
+|------|------------------------------------------|
+| Java/Maven | `./mvnw compile -DskipTests` |
 | Java/Gradle | `./gradlew build -x test` |
-| Node.js | `npm ci` |
-| Python | `pip install -r requirements.txt && pip install -r requirements-dev.txt` |
+| Node.js/npm | `npm ci` |
+| Node.js/yarn | `yarn install` |
+| Python/pip | `pip install -r requirements.txt && pip install -r requirements-dev.txt` |
+| Python/poetry | `poetry install` |
 | Go | `go mod download` |
+| Rust | `cargo build` |
 
 ### 4. 基线验证
 
-在开始任何开发之前，运行已有测试套件确认环境正确:
+在开始任何开发之前，运行已有测试套件确认环境正确。
 
-```bash
-# 运行已有测试，确保基线是干净的
-mvn test          # Java
-npm test          # Node.js
-pytest            # Python
-go test ./...     # Go
-```
+测试命令从 `service-registry.yaml` → `lifecycle.{provider}.test` 读取。
+默认按语言自动检测:
+
+| 语言 | 默认测试命令 |
+|------|------------|
+| Java | `./gradlew test` 或 `./mvnw test` |
+| Node.js | `npm test` |
+| Python | `pytest` |
+| Go | `go test ./...` |
+| Rust | `cargo test` |
 
 **基线测试必须 100% PASS。** 如果有失败:
 1. 检查是否是环境问题（依赖版本、配置缺失）

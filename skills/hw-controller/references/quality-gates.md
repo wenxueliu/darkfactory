@@ -9,6 +9,10 @@
 
 门禁是串行的——UT PASS 后才有意义跑 API，API PASS 后才有意义请审查。跳过门禁的唯一途径是人工显式批准。
 
+**环境抽象:** 所有服务启动/停止/健康检查通过 Environment Provider 统一接口操作。
+详见 `environment-abstraction.md`。框架代码不直接执行 `./gradlew bootRun` 或 `docker-compose up`，
+而是通过 `provider.start()` / `provider.stop()` / `provider.get_endpoint()` 调用。
+
 ## 门禁执行顺序 (Per Task)
 
 ```
@@ -18,52 +22,62 @@ Worktree Controller 执行:
   │ 接收任务  │
   └────┬─────┘
        │
-  ┌────▼──────────────────────────────────────────┐
-  │ GATE 1: TDD 循环                               │
-  │ ┌──────────────────────────────────────────┐   │
-  │ │ 对每个 UT 用例:                           │   │
-  │ │   RED   → 写 UT, 运行, 确认 FAIL          │   │
-  │ │   GREEN → 写最少代码, 运行, 确认 PASS      │   │
-  │ │   REFACTOR → 重构, 运行, 确认仍 PASS       │   │
-  │ │                                          │   │
-  │ │ 所有 UT PASS → 进入 API 验证              │   │
-  │ │ newman run api-{id}.json → 所有 API PASS │   │
-  │ └──────────────────────────────────────────┘   │
-  │ PASS: 所有 UT + API PASS → 进入审查          │
-  │ FAIL: 回到 TDD, 最多 {min_iteration} 轮      │
-  └────┬──────────────────────────────────────────┘
+  ┌────▼──────────────────────────────────────────────────┐
+  │ GATE 1: TDD 循环                                       │
+  │ ┌──────────────────────────────────────────────────┐   │
+  │ │ 对每个 UT 用例:                                   │   │
+  │ │   RED   → 写 UT, 运行, 确认 FAIL                  │   │
+  │ │   GREEN → 写最少代码, 运行, 确认 PASS              │   │
+  │ │   REFACTOR → 重构, 运行, 确认仍 PASS               │   │
+  │ │                                                  │   │
+  │ │ 所有 UT PASS → 进入 API 验证                      │   │
+  │ │ provider.start(service) → 本地启动服务             │   │
+  │ │ newman run api-{id}.json                         │   │
+  │ │   --env-var baseUrl={provider.get_endpoint()}     │   │
+  │ │ → 所有 API PASS                                  │   │
+  │ │ provider.stop(service)                           │   │
+  │ └──────────────────────────────────────────────────┘   │
+  │ PASS: 所有 UT + API PASS → 进入审查                  │
+  │ FAIL: 回到 TDD, 最多 {min_iteration} 轮              │
+  └────┬──────────────────────────────────────────────────┘
        │
-  ┌────▼──────────────────────────────────────────┐
-  │ GATE 2: 异质审查                               │
-  │ ┌────────────┐ ┌──────────┐ ┌──────────────┐  │
-  │ │  安全审查   │ │ 逻辑审查  │ │  性能审查     │  │
-  │ └─────┬──────┘ └────┬─────┘ └──────┬───────┘  │
-  │       └──────────────┼─────────────┘          │
-  │               ┌──────▼──────┐                  │
-  │               │  问题汇总    │                  │
-  │               └──────┬──────┘                  │
-  │                      │                         │
-  │   PASS: 0 P0, 0 P1, 0 P2 → DONE               │
-  │   FAIL: 有 P0/P1/P2 → 修复后重审               │
-  └────┬──────────────────────────────────────────┘
+  ┌────▼──────────────────────────────────────────────────┐
+  │ GATE 2: 异质审查                                       │
+  │ ┌────────────┐ ┌──────────┐ ┌──────────────┐          │
+  │ │  安全审查   │ │ 逻辑审查  │ │  性能审查     │          │
+  │ └─────┬──────┘ └────┬─────┘ └──────┬───────┘          │
+  │       └──────────────┼─────────────┘                  │
+  │               ┌──────▼──────┐                          │
+  │               │  问题汇总    │                          │
+  │               └──────┬──────┘                          │
+  │                      │                                 │
+  │   PASS: 0 P0, 0 P1, 0 P2 → DONE                       │
+  │   FAIL: 有 P0/P1/P2 → 修复后重审                       │
+  └────┬──────────────────────────────────────────────────┘
        │
-  ┌────▼──────────────────────────────────────────┐
-  │ GATE 3: 回归检查                               │
-  │ ┌──────────────────────────────────────────┐   │
-  │ │ 从 worktree 内部:                         │   │
-  │ │ 1. git merge {base_branch} (获取最新代码)  │   │
-  │ │ 2. 运行本 worktree 全量 UT + API          │   │
-  │ │ 3. 检查 PASS 率是否下降                   │   │
-  │ │                                          │   │
-  │ │ 跨 worktree (总控执行):                    │   │
-  │ │ 1. 所有 worktree DONE 后                  │   │
-  │ │ 2. 合并到 staging 分支                    │   │
-  │ │ 3. 运行全量 UT + API + E2E                │   │
-  │ │ 4. 通过 → 合并到主分支                    │   │
-  │ └──────────────────────────────────────────┘   │
-  │ PASS: 无回归 → 合并就绪                        │
-  │ FAIL: 定位破坏者 → 修复或回滚                   │
-  └────────────────────────────────────────────────┘
+  ┌────▼──────────────────────────────────────────────────┐
+  │ GATE 3: 回归检查                                       │
+  │ ┌──────────────────────────────────────────────────┐   │
+  │ │ 从 worktree 内部:                                 │   │
+  │ │ 1. git merge {base_branch} (获取最新代码)          │   │
+  │ │ 2. provider.start(service) — local-process        │   │
+  │ │ 3. 运行本 worktree 全量 UT + API                  │   │
+  │ │ 4. 检查 PASS 率是否下降                           │   │
+  │ │ 5. provider.stop(service)                         │   │
+  │ │                                                  │   │
+  │ │ 跨 worktree (总控执行):                            │   │
+  │ │ 1. 所有 worktree DONE 后                          │   │
+  │ │ 2. 合并到 staging 分支                            │   │
+  │ │ 3. provider = load_provider(                      │   │
+  │ │      config.environments.integration)             │   │
+  │ │ 4. provider.start(all_services)                   │   │
+  │ │ 5. 运行全量 UT + API + E2E                        │   │
+  │ │ 6. provider.stop(all_services)                    │   │
+  │ │ 7. 通过 → 合并到主分支                            │   │
+  │ └──────────────────────────────────────────────────┘   │
+  │ PASS: 无回归 → 合并就绪                                │
+  │ FAIL: 定位破坏者 → 修复或回滚                           │
+  └────────────────────────────────────────────────────────┘
 ```
 
 ## GATE 1: TDD 门禁 (三层反馈验证)
@@ -104,11 +118,29 @@ ut_results:
 
 ### 1B. API 层验证
 
-UT 全部 PASS 后，验证 API 层。使用 Newman 执行 Postman Collection:
+UT 全部 PASS 后，验证 API 层。通过 Environment Provider 启动服务后，使用 Newman 执行 Postman Collection。
+
+**前提:** 服务已在 worktree 内通过 Environment Provider (`local-process`) 启动。
+详见 `environment-abstraction.md`。
+
+```
+API 验证流程 (provider-agnostic):
+  1. provider = load_provider("local-process")       # worktree-local 固定为 local-process
+  2. provider.start([service])                        # 启动服务 (不硬编码 ./gradlew/npm)
+     命令来源: service-registry.yaml → lifecycle.local-process.start
+  3. provider.wait_healthy([service], timeout=30)     # 轮询 health_check 端点
+  4. base_url = provider.get_endpoint(service)         # → "http://localhost:{port}"
+  5. newman run tests/api-{id}-{svc}.json \
+       --env-var baseUrl={base_url} \
+       --reporters cli,junit
+  6. 全部 PASS → provider.stop([service]) → 进入 GATE 2
+```
 
 ```bash
+# Newman 执行 (baseUrl 由 provider.get_endpoint() 动态注入，不硬编码 localhost:8080)
 newman run _bmad/memory/hw-shared/tests/api-{requirement_id}.json \
   -e _bmad/memory/hw-shared/tests/api-{requirement_id}-env.json \
+  --env-var baseUrl={provider_endpoint} \
   --reporters cli,junit \
   --reporter-junit-export _bmad/memory/hw-shared/tests/api-{requirement_id}-report.xml
 ```
@@ -127,10 +159,10 @@ newman run _bmad/memory/hw-shared/tests/api-{requirement_id}.json \
 
 | 退出码 | 含义 | 响应 |
 |--------|------|------|
-| 0 | 全部 PASS | ✅ 进入审查门禁 |
-| 1 | 有 FAIL | ❌ 修复后重跑 |
-| 2 | 脚本错误 | ❌ 检查 Postman test script 语法 |
-| 3 | 网络错误 | ⚠️ 重试 2 次 → 仍失败 → blocked |
+| 0 | 全部 PASS | 进入审查门禁 |
+| 1 | 有 FAIL | 修复后重跑 |
+| 2 | 脚本错误 | 检查 Postman test script 语法 |
+| 3 | 网络错误 | 重试 2 次 → 仍失败 → blocked |
 
 ### 1C. E2E 层验证 (合并后)
 
@@ -207,44 +239,55 @@ review_status:
 
 在每个 worktree 标记 DONE 之前:
 
-```bash
-# 1. 拉取主分支最新代码
-git fetch origin {base_branch}
-git merge origin/{base_branch} --no-ff -m "merge: sync with {base_branch}"
-
-# 2. 解决冲突 (如有)
-
-# 3. 重跑本 worktree 的全量 UT
-mvn test -pl {module}
-
-# 4. 如果 PASS → 标记 DONE
-# 5. 如果 FAIL → 分析失败原因
-#    - 是否是 merge 冲突导致的？→ 修复
-#    - 是否是其他 worktree 破坏了共享接口？→ 报告总控
+```
+1. git fetch origin {base_branch}
+2. git merge origin/{base_branch} --no-ff -m "merge: sync with {base_branch}"
+3. 解决冲突 (如有)
+4. provider = load_provider("local-process")
+5. provider.start(service)
+6. 重跑本 worktree 全量 UT + API (baseUrl = provider.get_endpoint(service))
+7. 如果 PASS → provider.stop(service) → 标记 DONE
+8. 如果 FAIL → 分析失败原因
+   - merge 冲突导致的？→ 修复
+   - 其他 worktree 破坏了共享接口？→ 报告总控
+   - 环境启动失败？→ provider.get_logs(service) 诊断
 ```
 
-### 3B. 跨任务回归 (合并后)
+### 3B. 跨任务回归 (合并后 — Integration 环境)
 
-所有 worktree DONE 后，合并到 staging 分支并运行全量回归:
+所有 worktree DONE 后，合并到 staging 分支并通过 Environment Provider 启动集成环境运行全量回归:
 
-```bash
-# 1. 创建 staging 分支
-git checkout -b staging-{requirement_id} {base_branch}
+```
+1. git checkout -b staging-{requirement_id} {base_branch}
+2. 按 wave 顺序合并所有 worktree:
+   git merge hw-task-001 --no-ff
+   git merge hw-task-002 --no-ff
+   ...
 
-# 2. 按 wave 顺序合并所有 worktree
-git merge hw-task-001 --no-ff
-git merge hw-task-002 --no-ff
-...
+3. provider = load_provider(config.environments.integration.provider)
+   例: provider = DockerComposeProvider() 或 K8sProvider() — 框架不感知
 
-# 3. 全量 UT + API 测试
-mvn test
-newman run api-{requirement_id}.json -e api-{requirement_id}-env.json
+4. provider.start(all_affected_services)
+5. provider.wait_healthy(all_affected_services, timeout=120)
 
-# 4. E2E 测试 (如有)
-npx playwright test e2e-{requirement_id}.spec.ts
+6. 全量 UT (所有服务, 在各 worktree 内执行)
 
-# 5. 全部 PASS → 合并到主分支
-# 6. 有 FAIL → 定位问题 worktree → 修复或回滚
+7. 全量 API 测试 (所有服务):
+   for each service:
+     base_url = provider.get_endpoint(service)
+     newman run tests/api-{id}-{svc}.json --env-var baseUrl={base_url}
+
+8. 契约测试 (跨服务 API 依赖):
+   for each contract in contracts/:
+     newman run contracts/{svc}-contract-tests.json \
+       --env-var baseUrl={provider.get_endpoint(provider_svc)}
+
+9. E2E 测试:
+   web_url = provider.get_endpoint(web-frontend)
+   npx playwright test e2e/ --baseURL={web_url}
+
+10. 全部 PASS → provider.stop(all_services) → 合并到主分支
+11. 有 FAIL → 定位问题 worktree → 修复或回滚
 ```
 
 **回归定位流程:**
@@ -257,6 +300,11 @@ npx playwright test e2e-{requirement_id}.spec.ts
   4. 重新运行该 worktree 的 TDD 循环
   5. 修复后重新 merge
 ```
+
+**注意:** 步骤 4-5 的 `provider.start()` 不硬编码命令。
+- local-process: `./gradlew bootRun &` 或 `npm run dev &` (从 lifecycle 配置读取)
+- docker-compose: `docker compose up -d`
+- kubernetes: `kubectl apply -f k8s/integration/`
 
 ## 门禁配置对照表
 

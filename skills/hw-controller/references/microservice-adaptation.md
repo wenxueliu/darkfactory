@@ -134,9 +134,25 @@ hw:
   microservices:
     service_registry: "_bmad/memory/hw-shared/service-registry.yaml"  # auto-generated, do not edit manually
     contract_testing: true          # 是否启用跨服务契约测试
-    integration_test_mode: "docker-compose"  # "docker-compose" | "k8s" | "manual"
     max_parallel_services: 4        # 最多同时开发的服务数
     contract_first: true            # 是否要求契约先行（推荐 true）
+  
+  # 环境 Provider 配置 — 按层级选择部署技术 (详见 environment-abstraction.md)
+  environments:
+    worktree-local:
+      provider: "local-process"           # 固定: 任务内本地进程
+    
+    integration:
+      provider: "docker-compose"          # "local-process" | "docker-compose" | "kubernetes"
+      compose:
+        generate_compose: true            # 自动生成 compose 文件
+    
+    staging:
+      provider: "kubernetes"              # "kubernetes" | "docker-compose"
+    
+    production:
+      provider: "kubernetes"
+      read_only: true
 ```
 
 ## 新增全局状态
@@ -668,72 +684,42 @@ newman run contracts/user-service-contract-tests.json \
 
 #### GATE 3: 集成测试 (Integration Test — 多服务编排)
 
-**集成环境启动 (docker-compose 模式):**
+**集成测试通过 Environment Provider 抽象执行**（详见 `environment-abstraction.md`）。不再硬编码 docker-compose/k8s 命令。Provider 的选择由 `config.yaml` → `environments.integration.provider` 决定。
 
-```yaml
-# docker-compose.integration.yaml
-version: '3.8'
-services:
-  user-service:
-    build:
-      context: ./services/user-service
-      dockerfile: Dockerfile
-    ports:
-      - "8081:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=integration
-    depends_on:
-      - postgres
-      
-  order-service:
-    build:
-      context: ./services/order-service
-      dockerfile: Dockerfile
-    ports:
-      - "8082:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=integration
-      - USER_SERVICE_URL=http://user-service:8080
-    depends_on:
-      - postgres
-      - user-service  # 健康检查通过后才启动
-      
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: integration_test
-    ports:
-      - "5432:5432"
+```
+集成测试执行流程 (provider-agnostic):
+
+  1. provider = load_provider(environments.integration.provider)
+     例: provider = DockerComposeProvider(config) 或 K8sProvider(config)
+  
+  2. provider.start(all_affected_services)
+     等待 provider.wait_healthy(all_affected_services, timeout=120)
+     注: 基础设施 (postgres, redis, kafka) 由 provider 的 compose/k8s 配置负责
+  
+  3. 对每个跨服务 API 依赖，执行契约测试:
+     base_url = provider.get_endpoint(provider_service)
+     newman run contracts/{svc}-contract-tests.json \
+       --env-var baseUrl={base_url}
+  
+  4. 跨服务场景测试:
+     for each service:
+       base_url = provider.get_endpoint(service)
+       newman run tests/api-{id}-{svc}.json --env-var baseUrl={base_url}
+  
+  5. E2E 测试:
+     web_url = provider.get_endpoint(web-frontend)
+     npx playwright test e2e/ --baseURL={web_url}
+  
+  6. provider.stop(all_services)
 ```
 
-**集成测试执行:**
+**不同 Provider 的集成环境产物:**
 
-```bash
-# 1. 启动集成环境
-docker-compose -f docker-compose.integration.yaml up -d
-
-# 2. 等待所有服务健康检查通过
-for service in user-service order-service; do
-  until curl -s http://localhost:${PORT}/actuator/health | grep UP; do
-    sleep 5
-  done
-done
-
-# 3. 运行跨服务集成测试
-# 3a. 契约测试
-newman run contracts/user-service-contract-tests.json \
-  -e contracts/user-service-env.json
-
-# 3b. 跨服务场景测试 (Postman Collection)
-newman run tests/integration-cross-service.json \
-  -e tests/integration-env.json
-
-# 4. E2E 测试 (含 UI)
-npx playwright test e2e/
-
-# 5. 清理
-docker-compose -f docker-compose.integration.yaml down -v
-```
+| Provider | 产物 | 由谁生成 |
+|----------|------|---------|
+| `local-process` | 无额外文件 (直接进程启动) | — |
+| `docker-compose` | `docker-compose.integration.yaml` | hw-controller (自动生成) |
+| `kubernetes` | `k8s/integration/{service}/*.yaml` | 团队维护 + hw-controller 补充 |
 
 #### 跨服务回归检测
 
@@ -858,5 +844,5 @@ hw:
 | 服务注册表 | `_bmad/memory/hw-shared/service-registry.yaml` | 服务列表 + 依赖图 |
 | 跨服务契约 | `contracts/{service-id}-openapi.yaml` | 服务间 API 契约 |
 | 契约测试 | `contracts/{service-id}-contract-tests.json` | Postman Collection for contract testing |
-| 集成编排 | `docker-compose.integration.yaml` | 集成测试环境编排 |
+| 集成编排 | `docker-compose.integration.yaml` 或 `k8s/integration/*.yaml` | 集成测试环境编排 (格式取决于 Provider) |
 | 发布计划 | `delivery/release-plan-{id}.yaml` | 多服务发布序列 + 回滚 |
