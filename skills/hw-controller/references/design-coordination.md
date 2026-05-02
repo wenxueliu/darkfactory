@@ -41,9 +41,76 @@
 **输入:** 需求规格文档 + 知识库 (ADRs, patterns, lessons) + 服务注册表 (微服务模式)
 **输出:** `designs/{id}-design.md` — 跨服务特性设计文档
 **验证:** 输出后调用 `feature-design-validator.md` 检查 G1-G4
-**内容:**
+
+##### Stage 1 前置: 服务能力调查 (Service Capability Investigation) ← 必须执行
+
+**在编写「服务影响分析」表之前，必须完成以下代码级调查。禁止凭服务名称臆想其能力。**
+
+```
+调查流程:
+
+  1. 读取 service-registry.yaml → 获取所有已注册服务的元数据
+     (id, name, local_path, repo, language, provides_apis, consumes_apis, owns_data)
+
+  2. 对每个候选服务，进入其代码仓库调查实际能力:
+     a. 语言/框架验证:
+        - 检查构建文件 (build.gradle / pom.xml / package.json / go.mod / Cargo.toml / ...)
+        - 验证与 registry 中声明的 language 一致。不一致 → 标记差异，以代码为准
+
+     b. API 端点调查 (该服务实际提供什么):
+        - 扫描 Controller/Route/Handler 文件
+          例: **/*Controller.java, **/*Route.tsx, **/*Handler.go, **/router/*.py, **/*.controller.ts
+        - 提取: HTTP method + path + 参数 + 返回类型
+        - 输出: 该服务的实际 API 能力清单
+
+     c. 数据所有权调查 (该服务拥有什么数据):
+        - 扫描 DB migration 文件
+          例: **/db/migration/**, **/migrations/**, **/alembic/versions/**
+        - 扫描 ORM model/entity 文件
+          例: **/models/*.py, **/entity/*.java, **/models/*.ts
+        - 输出: 该服务拥有的数据表/集合清单
+
+     d. 外部依赖调查 (该服务依赖什么):
+        - 检查服务间调用客户端代码 (FeignClient, RestTemplate, gRPC stub, axios 等)
+        - 检查消息队列 producer/consumer 配置
+        - 检查基础设施依赖 (DB connection string, Redis config, Kafka config 等)
+        - 输出: 该服务的出站依赖清单
+
+     e. 服务能力摘要 (为每个服务生成):
+        | 维度 | 内容 |
+        |------|------|
+        | 服务名 + 路径 | {name} (`{local_path}`) |
+        | 语言/框架 | {language} (代码验证通过) |
+        | 提供 API | [GET /api/v1/users, POST /api/v1/users, ...] |
+        | 拥有数据 | [users, user_preferences, ...] |
+        | 消费 API | [order-service: GET /api/v1/orders, ...] |
+        | 消费事件 | [UserRegistered, ...] |
+        | 基础设施 | [postgres:users_db, redis:session, kafka:events] |
+
+  3. 知识库交叉引用:
+     - 查询与该服务相关的 ADR (knowledge-base/decisions/ADR-*.md)
+       例: ADR 可能约束 "user-service 不能直接访问 order-service 的数据库"
+     - 查询与该服务相关的 patterns (knowledge-base/patterns/)
+       例: 可能有 "所有写操作必须通过事务性 outbox 发事件" 的模式
+
+  4. 基于调查结果，编写「服务影响分析」表:
+     - 每个受影响的服务 → 一行
+     - 影响类型基于实际代码能力判断（不是臆想）
+     - 风险等级基于代码复杂度 + 依赖拓扑
+     - 如果某个服务的能力与需求不匹配（如需求要求 user-service 返回订单数据，
+       但 user-service 不拥有订单数据）→ 标记为设计问题，升级人工
+```
+
+**为什么必须调查代码:**
+- `service-registry.yaml` 的元数据可能过时（hw-knowledge-agent 是定期更新，不是实时）
+- 服务名称不能反映其实际能力（"user-service" 不一定只做用户相关的事）
+- API 端点清单、数据所有权、外部依赖这些细节在代码中，不在 registry 摘要中
+- 不调查代码直接写服务影响分析 = 臆想 = 设计返工的主要原因
+
+##### Stage 1 内容:
+
 - Section 1: 特性总览 (overview, success criteria)
-- Section 2: 服务影响分析 (which services, what changes)
+- Section 2: 服务影响分析 (which services, what changes) ← 基于上述代码调查
 - Section 3: 用户旅程设计 (交互流程 + 关键时刻 + 状态矩阵)
 - Section 4: 页面设计 (如涉及 UI)
 - Section 5: 服务交互设计 (序列图 + SLA + 降级)
@@ -54,7 +121,7 @@
 #### Stage 2: 服务详细设计 (hw-service-designer)
 
 **委托:** Delegate to `hw-service-designer` — 对每个受影响服务并行启动
-**输入:** Stage 1 输出 (服务影响分析 + 服务交互 + 跨服务契约) + 服务注册表
+**输入:** Stage 1 输出 (服务影响分析 + 服务能力摘要 + 服务交互 + 跨服务契约) + 服务注册表 + 服务代码仓库 (`services/{id}/`)
 **输出:** `designs/{id}-service-{service_id}-design.md` × N + `tests/api-{id}-{service_id}.json` × N
 **验证:** 对每个服务调用 `service-design-validator.md` 检查 V1-V4
 **内容 (后端):** S1 技术决策 → S2 架构设计 → S3 API/接口 → S4 状态管理 → S5 错误处理 → S6 安全 → S7 UT 设计 → S8 API 测试设计
@@ -76,10 +143,29 @@
 
 #### 阶段协调
 
-1. Stage 1 完成 → 总控收集服务影响列表 → 启动 Stage 2 (并行)
+1. Stage 1 完成 → 总控收集服务影响列表 + 各服务的**能力摘要**（代码调查产物）→ 启动 Stage 2 (并行)
 2. 所有 Stage 2 完成 → 总控收集所有 per-service 设计路径 → 启动 Stage 3
 3. Stage 3 完成 → 进入 ADR 创建和多模型验证
 4. 任一步骤失败 → 回到对应步骤修订，最多 3 轮
+
+**Stage 1 → Stage 2 → 任务拆分的产物传递链:**
+
+```
+Stage 1 产出:
+  ├── 服务影响分析表 (哪些服务、改什么)
+  ├── 服务能力摘要 × N (代码调查产物: 路径、语言、API、数据、依赖)
+  └── 跨服务契约 (OpenAPI)
+
+Stage 2 消费:
+  ├── 对每个受影响服务，基于其能力摘要加载正确的模板 (backend/frontend/bff/data-pipeline)
+  └── 基于服务代码路径 ({service_path}) 定位代码仓库
+
+任务拆分消费:
+  ├── 从 Stage 1 服务影响分析 → 确定 N 个受影响服务
+  ├── 从 Stage 1 服务能力摘要 → 能力校验 (语言匹配 + 路径存在 + API/数据覆盖)
+  ├── 从 service-registry.yaml → 填充 service_path + repo_url + language
+  └── 从 Stage 2 → 加载 per-service 设计文档
+```
 
 ### 第 3 步: ADR 创建 (Architecture Decision Records)
 

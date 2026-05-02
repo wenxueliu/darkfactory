@@ -44,10 +44,14 @@
   │     扫描 {project-root}/services/ 目录
   │     对每个子目录:
   │       - 检查是否为 git 仓库 (git rev-parse --show-toplevel)
+  │       - 获取 git remote URL (git remote get-url origin)
   │       - 检测语言/框架 (build.gradle → java, package.json → node, go.mod → go, ...)
   │       - 检测端口 (从 Dockerfile, application.yml, .env 提取)
   │       - 检测 API 端点 (扫描 *Controller.java, *.tsx routes, *.py routes, ...)
-  │     自动发现结果 → 输出临时服务清单
+  │       - 检测数据所有权 (扫描 migration/entity/model 文件)
+  │       - 记录服务路径: services/{subdir}/
+  │     自动发现结果 → 输出临时服务清单:
+  │       | 服务名 | 路径 | 仓库地址 | 语言 | 端口 | API 端点 | 拥有数据 |
   │     如果发现了 ≥ 1 个服务 → 展示给用户确认，确认后继续
   │     如果 services/ 目录为空或不存在 → 进入第 3 优先
   │
@@ -80,7 +84,36 @@
 
 **默认模式: 1 服务 = 1 任务**
 
-如果服务内部功能点互相独立且可并行验证，才进一步拆分:
+**任务分配必须基于服务能力，禁止臆想:**
+
+每个任务的 `service` 分配不是填个名字就完事。必须确认该服务有能力执行此任务:
+
+```
+能力校验清单（每个任务分配时必须通过，全部通过才写入 tasks.yaml）:
+
+  1. 语言/框架匹配:
+     - 任务的实现语言 = 服务的 language 字段（如 java-springboot）
+     - 不能把 TypeScript React 前端任务分配给 Java Spring Boot 后端服务
+     - 来源: service-registry.yaml → language，Stage 1 代码调查 → 语言/框架验证
+
+  2. 服务路径存在:
+     - service_path 指向的目录必须存在（如 services/user-service/）
+     - 该目录必须是 git 仓库（git rev-parse --show-toplevel 通过）
+     - 来源: service-registry.yaml → local_path
+
+  3. 服务能力覆盖:
+     - 任务涉及的 API 端点 → 在服务的 provides_apis 范围内（或设计文档明确新增）
+     - 任务涉及的数据操作 → 在服务的 owns_data 范围内（或设计文档明确新增）
+     - 任务涉及的外部调用 → 在服务的 consumes_apis 范围内（或设计文档明确新增）
+     - 来源: Stage 1 代码调查 → 服务能力摘要
+
+  4. 不匹配处理:
+     - 如果任务需要的 API/数据不在服务的能力范围内 → 检查设计文档是否规划了新增
+     - 如果设计文档也没有 → 阻塞，升级人工（可能是服务边界划分问题）
+     - 如果任务需要的能力分散在多个服务 → 重新审视拆分，可能需要按服务边界重新切
+```
+
+**如果服务内部功能点互相独立且可并行验证，才进一步拆分:**
 
 | 拆分维度 | 拆分为 | 粒度 |
 |---------|--------|------|
@@ -193,12 +226,27 @@ tasks:
     name: "{描述性名称}"
     description: "{1-2 句话描述做什么}"
     service: "{对应微服务名}"
+    service_path: "{服务代码路径，来自 service-registry.yaml local_path，如 services/user-service}"
+    repo_url: "{服务 git 仓库地址，来自 service-registry.yaml repo}"
+    language: "{服务语言/框架，来自 service-registry.yaml language，如 java-springboot}"
     component: "{对应设计文档中的组件名（如适用）}"
     design_doc: "designs/{id}-service-{svc}-design.md"
     worktree_path: "{worktree_base}/hw-task-{NNN}"
     wave: {1|2|3|...}
     estimated_hours: {n}
     is_e2e_task: false
+
+    capability_verified: true   # 任务分配已根据服务实际能力校验（禁止臆想分配）
+    capability_checks:           # 校验记录
+      - check: "服务语言匹配任务类型"
+        passed: true
+        detail: "{language} 可执行此类任务"
+      - check: "服务路径存在"
+        passed: true
+        detail: "{service_path} 已验证存在"
+      - check: "服务能力覆盖任务范围"
+        passed: true
+        detail: "该任务涉及的 API/数据在服务 provides_apis/owns_data 范围内"
 
     dependencies:
       - task_id: "hw-{NNN}"
@@ -330,6 +378,9 @@ worktrees:
       "name": "hw-001",
       "type": "task",
       "service_name": "user-service",
+      "service_path": "services/user-service",
+      "repo_url": "git@github.com:org/user-service.git",
+      "language": "java-springboot",
       "capability": "dev",
       "description": "实现用户注册API",
       "depends_on": [],
@@ -339,6 +390,12 @@ worktrees:
         "component": "UserController",
         "design_doc": "designs/REQ-001-service-user-service-design.md",
         "estimated_hours": 2,
+        "capability_verified": true,
+        "capability_checks": [
+          {"check": "语言匹配", "passed": true, "detail": "java-springboot"},
+          {"check": "路径存在", "passed": true, "detail": "services/user-service"},
+          {"check": "能力覆盖", "passed": true, "detail": "API/数据在 provides_apis/owns_data 范围内"}
+        ],
         "test_bindings": {
           "ut_cases": ["UT-1", "UT-2"],
           "api_cases": ["API-1"]
@@ -354,6 +411,9 @@ worktrees:
       "name": "hw-002",
       "type": "task",
       "service_name": "order-service",
+      "service_path": "services/order-service",
+      "repo_url": "git@github.com:org/order-service.git",
+      "language": "java-springboot",
       "capability": "dev",
       "description": "实现订单创建API",
       "depends_on": ["hw-001"],
@@ -363,6 +423,12 @@ worktrees:
         "component": "OrderController",
         "design_doc": "designs/REQ-001-service-order-service-design.md",
         "estimated_hours": 2,
+        "capability_verified": true,
+        "capability_checks": [
+          {"check": "语言匹配", "passed": true, "detail": "java-springboot"},
+          {"check": "路径存在", "passed": true, "detail": "services/order-service"},
+          {"check": "能力覆盖", "passed": true, "detail": "API/数据在 provides_apis/owns_data 范围内"}
+        ],
         "test_bindings": {
           "ut_cases": ["UT-3", "UT-4"],
           "api_cases": ["API-2"]
@@ -408,9 +474,13 @@ worktrees:
       "name": "hw-001",
       "type": "task",
       "service_name": "user-service",
+      "service_path": "services/user-service",
+      "repo_url": "git@github.com:org/user-service.git",
+      "language": "java-springboot",
       "capability": "dev",
       "depends_on": [],
       "metadata": {
+        "capability_verified": true,
         "test_bindings": {"ut_cases": ["UT-1"], "api_cases": ["API-1"]}
       }
     }
@@ -425,6 +495,8 @@ worktrees:
 任务拆分完成，可以进入执行阶段的条件:
 
 - [ ] 受影响服务列表来源已记录（service-registry / auto-discovery / 设计文档 / 用户输入），未臆想
+- [ ] 每个任务的 `service_path` + `repo_url` + `language` 已从服务注册表填充（非空）
+- [ ] 每个任务的能力校验已通过（`capability_verified: true`）: 语言匹配 + 路径存在 + 能力覆盖
 - [ ] 如果使用了 fallback（第 2/3/4 优先），已提示用户运行 `hw-knowledge-agent service-discovery` 生成 service-registry.yaml
 - [ ] tasks.yaml 包含所有受影响服务的任务 + 1 个 E2E 任务
 - [ ] 每个任务有明确的 AC（来自需求规格）
