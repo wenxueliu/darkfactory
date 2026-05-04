@@ -55,6 +55,8 @@ Harness organizes agents in a tree — always start at the root and traverse dow
 ```
 hw-controller (orchestrator — the entry point for any development workflow)
   ├── hw-setup (environment initialization)
+  ├── hw-systematic-debugging (4-phase root cause debugging — use BEFORE any fix)
+  ├── hw-verification-before-completion (evidence before claims — use BEFORE declaring DONE)
   └── hw-worktree-controller (per-task coordinator) × N
         ├── hw-tdd-agent (RED → GREEN → REFACTOR)
         ├── hw-reviewer-logic (correctness + edge cases)
@@ -68,14 +70,16 @@ hw-controller (orchestrator — the entry point for any development workflow)
 
 When multiple skills could apply, traverse the hierarchy from top to bottom:
 
-1. **Orchestration first** — `hw-controller` for any development workflow; `hw-setup` for environment initialization
-2. **Execution second** — `hw-worktree-controller` dispatches `hw-tdd-agent` per task
-3. **Review third** — `hw-reviewer-logic`, `hw-reviewer-security`, `hw-reviewer-performance` run in parallel after TDD cycles
-4. **Design skills** — `hw-feature-designer`, `hw-service-designer`, `hw-e2e-designer` are invoked by hw-controller during design phases
+1. **Process skills first** — `hw-systematic-debugging` for any bug/error/test failure (BEFORE proposing fixes); `hw-verification-before-completion` before declaring ANY completion
+2. **Orchestration second** — `hw-controller` for any development workflow; `hw-setup` for environment initialization
+3. **Execution third** — `hw-worktree-controller` dispatches `hw-tdd-agent` per task
+4. **Review fourth** — `hw-reviewer-logic`, `hw-reviewer-security`, `hw-reviewer-performance` run in parallel after TDD cycles
+5. **Design skills** — `hw-feature-designer`, `hw-service-designer`, `hw-e2e-designer` are invoked by hw-controller during design phases
 
+"Fix a bug" → hw-systematic-debugging first (debug BEFORE fixing), then hw-verification-before-completion (verify BEFORE claiming fixed).
 "Build a new feature" → hw-controller first.
-"Fix a bug" → hw-controller first (it will assess and dispatch).
 "Review this code" → hw-reviewer-logic + hw-reviewer-security + hw-reviewer-performance in parallel.
+"Mark this task DONE" → hw-verification-before-completion first.
 
 ## Red Flags
 
@@ -93,10 +97,13 @@ These thoughts mean STOP — you're rationalizing:
 | "I'll just do this one thing first" | Check BEFORE doing anything. |
 | "This is too small for multi-agent" | Even small changes benefit from TDD + review gates. |
 | "I can skip the controller" | The controller owns phase transitions. Don't bypass it. |
+| "I'll just try a quick fix" | Systematic debugging first. Random fixes create new bugs. |
+| "It's probably fixed, no need to verify" | Verification-before-completion is non-negotiable. Evidence first. |
+| "I can claim DONE, reviews were clean" | Verify independently. Subagent reports ≠ evidence. |
 
 ## Skill Types
 
-**Rigid** (TDD, reviews): Follow exactly. Don't adapt away discipline. The TDD iron law and review gates are non-negotiable.
+**Rigid** (TDD, reviews, debugging, verification): Follow exactly. Don't adapt away discipline. The TDD iron law, review gates, debugging process, and verification requirement are non-negotiable.
 
 **Flexible** (design, setup): Adapt principles to context. The designer agents present options for human judgment.
 
