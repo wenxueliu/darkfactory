@@ -22,7 +22,7 @@ TYPE_DIR_MAP = {
     "pattern": "patterns",
     "decision": "decisions",
     "lesson": "lessons",
-    "api": "api-contracts",
+    "api": "contracts",
 }
 TYPE_LABEL_MAP = {
     "pattern": "Pattern",
@@ -43,20 +43,42 @@ def discover_kb_dir():
 
 
 def scan_entries(kb_dir):
-    """Scan all .md files in the knowledge base and extract metadata."""
+    """Scan all .md files in the three-level knowledge base and extract metadata."""
     entries = []
-    search_dirs = list(TYPE_DIR_MAP.items())
-    # Also include services/
-    services_dir = os.path.join(kb_dir, "services")
-    if os.path.isdir(services_dir):
-        search_dirs.append(("service", "services"))
+    type_reverse_map = {v: k for k, v in TYPE_DIR_MAP.items()}
 
-    for type_name, dir_name in search_dirs:
-        search_path = os.path.join(kb_dir, dir_name)
-        if not os.path.isdir(search_path):
-            continue
+    # Determine scope roots to scan: list of (scope_type, base_path)
+    scope_roots = []
 
-        for root, dirs, files in os.walk(search_path):
+    # 1. Enterprise scope: _enterprise/
+    ep = os.path.join(kb_dir, "_enterprise")
+    if os.path.isdir(ep):
+        scope_roots.append(("enterprise", ep))
+
+    # 2. Domain scope: domains/*/
+    dp = os.path.join(kb_dir, "domains")
+    if os.path.isdir(dp):
+        for d in sorted(os.listdir(dp)):
+            d_path = os.path.join(dp, d)
+            if os.path.isdir(d_path) and not d.startswith("."):
+                scope_roots.append(("domain", d_path))
+
+    # 3. Service scope: services/*/
+    sp = os.path.join(kb_dir, "services")
+    if os.path.isdir(sp):
+        for s in sorted(os.listdir(sp)):
+            s_path = os.path.join(sp, s)
+            if os.path.isdir(s_path) and not s.startswith("."):
+                scope_roots.append(("service", s_path))
+
+    # 4. Backward compat: flat type directories (e.g., patterns/, decisions/)
+    for dir_name in TYPE_DIR_MAP.values():
+        flat_path = os.path.join(kb_dir, dir_name)
+        if os.path.isdir(flat_path):
+            scope_roots.append(("legacy", flat_path))
+
+    for scope_type, base_dir in scope_roots:
+        for root, dirs, files in os.walk(base_dir):
             dirs[:] = [d for d in dirs if not d.startswith(".")]
             for fname in sorted(files):
                 if fname in SKIP_FILES or fname.startswith(SKIP_PREFIXES):
@@ -74,13 +96,27 @@ def scan_entries(kb_dir):
                 rel_path = os.path.relpath(filepath, kb_dir)
                 title = extract_title(content)
 
-                # Determine type
-                if type_name == "service":
-                    entry_type = "service"
-                elif fname.startswith("ADR-"):
-                    entry_type = "decision"
+                # Determine entry type
+                if scope_type == "legacy":
+                    if fname.startswith("ADR-"):
+                        entry_type = "decision"
+                    else:
+                        rel_dir = os.path.relpath(root, kb_dir)
+                        first_dir = rel_dir.split(os.sep)[0] if rel_dir != "." else ""
+                        entry_type = type_reverse_map.get(first_dir, "unknown")
                 else:
-                    entry_type = type_name
+                    rel_from_scope = os.path.relpath(root, base_dir)
+                    if rel_from_scope == ".":
+                        # File directly in scope root (e.g., overview.md in service)
+                        entry_type = "service"
+                    else:
+                        type_dir_name = rel_from_scope.split(os.sep)[0]
+                        if type_dir_name in type_reverse_map:
+                            entry_type = type_reverse_map[type_dir_name]
+                        elif fname.startswith("ADR-"):
+                            entry_type = "decision"
+                        else:
+                            entry_type = "service"
 
                 created = extract_created(content)
                 author = extract_author(content)
@@ -92,6 +128,7 @@ def scan_entries(kb_dir):
                     "relative_path": rel_path,
                     "created": created,
                     "author": author,
+                    "scope": scope_type,
                 })
 
     return entries
@@ -123,6 +160,14 @@ def extract_author(content):
     m = re.search(r'\*\*(?:Author|决策者):\*\*\s*`?([^`\n]+?)`?\s*$', content, re.MULTILINE)
     if m:
         return m.group(1).strip()
+    return None
+
+
+def extract_confidence(content):
+    """Extract confidence from entry content."""
+    m = re.search(r'\*\*Confidence:\*\*\s*(\d+)/10', content)
+    if m:
+        return int(m.group(1))
     return None
 
 
@@ -177,76 +222,140 @@ def validate_entry(filepath):
 
 
 def rebuild_index(kb_dir, entries):
-    """Rebuild index.md from scanned entries."""
+    """Rebuild index.md from scanned entries, organized by scope."""
     index_path = os.path.join(kb_dir, "index.md")
     today = date.today().isoformat()
 
-    # Group entries by type
-    patterns = [e for e in entries if e["type"] == "pattern"]
-    decisions = [e for e in entries if e["type"] == "decision"]
-    lessons = [e for e in entries if e["type"] == "lesson"]
-    apis = [e for e in entries if e["type"] == "api"]
-    services = [e for e in entries if e["type"] == "service"]
-
-    # Sort: alphabetically for most; numerically descending for ADRs
-    patterns.sort(key=lambda e: e["title"].lower())
-    decisions.sort(key=lambda e: e["filename"], reverse=True)
-    lessons.sort(key=lambda e: e.get("created", "0000"), reverse=True)
-    apis.sort(key=lambda e: e["title"].lower())
-
-    # Read existing overview (preserve top section)
+    # Read existing overview (preserve top section before first ## heading)
     overview_lines = []
     if os.path.exists(index_path):
         with open(index_path, encoding="utf-8") as f:
             for line in f:
-                if line.strip() == "## Patterns":
+                if line.strip().startswith("## "):
                     break
                 overview_lines.append(line)
 
-    lines = overview_lines
+    lines = list(overview_lines)
 
-    # Patterns section
-    lines.append("## Patterns\n\n")
-    if patterns:
-        for e in patterns:
-            lines.append(f"- [{e['title']}]({e['relative_path']})\n")
-    else:
-        lines.append("_No patterns recorded yet._\n")
-    lines.append("\n")
+    # Scope navigation
+    lines.append("## Scope Navigation\n\n")
+    has_enterprise = any(e.get("scope") == "enterprise" for e in entries)
+    has_domain = any(e.get("scope") == "domain" for e in entries)
+    has_service = any(e.get("scope") == "service" for e in entries)
 
-    # Architecture Decisions section
-    lines.append("## Architecture Decisions\n\n")
-    if decisions:
-        for e in decisions:
-            lines.append(f"- [{e['title']}]({e['relative_path']})\n")
-    else:
-        lines.append("_No ADRs recorded yet._\n")
-    lines.append("\n")
+    if has_enterprise:
+        lines.append("- [Enterprise Knowledge](#enterprise-knowledge)\n")
+    if has_domain:
+        lines.append("- [Domain Knowledge](#domain-knowledge)\n")
+    if has_service:
+        lines.append("- [Service Knowledge](#service-knowledge)\n")
+    lines.append("\n---\n\n")
 
-    # Lessons Learned section
-    lines.append("## Lessons Learned\n\n")
-    if lessons:
-        for e in lessons:
-            lines.append(f"- [{e['title']}]({e['relative_path']})\n")
-    else:
-        lines.append("_No lessons recorded yet._\n")
-    lines.append("\n")
+    # Separate entries by scope
+    enterprise_entries = [e for e in entries if e.get("scope") == "enterprise"]
+    domain_entries = [e for e in entries if e.get("scope") == "domain"]
+    service_entries = [e for e in entries if e.get("scope") == "service"]
+    legacy_entries = [e for e in entries if e.get("scope") == "legacy"]
 
-    # API Contracts section
-    lines.append("## API Contracts\n\n")
-    if apis:
-        for e in apis:
-            lines.append(f"- [{e['title']}]({e['relative_path']})\n")
-    else:
-        lines.append("_No API contracts recorded yet._\n")
-    lines.append("\n")
+    # --- Enterprise Knowledge ---
+    if enterprise_entries:
+        lines.append("## Enterprise Knowledge\n\n")
+        enterprise_patterns = [e for e in enterprise_entries if e["type"] == "pattern"]
+        enterprise_decisions = [e for e in enterprise_entries if e["type"] == "decision"]
+        enterprise_lessons = [e for e in enterprise_entries if e["type"] == "lesson"]
+        enterprise_apis = [e for e in enterprise_entries if e["type"] == "api"]
 
-    # Service Knowledge section
-    lines.append("## Service Knowledge\n\n")
-    if services:
-        # Group by service-id (first segment of relative_path after services/)
+        enterprise_patterns.sort(key=lambda e: e["title"].lower())
+        enterprise_decisions.sort(key=lambda e: e["filename"], reverse=True)
+        enterprise_lessons.sort(key=lambda e: e.get("created", "0000"), reverse=True)
+        enterprise_apis.sort(key=lambda e: e["title"].lower())
+
+        # Patterns
+        lines.append("### Patterns\n\n")
+        if enterprise_patterns:
+            for e in enterprise_patterns:
+                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+        else:
+            lines.append("_No patterns recorded yet._\n")
+        lines.append("\n")
+
+        # Architecture Decisions
+        lines.append("### Architecture Decisions\n\n")
+        if enterprise_decisions:
+            for e in enterprise_decisions:
+                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+        else:
+            lines.append("_No ADRs recorded yet._\n")
+        lines.append("\n")
+
+        # Lessons Learned
+        lines.append("### Lessons Learned\n\n")
+        if enterprise_lessons:
+            for e in enterprise_lessons:
+                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+        else:
+            lines.append("_No lessons recorded yet._\n")
+        lines.append("\n")
+
+        # API Contracts
+        lines.append("### API Contracts\n\n")
+        if enterprise_apis:
+            for e in enterprise_apis:
+                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+        else:
+            lines.append("_No API contracts recorded yet._\n")
+        lines.append("\n---\n\n")
+
+    # --- Domain Knowledge ---
+    if domain_entries:
+        lines.append("## Domain Knowledge\n\n")
+        # Group by domain (second segment of relative_path after domains/)
+        domain_groups = {}
+        for e in domain_entries:
+            parts = e["relative_path"].split("/")
+            domain_name = parts[1] if len(parts) > 1 else "unknown"
+            if domain_name not in domain_groups:
+                domain_groups[domain_name] = []
+            domain_groups[domain_name].append(e)
+
+        for domain_name in sorted(domain_groups.keys()):
+            dom_entries = domain_groups[domain_name]
+            dom_patterns = [e for e in dom_entries if e["type"] == "pattern"]
+            dom_decisions = [e for e in dom_entries if e["type"] == "decision"]
+            dom_lessons = [e for e in dom_entries if e["type"] == "lesson"]
+
+            dom_patterns.sort(key=lambda e: e["title"].lower())
+            dom_decisions.sort(key=lambda e: e["filename"], reverse=True)
+            dom_lessons.sort(key=lambda e: e.get("created", "0000"), reverse=True)
+
+            lines.append(f"### {domain_name}\n\n")
+
+            if dom_patterns:
+                lines.append("**Patterns**\n\n")
+                for e in dom_patterns:
+                    lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+                lines.append("\n")
+
+            if dom_decisions:
+                lines.append("**Architecture Decisions**\n\n")
+                for e in dom_decisions:
+                    lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+                lines.append("\n")
+
+            if dom_lessons:
+                lines.append("**Lessons Learned**\n\n")
+                for e in dom_lessons:
+                    lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+                lines.append("\n")
+
+        lines.append("---\n\n")
+
+    # --- Service Knowledge ---
+    if service_entries:
+        lines.append("## Service Knowledge\n\n")
+        # Group by service-id (second segment of relative_path after services/)
         svc_groups = {}
-        for e in services:
+        for e in service_entries:
             parts = e["relative_path"].split("/")
             svc_id = parts[1] if len(parts) > 1 else "unknown"
             if svc_id not in svc_groups:
@@ -259,8 +368,48 @@ def rebuild_index(kb_dir, entries):
                 lines.append(f"- [{e['title']}]({e['relative_path']})\n")
             lines.append("\n")
     else:
+        lines.append("## Service Knowledge\n\n")
         lines.append("_No service knowledge generated yet._\n")
-    lines.append("\n")
+        lines.append("\n")
+
+    # --- Legacy entries (backward compat flat directories) ---
+    if legacy_entries:
+        lines.append("---\n\n")
+        lines.append("## Legacy (Flat Structure)\n\n")
+
+        legacy_patterns = [e for e in legacy_entries if e["type"] == "pattern"]
+        legacy_decisions = [e for e in legacy_entries if e["type"] == "decision"]
+        legacy_lessons = [e for e in legacy_entries if e["type"] == "lesson"]
+        legacy_apis = [e for e in legacy_entries if e["type"] == "api"]
+
+        legacy_patterns.sort(key=lambda e: e["title"].lower())
+        legacy_decisions.sort(key=lambda e: e["filename"], reverse=True)
+        legacy_lessons.sort(key=lambda e: e.get("created", "0000"), reverse=True)
+        legacy_apis.sort(key=lambda e: e["title"].lower())
+
+        if legacy_patterns:
+            lines.append("### Patterns\n\n")
+            for e in legacy_patterns:
+                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+            lines.append("\n")
+
+        if legacy_decisions:
+            lines.append("### Architecture Decisions\n\n")
+            for e in legacy_decisions:
+                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+            lines.append("\n")
+
+        if legacy_lessons:
+            lines.append("### Lessons Learned\n\n")
+            for e in legacy_lessons:
+                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+            lines.append("\n")
+
+        if legacy_apis:
+            lines.append("### API Contracts\n\n")
+            for e in legacy_apis:
+                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
+            lines.append("\n")
 
     # Update table
     lines.append("## 更新记录\n\n")
@@ -301,6 +450,8 @@ def main():
     parser.add_argument("--validate-only", action="store_true", help="Validate entries without modifying")
     parser.add_argument("--detect-orphans", action="store_true", help="Report orphan entries")
     parser.add_argument("--kb-dir", help="Override knowledge base directory")
+    parser.add_argument("--check-staleness", action="store_true",
+                        help="Check for stale entries (created >90 days, confidence <=5)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     args = parser.parse_args()
 
@@ -319,10 +470,13 @@ def main():
     print(f"Index Report for knowledge-base/")
     print("─" * 40)
 
-    # Count by type
+    # Count by type and scope
     counts = {}
+    scope_counts = {}
     for e in entries:
         counts[e["type"]] = counts.get(e["type"], 0) + 1
+        s = e.get("scope", "unknown")
+        scope_counts[s] = scope_counts.get(s, 0) + 1
 
     print(f"Total entries: {len(entries)}")
     for t in ["pattern", "decision", "lesson", "api", "service"]:
@@ -331,13 +485,37 @@ def main():
                      "api": "API Contracts", "service": "Service entries"}[t]
             print(f"  {label}: {counts[t]}")
 
+    print(f"\nScope breakdown:")
+    for s in ["enterprise", "domain", "service", "legacy"]:
+        if s in scope_counts:
+            print(f"  {s}: {scope_counts[s]}")
+
     # Validate
     if do_validate:
         total_issues = 0
         valid_count = 0
+        stale_count = 0
         for entry in entries:
             filepath = os.path.join(kb_dir, entry["relative_path"])
             issues = validate_entry(filepath)
+
+            # Staleness check
+            if args.check_staleness and entry.get("created"):
+                try:
+                    created_date = datetime.strptime(entry["created"], "%Y-%m-%d").date()
+                    delta = (date.today() - created_date).days
+                    with open(filepath, encoding="utf-8") as f:
+                        content = f.read()
+                    confidence = extract_confidence(content)
+                    if confidence is not None and confidence <= 5 and delta > 90:
+                        stale_count += 1
+                        issues.append(
+                            f"可能过时: created {entry['created']} ({delta} days ago, "
+                            f"confidence={confidence}/10)"
+                        )
+                except (ValueError, OSError):
+                    pass
+
             if issues:
                 total_issues += len(issues)
                 print(f"\n  [ISSUES] {entry['relative_path']}:")
@@ -349,6 +527,8 @@ def main():
         print(f"\nValidation: {valid_count}/{len(entries)} entries valid")
         if total_issues > 0:
             print(f"Issues found: {total_issues}")
+        if stale_count > 0:
+            print(f"Stale entries: {stale_count} (may need review)")
 
     # Orphans
     if do_orphans:
@@ -369,7 +549,8 @@ def main():
     if args.verbose:
         print(f"\nEntry details:")
         for e in entries:
-            print(f"  [{e['type']}] {e['title']} ({e['relative_path']})")
+            scope_tag = e.get("scope", "?")
+            print(f"  [{e['type']}][{scope_tag}] {e['title']} ({e['relative_path']})")
 
 
 if __name__ == "__main__":

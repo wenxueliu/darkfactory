@@ -69,6 +69,7 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 
 | Capability | Route |
 | ---------- | ----- |
+| 知识库优先查询 | Load `references/design-coordination.md` (Step 1: Knowledge Base First — must execute before Stage 1) |
 | 头脑风暴协调 | Load `references/brainstorming-coordination.md` |
 | 设计阶段协调 | Load `references/design-coordination.md` |
 | Stage 1: 特性设计 | Delegate to `hw-feature-designer` |
@@ -131,6 +132,7 @@ ideation → design:
   ✅ Requirements spec filled
   ✅ Value assessment complete
   ✅ Requirements gate PASS
+  ✅ Knowledge base queried (relevant ADRs, patterns, lessons, API contracts checked — see design-coordination.md Step 1)
   ❌ FAIL → re-clarify, max 3 iterations → escalate to human
 
 design → decomposition:

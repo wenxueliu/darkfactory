@@ -35,20 +35,24 @@ The institutional memory keeper. Ensures lessons learned aren't forgotten and pa
 ```
 {project-root}/_bmad/memory/hw-shared/knowledge-base/
 ├── index.md                           # 全局知识索引
-├── shared/                            # 跨服务共享知识
-│   ├── patterns/                      # 可复用模式
+├── _enterprise/                       # 企业级全局知识
 │   ├── decisions/                     # 架构决策 (ADRs)
-│   └── lessons/                       # 经验教训
-├── services/                          # 每服务知识 (auto-discovered + 服务专属)
-│   ├── {service-id}/
-│   │   ├── overview.md                # 服务概览 (auto-generated)
-│   │   ├── api-endpoints.md           # API 端点列表 (auto-generated)
-│   │   ├── db-schema.md               # 数据库 Schema (auto-generated)
-│   │   └── patterns/                  # 服务专属模式 (manual)
-│   └── {another-service-id}/
-│       └── ...
-└── contracts/                         # 跨服务 API 契约
-    └── {service-id}-openapi.yaml
+│   ├── patterns/                      # 跨服务可复用模式
+│   ├── lessons/                       # 全局经验教训
+│   └── contracts/                     # 跨服务 API 契约
+├── domains/                           # 业务领域级知识
+│   └── {domain}/                      # 按领域组织
+│       ├── decisions/
+│       ├── patterns/
+│       └── lessons/
+└── services/                          # 服务级知识
+    └── {service-id}/
+        ├── overview.md                # 服务概览 (auto-generated)
+        ├── api-endpoints.md           # API 端点列表 (auto-generated)
+        ├── db-schema.md               # 数据库 Schema (auto-generated)
+        ├── decisions/
+        ├── patterns/
+        └── lessons/
 ```
 
 ## When to Query

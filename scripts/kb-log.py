@@ -86,6 +86,75 @@ def compute_similarity(content_a, content_b):
 
 # --- End inline similarity functions ---
 
+# Security: Prompt injection patterns that should block or flag knowledge entries
+_PROMPT_INJECTION_PATTERNS = [
+    # Instruction override patterns
+    r"ignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|directives?|commands?)",
+    r"disregard\s+(all\s+)?(previous|above|prior)\s+(instructions?|directives?|commands?)",
+    r"override\s+(all\s+)?(previous|system|safety)\s+(instructions?|directives?|rules?)",
+    r"forget\s+(all\s+)?(previous|earlier|your)\s+(instructions?|training|prompts?)",
+    # Role manipulation
+    r"you\s+are\s+(now\s+)?(a\s+)?(different|new)\s+(ai|assistant|model|system|role)",
+    r"your\s+(new\s+)?(role|identity|purpose)\s+is",
+    r"pretend\s+(you\s+are|to\s+be)",
+    r"act\s+(as\s+)?(if\s+you\s+are|like\s+a)",
+    # System prompt extraction attempts
+    r"(reveal|show|output|print|display|tell\s+me)\s+your\s+(system\s+)?(prompt|instructions?|rules?)",
+    r"(what|all\s+of)\s+your\s+(system\s+)?(prompt|instructions?|rules?)",
+    # Instruction injection via markup
+    r"<(system_reminder|system-reminder|user_instructions|user-instructions)>",
+    r"<function_results>",
+    r"do-not-interpret-as-instructions",
+    # Always/never bypass patterns
+    r"always\s+(output|reply|respond|say)\s+(only|just)",
+    r"never\s+(mention|say|output|show|reveal)",
+    r"under\s+no\s+circumstances",
+    r"regardless\s+of\s+(what|any)\s+(instructions?|rules?|policies?)",
+    # Dangerous command injection in code blocks
+    r"```(bash|sh|shell|python)\s*\n\s*(rm\s+-rf|sudo\s+|curl.*\|\s*(ba)?sh|wget.*-O\s*-.*\|)",
+]
+
+
+def scan_for_injection(content):
+    """Scan content for prompt injection patterns.
+
+    Returns (blocked: bool, findings: list[str]).
+    blocked=True means high-confidence injection detected -- entry should be rejected.
+    findings is a list of human-readable descriptions of what was detected.
+    """
+    findings = []
+    high_severity_count = 0
+
+    content_lower = content.lower()
+
+    for pattern in _PROMPT_INJECTION_PATTERNS:
+        matches = re.findall(pattern, content_lower, re.IGNORECASE)
+        if matches:
+            # Determine severity based on pattern position in list
+            # First 6 patterns (instruction override) are HIGH severity
+            # Middle patterns are MEDIUM
+            # Last patterns (command injection) are HIGH only if in code blocks
+            pattern_idx = _PROMPT_INJECTION_PATTERNS.index(pattern)
+
+            if pattern_idx < 6:
+                severity = "HIGH"
+                high_severity_count += 1
+            elif pattern_idx < 10:
+                severity = "MEDIUM"
+            else:
+                # Command injection -- check if in code block context
+                if "```" in content:
+                    severity = "HIGH"
+                    high_severity_count += 1
+                else:
+                    severity = "MEDIUM"
+
+            findings.append(f"[{severity}] Pattern matched: {pattern[:60]}... -- count: {len(matches)}")
+
+    blocked = high_severity_count > 0
+    return blocked, findings
+
+
 VALID_TYPES = {"pattern", "decision", "lesson", "api"}
 VALID_ADR_STATUSES = {"proposed", "accepted", "deprecated", "superseded"}
 
@@ -109,7 +178,13 @@ TYPE_DIR_MAP = {
     "pattern": "patterns",
     "decision": "decisions",
     "lesson": "lessons",
-    "api": "api-contracts",
+    "api": "contracts",
+}
+
+SCOPE_DIR_PREFIX = {
+    "enterprise": "_enterprise",
+    "domain": "domains",
+    "service": "services",
 }
 
 TYPE_LABEL_MAP = {
@@ -176,7 +251,7 @@ def parse_sections_from_text(text, section_fields):
     return sections, title_line
 
 
-def validate_entry(kb_type, sections, author, is_stdin_mode):
+def validate_entry(kb_type, sections, author, is_stdin_mode, source=None, confidence=None):
     """Validate required fields. Returns (errors, warnings)."""
     errors = []
     warnings = []
@@ -196,10 +271,37 @@ def validate_entry(kb_type, sections, author, is_stdin_mode):
     if not author or not author.strip():
         errors.append("Author is required")
 
+    if source is not None and source not in VALID_SOURCES:
+        errors.append(f"Invalid source: '{source}'. Must be one of: {', '.join(sorted(VALID_SOURCES))}")
+
+    if confidence is not None:
+        if not isinstance(confidence, int) or confidence < 1 or confidence > 10:
+            errors.append(f"Invalid confidence: '{confidence}'. Must be an integer between 1 and 10.")
+
     return errors, warnings
 
 
-def format_entry_generic(title, kb_type, author, sections):
+VALID_SOURCES = {"observed", "user-stated", "inferred", "cross-model"}
+
+
+def compute_trusted(source, confidence):
+    """Determine if a KB entry should be trusted based on source and confidence.
+
+    Trust rules:
+    - confidence <= 3: never trusted (regardless of source)
+    - user-stated: trusted (human knowledge is trusted by default)
+    - observed: not trusted (needs human validation)
+    - inferred: not trusted (less reliable than observation)
+    - cross-model: not trusted (prompt injection risk)
+    """
+    if confidence <= 3:
+        return False
+    if source == "user-stated":
+        return True
+    return False
+
+
+def format_entry_generic(title, kb_type, author, sections, source="observed", confidence=5, scope="enterprise"):
     """Format a generic (Pattern/Lesson/API) entry."""
     today = date.today().isoformat()
     type_label = TYPE_LABEL_MAP.get(kb_type, kb_type.title())
@@ -209,8 +311,13 @@ def format_entry_generic(title, kb_type, author, sections):
         "",
         f"**Type:** {type_label}",
         f"**Created:** {today}",
+        f"**Scope:** {scope}",
         f"**Author:** {author}",
     ]
+    if source and source != "observed":
+        lines.append(f"**Source:** {source}")
+    if confidence is not None and confidence != 5:
+        lines.append(f"**Confidence:** {confidence}/10")
 
     for field in ["Summary", "Details", "Context", "Usage", "Related"]:
         content = sections.get(field, "").strip()
@@ -226,7 +333,7 @@ def format_entry_generic(title, kb_type, author, sections):
     return "\n".join(lines)
 
 
-def format_entry_adr(title, author, sections, adr_num, status, supersedes):
+def format_entry_adr(title, author, sections, adr_num, status, supersedes, source="user-stated", confidence=10, scope="enterprise"):
     """Format an ADR entry following the ADR template."""
     today = date.today().isoformat()
     lines = [
@@ -234,8 +341,13 @@ def format_entry_adr(title, author, sections, adr_num, status, supersedes):
         "",
         f"**状态:** `{status}`",
         f"**日期:** `{today}`",
+        f"**Scope:** {scope}",
         f"**决策者:** `{author}`",
     ]
+    if source and source != "observed":
+        lines.append(f"**Source:** {source}")
+    if confidence is not None and confidence != 5:
+        lines.append(f"**Confidence:** {confidence}/10")
 
     if supersedes is not None:
         lines.append(f"**替代:** `ADR-{supersedes:04d}`")
@@ -275,7 +387,7 @@ def format_entry_adr(title, author, sections, adr_num, status, supersedes):
     return "\n".join(lines)
 
 
-def update_index(kb_dir, kb_type, title, filename, author, adr_num=None):
+def update_index(kb_dir, kb_type, title, filename, author, adr_num=None, scope="enterprise", scope_value=None):
     """Insert entry link into the index.md."""
     index_path = os.path.join(kb_dir, "index.md")
     if not os.path.exists(index_path):
@@ -284,20 +396,37 @@ def update_index(kb_dir, kb_type, title, filename, author, adr_num=None):
     with open(index_path, encoding="utf-8") as f:
         lines = f.readlines()
 
-    # Determine section heading and link format
-    section_headings = {
-        "pattern": ("## Patterns", "patterns"),
-        "decision": ("## Architecture Decisions", "decisions"),
-        "lesson": ("## Lessons Learned", "lessons"),
-        "api": ("## API Contracts", "api-contracts"),
-    }
+    # Compute link path and section heading based on scope
+    type_dir_name = TYPE_DIR_MAP[kb_type]
 
-    section_heading, type_dir = section_headings[kb_type]
+    if scope == "service":
+        section_heading = "## Service Knowledge"
+        svc_id = scope_value or "unknown"
+        link_dir = f"services/{svc_id}/{type_dir_name}"
+    elif scope == "domain":
+        section_headings = {
+            "pattern": "## Patterns",
+            "decision": "## Architecture Decisions",
+            "lesson": "## Lessons Learned",
+            "api": "## API Contracts",
+        }
+        section_heading = section_headings[kb_type]
+        domain_name = scope_value or "unknown"
+        link_dir = f"domains/{domain_name}/{type_dir_name}"
+    else:  # enterprise
+        section_headings = {
+            "pattern": "## Patterns",
+            "decision": "## Architecture Decisions",
+            "lesson": "## Lessons Learned",
+            "api": "## API Contracts",
+        }
+        section_heading = section_headings[kb_type]
+        link_dir = f"_enterprise/{type_dir_name}"
 
     if kb_type == "decision" and adr_num is not None:
-        link_line = f"- [ADR-{adr_num:04d}: {title}]({type_dir}/ADR-{adr_num:04d}-{slugify(title)}.md)\n"
+        link_line = f"- [ADR-{adr_num:04d}: {title}]({link_dir}/ADR-{adr_num:04d}-{slugify(title)}.md)\n"
     else:
-        link_line = f"- [{title}]({type_dir}/{filename})\n"
+        link_line = f"- [{title}]({link_dir}/{filename})\n"
 
     # Find the section and insert
     new_lines = []
@@ -414,9 +543,13 @@ def append_transaction_log(kb_dir, entry_data, action="create"):
         "type": entry_data["type"],
         "title": entry_data["title"],
         "filename": entry_data["filename"],
-        "relative_path": f"{TYPE_DIR_MAP[entry_data['type']]}/{entry_data['filename']}",
+        "relative_path": entry_data["relative_path"],
         "author": entry_data["author"],
         "adr_number": entry_data.get("adr_num"),
+        "source": entry_data.get("source"),
+        "confidence": entry_data.get("confidence"),
+        "trusted": entry_data.get("trusted"),
+        "scope": entry_data.get("scope", "enterprise"),
     }
     try:
         with open(log_path, "a", encoding="utf-8") as f:
@@ -426,17 +559,28 @@ def append_transaction_log(kb_dir, entry_data, action="create"):
         return False, str(e)
 
 
-def check_duplicates(kb_dir, kb_type, new_content, threshold=0.4):
+def check_duplicates(kb_dir, kb_type, new_content, threshold=0.4, scope="enterprise", scope_value=None):
     """Scan existing entries of the same type for content similarity.
 
     Returns (blocked: bool, similar_entries: list[dict]).
     blocked is True when at least one entry exceeds 0.80 similarity.
     """
-    type_dir = TYPE_DIR_MAP.get(kb_type)
-    if not type_dir:
+    type_dir_name = TYPE_DIR_MAP.get(kb_type)
+    if not type_dir_name:
         return False, []
 
-    search_path = os.path.join(kb_dir, type_dir)
+    if scope == "enterprise":
+        search_path = os.path.join(kb_dir, "_enterprise", type_dir_name)
+    elif scope == "domain":
+        if not scope_value:
+            return False, []
+        search_path = os.path.join(kb_dir, "domains", scope_value, type_dir_name)
+    elif scope == "service":
+        if not scope_value:
+            return False, []
+        search_path = os.path.join(kb_dir, "services", scope_value, type_dir_name)
+    else:
+        search_path = os.path.join(kb_dir, type_dir_name)
     if not os.path.isdir(search_path):
         return False, []
 
@@ -483,6 +627,9 @@ Examples:
   kb-log.py decision "Use PostgreSQL" --status accepted --stdin
   kb-log.py lesson "Null Pointer Incident" --file lesson-body.md
   kb-log.py api "User Service OpenAPI" --stdin --dry-run
+  kb-log.py pattern "Auth Pattern" --source user-stated --confidence 8 --stdin
+  kb-log.py decision "DB Choice" --source user-stated --confidence 10 --stdin
+  kb-log.py lesson "Cache Bug" --source observed --confidence 6 --stdin
         """,
     )
     parser.add_argument("type", choices=sorted(VALID_TYPES), help="Entry type")
@@ -502,6 +649,19 @@ Examples:
                         help="Similarity threshold for dedup warning (0.0-1.0, default: 0.4)")
     parser.add_argument("--auto-dedup", action="store_true",
                         help="Auto-skip creation if near-duplicate (>80%%) detected (non-interactive)")
+    parser.add_argument("--source", choices=sorted(VALID_SOURCES),
+                        default="observed",
+                        help="Knowledge source (default: observed)")
+    parser.add_argument("--confidence", type=int, default=5, choices=range(1, 11),
+                        metavar="1-10",
+                        help="Confidence score 1-10 (default: 5)")
+    parser.add_argument("--skip-injection-check", action="store_true",
+                        help="Bypass prompt injection scan (requires human review)")
+    parser.add_argument("--scope", choices=["enterprise", "domain", "service"],
+                        default="enterprise",
+                        help="Knowledge scope (default: enterprise)")
+    parser.add_argument("--domain", help="Domain name (required when --scope domain)")
+    parser.add_argument("--service", help="Service ID (required when --scope service)")
     args = parser.parse_args()
 
     kb_type = args.type.lower()
@@ -539,6 +699,29 @@ Examples:
         print("Error: Entry body is empty.", file=sys.stderr)
         sys.exit(1)
 
+    # Security scan for prompt injection (skip if --skip-injection-check is set)
+    if not args.skip_injection_check:
+        blocked, injection_findings = scan_for_injection(body)
+        if injection_findings:
+            if blocked:
+                print("=== PROMPT INJECTION DETECTED ===", file=sys.stderr)
+                print(f"Entry BLOCKED due to {len(injection_findings)} suspicious patterns:", file=sys.stderr)
+                for finding in injection_findings:
+                    print(f"  {finding}", file=sys.stderr)
+                print("", file=sys.stderr)
+                print("If this is a false positive (e.g., documenting a security pattern about prompt injection),", file=sys.stderr)
+                print("use --skip-injection-check to bypass, after human review.", file=sys.stderr)
+                sys.exit(1)
+            else:
+                print("=== PROMPT INJECTION WARNING ===", file=sys.stderr)
+                print(f"Medium-severity patterns found ({len(injection_findings)}):", file=sys.stderr)
+                for finding in injection_findings:
+                    print(f"  {finding}", file=sys.stderr)
+                print("Proceeding with creation but flagged for review.", file=sys.stderr)
+                print("", file=sys.stderr)
+    elif args.verbose:
+        print("[Injection scan] Skipped (--skip-injection-check flag set).", file=sys.stderr)
+
     # Parse sections
     if kb_type == "decision":
         section_fields = SECTION_FIELDS_ADR
@@ -553,7 +736,7 @@ Examples:
             title = title_from_body
 
     # Validate
-    errors, warnings = validate_entry(kb_type, sections, args.author, args.stdin)
+    errors, warnings = validate_entry(kb_type, sections, args.author, args.stdin, args.source, args.confidence)
     if errors:
         for err in errors:
             print(f"Validation Error: {err}", file=sys.stderr)
@@ -566,24 +749,41 @@ Examples:
     type_dir = TYPE_DIR_MAP[kb_type]
     adr_num = None
 
+    # Compute scope-aware paths
+    if args.scope == "enterprise":
+        scope_dir = "_enterprise"
+        scope_value = None
+    elif args.scope == "domain":
+        if not args.domain:
+            print("Error: --domain is required when --scope=domain", file=sys.stderr)
+            sys.exit(1)
+        scope_dir = f"domains/{args.domain}"
+        scope_value = args.domain
+    elif args.scope == "service":
+        if not args.service:
+            print("Error: --service is required when --scope=service", file=sys.stderr)
+            sys.exit(1)
+        scope_dir = f"services/{args.service}"
+        scope_value = args.service
+
     if kb_type == "decision":
-        decisions_dir = os.path.join(kb_dir, "decisions")
+        decisions_dir = os.path.join(kb_dir, scope_dir, "decisions")
         adr_num = next_adr_number(decisions_dir)
         filename = f"ADR-{adr_num:04d}-{slug}.md"
     else:
         filename = f"{slug}.md"
 
-    filepath = os.path.join(kb_dir, type_dir, filename)
+    filepath = os.path.join(kb_dir, scope_dir, type_dir, filename)
 
     # Format entry
     if kb_type == "decision":
-        content = format_entry_adr(title, args.author, sections, adr_num, args.status, args.supersedes)
+        content = format_entry_adr(title, args.author, sections, adr_num, args.status, args.supersedes, args.source, args.confidence, args.scope)
     else:
-        content = format_entry_generic(title, kb_type, args.author, sections)
+        content = format_entry_generic(title, kb_type, args.author, sections, args.source, args.confidence, args.scope)
 
     # Dedup check — scan existing entries before creating
     if args.dedup_check or args.auto_dedup:
-        blocked, similar = check_duplicates(kb_dir, kb_type, content, args.dedup_threshold)
+        blocked, similar = check_duplicates(kb_dir, kb_type, content, args.dedup_threshold, args.scope, scope_value)
 
         if similar:
             type_label = TYPE_LABEL_MAP.get(kb_type, kb_type)
@@ -601,10 +801,17 @@ Examples:
 
             if blocked:
                 if args.auto_dedup:
+                    trusted = compute_trusted(args.source, args.confidence)
+                    relative_path = f"{scope_dir}/{type_dir}/{filename}"
                     entry_data = {
                         "type": kb_type, "title": title,
                         "filename": filename, "author": args.author,
                         "adr_num": adr_num,
+                        "source": args.source,
+                        "confidence": args.confidence,
+                        "trusted": trusted,
+                        "scope": args.scope,
+                        "relative_path": relative_path,
                     }
                     append_transaction_log(kb_dir, entry_data, action="skipped-dedup")
                     print(f"Skipped (near-duplicate detected, >80%): {title}")
@@ -623,7 +830,7 @@ Examples:
 
     # Dry run
     if args.dry_run:
-        print(f"[Dry Run] Would create: {type_dir}/{filename}")
+        print(f"[Dry Run] Would create: {scope_dir}/{type_dir}/{filename}")
         print(f"[Dry Run] Would append to .kb-log.jsonl")
         print(f"[Dry Run] Would update index.md")
         if args.verbose:
@@ -632,7 +839,7 @@ Examples:
         return
 
     # Write entry file
-    target_dir = os.path.join(kb_dir, type_dir)
+    target_dir = os.path.join(kb_dir, scope_dir, type_dir)
     os.makedirs(target_dir, exist_ok=True)
 
     if os.path.exists(filepath):
@@ -650,17 +857,24 @@ Examples:
         print(f"Created: {filepath}")
 
     # Update index
-    ok, err_msg = update_index(kb_dir, kb_type, title, filename, args.author, adr_num)
+    ok, err_msg = update_index(kb_dir, kb_type, title, filename, args.author, adr_num, args.scope, scope_value)
     if not ok:
         print(f"Warning: Failed to update index: {err_msg}", file=sys.stderr)
 
     # Transaction log
+    trusted = compute_trusted(args.source, args.confidence)
+    relative_path = f"{scope_dir}/{type_dir}/{filename}"
     entry_data = {
         "type": kb_type,
         "title": title,
         "filename": filename,
         "author": args.author,
         "adr_num": adr_num,
+        "source": args.source,
+        "confidence": args.confidence,
+        "trusted": trusted,
+        "scope": args.scope,
+        "relative_path": relative_path,
     }
     ok, err_msg = append_transaction_log(kb_dir, entry_data)
     if not ok:

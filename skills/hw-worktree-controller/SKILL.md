@@ -57,6 +57,7 @@ Initialize worktree context if running for the first time.
 | 迭代管理 | Load `references/iteration-management.md` |
 | 人工介入请求 | Load `references/escalation.md` |
 | 任务状态上报 | Load `references/status-reporting.md` |
+| 知识捕获与沉淀 | Load `references/knowledge-capture.md` |
 
 ## TDD Two-Layer Cycle
 
@@ -70,6 +71,7 @@ Layer 2: API Test Cycle (only after Layer 1 passes)
 After both layers complete:
   → Code review (heterogeneous parallel)
   → Quality gates (P0/P1/P2 check)
+  → Knowledge capture (write patterns, lessons, ADRs to KB — see references/knowledge-capture.md)
   → Report DONE to Top Controller
 ```
 
@@ -79,7 +81,7 @@ Report to Top Controller via worktree-registry.yaml:
 
 | Status | Meaning |
 |--------|---------|
-| `DONE` | Task complete, all gates passed |
+| `DONE` | Task complete, all gates passed, knowledge captured to KB |
 | `DONE_WITH_CONCERNS` | Complete but has concerns |
 | `NEEDS_CONTEXT` | Blocked, need information |
 | `BLOCKED` | Stuck, need help |

@@ -136,6 +136,17 @@ Load `../hw-value-judgment/references/value-assessment.md`
 
 Load `../hw-knowledge-agent/references/knowledge-update.md`
 
+## 知识库预查询 (进入设计前)
+
+在需求澄清完成、进入设计阶段之前，执行一次知识库快速扫描：
+
+1. 运行知识库预查询：`python kb-search.py --scope relevant-adrs,patterns,lessons,api-contracts`（从 `references/design-coordination.md` Step 1 获取完整查询清单和命令说明）
+2. 检查是否有与当前需求相关的已有 ADR、设计模式、经验教训、API 契约
+3. 如果有冲突或需要参考的历史决策，在需求规格中注明，并提供知识库链接
+4. 知识库查询结果作为设计阶段的输入，确保设计不会重复造轮子或偏离既有架构方向
+
+预查询结果写入 `{project-root}/_bmad/memory/hw-shared/knowledge-base/pre-query-{requirement_id}.md`。
+
 ## 输出产物
 
 | 产物 | 路径 | 何时生成 |
@@ -144,4 +155,5 @@ Load `../hw-knowledge-agent/references/knowledge-update.md`
 | 澄清日志 | 嵌入在需求规格文件末尾 | 每次回答后增量更新 |
 | 价值评估 | `value-assessment/{id}.md` | 如果价值维度 Partial |
 | 知识条目 | `knowledge-base/` | 如果发现可复用知识 |
+| 知识预查询 | `knowledge-base/pre-query-{id}.md` | 澄清完成后，进入设计前 |
 | 门禁结果 | `requirements/{id}-gate.md` | 需求规格完成后 |
