@@ -1,0 +1,525 @@
+#!/usr/bin/env python3
+"""Knowledge base entry writer — creates Pattern, Decision (ADR), Lesson, and API entries.
+
+Usage:
+    kb-log.py pattern "My Pattern" --stdin <<'EOF'
+    ## Summary
+    What this pattern is about.
+    ## Details
+    ...
+    EOF
+
+    kb-log.py decision "Use JWT" --status accepted --stdin <<'EOF'
+    ## 背景
+    ...
+    ## 决策
+    ...
+    EOF
+"""
+
+import argparse
+import json
+import os
+import re
+import sys
+from datetime import date, datetime, timezone
+
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
+_DEFAULT_KB_DIR = os.path.join(_PROJECT_ROOT, "_bmad", "memory", "hw-shared", "knowledge-base")
+
+VALID_TYPES = {"pattern", "decision", "lesson", "api"}
+VALID_ADR_STATUSES = {"proposed", "accepted", "deprecated", "superseded"}
+
+SECTION_FIELDS_GENERIC = {
+    "Summary": "",
+    "Details": "",
+    "Context": "",
+    "Usage": "",
+    "Related": "",
+}
+
+SECTION_FIELDS_ADR = {
+    "背景": "",
+    "决策": "",
+    "理由": "",
+    "考虑的替代方案": "",
+    "后果": "",
+}
+
+TYPE_DIR_MAP = {
+    "pattern": "patterns",
+    "decision": "decisions",
+    "lesson": "lessons",
+    "api": "api-contracts",
+}
+
+TYPE_LABEL_MAP = {
+    "pattern": "Pattern",
+    "decision": "Decision",
+    "lesson": "Lesson",
+    "api": "API",
+}
+
+
+def slugify(title):
+    """Generate filename-friendly slug, preserving Chinese characters."""
+    slug = title.strip()
+    slug = re.sub(r'[\\/:*?"<>|]', "", slug)
+    slug = re.sub(r'\s+', "-", slug)
+    return slug
+
+
+def discover_kb_dir():
+    """Find the knowledge base directory relative to this script."""
+    if os.path.isdir(_DEFAULT_KB_DIR):
+        return _DEFAULT_KB_DIR
+    return None
+
+
+def next_adr_number(decisions_dir):
+    """Find the highest existing ADR number and return next."""
+    max_num = 0
+    if not os.path.isdir(decisions_dir):
+        return 1
+    for fname in os.listdir(decisions_dir):
+        m = re.match(r'ADR-(\d{4})-.+\.md$', fname)
+        if m:
+            num = int(m.group(1))
+            if num > max_num:
+                max_num = num
+    return max_num + 1
+
+
+def parse_sections_from_text(text, section_fields):
+    """Parse markdown body into sections based on ## headings."""
+    sections = {}
+    current_section = None
+    current_lines = []
+
+    title_line = ""
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("# ") and not title_line:
+            title_line = stripped
+            continue
+        m = re.match(r'^##\s+(.+)$', stripped)
+        if m:
+            if current_section:
+                sections[current_section] = "\n".join(current_lines).strip()
+            current_section = m.group(1)
+            current_lines = []
+        elif current_section:
+            current_lines.append(line)
+
+    if current_section:
+        sections[current_section] = "\n".join(current_lines).strip()
+
+    return sections, title_line
+
+
+def validate_entry(kb_type, sections, author, is_stdin_mode):
+    """Validate required fields. Returns (errors, warnings)."""
+    errors = []
+    warnings = []
+
+    if kb_type == "decision":
+        required = ["背景", "决策", "理由"]
+    else:
+        required = ["Summary", "Details"]
+
+    for field in required:
+        content = sections.get(field, "").strip()
+        if not content:
+            errors.append(f"Missing required section: ## {field}")
+        elif len(content) < 10:
+            warnings.append(f"Section ## {field} is very short (< 10 chars)")
+
+    if not author or not author.strip():
+        errors.append("Author is required")
+
+    return errors, warnings
+
+
+def format_entry_generic(title, kb_type, author, sections):
+    """Format a generic (Pattern/Lesson/API) entry."""
+    today = date.today().isoformat()
+    type_label = TYPE_LABEL_MAP.get(kb_type, kb_type.title())
+
+    lines = [
+        f"# {title}",
+        "",
+        f"**Type:** {type_label}",
+        f"**Created:** {today}",
+        f"**Author:** {author}",
+    ]
+
+    for field in ["Summary", "Details", "Context", "Usage", "Related"]:
+        content = sections.get(field, "").strip()
+        lines.append("")
+        lines.append(f"## {field}")
+        lines.append("")
+        if content:
+            lines.append(content)
+        else:
+            lines.append("_No content provided._")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def format_entry_adr(title, author, sections, adr_num, status, supersedes):
+    """Format an ADR entry following the ADR template."""
+    today = date.today().isoformat()
+    lines = [
+        f"# ADR-{adr_num:04d}: {title}",
+        "",
+        f"**状态:** `{status}`",
+        f"**日期:** `{today}`",
+        f"**决策者:** `{author}`",
+    ]
+
+    if supersedes is not None:
+        lines.append(f"**替代:** `ADR-{supersedes:04d}`")
+
+    lines.extend([
+        "",
+        "## 背景",
+        "",
+        sections.get("背景", "_No content provided._"),
+        "",
+        "## 决策",
+        "",
+        f"**我们决定:** {sections.get('决策', '_No content provided._')}",
+        "",
+        "## 理由",
+        "",
+        sections.get("理由", "_No content provided._"),
+        "",
+        "## 考虑的替代方案",
+        "",
+        sections.get("考虑的替代方案", "_No content provided._"),
+        "",
+        "## 后果",
+        "",
+        sections.get("后果", "_No content provided._"),
+    ])
+
+    if supersedes is not None:
+        lines.extend([
+            "",
+            "## 相关 ADR",
+            "",
+            f"- `ADR-{supersedes:04d}`: 被本 ADR 替代",
+        ])
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def update_index(kb_dir, kb_type, title, filename, author, adr_num=None):
+    """Insert entry link into the index.md."""
+    index_path = os.path.join(kb_dir, "index.md")
+    if not os.path.exists(index_path):
+        return False, "index.md not found"
+
+    with open(index_path, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    # Determine section heading and link format
+    section_headings = {
+        "pattern": ("## Patterns", "patterns"),
+        "decision": ("## Architecture Decisions", "decisions"),
+        "lesson": ("## Lessons Learned", "lessons"),
+        "api": ("## API Contracts", "api-contracts"),
+    }
+
+    section_heading, type_dir = section_headings[kb_type]
+
+    if kb_type == "decision" and adr_num is not None:
+        link_line = f"- [ADR-{adr_num:04d}: {title}]({type_dir}/ADR-{adr_num:04d}-{slugify(title)}.md)\n"
+    else:
+        link_line = f"- [{title}]({type_dir}/{filename})\n"
+
+    # Find the section and insert
+    new_lines = []
+    updated = False
+    for i, line in enumerate(lines):
+        new_lines.append(line)
+        if line.strip() == section_heading:
+            # Skip until next section heading or empty line after links
+            j = i + 1
+            # Find insertion point: after the heading line, insert alphabetically
+            inserted = False
+            while j < len(lines):
+                stripped = lines[j].strip()
+                if stripped.startswith("## ") or (stripped.startswith("##") and not stripped.startswith("###")):
+                    # Hit next section, insert before it
+                    if not inserted:
+                        new_lines.append(link_line)
+                        new_lines.append("\n")
+                        inserted = True
+                        updated = True
+                    break
+                if stripped.startswith("- [") and not inserted:
+                    if link_line.lower() < stripped.lower():
+                        new_lines.append(link_line)
+                        inserted = True
+                        updated = True
+                if j == i + 1 and not stripped:
+                    # Empty line after heading, insert link right here
+                    new_lines.append(link_line)
+                    inserted = True
+                    updated = True
+                new_lines.append(lines[j])
+                j += 1
+            if not inserted and not updated:
+                new_lines.append(link_line)
+                updated = True
+            break
+
+    if not updated:
+        return False, f"Section '{section_heading}' not found in index.md"
+
+    # Update the update table
+    today = date.today().isoformat()
+    update_row = f"| {today} | {TYPE_LABEL_MAP.get(kb_type, kb_type)}: {title} | {author} |\n"
+
+    final_lines = []
+    table_updated = False
+    for i, line in enumerate(new_lines):
+        final_lines.append(line)
+        if "| 日期 | 更新内容 | 更新人 |" in line:
+            if i + 1 < len(new_lines) and "|---" in new_lines[i + 1]:
+                final_lines.append(new_lines[i + 1])
+                final_lines.append(update_row)
+                # Skip the original separator line
+                # Actually, we already appended the separator, now skip i+1
+                # Handle by tracking skip
+                table_updated = True
+                continue
+        if table_updated and new_lines[i - 1].startswith("|---") if i > 0 else False:
+            continue
+
+    if table_updated:
+        # Rebuild: we already inserted correctly above, but there's a bug in the logic
+        # Let's just use a simpler approach
+        pass
+
+    # Simpler approach: rebuild the file
+    result_lines = []
+    in_table = False
+    header_found = False
+    row_inserted = False
+    for line in new_lines:
+        if "| 日期 | 更新内容 | 更新人 |" in line:
+            result_lines.append(line)
+            header_found = True
+            continue
+        if header_found and line.strip().startswith("|---"):
+            result_lines.append(line)
+            in_table = True
+            continue
+        if header_found and in_table and line.strip().startswith("|"):
+            if not row_inserted:
+                result_lines.append(update_row)
+                row_inserted = True
+            result_lines.append(line)
+            continue
+        if header_found and in_table and not line.strip().startswith("|"):
+            if not row_inserted:
+                result_lines.append(update_row)
+                row_inserted = True
+            in_table = False
+            header_found = False
+            result_lines.append(line)
+            continue
+        result_lines.append(line)
+
+    if header_found and not row_inserted:
+        result_lines.append(update_row)
+        # Also need a blank line after the update row to close the table
+        result_lines.append("\n")
+
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.writelines(result_lines)
+
+    return True, None
+
+
+def append_transaction_log(kb_dir, entry_data):
+    """Append an entry to the JSONL transaction log."""
+    log_path = os.path.join(kb_dir, ".kb-log.jsonl")
+    log_entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": "create",
+        "type": entry_data["type"],
+        "title": entry_data["title"],
+        "filename": entry_data["filename"],
+        "relative_path": f"{TYPE_DIR_MAP[entry_data['type']]}/{entry_data['filename']}",
+        "author": entry_data["author"],
+        "adr_number": entry_data.get("adr_num"),
+    }
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+        return True, None
+    except OSError as e:
+        return False, str(e)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Create a knowledge base entry.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  kb-log.py pattern "Circuit Breaker" --stdin
+  kb-log.py decision "Use PostgreSQL" --status accepted --stdin
+  kb-log.py lesson "Null Pointer Incident" --file lesson-body.md
+  kb-log.py api "User Service OpenAPI" --stdin --dry-run
+        """,
+    )
+    parser.add_argument("type", choices=sorted(VALID_TYPES), help="Entry type")
+    parser.add_argument("title", help="Entry title")
+    parser.add_argument("-a", "--author", default="hw-knowledge-agent", help="Author identifier")
+    parser.add_argument("-f", "--file", dest="file_path", help="Read entry body from markdown file")
+    parser.add_argument("-s", "--stdin", action="store_true", help="Read entry body from stdin")
+    parser.add_argument("--status", default="proposed", choices=sorted(VALID_ADR_STATUSES),
+                        help="ADR status (decision only, default: proposed)")
+    parser.add_argument("--supersedes", type=int, help="ADR number this decision supersedes")
+    parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
+    parser.add_argument("--kb-dir", help="Override knowledge base directory")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+    args = parser.parse_args()
+
+    kb_type = args.type.lower()
+    title = args.title.strip()
+
+    if not title:
+        print("Error: Title must not be empty.", file=sys.stderr)
+        sys.exit(1)
+
+    # Discover KB directory
+    kb_dir = args.kb_dir or discover_kb_dir()
+    if not kb_dir:
+        print("Error: Knowledge base directory not found. Use --kb-dir to specify.", file=sys.stderr)
+        sys.exit(1)
+    if not os.path.isdir(kb_dir):
+        print(f"Error: Knowledge base directory not found: {kb_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    # Read body content
+    if args.stdin:
+        body = sys.stdin.read()
+    elif args.file_path:
+        try:
+            with open(args.file_path, encoding="utf-8") as f:
+                body = f.read()
+        except OSError as e:
+            print(f"Error reading file: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        print("Error: Use --stdin or --file to provide entry body.", file=sys.stderr)
+        print("Example: kb-log.py pattern 'Title' --stdin <<'EOF'", file=sys.stderr)
+        sys.exit(1)
+
+    if not body.strip():
+        print("Error: Entry body is empty.", file=sys.stderr)
+        sys.exit(1)
+
+    # Parse sections
+    if kb_type == "decision":
+        section_fields = SECTION_FIELDS_ADR
+    else:
+        section_fields = SECTION_FIELDS_GENERIC
+
+    sections, parsed_title = parse_sections_from_text(body, section_fields)
+    # Use parsed title if first heading found and matches
+    if parsed_title:
+        title_from_body = parsed_title.lstrip("#").strip()
+        if title_from_body:
+            title = title_from_body
+
+    # Validate
+    errors, warnings = validate_entry(kb_type, sections, args.author, args.stdin)
+    if errors:
+        for err in errors:
+            print(f"Validation Error: {err}", file=sys.stderr)
+        sys.exit(1)
+    for warn in warnings:
+        print(f"Validation Warning: {warn}", file=sys.stderr)
+
+    # Generate filename
+    slug = slugify(title)
+    type_dir = TYPE_DIR_MAP[kb_type]
+    adr_num = None
+
+    if kb_type == "decision":
+        decisions_dir = os.path.join(kb_dir, "decisions")
+        adr_num = next_adr_number(decisions_dir)
+        filename = f"ADR-{adr_num:04d}-{slug}.md"
+    else:
+        filename = f"{slug}.md"
+
+    filepath = os.path.join(kb_dir, type_dir, filename)
+
+    # Format entry
+    if kb_type == "decision":
+        content = format_entry_adr(title, args.author, sections, adr_num, args.status, args.supersedes)
+    else:
+        content = format_entry_generic(title, kb_type, args.author, sections)
+
+    # Dry run
+    if args.dry_run:
+        print(f"[Dry Run] Would create: {type_dir}/{filename}")
+        print(f"[Dry Run] Would append to .kb-log.jsonl")
+        print(f"[Dry Run] Would update index.md")
+        if args.verbose:
+            print("\n--- Entry Preview ---")
+            print(content)
+        return
+
+    # Write entry file
+    target_dir = os.path.join(kb_dir, type_dir)
+    os.makedirs(target_dir, exist_ok=True)
+
+    if os.path.exists(filepath):
+        print(f"Error: Entry already exists: {filepath}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+    except OSError as e:
+        print(f"Error writing entry: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.verbose:
+        print(f"Created: {filepath}")
+
+    # Update index
+    ok, err_msg = update_index(kb_dir, kb_type, title, filename, args.author, adr_num)
+    if not ok:
+        print(f"Warning: Failed to update index: {err_msg}", file=sys.stderr)
+
+    # Transaction log
+    entry_data = {
+        "type": kb_type,
+        "title": title,
+        "filename": filename,
+        "author": args.author,
+        "adr_num": adr_num,
+    }
+    ok, err_msg = append_transaction_log(kb_dir, entry_data)
+    if not ok:
+        print(f"Warning: Failed to append transaction log: {err_msg}", file=sys.stderr)
+
+    if adr_num:
+        print(f"Created ADR-{adr_num:04d}: {title}")
+    else:
+        print(f"Created {kb_type} entry: {title}")
+
+
+if __name__ == "__main__":
+    main()

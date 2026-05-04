@@ -148,16 +148,6 @@ multiagents/
 │   └── tea/                 # Test architecture
 ├── _bmad-output/            # BMAD output directory
 ├── docs/                    # Project documentation
-├── reference/               # Reference implementations for learning
-│   ├── gstack/              # gstack — headless browser + skill platform
-│   ├── compound-engineering-plugin/ # Multi-platform agent plugin
-│   ├── BMAD-METHOD/         # BMAD methodology reference
-│   ├── remember/            # Memory system reference
-│   ├── superpowers/         # Superpowers plugin
-│   ├── OpenSpec/            # OpenSpec reference
-│   ├── spec-kit/            # Spec-kit reference
-│   ├── oh-my-opencode/      # Oh-my-opencode reference
-│   └── everything-claude-code/ # Claude Code reference
 ├── .claude/                 # Claude Code settings
 │   └── settings.local.json  # Local permissions
 ├── .remember/               # Session memory and logs
@@ -399,11 +389,3 @@ Worktree controllers report to the top controller using these states:
 - Keep commits bisectable — one logical change per commit
 - Skills are product code even though they are Markdown — use `feat:`/`fix:`, not `docs:`
 
-## Reference Projects
-
-The `reference/` directory contains real-world agent platform implementations used for design reference and learning. These are NOT part of the 黑灯工厂 module — they are external projects for study:
-
-- **gstack** — Production-grade skill platform with browse automation, evals, and multi-skill orchestration
-- **compound-engineering-plugin** — Multi-platform agent plugin with CLI converter for Claude Code → other agent formats
-- **superpowers** — Zero-dependency Claude Code plugin with strict contribution standards (94% PR rejection rate)
-- **BMAD-METHOD** — BMAD methodology and framework reference

@@ -19,3 +19,39 @@ knowledge-base/
 
 | 日期 | 更新内容 | 更新人 |
 |------|----------|--------|
+## Patterns
+
+- [测试采集管道](patterns/测试采集管道.md)
+
+## Architecture Decisions
+
+_No ADRs recorded yet._
+
+## Lessons Learned
+
+_No lessons recorded yet._
+
+## API Contracts
+
+_No API contracts recorded yet._
+
+## Service Knowledge
+
+### harness_framework
+
+- [Harness Framework — API Endpoints](services/harness_framework/api-endpoints.md)
+- [Harness Framework — Database Schema](services/harness_framework/db-schema.md)
+- [Harness Framework — 服务概览](services/harness_framework/overview.md)
+
+### multiagents
+
+- [Multiagents — API Endpoints](services/multiagents/api-endpoints.md)
+- [Multiagents — Database Schema](services/multiagents/db-schema.md)
+- [Multiagents — 服务概览](services/multiagents/overview.md)
+
+
+## 更新记录
+
+| 日期 | 更新内容 | 更新人 |
+|------|----------|--------|
+| 2026-05-04 | Index rebuilt (7 entries) | kb-index.py |

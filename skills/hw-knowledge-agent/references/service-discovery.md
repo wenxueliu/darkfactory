@@ -311,3 +311,24 @@ dependency_graph:
 | API 端点检测不完整 | 标记为 `PARTIAL`，记录检测到的数量和置信度 |
 | DB Schema 检测不到 migration 文件 | 标记为 `NO_MIGRATIONS_FOUND`，检查是否有其他 schema 管理方式 |
 | 跨服务依赖无法确定 | 标记为 `NEEDS_ANALYSIS`，在交叉分析阶段由人工补充 |
+
+## 自动化脚本
+
+服务发现已实现为自动化脚本，无需手动执行上述步骤：
+
+```bash
+# 预览模式（不写入文件）
+python scripts/kb-service-discovery.py --probe --verbose
+
+# 完整服务发现
+python scripts/kb-service-discovery.py --verbose
+
+# 完成后重建索引
+python scripts/kb-index.py --rebuild
+```
+
+脚本自动完成：
+- 扫描 `services/` 下所有 git 仓库
+- 检测技术栈（Java/Spring Boot, TypeScript/React/Next.js, Python/FastAPI, Go/Gin, Rust/Actix）
+- 提取 API 端点、数据库 schema、基础设施依赖
+- 生成 `service-registry.yaml` 和每个服务的知识文件（overview.md, api-endpoints.md, db-schema.md）

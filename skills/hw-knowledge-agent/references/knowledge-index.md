@@ -50,15 +50,33 @@ The knowledge base is organized, searchable, and entries are properly linked.
 - {date} — {entry} — {type}
 ```
 
+## 自动化工具
+
+索引维护通过以下脚本自动化：
+
+```bash
+# 重建索引
+python scripts/kb-index.py --rebuild
+
+# 仅校验不修改
+python scripts/kb-index.py --validate-only
+
+# 检测孤立条目
+python scripts/kb-index.py --detect-orphans
+
+# 完整维护 (重建 + 校验 + 孤儿检测)
+python scripts/kb-index.py
+```
+
 ## 索引维护任务
 
 | 任务 | 频率 | 操作 |
 |------|------|------|
-| 新知识条目 | 事件驱动 | 在对应 section 添加链接 |
-| 服务发现重新生成 | 每个需求完成后 | 更新 services/{id}/* 下的 auto-generated 文件 |
-| 孤儿条目检查 | 每周 | 链接或移除 |
-| 服务依赖图更新 | 服务发现后 | 从 service-registry.yaml 重新生成 |
-| 重复合并 | 每季度 | 合并类似条目 |
+| 新知识条目 | 事件驱动 | `kb-log.py` 自动更新索引 |
+| 服务发现重新生成 | 每个需求完成后 | `kb-service-discovery.py` + `kb-index.py --rebuild` |
+| 孤儿条目检查 | 每周 | `kb-index.py --detect-orphans` |
+| 服务依赖图更新 | 服务发现后 | `kb-service-discovery.py` 自动生成 |
+| 重复合并 | 每季度 | 人工审查后合并类似条目 |
 
 ## 质量检查清单
 

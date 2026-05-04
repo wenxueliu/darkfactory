@@ -18,9 +18,14 @@ Relevant knowledge is found and presented in context, helping make better decisi
 ### Query Process
 
 1. **Identify keywords** from current context
-2. **Search index** for related entries
-3. **Rank by relevance** — recency, usage frequency
-4. **Return with context** — why this is relevant now
+2. **Search** using the tool:
+   ```bash
+   python scripts/kb-search.py "<query>" [--type pattern|decision|lesson|api] [--json] [--max-results 10]
+   ```
+   - Use `--json` for programmatic consumption
+   - Use `--type` to filter by knowledge type
+   - The script handles relevance ranking automatically
+3. **Return with context** — present top results with relevance explanation
 
 ### Output Format
 
