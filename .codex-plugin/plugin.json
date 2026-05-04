@@ -1,0 +1,44 @@
+{
+  "name": "harness-multiagents",
+  "version": "1.0.0",
+  "description": "Harness multi-agent orchestration system: TDD, multi-layer code review (logic/security/performance), E2E workflow from requirements to delivery. 64 composable skills.",
+  "author": {
+    "name": "Harness Engineering",
+    "url": "https://github.com/wenxueliu/harness"
+  },
+  "homepage": "https://github.com/wenxueliu/harness",
+  "repository": "https://github.com/wenxueliu/harness",
+  "license": "MIT",
+  "keywords": [
+    "multi-agent",
+    "orchestration",
+    "tdd",
+    "code-review",
+    "workflow",
+    "skills",
+    "devops",
+    "continuous-delivery"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Harness Multi-Agent System",
+    "shortDescription": "Multi-agent orchestration with TDD, code review, and E2E delivery workflows",
+    "longDescription": "Harness provides a complete multi-agent software development system. Use it to orchestrate development through ideation, design, decomposition, TDD-based execution, multi-layer code review (logic, security, performance), merge, integration testing, and delivery. Human judgment is the ultimate backstop on strategic decisions while AI agents handle execution, review, and verification.",
+    "developerName": "Harness Engineering",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write",
+      "Bash"
+    ],
+    "defaultPrompt": [
+      "I have a new requirement I'd like to develop with the Harness workflow.",
+      "Start the multi-agent pipeline for this feature.",
+      "Review this code with all three reviewers: logic, security, and performance.",
+      "Set up the Harness development environment for this project."
+    ],
+    "brandColor": "#10B981",
+    "screenshots": []
+  }
+}

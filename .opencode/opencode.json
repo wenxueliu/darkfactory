@@ -1,0 +1,44 @@
+{
+  "model": "anthropic/claude-sonnet-4-6",
+  "default_agent": "build",
+  "plugin": ["./plugins"],
+  "instructions": [
+    "@AGENTS.md",
+    "skills/using-harness/SKILL.md"
+  ],
+  "skills": {
+    "paths": ["./skills"]
+  },
+  "agents": {
+    "controller": {
+      "description": "Top-level orchestrator: requirements → design → decomposition → execution → merge → test → delivery",
+      "tools": ["read", "write", "bash", "skill", "agent"]
+    },
+    "tdd-agent": {
+      "description": "TDD practitioner: RED→GREEN→REFACTOR cycle with UT + API test layers",
+      "tools": ["read", "write", "bash"]
+    },
+    "reviewer-logic": {
+      "description": "Logic reviewer: correctness bugs, edge cases, error handling",
+      "tools": ["read"]
+    },
+    "reviewer-security": {
+      "description": "Security reviewer: vulnerabilities, data exposure, auth/authz issues",
+      "tools": ["read"]
+    },
+    "reviewer-performance": {
+      "description": "Performance reviewer: bottlenecks, N+1 queries, memory leaks, scalability",
+      "tools": ["read"]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "read(*/services/multiagents/**)",
+      "write(*/services/multiagents/**)",
+      "bash(git:*)",
+      "bash(python:*)",
+      "bash(npm:*)",
+      "bash(pytest:*)"
+    ]
+  }
+}

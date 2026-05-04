@@ -1,0 +1,22 @@
+{
+  "name": "harness-multiagents",
+  "description": "Harness multi-agent orchestration skills: TDD, multi-layer code review (logic/security/performance), E2E workflow from requirements to delivery. 64 skills covering full software lifecycle.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Harness Engineering"
+  },
+  "homepage": "https://github.com/wenxueliu/harness",
+  "repository": "https://github.com/wenxueliu/harness",
+  "license": "MIT",
+  "keywords": [
+    "multi-agent",
+    "orchestration",
+    "tdd",
+    "code-review",
+    "workflow",
+    "skills",
+    "devops"
+  ],
+  "skills": "./skills/",
+  "agents": "./agents/"
+}

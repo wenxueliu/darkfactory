@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" session-start",
+            "async": false
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(head -50 ~/.claude/projects/-home-chengnanfeng-code-multiagents/*.jsonl)",
+      "Bash(ls:*)",
+      "Bash(wc -l ~/.claude/projects/-home-chengnanfeng-code-multiagents/*.jsonl)",
+      "Bash(cat ~/.claude/projects/-home-chengnanfeng-code-multiagents/.remember/*.md)",
+      "Bash(wc -l /home/chengnanfeng/code/multiagents/skills/hw-*/*.md)"
+    ]
+  }
+}
