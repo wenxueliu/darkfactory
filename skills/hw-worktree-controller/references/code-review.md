@@ -58,9 +58,56 @@ Each reviewer should output:
 - Blocking: {yes/no}
 ```
 
+## Knowledge Base Update: P3 发现沉淀为经验教训
+
+在所有 P0/P1/P2 问题解决后，检查是否有值得记录为经验教训的 P3 发现。
+
+### P3 筛选标准
+
+- **值得记录的候选项:** 可能在其他模块重复出现的通用模式、配置或依赖的最佳实践、容易遗漏的边缘案例提醒、在扩散前被及时制止的反模式
+- **跳过的:** 一次性命名建议（如"rename this variable for readability"）、纯代码风格偏好
+
+### 提取流程
+
+1. 读取审查结果文件:
+   - `reviews/{task_id}-logic.md`
+   - `reviews/{task_id}-security.md`
+   - `reviews/{task_id}-performance.md`
+
+2. 解析 severity 列为 `P3` 的行，从表列中提取 Issue、Location 和 Recommendation。
+
+3. 对每个符合条件的 P3 发现，调用 kb-log.py 创建 lesson 条目:
+
+   ```bash
+   python scripts/kb-log.py lesson "(P3) {简短模式名}" \
+     --author "hw-worktree-controller" --stdin <<'EOF'
+   ## Summary
+   {从 P3 Issue 标题提炼的一句话描述}
+   ## Details
+   {从 Issue Details 中提取的完整描述，包含代码示例和修复建议}
+   ## Context
+   在 {review_type} 审查任务 {task_id} 时发现。严重级别: P3（建议，非阻塞）。
+   ## Usage
+   {从 Recommendation 列提炼的指导——未来开发中应如何应用此模式}
+   ## Related
+   - 审查报告: reviews/{task_id}-{type}.md
+   EOF
+   ```
+
+   先使用 `--dry-run` 预览条目内容，确认后再正式写入。
+
+4. 如果 P3 发现数量为 0，或者筛选后无可复用价值，则跳过本步骤。
+
+5. 对每个审核类型（logic / security / performance）独立执行——逻辑审查的 P3 和性能审查的 P3 可能分别沉淀为不同领域的经验教训。
+
+### Config 控制
+
+当 `hw.knowledge_base_auto_update` 为 false 时跳过本步骤，直接进入状态报告。
+
 ## Transition
 
 Code review is complete when:
 1. All enabled reviewers have completed
 2. All P0/P1/P2 issues resolved or escalated
 3. Human has resolved any architecture conflicts
+4. P3 lessons extracted to knowledge base (if applicable per config)

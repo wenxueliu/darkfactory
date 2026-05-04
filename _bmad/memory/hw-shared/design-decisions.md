@@ -1,17 +1,24 @@
-# 架构决策记录 (ADR)
+# 架构决策记录索引 (ADR Index)
 
-## 记录格式
+ADRs are managed by `kb-log.py decision` — do NOT write ADR content directly in this file.
+Create ADRs with the script and they will be auto-linked in `knowledge-base/decisions/`.
 
-```markdown
-## ADR-XXX: 决策标题
+## 设计需求与 ADR 对照
 
-**日期**: YYYY-MM-DD
-**状态**: 已接受|已否决|已废弃
-**上下文**: 背景描述
-**决策**: 决策内容
-**后果**: 采用后的影响
+| 设计需求 | ADR 列表 | 状态 |
+|---------|---------|------|
+| (尚无) | (尚无) | — |
+
+## 查询
+
+```bash
+# 列出所有 ADR
+python scripts/kb-search.py --type decision --json
+
+# 按关键词查找
+python scripts/kb-search.py "{关键词}" --type decision --max-results 10
 ```
 
-## 决策记录
+## 更新方式
 
-# TODO: 添加架构决策
+每次设计阶段完成后，hw-controller 将新创建的 ADR 追加到上方对照表中。

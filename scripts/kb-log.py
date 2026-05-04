@@ -28,6 +28,64 @@ _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
 _DEFAULT_KB_DIR = os.path.join(_PROJECT_ROOT, "_bmad", "memory", "hw-shared", "knowledge-base")
 
+# --- Inline similarity functions (shared with kb-search.py and kb-merge.py) ---
+
+def _score_content(query_content, target_content):
+    """Core structural scoring: title, section heading, and body matches.
+
+    Pure-content scoring used by both search and deduplication.
+    Excludes recency bonus.
+    """
+    query_lower = query_content.lower()
+    query_words = set(query_lower.split())
+    target_lower = target_content.lower()
+    lines = target_content.split("\n")
+    score = 0
+
+    # Title match
+    title_line = ""
+    for line in lines:
+        if line.startswith("# "):
+            title_line = line
+            break
+    title_lower = title_line.lower()
+    for word in query_words:
+        if word in title_lower:
+            score += 10
+    # Exact phrase match in title
+    if query_lower in title_lower:
+        score += 20
+    # Section heading match
+    for line in lines:
+        if line.startswith("## "):
+            heading_lower = line.lower()
+            for word in query_words:
+                if word in heading_lower:
+                    score += 5
+    # Body match
+    body = target_lower
+    for word in query_words:
+        count = min(body.count(word), 10)
+        score += count
+    return score
+
+
+def compute_similarity(content_a, content_b):
+    """Compute normalized similarity between two entry contents (0.0 to 1.0).
+
+    Uses structural scoring normalized by self-score so entry length
+    does not bias results. Recency is excluded.
+    """
+    if not content_a or not content_b:
+        return 0.0
+    raw_score = _score_content(content_a, content_b)
+    self_score = _score_content(content_a, content_a)
+    if self_score == 0:
+        return 0.0
+    return min(raw_score / self_score, 1.0)
+
+# --- End inline similarity functions ---
+
 VALID_TYPES = {"pattern", "decision", "lesson", "api"}
 VALID_ADR_STATUSES = {"proposed", "accepted", "deprecated", "superseded"}
 
@@ -347,12 +405,12 @@ def update_index(kb_dir, kb_type, title, filename, author, adr_num=None):
     return True, None
 
 
-def append_transaction_log(kb_dir, entry_data):
+def append_transaction_log(kb_dir, entry_data, action="create"):
     """Append an entry to the JSONL transaction log."""
     log_path = os.path.join(kb_dir, ".kb-log.jsonl")
     log_entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "action": "create",
+        "action": action,
         "type": entry_data["type"],
         "title": entry_data["title"],
         "filename": entry_data["filename"],
@@ -366,6 +424,53 @@ def append_transaction_log(kb_dir, entry_data):
         return True, None
     except OSError as e:
         return False, str(e)
+
+
+def check_duplicates(kb_dir, kb_type, new_content, threshold=0.4):
+    """Scan existing entries of the same type for content similarity.
+
+    Returns (blocked: bool, similar_entries: list[dict]).
+    blocked is True when at least one entry exceeds 0.80 similarity.
+    """
+    type_dir = TYPE_DIR_MAP.get(kb_type)
+    if not type_dir:
+        return False, []
+
+    search_path = os.path.join(kb_dir, type_dir)
+    if not os.path.isdir(search_path):
+        return False, []
+
+    similar = []
+    for root, dirs, files in os.walk(search_path):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        for fname in files:
+            if fname.startswith(".") or not fname.endswith(".md"):
+                continue
+            filepath = os.path.join(root, fname)
+            try:
+                with open(filepath, encoding="utf-8") as f:
+                    existing_content = f.read()
+            except (OSError, UnicodeDecodeError):
+                continue
+
+            sim = compute_similarity(new_content, existing_content)
+            if sim >= threshold:
+                title = "Untitled"
+                for line in existing_content.split("\n"):
+                    if line.startswith("# "):
+                        title = line[2:].strip()
+                        break
+                similar.append({
+                    "filepath": filepath,
+                    "filename": fname,
+                    "title": title,
+                    "similarity": round(sim, 3),
+                    "excerpt": existing_content[:300].replace("\n", " ").strip(),
+                })
+
+    similar.sort(key=lambda e: e["similarity"], reverse=True)
+    blocked = any(e["similarity"] >= 0.80 for e in similar)
+    return blocked, similar
 
 
 def main():
@@ -391,6 +496,12 @@ Examples:
     parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
     parser.add_argument("--kb-dir", help="Override knowledge base directory")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+    parser.add_argument("--dedup-check", action="store_true",
+                        help="Scan existing entries for similar content before creating")
+    parser.add_argument("--dedup-threshold", type=float, default=0.4,
+                        help="Similarity threshold for dedup warning (0.0-1.0, default: 0.4)")
+    parser.add_argument("--auto-dedup", action="store_true",
+                        help="Auto-skip creation if near-duplicate (>80%%) detected (non-interactive)")
     args = parser.parse_args()
 
     kb_type = args.type.lower()
@@ -469,6 +580,46 @@ Examples:
         content = format_entry_adr(title, args.author, sections, adr_num, args.status, args.supersedes)
     else:
         content = format_entry_generic(title, kb_type, args.author, sections)
+
+    # Dedup check — scan existing entries before creating
+    if args.dedup_check or args.auto_dedup:
+        blocked, similar = check_duplicates(kb_dir, kb_type, content, args.dedup_threshold)
+
+        if similar:
+            type_label = TYPE_LABEL_MAP.get(kb_type, kb_type)
+            print(f"\n=== Dedup Check: {len(similar)} similar {type_label} entr{'y' if len(similar) == 1 else 'ies'} found ===")
+            print()
+            for i, e in enumerate(similar, 1):
+                bar_len = min(int(e["similarity"] * 20), 20)
+                bar = "█" * bar_len + "░" * (20 - bar_len)
+                print(f"  {i}. [{bar}] {e['similarity']:.0%} — {e['title']}")
+                print(f"     File: {e['filename']}")
+                if e["excerpt"]:
+                    snippet = e["excerpt"][:120] + ("..." if len(e["excerpt"]) > 120 else "")
+                    print(f"     {snippet}")
+                print()
+
+            if blocked:
+                if args.auto_dedup:
+                    entry_data = {
+                        "type": kb_type, "title": title,
+                        "filename": filename, "author": args.author,
+                        "adr_num": adr_num,
+                    }
+                    append_transaction_log(kb_dir, entry_data, action="skipped-dedup")
+                    print(f"Skipped (near-duplicate detected, >80%): {title}")
+                    return
+                else:
+                    print("BLOCKED: Near-duplicate detected (>=80% similarity).")
+                    print("Use --auto-dedup to skip silently, or review and merge with kb-merge.py.")
+                    sys.exit(1)
+
+            # Below block threshold — warn but proceed
+            print("[WARN] Similar entries found but below block threshold (80%). Proceeding with creation.")
+            print()
+        else:
+            if args.verbose:
+                print(f"[Dedup] No similar entries found (threshold: {args.dedup_threshold:.0%}).")
 
     # Dry run
     if args.dry_run:

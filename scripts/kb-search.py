@@ -97,6 +97,68 @@ def score_entry(query, content, filepath):
     return score
 
 
+def _score_content(query_content, target_content):
+    """Core structural scoring -- title, section heading, and body matches.
+
+    This is the pure-content scoring used by both search (score_entry)
+    and deduplication (compute_similarity). Excludes recency bonus.
+    """
+    query_lower = query_content.lower()
+    query_words = set(query_lower.split())
+    target_lower = target_content.lower()
+    lines = target_content.split("\n")
+    score = 0
+
+    # Title match
+    title_line = ""
+    for line in lines:
+        if line.startswith("# "):
+            title_line = line
+            break
+    title_lower = title_line.lower()
+    for word in query_words:
+        if word in title_lower:
+            score += 10
+
+    # Exact phrase match in title
+    if query_lower in title_lower:
+        score += 20
+
+    # Section heading match
+    for line in lines:
+        if line.startswith("## "):
+            heading_lower = line.lower()
+            for word in query_words:
+                if word in heading_lower:
+                    score += 5
+
+    # Body match
+    body = target_lower
+    for word in query_words:
+        count = min(body.count(word), 10)
+        score += count
+
+    return score
+
+
+def compute_similarity(content_a, content_b):
+    """Compute normalized similarity between two entry contents (0.0 to 1.0).
+
+    Uses the same structural scoring as score_entry (title/section/body),
+    normalized by self-score so that entry length does not bias results.
+    Recency bonus is excluded -- similarity is about content, not age.
+
+    Returns a float in [0.0, 1.0] where 1.0 means identical content.
+    """
+    if not content_a or not content_b:
+        return 0.0
+    raw_score = _score_content(content_a, content_b)
+    self_score = _score_content(content_a, content_a)
+    if self_score == 0:
+        return 0.0
+    return min(raw_score / self_score, 1.0)
+
+
 def extract_excerpt(content, query_words, max_chars=200):
     """Extract a relevant excerpt around the first query word match."""
     body_lower = content.lower()

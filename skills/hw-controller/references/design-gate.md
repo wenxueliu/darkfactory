@@ -48,7 +48,17 @@
 
 ### G4: 知识沉淀检查
 
-- [ ] 至少 1 个 ADR 写入知识库（如果设计包含重要技术决策）
+**验证方式 — 用脚本检查而非人工目视:**
+
+```bash
+# 验证 ADR 已正确写入并可检索
+python scripts/kb-search.py "{requirement_id} {设计关键词}" --type decision --json
+```
+
+确认 `total_results >= 1`（返回的 JSON 中至少有一条 decision 类型的记录）。
+
+- [ ] `kb-search.py --type decision` 返回 ≥ 1 条记录（验证 ADR 可检索，而非仅在文件系统中存在）
+- [ ] `.kb-log.jsonl` 中有本次设计的 decision 类型记录（验证 ADR 通过脚本写入，而非手动创建）
 - [ ] 设计文档中有设计决策表（≥ 2 个决策）
 - [ ] 开放问题已记录（不能以 "TODO" 或 "待定" 结尾而无负责人）
 
