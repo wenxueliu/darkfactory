@@ -125,7 +125,8 @@ This project's skills MUST run identically on three agent platforms:
 - **Worktrees:** Isolated task execution happens in `{worktree_base}` (default: `.worktree/` at project root). This directory must be gitignored.
 - **Language:** This project uses Chinese for agent communication and documentation. Config defaults to `document_output_language: Chinese`.
 - **Use subagents:** Prefer delegating complex, multi-step, or cross-file search/analysis tasks to subagents via the Agent tool. Run independent subagents in parallel to reduce main context window consumption. 尽量使用 subagent 执行复杂任务。
-- **KB health check:** Run `python scripts/kb-health.py` periodically to monitor KB growth, staleness, and gaps. Run `python scripts/kb-index.py --check-staleness` to detect decayed entries. Use `python scripts/kb-distill.py batch` to compress KB entries for reduced token consumption.
+- **KB health check:** Run `python scripts/kb-health.py` periodically to monitor KB growth, staleness, and gaps. Run `python scripts/kb-index.py --check-staleness` to detect decayed entries. Use `python scripts/kb-distill.py batch` to compress KB entries for reduced token consumption. Use `python scripts/kb-freshness.py` to compute confidence decay.
+- **KB lifecycle:** Entries have status (`active`/`deprecated`/`superseded`/`expired`), support `supersedes`/`expires` fields, and confidence auto-decays by source type (observed: -1/60d, inferred: -1/30d, cross-model: -1/30d, user-stated: no decay). Configured via `_bmad/config.yaml` → `hw.kb.freshness`.
 - **Dual instruction files:** This repo maintains both `CLAUDE.md` (Claude Code) and `AGENTS.md` (Codex). `AGENTS.md` is the canonical instruction file — `CLAUDE.md` points to it via `@AGENTS.md`. Keep them in sync; when in doubt, `AGENTS.md` is the source of truth.
 - **No platform-specific variables:** NEVER use `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_SKILL_DIR}`, `${CLAUDE_SESSION_ID}`, `${CODEX_SANDBOX}`, `${CODEX_SESSION_ID}`, or any other platform-only environment variable in skill content. See Platform-Agnostic Skill Design below.
 - **Cross-OS compatibility:** All skills, scripts, and tooling MUST run on **Windows**, **Linux**, and **macOS**. Use forward-slash (`/`) path separators (works on all three OSes with modern tooling). Avoid shell-specific syntax (bashisms, PowerShell-only constructs) in skill scripts — prefer POSIX-compatible commands. When OS-specific behavior is unavoidable, use `references/` pattern files per OS (e.g., `references/setup-windows.md`, `references/setup-linux.md`, `references/setup-macos.md`), not code branches in agent core logic. Never assume a case-sensitive filesystem — verify file existence rather than relying on case distinctions.
@@ -350,6 +351,12 @@ Default config (overridable in `_bmad/config.yaml` and `_bmad/config.user.yaml`)
 | `communication_language` | `Chinese` | Human-Agent 交互语言 |
 | `supported_languages` | `*` (auto-detect) | 目标编程语言列表，`*` 表示自动检测 |
 | `business_domain` | `general` | 业务领域标记，驱动模板选择 + Reviewer 策略 + 门禁严格度。支持: `general`, `fintech`, `ecommerce`, `internal-tools`, `java-springboot-enterprise` |
+| `kb.freshness.confidence_decay.observed` | 60 | observed 来源衰减：每 N 天 -1 confidence |
+| `kb.freshness.confidence_decay.inferred` | 30 | inferred 来源衰减：每 N 天 -1 confidence |
+| `kb.freshness.confidence_decay.cross-model` | 30 | cross-model 来源衰减：每 N 天 -1 confidence |
+| `kb.freshness.confidence_decay.user-stated` | 0 | user-stated 不衰减（人类知识稳定） |
+| `kb.freshness.stale_threshold_days` | 90 | 超过此天数 + effective confidence ≤5 即标记 stale |
+| `kb.freshness.auto_expire_days` | 365 | 超过此天数标记为 expired，触发审查 |
 | `custom_templates` | (空) | 可选。覆盖内置模板的自定义路径，如 `custom_templates.requirements: "./templates/our-spec.md"`。优先级高于 business_domain |
 
 ### 业务场景适配示例
