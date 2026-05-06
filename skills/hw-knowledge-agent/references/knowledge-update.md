@@ -106,6 +106,51 @@ python scripts/kb-merge.py --merge-all --threshold 0.7
 | Development complete | Document patterns discovered |
 | Bug found | Add lesson learned |
 | API created | Document contract |
+| Knowledge superseded | Run `kb-freshness.py --mark-superseded <old> --by <new>` to link old→new |
+| Knowledge expired | Run `kb-freshness.py --mark-expired <entry>` or `kb-log.py ... --status expired` |
+| Knowledge reactivated | Run `kb-freshness.py --reactivate <entry>` to set status back to active |
+| Periodic review | Run `kb-freshness.py --list-stale` to find decayed entries for review |
+
+### Freshness Management
+
+Knowledge decays over time. Use the following to maintain freshness:
+
+```bash
+# Check overall freshness health
+python scripts/kb-freshness.py --all
+
+# List entries needing attention
+python scripts/kb-freshness.py --list-stale       # Confidence decayed
+python scripts/kb-freshness.py --list-expired     # Past expiry
+python scripts/kb-freshness.py --list-superseded  # Replaced
+python scripts/kb-freshness.py --list-deprecated  # No longer recommended
+
+# Mark entries
+python scripts/kb-freshness.py --mark-superseded patterns/old.md --by patterns/new.md
+python scripts/kb-freshness.py --mark-expired lessons/outdated.md
+python scripts/kb-freshness.py --mark-deprecated patterns/legacy.md
+python scripts/kb-freshness.py --reactivate patterns/still-valid.md
+
+# Create new entry that supersedes an old one (backlink auto-written)
+python scripts/kb-log.py pattern "New Pattern" --status active \
+  --supersedes "old-pattern.md" --stdin <<'EOF'
+...
+EOF
+
+# Check a specific entry's freshness
+python scripts/kb-freshness.py --check patterns/some-entry.md
+```
+
+### Confidence Decay Rules
+
+Knowledge entries lose confidence over time based on their source:
+
+| Source | Decay Rate | Rationale |
+|--------|-----------|-----------|
+| `user-stated` | No decay | Human knowledge is stable |
+| `observed` | -1 per 60 days | Observations may become stale |
+| `inferred` | -1 per 30 days | Inferred knowledge is less reliable |
+| `cross-model` | -1 per 30 days | Cross-model knowledge has highest uncertainty |
 
 ## Anti-Patterns
 

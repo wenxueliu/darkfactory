@@ -157,6 +157,7 @@ def scan_for_injection(content):
 
 VALID_TYPES = {"pattern", "decision", "lesson", "api"}
 VALID_ADR_STATUSES = {"proposed", "accepted", "deprecated", "superseded"}
+VALID_STATUSES_GENERIC = {"active", "deprecated", "superseded", "expired"}
 
 SECTION_FIELDS_GENERIC = {
     "Summary": "",
@@ -301,8 +302,14 @@ def compute_trusted(source, confidence):
     return False
 
 
-def format_entry_generic(title, kb_type, author, sections, source="observed", confidence=5, scope="enterprise"):
-    """Format a generic (Pattern/Lesson/API) entry."""
+def format_entry_generic(title, kb_type, author, sections, source="observed", confidence=5, scope="enterprise", status="active", supersedes=None, expires=None):
+    """Format a generic (Pattern/Lesson/API) entry.
+
+    Args:
+        status: One of active/deprecated/superseded/expired
+        supersedes: Relative path or filename of the entry this supersedes (optional)
+        expires: ISO date string when this entry expires (optional)
+    """
     today = date.today().isoformat()
     type_label = TYPE_LABEL_MAP.get(kb_type, kb_type.title())
 
@@ -313,11 +320,16 @@ def format_entry_generic(title, kb_type, author, sections, source="observed", co
         f"**Created:** {today}",
         f"**Scope:** {scope}",
         f"**Author:** {author}",
+        f"**Status:** `{status}`",
     ]
     if source and source != "observed":
         lines.append(f"**Source:** {source}")
     if confidence is not None and confidence != 5:
         lines.append(f"**Confidence:** {confidence}/10")
+    if supersedes is not None:
+        lines.append(f"**Supersedes:** `{supersedes}`")
+    if expires is not None:
+        lines.append(f"**Expires:** `{expires}`")
 
     for field in ["Summary", "Details", "Context", "Usage", "Related"]:
         content = sections.get(field, "").strip()
@@ -385,6 +397,128 @@ def format_entry_adr(title, author, sections, adr_num, status, supersedes, sourc
 
     lines.append("")
     return "\n".join(lines)
+
+
+def update_entry_status(kb_dir, target_ref, new_status, superseded_by_ref=None, kb_type=None, scope="enterprise", scope_value=None):
+    """Update an existing entry's status and optionally add a Superseded-By backlink.
+
+    Args:
+        kb_dir: Knowledge base directory
+        target_ref: Filename, relative path, or ADR number (int) of the target entry
+        new_status: New status value (e.g., 'superseded', 'deprecated')
+        superseded_by_ref: Reference to the entry that supersedes this one
+        kb_type: Entry type (required if target_ref is a bare filename)
+        scope: Knowledge scope
+        scope_value: Domain or service name
+
+    Returns:
+        (success: bool, message: str)
+    """
+    import glob as glob_module
+
+    # Resolve target_ref to an absolute file path
+    target_path = None
+
+    # Case 1: target_ref is an ADR number
+    if isinstance(target_ref, int):
+        decisions_dir = os.path.join(kb_dir, "_enterprise", "decisions")
+        for fname in os.listdir(decisions_dir) if os.path.isdir(decisions_dir) else []:
+            if fname.startswith(f"ADR-{target_ref:04d}-") and fname.endswith(".md"):
+                target_path = os.path.join(decisions_dir, fname)
+                break
+
+    # Case 2: target_ref is already a path relative to kb_dir
+    elif os.path.exists(os.path.join(kb_dir, str(target_ref))):
+        target_path = os.path.join(kb_dir, str(target_ref))
+
+    # Case 3: target_ref is a bare filename -- search for it
+    elif kb_type:
+        type_dir_name = TYPE_DIR_MAP.get(kb_type)
+        if scope == "enterprise":
+            search_dirs = [os.path.join(kb_dir, "_enterprise", type_dir_name)]
+        elif scope == "domain" and scope_value:
+            search_dirs = [os.path.join(kb_dir, "domains", scope_value, type_dir_name)]
+        elif scope == "service" and scope_value:
+            search_dirs = [os.path.join(kb_dir, "services", scope_value, type_dir_name)]
+        else:
+            search_dirs = [kb_dir]
+        for sdir in search_dirs:
+            if os.path.isdir(sdir):
+                candidate = os.path.join(sdir, str(target_ref))
+                if os.path.exists(candidate):
+                    target_path = candidate
+                    break
+        # Broader search if not found
+        if target_path is None:
+            for root, dirs, files in os.walk(kb_dir):
+                dirs[:] = [d for d in dirs if not d.startswith(".")]
+                if str(target_ref) in files:
+                    target_path = os.path.join(root, str(target_ref))
+                    break
+
+    if target_path is None or not os.path.exists(target_path):
+        return False, f"Target entry not found: {target_ref}"
+
+    # Read the existing entry
+    try:
+        with open(target_path, encoding="utf-8") as f:
+            content = f.read()
+    except OSError as e:
+        return False, f"Cannot read target entry: {e}"
+
+    lines = content.split("\n")
+    new_lines = []
+    status_updated = False
+    superseded_by_added = False
+    in_frontmatter = True
+
+    for i, line in enumerate(lines):
+        # Update existing Status field
+        if re.match(r'\*\*状态:\*\*\s*`[^`]*`', line) or re.match(r'\*\*Status:\*\*\s*`[^`]*`', line):
+            # Preserve the key style (Chinese or English)
+            key = "**状态:**" if "状态" in line else "**Status:**"
+            new_lines.append(f"{key} `{new_status}`")
+            status_updated = True
+        # Add Superseded-By after Status if we have a ref and not already present
+        elif in_frontmatter and status_updated and not superseded_by_added and superseded_by_ref:
+            # Check if next line already has Superseded-By
+            next_has = i + 1 < len(lines) and ("Superseded-By" in lines[i + 1] or "Superseded-By" in lines[i + 1] or "替代者" in lines[i + 1])
+            if not next_has:
+                new_lines.append(f"**Superseded-By:** `{superseded_by_ref}`")
+                superseded_by_added = True
+            new_lines.append(line)
+        else:
+            new_lines.append(line)
+
+        # Track when we leave the frontmatter (hit a ## heading or empty line after metadata)
+        if line.startswith("## "):
+            in_frontmatter = False
+
+    if not status_updated:
+        return False, f"No Status field found in {target_ref}. Entry may not have been created by kb-log.py."
+
+    # If superseded_by wasn't added (because status field is near end of frontmatter),
+    # add it at the end of the metadata block
+    if superseded_by_ref and not superseded_by_added:
+        insert_at = None
+        for i, line in enumerate(new_lines):
+            if line.startswith("## "):
+                insert_at = i
+                break
+        if insert_at is not None:
+            new_lines.insert(insert_at, f"**Superseded-By:** `{superseded_by_ref}`")
+        else:
+            new_lines.append(f"**Superseded-By:** `{superseded_by_ref}`")
+
+    new_content = "\n".join(new_lines)
+
+    try:
+        with open(target_path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+    except OSError as e:
+        return False, f"Cannot write updated entry: {e}"
+
+    return True, f"Updated {os.path.basename(target_path)} status to '{new_status}'"
 
 
 def update_index(kb_dir, kb_type, title, filename, author, adr_num=None, scope="enterprise", scope_value=None):
@@ -550,6 +684,9 @@ def append_transaction_log(kb_dir, entry_data, action="create"):
         "confidence": entry_data.get("confidence"),
         "trusted": entry_data.get("trusted"),
         "scope": entry_data.get("scope", "enterprise"),
+        "status": entry_data.get("status"),
+        "supersedes": entry_data.get("supersedes"),
+        "expires": entry_data.get("expires"),
     }
     try:
         with open(log_path, "a", encoding="utf-8") as f:
@@ -630,6 +767,10 @@ Examples:
   kb-log.py pattern "Auth Pattern" --source user-stated --confidence 8 --stdin
   kb-log.py decision "DB Choice" --source user-stated --confidence 10 --stdin
   kb-log.py lesson "Cache Bug" --source observed --confidence 6 --stdin
+  kb-log.py pattern "New Circuit Breaker" --supersedes "old-circuit-breaker.md" --stdin
+  kb-log.py decision "Use Redis" --status accepted --supersedes 2 --stdin
+  kb-log.py lesson "Outdated Workaround" --status deprecated --stdin
+  kb-log.py pattern "Temp Fix" --expires 2026-06-30 --stdin
         """,
     )
     parser.add_argument("type", choices=sorted(VALID_TYPES), help="Entry type")
@@ -637,9 +778,15 @@ Examples:
     parser.add_argument("-a", "--author", default="hw-knowledge-agent", help="Author identifier")
     parser.add_argument("-f", "--file", dest="file_path", help="Read entry body from markdown file")
     parser.add_argument("-s", "--stdin", action="store_true", help="Read entry body from stdin")
-    parser.add_argument("--status", default="proposed", choices=sorted(VALID_ADR_STATUSES),
-                        help="ADR status (decision only, default: proposed)")
-    parser.add_argument("--supersedes", type=int, help="ADR number this decision supersedes")
+    parser.add_argument("--status", default=None,
+                        help="Entry status: active/deprecated/superseded/expired (generic), "
+                             "or proposed/accepted/deprecated/superseded (ADR). "
+                             "Default: active for generic, proposed for ADR")
+    parser.add_argument("--supersedes", help="Reference to entry this supersedes. "
+                        "For ADRs: use ADR number (e.g., --supersedes 1). "
+                        "For non-ADRs: use filename or relative path (e.g., --supersedes 'old-pattern.md')")
+    parser.add_argument("--expires", help="ISO date when this entry expires (e.g., 2026-12-31). "
+                        "Optional. Sets status=expired after this date.")
     parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
     parser.add_argument("--kb-dir", help="Override knowledge base directory")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
@@ -744,6 +891,44 @@ Examples:
     for warn in warnings:
         print(f"Validation Warning: {warn}", file=sys.stderr)
 
+    # Resolve status
+    if args.status is not None:
+        status = args.status.lower()
+        if kb_type == "decision":
+            if status not in VALID_ADR_STATUSES:
+                print(f"Error: Invalid ADR status '{status}'. Must be one of: {', '.join(sorted(VALID_ADR_STATUSES))}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            if status not in VALID_STATUSES_GENERIC:
+                print(f"Error: Invalid status '{status}'. Must be one of: {', '.join(sorted(VALID_STATUSES_GENERIC))}", file=sys.stderr)
+                sys.exit(1)
+    else:
+        status = "proposed" if kb_type == "decision" else "active"
+
+    # Resolve supersedes reference
+    supersedes_ref = None
+    supersedes_adr_num = None
+    if args.supersedes is not None:
+        if kb_type == "decision":
+            try:
+                supersedes_adr_num = int(args.supersedes)
+                supersedes_ref = f"ADR-{supersedes_adr_num:04d}"
+            except ValueError:
+                print("Error: --supersedes for ADRs must be an ADR number (e.g., --supersedes 1)", file=sys.stderr)
+                sys.exit(1)
+        else:
+            supersedes_ref = args.supersedes.strip()
+
+    # Parse expires date
+    expires = None
+    if args.expires is not None:
+        try:
+            datetime.strptime(args.expires.strip(), "%Y-%m-%d")
+            expires = args.expires.strip()
+        except ValueError:
+            print("Error: --expires must be a valid ISO date (e.g., 2026-12-31)", file=sys.stderr)
+            sys.exit(1)
+
     # Generate filename
     slug = slugify(title)
     type_dir = TYPE_DIR_MAP[kb_type]
@@ -777,9 +962,9 @@ Examples:
 
     # Format entry
     if kb_type == "decision":
-        content = format_entry_adr(title, args.author, sections, adr_num, args.status, args.supersedes, args.source, args.confidence, args.scope)
+        content = format_entry_adr(title, args.author, sections, adr_num, status, supersedes_adr_num, args.source, args.confidence, args.scope)
     else:
-        content = format_entry_generic(title, kb_type, args.author, sections, args.source, args.confidence, args.scope)
+        content = format_entry_generic(title, kb_type, args.author, sections, args.source, args.confidence, args.scope, status, supersedes_ref, expires)
 
     # Dedup check — scan existing entries before creating
     if args.dedup_check or args.auto_dedup:
@@ -812,6 +997,9 @@ Examples:
                         "trusted": trusted,
                         "scope": args.scope,
                         "relative_path": relative_path,
+                        "status": status,
+                        "supersedes": supersedes_ref,
+                        "expires": expires,
                     }
                     append_transaction_log(kb_dir, entry_data, action="skipped-dedup")
                     print(f"Skipped (near-duplicate detected, >80%): {title}")
@@ -830,7 +1018,12 @@ Examples:
 
     # Dry run
     if args.dry_run:
-        print(f"[Dry Run] Would create: {scope_dir}/{type_dir}/{filename}")
+        status_tag = f" (status={status})" if status else ""
+        print(f"[Dry Run] Would create: {scope_dir}/{type_dir}/{filename}{status_tag}")
+        if supersedes_ref:
+            print(f"[Dry Run] Would supersede: {supersedes_ref} (backlink will be written)")
+        if expires:
+            print(f"[Dry Run] Expires: {expires}")
         print(f"[Dry Run] Would append to .kb-log.jsonl")
         print(f"[Dry Run] Would update index.md")
         if args.verbose:
@@ -861,6 +1054,25 @@ Examples:
     if not ok:
         print(f"Warning: Failed to update index: {err_msg}", file=sys.stderr)
 
+    # Backward-link: update superseded entry's status
+    if supersedes_ref is not None:
+        new_entry_ref = f"{scope_dir}/{type_dir}/{filename}"
+        if kb_type == "decision":
+            backlink_ok, backlink_msg = update_entry_status(
+                kb_dir, supersedes_adr_num, "superseded",
+                superseded_by_ref=f"ADR-{adr_num:04d}: {title}",
+            )
+        else:
+            backlink_ok, backlink_msg = update_entry_status(
+                kb_dir, supersedes_ref, "superseded",
+                superseded_by_ref=new_entry_ref,
+                kb_type=kb_type, scope=args.scope, scope_value=scope_value,
+            )
+        if backlink_ok:
+            print(f"  -> Updated superseded entry: {backlink_msg}")
+        elif args.verbose:
+            print(f"  -> Warning: Could not update superseded entry: {backlink_msg}", file=sys.stderr)
+
     # Transaction log
     trusted = compute_trusted(args.source, args.confidence)
     relative_path = f"{scope_dir}/{type_dir}/{filename}"
@@ -875,15 +1087,20 @@ Examples:
         "trusted": trusted,
         "scope": args.scope,
         "relative_path": relative_path,
+        "status": status,
+        "supersedes": supersedes_ref,
+        "expires": expires,
     }
     ok, err_msg = append_transaction_log(kb_dir, entry_data)
     if not ok:
         print(f"Warning: Failed to append transaction log: {err_msg}", file=sys.stderr)
 
     if adr_num:
-        print(f"Created ADR-{adr_num:04d}: {title}")
+        status_tag = f" [{status}]" if status and status != "proposed" else ""
+        print(f"Created ADR-{adr_num:04d}: {title}{status_tag}")
     else:
-        print(f"Created {kb_type} entry: {title}")
+        status_tag = f" [{status}]" if status and status != "active" else ""
+        print(f"Created {kb_type} entry: {title}{status_tag}")
 
 
 if __name__ == "__main__":

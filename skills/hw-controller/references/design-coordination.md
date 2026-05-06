@@ -49,6 +49,8 @@
    > 【服务级】
    >   - 相关服务知识: {N} 个
    > 本次设计受以下约束: [从 ADR 和 patterns 的 title/excerpt 提取]"
+   >
+   > **Token 优化:** 知识条目较长时，使用 `python scripts/kb-distill.py single <entry.md> --stdout` 获取压缩版本，节省 50-70% 上下文 token。蒸馏保留所有代码块、表格、列表和技术事实，仅剥离叙事冗余。验证命令: `python scripts/kb-distill.py validate <entry.md>`。
 
 2. **冲突检测:** 如果新需求与已有 ADR 矛盾——立即标记，不要默默绕过。呈现冲突细节给人类决策。
 

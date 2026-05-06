@@ -452,6 +452,8 @@ def main():
     parser.add_argument("--kb-dir", help="Override knowledge base directory")
     parser.add_argument("--check-staleness", action="store_true",
                         help="Check for stale entries (created >90 days, confidence <=5)")
+    parser.add_argument("--health", action="store_true",
+                        help="Print quick health summary after index operations")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     args = parser.parse_args()
 
@@ -551,6 +553,44 @@ def main():
         for e in entries:
             scope_tag = e.get("scope", "?")
             print(f"  [{e['type']}][{scope_tag}] {e['title']} ({e['relative_path']})")
+
+    # Health summary
+    if args.health:
+        print(f"\n{'='*60}")
+        print("KB Health Summary")
+        print(f"{'='*60}")
+        print(f"Total entries:    {len(entries)}")
+        # By scope
+        scope_counts = {}
+        for e in entries:
+            s = e.get("scope", "legacy")
+            scope_counts[s] = scope_counts.get(s, 0) + 1
+        for s in ["enterprise", "domain", "service", "legacy"]:
+            if s in scope_counts:
+                print(f"  {s}: {scope_counts[s]}")
+        # By type
+        type_counts = {}
+        for e in entries:
+            t = e.get("type", "unknown")
+            type_counts[t] = type_counts.get(t, 0) + 1
+        print(f"By type:")
+        for t, c in sorted(type_counts.items()):
+            print(f"  {t}: {c}")
+        # Trusted count
+        trusted = sum(1 for e in entries if e.get("trusted"))
+        print(f"Trusted entries:  {trusted}")
+        # Stale count (quick check)
+        stale = 0
+        for e in entries:
+            if e.get("created") and e.get("confidence"):
+                try:
+                    d = datetime.strptime(e["created"], "%Y-%m-%d").date()
+                    if (date.today() - d).days > 90 and e["confidence"] <= 5:
+                        stale += 1
+                except (ValueError, TypeError):
+                    pass
+        print(f"Stale entries:    {stale}")
+        print(f"{'='*60}")
 
 
 if __name__ == "__main__":

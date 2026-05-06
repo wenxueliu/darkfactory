@@ -59,6 +59,10 @@ def score_entry(query, content, filepath):
     - Body match: +1 per occurrence (capped at 10 per word)
     - Exact phrase match in title: +20
     - Recent entry (<=7 days): +2
+    - Freshness penalty:
+      - superseded or expired: -10 (major penalty)
+      - deprecated: -5 (moderate penalty)
+      - stale (confidence decayed to <=5): -3 (minor penalty)
     """
     query_lower = query.lower()
     query_words = set(query_lower.split())
@@ -95,17 +99,30 @@ def score_entry(query, content, filepath):
         score += count
 
     # Recent entry bonus
-    created_match = re.search(r'\*\*(?:Created|日期):\*\*\s*`?(\d{4}-\d{2}-\d{2})`?', content)
-    if not created_match:
-        created_match = re.search(r'\*\*Created:\*\*\s*(\d{4}-\d{2}-\d{2})', content)
-    if created_match:
-        try:
-            created_date = datetime.strptime(created_match.group(1), "%Y-%m-%d").date()
-            delta = (date.today() - created_date).days
-            if delta <= 7:
-                score += 2
-        except ValueError:
-            pass
+    created_date = extract_created_date(content)
+    if created_date:
+        delta = (date.today() - created_date).days
+        if delta <= 7:
+            score += 2
+
+    # Freshness penalty
+    entry_status = extract_status(content)
+    if entry_status in ("superseded", "expired"):
+        score -= 10
+    elif entry_status == "deprecated":
+        score -= 5
+    elif created_date:
+        # Check for stale (confidence decay).
+        # Only penalize when entry has explicit confidence metadata AND it
+        # has actually decayed (effective < stored), indicating real aging.
+        has_explicit_confidence = bool(re.search(r'\*\*Confidence:\*\*\s*\d+/10', content))
+        if has_explicit_confidence:
+            entry_confidence = extract_confidence(content)
+            entry_source = extract_source(content)
+            eff_conf = compute_confidence_decay(entry_source, entry_confidence, created_date)
+            # Only penalize if confidence actually lost points due to decay
+            if eff_conf is not None and eff_conf < entry_confidence and eff_conf <= 5:
+                score -= 3
 
     return score
 
@@ -251,8 +268,62 @@ def extract_confidence(content):
     return 5
 
 
+def extract_status(content):
+    """Extract status from entry content (both Chinese and English)."""
+    m = re.search(r'\*\*(?:Status|状态):\*\*\s*`?(\w+)`?', content)
+    if m:
+        return m.group(1).lower()
+    return "active"
+
+
+def extract_created_date(content):
+    """Extract creation date as a date object."""
+    created_match = re.search(r'\*\*(?:Created|日期):\*\*\s*`?(\d{4}-\d{2}-\d{2})`?', content)
+    if not created_match:
+        created_match = re.search(r'\*\*Created:\*\*\s*(\d{4}-\d{2}-\d{2})', content)
+    if created_match:
+        try:
+            return datetime.strptime(created_match.group(1), "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    return None
+
+
+def compute_confidence_decay(source, confidence, created_date, today=None):
+    """Compute effective confidence after time-based decay.
+
+    Decay rates:
+    - observed: -1 per 60 days
+    - inferred: -1 per 30 days
+    - cross-model: -1 per 30 days
+    - user-stated: no decay
+    """
+    if today is None:
+        today = date.today()
+    if confidence is None or created_date is None or source is None:
+        return confidence
+
+    decay_rates = {
+        "observed": 60,
+        "inferred": 30,
+        "cross-model": 30,
+        "user-stated": 0,
+    }
+    rate = decay_rates.get(source, 0)
+    if rate <= 0:
+        return confidence
+
+    days_elapsed = (today - created_date).days
+    if days_elapsed <= 0:
+        return confidence
+
+    decay_points = days_elapsed // rate
+    return max(1, confidence - decay_points)
+
+
 def search(kb_dir, query, type_filters=None, max_results=20, min_score=1,
-           trusted_only=False, min_confidence=0, scope="all", domain=None, service=None):
+           trusted_only=False, min_confidence=0, scope="all", domain=None, service=None,
+           exclude_expired=False, exclude_superseded=False, exclude_deprecated=False):
     """Search the knowledge base and return scored results."""
     query_words = set(query.lower().split())
     results = []
@@ -334,6 +405,15 @@ def search(kb_dir, query, type_filters=None, max_results=20, min_score=1,
                 entry_source = extract_source(content)
                 entry_confidence = extract_confidence(content)
 
+                # Freshness filtering
+                entry_status = extract_status(content)
+                if exclude_expired and entry_status == "expired":
+                    continue
+                if exclude_superseded and entry_status == "superseded":
+                    continue
+                if exclude_deprecated and entry_status == "deprecated":
+                    continue
+
                 # Trust filtering
                 if trusted_only and not is_trusted(entry_source, entry_confidence):
                     continue
@@ -352,6 +432,7 @@ def search(kb_dir, query, type_filters=None, max_results=20, min_score=1,
                     "score": score,
                     "excerpt": excerpt,
                     "scope": infer_scope(filepath),
+                    "status": entry_status,
                 })
 
     results.sort(key=lambda r: r["score"], reverse=True)
@@ -378,6 +459,12 @@ def main():
                         help="Minimum confidence threshold (default: 0, no filter)")
     parser.add_argument("--no-datamark", action="store_true",
                         help="Skip datamark wrapping (development/debug only)")
+    parser.add_argument("--exclude-expired", action="store_true",
+                        help="Exclude entries marked as expired")
+    parser.add_argument("--exclude-superseded", action="store_true",
+                        help="Exclude entries marked as superseded")
+    parser.add_argument("--exclude-deprecated", action="store_true",
+                        help="Exclude entries marked as deprecated")
     parser.add_argument("--scope", choices=["enterprise", "domain", "service", "all"],
                         default="all", help="Filter by knowledge scope (default: all)")
     parser.add_argument("--domain", help="Filter by domain (used with --scope domain)")
@@ -399,14 +486,23 @@ def main():
     results = search(kb_dir, query, type_filters=type_filters,
                      max_results=args.max_results, min_score=args.min_score,
                      trusted_only=args.trusted_only, min_confidence=args.min_confidence,
-                     scope=args.scope, domain=args.domain, service=args.service)
+                     scope=args.scope, domain=args.domain, service=args.service,
+                     exclude_expired=args.exclude_expired,
+                     exclude_superseded=args.exclude_superseded,
+                     exclude_deprecated=args.exclude_deprecated)
 
     if args.json:
+        freshness_info = {
+            "exclude_expired": args.exclude_expired,
+            "exclude_superseded": args.exclude_superseded,
+            "exclude_deprecated": args.exclude_deprecated,
+        }
         if args.no_datamark:
             output = {
                 "query": query,
                 "timestamp": datetime.now().isoformat(),
                 "total_results": len(results),
+                "freshness_filter": freshness_info,
                 "results": [{
                     "filename": r["filename"],
                     "relative_path": r["relative_path"],
@@ -415,6 +511,7 @@ def main():
                     "score": r["score"],
                     "excerpt": r["excerpt"],
                     "scope": r["scope"],
+                    "status": r.get("status", "active"),
                 } for r in results],
             }
         else:
@@ -423,6 +520,7 @@ def main():
                 "timestamp": datetime.now().isoformat(),
                 "total_results": len(results),
                 "_datamark_wrapped": True,
+                "freshness_filter": freshness_info,
                 "results": [{
                     "filename": r["filename"],
                     "relative_path": r["relative_path"],
@@ -431,6 +529,7 @@ def main():
                     "score": r["score"],
                     "excerpt": wrap_with_datamark(r["excerpt"]),
                     "scope": r["scope"],
+                    "status": r.get("status", "active"),
                 } for r in results],
             }
         print(json.dumps(output, ensure_ascii=False, indent=2))
@@ -445,6 +544,15 @@ def main():
         print(f"Trusted-only: yes")
     if args.min_confidence > 0:
         print(f"Min confidence: {args.min_confidence}")
+    freshness_filters = []
+    if args.exclude_expired:
+        freshness_filters.append("no-expired")
+    if args.exclude_superseded:
+        freshness_filters.append("no-superseded")
+    if args.exclude_deprecated:
+        freshness_filters.append("no-deprecated")
+    if freshness_filters:
+        print(f"Freshness: {', '.join(freshness_filters)}")
     print(f"Found {len(results)} results")
     print("─" * 60)
 
@@ -452,11 +560,22 @@ def main():
         print("No results found.")
         return
 
+    # Status marker legend
+    status_marker = {
+        "active": " ",
+        "deprecated": "D",
+        "superseded": "S",
+        "expired": "E",
+    }
+
     if args.no_datamark:
         for i, r in enumerate(results, 1):
             type_label = r["type"].upper() if r["type"] != "api" else "API"
             scope_tag = r["scope"].upper() if r["scope"] else ""
-            print(f"{i}. [{type_label}][{scope_tag}] {r['title']} (score: {r['score']})")
+            st = r.get("status", "active")
+            marker = status_marker.get(st, "?")
+            status_line = f" [{marker}]" if marker != " " else ""
+            print(f"{i}. [{type_label}][{scope_tag}]{status_line} {r['title']} (score: {r['score']})")
             print(f"   Path: {r['relative_path']}")
             print(f"   {r['excerpt']}")
             if args.verbose and i < len(results):
@@ -466,7 +585,10 @@ def main():
         for i, r in enumerate(results, 1):
             type_label = r["type"].upper() if r["type"] != "api" else "API"
             scope_tag = r["scope"].upper() if r["scope"] else ""
-            print(f"{i}. [{type_label}][{scope_tag}] {r['title']} (score: {r['score']})")
+            st = r.get("status", "active")
+            marker = status_marker.get(st, "?")
+            status_line = f" [{marker}]" if marker != " " else ""
+            print(f"{i}. [{type_label}][{scope_tag}]{status_line} {r['title']} (score: {r['score']})")
             print(f"   Path: {r['relative_path']}")
             print(f"   {wrap_with_datamark(r['excerpt'])}")
             if args.verbose and i < len(results):
