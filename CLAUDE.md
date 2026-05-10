@@ -38,29 +38,102 @@ The platform follows **acceptance-driven development** with a strict TDD iron la
 
 ## Agent Architecture
 
-The system has 7 active agents in v1 (hw-value-judgment and hw-knowledge-agent are collapsed into hw-controller, with their references wired as controller capabilities):
+The system has 19 skills in v2 (9 new + 2 enhanced + 8 existing):
 
 ```
-hw-controller (总控: 需求 + 设计 + 知识 + 编排 + 交付)
-  ├── hw-setup (模块安装配置)
-  └── hw-worktree-controller (单任务协调) × N
-        ├── hw-tdd-agent (TDD执行)
-        ├── hw-reviewer-logic (逻辑审核)
-        ├── hw-reviewer-security (安全审核)
-        └── hw-reviewer-performance (性能审核)
+hw-controller (增强: Intent Gate + Phase 0-3 + 委派纪律 + 知识管理 + 价值判断)
+  │
+  ├── [规划层 — Planning]
+  │     hw-strategic-planner (NEW: 战略规划 — 访谈→计划生成)
+  │       ├── hw-pre-planning-consultant (NEW: 预规划分析 — 意图分类+AI slop防护)
+  │       ├── hw-plan-reviewer (NEW: 计划审查 — 阻断器发现者)
+  │       ├── hw-codebase-explorer (NEW: 内部代码搜索)
+  │       └── hw-external-researcher (NEW: 外部文档/OSS研究)
+  │
+  ├── [设计层 — Design]
+  │     hw-feature-designer (Stage 1: 跨服务特性设计)
+  │     ├── hw-service-designer × N (Stage 2: 单服务详细设计, 并行)
+  │     └── hw-e2e-designer (Stage 3: E2E测试设计)
+  │
+  ├── [执行层 — Execution]
+  │     hw-plan-executor (NEW: 多任务计划执行 — 并行fan-out + 4阶段验证)
+  │       └── hw-worktree-controller × N (单任务协调)
+  │             └── hw-tdd-agent (增强: 自主深度工作 + TODO执念)
+  │                   ├── hw-reviewer-logic (逻辑审查)
+  │                   ├── hw-reviewer-security (安全审查)
+  │                   ├── hw-reviewer-performance (性能审查)
+  │                   └── hw-reviewer-context (NEW: 上下文挖掘)
+  │
+  ├── [咨询层 — Consultation, 水平调用]
+  │     hw-strategic-advisor (NEW: 战略技术顾问 — 只读深度推理)
+  │     hw-codebase-explorer (NEW: 内部代码搜索)
+  │     hw-external-researcher (NEW: 外部研究+证据引用)
+  │     hw-media-interpreter (NEW: PDF/图片/图表解读)
+  │
+  └── [基础设施层 — Infrastructure]
+        hw-setup (模块安装配置)
+        hw-knowledge-agent (知识库管理, collapsed into controller)
+        hw-value-judgment (需求价值评估, collapsed into controller)
+        hw-systematic-debugging (系统化调试)
+        hw-verification-before-completion (完成前验证)
+        using-harness (bootstrap技能)
 ```
 
-### Agent Roles (v1, 7 agents)
+### Agent Roles (v2, 18 skills)
+
+**Core Orchestration (2 enhanced)**
 
 | Agent | Role | Trigger |
 |-------|------|---------|
-| `hw-controller` | Top-level orchestrator — full E2E: requirements → design → decomposition → execution → merge → test → delivery. Also handles value judgment and knowledge management. | 黑灯工厂, 协调, 总控 |
-| `hw-setup` | Module installer — configures worktree directories and memory structure | 安装黑灯工厂, 配置 |
-| `hw-worktree-controller` | Task executor — drives single task through TDD + review + quality gates | worktree执行, 任务开发 |
-| `hw-tdd-agent` | TDD practitioner — enforces RED→GREEN→REFACTOR cycle (UT + API layers) | TDD, 单元测试, 测试先行 |
-| `hw-reviewer-logic` | Logic reviewer — finds correctness bugs and edge cases | 逻辑审核, 正确性审查 |
-| `hw-reviewer-security` | Security reviewer — finds vulnerabilities and data exposure | 安全审核, 漏洞扫描 |
-| `hw-reviewer-performance` | Performance reviewer — finds bottlenecks and scalability issues | 性能审核, 瓶颈分析 |
+| `hw-controller` | Top-level orchestrator — full E2E with Intent Gate, Phase 0-3 system, delegation discipline, and knowledge management. Enhanced with Sisyphus DNA. | 黑灯工厂, orchestration, coordination |
+| `hw-tdd-agent` | Autonomous TDD practitioner — RED→GREEN→REFACTOR with "Do NOT Ask" autonomy and TODO obsession. Enhanced with Hephaestus + Sisyphus-Junior DNA. | TDD, unit test, test-first |
+
+**Planning Layer (4 NEW)**
+
+| Agent | Role | Trigger |
+|-------|------|---------|
+| `hw-strategic-planner` | Strategic planner — interviews, researches, generates executable work plans. Plans first, never implements. Based on Prometheus. | strategic planning, create work plan, 制定计划 |
+| `hw-pre-planning-consultant` | Pre-planning analyst — classifies intent, detects ambiguities, identifies AI-slop risks. Based on Metis. | pre-planning, intent analysis, 预规划 |
+| `hw-plan-reviewer` | Plan reviewer — blocker-finder, not perfectionist. Verifies plan executability. Based on Momus. | plan review, executability check, 计划审查 |
+| `hw-plan-executor` | Plan execution orchestrator — delegates tasks in parallel waves with 4-phase verification. Never writes code. Based on Atlas. | plan execution, execute plan, 计划执行 |
+
+**Design Layer (3 existing)**
+
+| Agent | Role | Trigger |
+|-------|------|---------|
+| `hw-feature-designer` | Stage 1: Cross-service feature design | feature design, 特性设计 |
+| `hw-service-designer` | Stage 2: Per-service detailed design (parallel) | service design, 服务设计 |
+| `hw-e2e-designer` | Stage 3: E2E integration test design | E2E design, 端到端测试设计 |
+
+**Execution Layer (4, 1 enhanced)**
+
+| Agent | Role | Trigger |
+|-------|------|---------|
+| `hw-worktree-controller` | Single-task coordinator — drives one task through TDD + review + quality gates | worktree execution, 任务开发 |
+| `hw-reviewer-logic` | Logic reviewer — finds correctness bugs and edge cases | logic review, 逻辑审核 |
+| `hw-reviewer-security` | Security reviewer — finds vulnerabilities and data exposure | security review, 安全审核 |
+| `hw-reviewer-performance` | Performance reviewer — finds bottlenecks and scalability issues | performance review, 性能审核 |
+| `hw-reviewer-context` | Context miner — searches git/GitHub/Slack/codebase for missed requirements and background knowledge (NEW). Based on review-work Context Mining Agent. | context mining, 上下文挖掘 |
+
+**Consultation Layer (4 NEW)**
+
+| Agent | Role | Trigger |
+|-------|------|---------|
+| `hw-strategic-advisor` | Read-only strategic advisor — pragmatic minimalism, deep reasoning for complex decisions. Based on Oracle. | architecture advice, deep reasoning, 架构咨询 |
+| `hw-codebase-explorer` | Internal codebase search specialist — intent analysis + structured results. Based on Explore. | code search, find in code, 代码搜索 |
+| `hw-external-researcher` | External documentation/OSS researcher — evidence with citations. Based on Librarian. | external search, library docs, 外部搜索 |
+| `hw-media-interpreter` | Media file interpreter — PDFs, images, diagrams. Based on Multimodal Looker. | PDF解读, image analysis, 图表解读 |
+
+**Infrastructure Layer (5 existing)**
+
+| Agent | Role | Trigger |
+|-------|------|---------|
+| `hw-setup` | Module installer — configures directories and memory structure | setup, 安装配置 |
+| `hw-knowledge-agent` | Knowledge base management (collapsed into controller) | knowledge query, 知识库 |
+| `hw-value-judgment` | Requirements value assessment (collapsed into controller) | ROI评估, 价值判断 |
+| `hw-systematic-debugging` | Systematic debugging — root cause before fixes | debugging, 调试 |
+| `hw-verification-before-completion` | Pre-completion verification gate | verification, 验证 |
+| `using-harness` | Bootstrap skill — injected at session start | bootstrap, 初始化 |
 
 ### E2E Phase Coverage
 
@@ -94,6 +167,23 @@ Each phase transition requires explicit acceptance criteria verification. No pha
 | P1 | Severe | Must fix, blocks next phase |
 | P2 | General | Must fix, blocks next phase |
 | P3 | Suggestion | Document only |
+
+## Key Design Patterns (from oh-my-openagent integration)
+
+### Intent Gate (Sisyphus → hw-controller)
+Every activation begins with intent verification: classify the request type, check for ambiguity, and route to the appropriate agent layer. Implementation only proceeds when an explicit implementation verb is present, scope is concrete, and no specialist result is pending.
+
+### Autonomous Execution (Hephaestus → hw-tdd-agent)
+"Do NOT Ask — Just Do." The TDD agent exhausts the exploration hierarchy (direct tools → codebase search → external research → context inference) before asking any question. When blocked, it tries different approaches rather than stopping.
+
+### Structured Planning (Prometheus → hw-strategic-planner)
+Planning follows interview → research → plan generation → review. Drafts serve as working memory between turns. Plans include explicit QA scenarios that are agent-executable (no "user manually tests" criteria).
+
+### Parallel Orchestration (Atlas → hw-plan-executor)
+Plan execution fans out tasks in parallel waves by default, with 4-phase verification per task. The executor delegates all code work and verifies everything independently — never trusting subagent self-reports.
+
+### Evidence-Driven Verification (Sisyphus → all agents)
+"NO EVIDENCE = NOT COMPLETE." Every completion claim must be backed by fresh verification evidence: diagnostics clean, build passing, tests passing. Re-run verification immediately before reporting DONE.
 
 ## Multi-Platform Target
 
@@ -136,15 +226,30 @@ This project's skills MUST run identically on three agent platforms:
 ```
 multiagents/
 ├── skills/                  # Agent skill definitions (BMAD module output)
-│   ├── hw-controller/       # Top-level orchestrator
-│   ├── hw-value-judgment/   # Requirements value assessment
-│   ├── hw-knowledge-agent/  # Knowledge base management
-│   ├── hw-setup/            # Module installation and configuration
+│   ├── hw-controller/       # Top-level orchestrator (ENHANCED)
+│   ├── hw-strategic-planner/ # Strategic planner (NEW — Prometheus)
+│   ├── hw-pre-planning-consultant/ # Pre-planning analyst (NEW — Metis)
+│   ├── hw-plan-reviewer/    # Plan executability reviewer (NEW — Momus)
+│   ├── hw-plan-executor/    # Plan execution orchestrator (NEW — Atlas)
+│   ├── hw-codebase-explorer/ # Internal code search (NEW — Explore)
+│   ├── hw-external-researcher/ # External docs/OSS research (NEW — Librarian)
+│   ├── hw-strategic-advisor/ # Strategic technical advisor (NEW — Oracle)
+│   ├── hw-media-interpreter/ # Media file interpreter (NEW — Multimodal Looker)
+│   ├── hw-feature-designer/ # Cross-service feature design
+│   ├── hw-service-designer/ # Single-service detailed design
+│   ├── hw-e2e-designer/     # E2E integration test design
 │   ├── hw-worktree-controller/ # Single-task execution coordinator
-│   ├── hw-tdd-agent/        # TDD cycle execution
+│   ├── hw-tdd-agent/        # TDD cycle execution (ENHANCED)
 │   ├── hw-reviewer-logic/   # Logic and correctness review
 │   ├── hw-reviewer-security/ # Security vulnerability review
 │   ├── hw-reviewer-performance/ # Performance and scalability review
+│   ├── hw-reviewer-context/ # Context mining — missed requirements discovery
+│   ├── hw-setup/            # Module installation
+│   ├── hw-knowledge-agent/  # Knowledge base management
+│   ├── hw-value-judgment/   # Requirements value assessment
+│   ├── hw-systematic-debugging/ # Systematic debugging
+│   ├── hw-verification-before-completion/ # Pre-completion verification
+│   ├── using-harness/       # Bootstrap skill
 │   └── reports/             # Generated reports
 ├── _bmad/                   # BMAD framework
 │   ├── config.yaml          # Module configuration

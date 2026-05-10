@@ -15,6 +15,16 @@ Based on `enabled_reviewers` config, dispatch reviewers in parallel:
 | Security Agent | Vulnerabilities, data handling | `reviews/{task_id}-security.md` |
 | Logic Agent | Correctness, edge cases | `reviews/{task_id}-logic.md` |
 | Performance Agent | Scalability, bottlenecks | `reviews/{task_id}-performance.md` |
+| Context Agent | Missed requirements, background knowledge | `reviews/{task_id}-context.md` |
+
+### Review Inputs
+
+Before dispatching, collect the inputs each reviewer needs:
+
+| Reviewer | Needs |
+|----------|-------|
+| Security / Logic / Performance | Changed files, diff, full file contents |
+| Context | Changed files, task goal/requirements, constraints (from tasks.yaml). The context agent searches git/GitHub/Slack/codebase itself — it does NOT need file contents in the prompt. |
 
 ### Review Process
 
@@ -73,8 +83,10 @@ Each reviewer should output:
    - `reviews/{task_id}-logic.md`
    - `reviews/{task_id}-security.md`
    - `reviews/{task_id}-performance.md`
+   - `reviews/{task_id}-context.md`
 
 2. 解析 severity 列为 `P3` 的行，从表列中提取 Issue、Location 和 Recommendation。
+   - 上下文审核的 P3 可能包含文档更新建议和后续任务创建建议。
 
 3. 对每个符合条件的 P3 发现，调用 kb-log.py 创建 lesson 条目:
 
@@ -98,7 +110,7 @@ Each reviewer should output:
 
 4. 如果 P3 发现数量为 0，或者筛选后无可复用价值，则跳过本步骤。
 
-5. 对每个审核类型（logic / security / performance）独立执行——逻辑审查的 P3 和性能审查的 P3 可能分别沉淀为不同领域的经验教训。
+5. 对每个审核类型（logic / security / performance / context）独立执行——逻辑审查的 P3 和上下文挖掘的 P3 可能分别沉淀为不同领域的经验教训。
 
 ### Config 控制
 

@@ -28,7 +28,7 @@ hw:
 
   # 阶段配置
   min_iteration_before_human: 3
-  enabled_reviewers: "security,logic,performance"
+  enabled_reviewers: "security,logic,performance,context"
   knowledge_base_auto_update: true
   merge_strategy: "merge"
 
