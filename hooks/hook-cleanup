@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# hook-cleanup — state cleanup for Harness multiagents hooks
+# Event: PreCompact | SessionStart
+# Purpose: Clears per-session hook state files and removes expired state (>7 days).
+#           Runs before compaction to prevent stale state from contaminating
+#           the compacted context.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+STATE_DIR="${PLUGIN_ROOT}/hooks/hook-state"
+
+# Parse session_id from stdin JSON
+session_id=$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('session_id',''))" 2>/dev/null || echo "")
+
+if [ -n "$session_id" ] && [ -d "$STATE_DIR" ]; then
+  # Remove session-specific state files across all hook types
+  find "$STATE_DIR" -maxdepth 2 -name "${session_id}.json" -delete 2>/dev/null || true
+
+  # Auto-clean files older than 7 days
+  find "$STATE_DIR" -maxdepth 2 -name "*.json" -mtime +7 -delete 2>/dev/null || true
+fi
+
+# Build empty output context (no context injection, just ACK)
+printf '{"hookSpecificOutput":{"hookEventName":"PreCompact","additionalContext":""}}\n'
+exit 0

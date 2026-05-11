@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# write-safety-guard-read — PostToolUse hook for Harness multiagents
+# Event: PostToolUse (Read)
+# Purpose: Registers every file read by the agent so write-safety-guard
+#           can verify that the agent has seen the file before modifying it.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+STATE_DIR="${PLUGIN_ROOT}/hooks/hook-state/write-safety-guard"
+mkdir -p "$STATE_DIR"
+
+# --- Parse stdin JSON ---
+INPUT_JSON=$(cat)
+
+session_id=$(python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('session_id',''))" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+file_path=$(python3 -c "
+import json,sys
+d = json.loads(sys.stdin.read())
+ti = d.get('tool_input', {})
+print(ti.get('file_path', ti.get('filePath', '')))
+" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+
+# No file path → nothing to track
+if [ -z "$file_path" ]; then
+  exit 0
+fi
+
+# Resolve to canonical absolute path
+cwd=$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('cwd',''))" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+if [[ "$file_path" != /* ]]; then
+  file_path="${cwd}/${file_path}"
+fi
+CANONICAL=$(realpath "$file_path" 2>/dev/null || echo "")
+
+# File doesn't exist → nothing to track
+if [ -z "$CANONICAL" ] || [ ! -f "$CANONICAL" ]; then
+  exit 0
+fi
+
+# --- Load state ---
+STATE_FILE="${STATE_DIR}/${session_id}.json"
+read_paths="[]"
+if [ -f "$STATE_FILE" ]; then
+  read_paths=$(python3 -c "
+import json,sys
+with open(sys.argv[1]) as f:
+    d = json.load(f)
+print(json.dumps(d.get('readPaths', [])))
+" "$STATE_FILE" 2>/dev/null || echo "[]")
+fi
+
+# --- Add canonical path to read set ---
+updated_paths=$(python3 -c "
+import json,sys
+existing = json.loads(sys.argv[1])
+canonical = sys.argv[2]
+# Deduplicate: remove if exists, then prepend (most recent first)
+if canonical in existing:
+    existing.remove(canonical)
+existing.insert(0, canonical)
+# LRU: keep max 1024 entries
+if len(existing) > 1024:
+    existing = existing[:1024]
+print(json.dumps(existing))
+" "$read_paths" "$CANONICAL" 2>/dev/null || echo "[]")
+
+# --- Save state ---
+python3 -c "
+import json,time,sys
+paths = json.loads(sys.argv[1])
+state = {'sessionID': sys.argv[2], 'readPaths': paths, 'updatedAt': int(time.time())}
+with open(sys.argv[3], 'w') as f:
+    json.dump(state, f, indent=2)
+" "$updated_paths" "$session_id" "$STATE_FILE" 2>/dev/null || true
+
+exit 0

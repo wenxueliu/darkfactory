@@ -1,0 +1,288 @@
+#!/usr/bin/env bash
+# rules-injector — PostToolUse hook for Harness multiagents
+# Event: PostToolUse (Read|Write|Edit)
+# Purpose: After the agent reads or modifies a file, scans the directory tree
+#           for nearby rule files (AGENTS.md, CLAUDE.md, .claude/rules/*.md,
+#           .cursor/rules/*.md) and injects matching rule content into the
+#           tool output. Deduplicates by content hash.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+STATE_DIR="${PLUGIN_ROOT}/hooks/hook-state/rules-injector"
+mkdir -p "$STATE_DIR"
+
+# --- Parse stdin JSON ---
+INPUT_JSON=$(cat)
+
+# Export variables for python3 child process
+export SESSION_ID=$(python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('session_id',''))" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+export FILE_PATH=$(python3 -c "
+import json,sys
+d = json.loads(sys.stdin.read())
+ti = d.get('tool_input', {})
+print(ti.get('file_path', ti.get('filePath', '')))
+" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+export CWD=$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('cwd',''))" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+export COPILOT_CLI="${COPILOT_CLI:-}"
+
+# No file or session → nothing to scan
+if [ -z "${SESSION_ID:-}" ] || [ -z "${FILE_PATH:-}" ]; then
+  exit 0
+fi
+
+# Resolve to absolute path
+if [[ "$FILE_PATH" != /* ]] && [ -n "${CWD:-}" ]; then
+  export FILE_PATH="${CWD}/${FILE_PATH}"
+fi
+
+# File must exist on disk
+if [ ! -f "$FILE_PATH" ]; then
+  exit 0
+fi
+
+export STATE_FILE="${STATE_DIR}/${SESSION_ID}.json"
+
+# --- Core logic: python3 for directory walking + frontmatter + glob + dedup ---
+INJECTION=$(python3 << 'PYEOF'
+import json, os, hashlib, fnmatch, sys, time
+
+target_file = os.environ.get('FILE_PATH', '')
+state_file = os.environ.get('STATE_FILE', '')
+session_id = os.environ.get('SESSION_ID', '')
+
+if not target_file or not session_id:
+    sys.exit(0)
+
+target_file = os.path.realpath(target_file) if os.path.exists(target_file) else target_file
+
+# ---- Project root detection ----
+def find_project_root(path):
+    d = os.path.dirname(os.path.abspath(path))
+    while d != '/' and d != '':
+        for marker in ['.git', 'package.json', 'pyproject.toml', 'go.mod',
+                       'Cargo.toml', 'pom.xml', 'Makefile', 'CMakeLists.txt']:
+            if os.path.exists(os.path.join(d, marker)):
+                return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return os.path.dirname(os.path.abspath(path))
+
+# ---- Simple YAML frontmatter parser (no pyyaml dependency) ----
+def parse_frontmatter(content):
+    """Extract YAML frontmatter between --- markers. Returns (meta, body)."""
+    if not content.startswith('---'):
+        return {}, content
+    end = content.find('---', 3)
+    if end == -1:
+        return {}, content
+    fm_text = content[3:end].strip()
+    body = content[end+3:].strip()
+
+    meta = {}
+    current_key = None
+    for line in fm_text.split('\n'):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if ':' in stripped and not stripped.startswith(' '):
+            parts = stripped.split(':', 1)
+            key = parts[0].strip()
+            val = parts[1].strip().strip('"').strip("'")
+            meta[key] = val
+            current_key = key
+        elif current_key and stripped.startswith('- '):
+            if current_key not in meta or not isinstance(meta[current_key], list):
+                meta[current_key] = []
+            meta[current_key].append(stripped[2:].strip())
+    return meta, body
+
+# ---- Glob matching ----
+def matches_globs(file_path, globs):
+    if not globs:
+        return False
+    fname = os.path.basename(file_path)
+    try:
+        rel = os.path.relpath(file_path)
+    except ValueError:
+        rel = file_path
+    for g in globs:
+        g = g.strip()
+        if not g:
+            continue
+        if fnmatch.fnmatch(rel, g) or fnmatch.fnmatch(fname, g):
+            return True
+    return False
+
+# ---- Load existing state ----
+if os.path.exists(state_file):
+    try:
+        state = json.load(open(state_file))
+    except (json.JSONDecodeError, IOError):
+        state = {}
+else:
+    state = {}
+
+injected_hashes = set(state.get('injectedHashes', []))
+injected_paths  = set(state.get('injectedRealPaths', []))
+
+# ---- Rule file discovery ----
+RULE_NAMES = ['AGENTS.md', 'CLAUDE.md']
+RULE_DIRS  = ['.claude/rules', '.cursor/rules', '.github/instructions']
+
+project_root = find_project_root(target_file)
+target_dir  = os.path.dirname(os.path.abspath(target_file))
+
+discovered = []
+
+# Walk from target file's directory up to project root
+d = target_dir
+while d.startswith(project_root):
+    for name in RULE_NAMES:
+        rp = os.path.join(d, name)
+        if os.path.isfile(rp):
+            real = os.path.realpath(rp)
+            if real not in injected_paths:
+                dist = len(os.path.relpath(d, project_root).split(os.sep))
+                if os.path.relpath(d, project_root) == '.':
+                    dist = 0
+                discovered.append((real, dist))
+
+    for rdn in RULE_DIRS:
+        rd = os.path.join(d, rdn)
+        if os.path.isdir(rd):
+            try:
+                for f in sorted(os.listdir(rd)):
+                    if f.endswith('.md'):
+                        rp = os.path.join(rd, f)
+                        if os.path.isfile(rp):
+                            real = os.path.realpath(rp)
+                            if real not in injected_paths:
+                                dist = len(os.path.relpath(d, project_root).split(os.sep))
+                                if os.path.relpath(d, project_root) == '.':
+                                    dist = 0
+                                discovered.append((real, dist))
+            except OSError:
+                pass
+
+    if d == project_root:
+        break
+    d = os.path.dirname(d)
+
+if not discovered:
+    # Still persist state (no new injections but keep existing hashes)
+    state['sessionID'] = session_id
+    state['updatedAt'] = int(time.time())
+    with open(state_file, 'w') as f:
+        json.dump(state, f, indent=2)
+    sys.exit(0)
+
+# Sort by distance (closest first), then by name
+discovered.sort(key=lambda x: (x[1], os.path.basename(x[0])))
+
+# ---- Evaluate each rule file ----
+output_parts = []
+for rule_path, distance in discovered:
+    try:
+        with open(rule_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+    except IOError:
+        continue
+
+    # Respect size limit
+    if len(content) > 8000:
+        content = content[:8000] + '\n\n... [truncated]'
+
+    fm, body = parse_frontmatter(content)
+
+    # Determine if rule applies
+    should_apply = False
+    match_reason = ''
+
+    always_apply = fm.get('alwaysApply', '').lower() in ('true', 'yes', '1')
+    globs_raw    = fm.get('globs', fm.get('glob', ''))
+    paths_raw    = fm.get('paths', '')
+
+    globs = []
+    if isinstance(globs_raw, list):
+        globs.extend(globs_raw)
+    elif isinstance(globs_raw, str) and globs_raw.strip():
+        globs.append(globs_raw.strip())
+    if isinstance(paths_raw, list):
+        globs.extend(paths_raw)
+    elif isinstance(paths_raw, str) and paths_raw.strip():
+        globs.append(paths_raw.strip())
+
+    if always_apply:
+        should_apply = True
+        match_reason = 'alwaysApply: true'
+    elif globs and matches_globs(target_file, globs):
+        should_apply = True
+        match_reason = 'globs matched'
+    elif not always_apply and not globs and distance == 0:
+        # No frontmatter filter: inject only for same-directory files
+        should_apply = True
+        match_reason = 'same directory (no globs)'
+
+    if not should_apply:
+        continue
+
+    # Deduplicate by content hash
+    body_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()
+    if body_hash in injected_hashes:
+        continue
+
+    try:
+        rel_path = os.path.relpath(rule_path, project_root)
+    except ValueError:
+        rel_path = os.path.basename(rule_path)
+
+    # Truncate body for context injection
+    display_body = body
+    if len(display_body) > 4000:
+        display_body = display_body[:4000] + '\n\n... [truncated]'
+
+    block = f'[Project Rule: {rel_path}]\n[Match: {match_reason}]\n\n{display_body}'
+    output_parts.append(block)
+    injected_hashes.add(body_hash)
+    injected_paths.add(rule_path)
+
+if not output_parts:
+    state['sessionID'] = session_id
+    state['updatedAt'] = int(time.time())
+    with open(state_file, 'w') as f:
+        json.dump(state, f, indent=2)
+    sys.exit(0)
+
+# ---- Persist state ----
+state['sessionID'] = session_id
+state['injectedHashes']    = list(injected_hashes)[:256]
+state['injectedRealPaths'] = list(injected_paths)[:256]
+state['updatedAt']         = int(time.time())
+with open(state_file, 'w') as f:
+    json.dump(state, f, indent=2)
+
+# ---- Output ----
+print('\n\n---\n\n'.join(output_parts))
+PYEOF
+) 2>/dev/null || true
+
+if [ -z "${INJECTION:-}" ]; then
+  exit 0
+fi
+
+# --- Build output ---
+PREFIX="\\n[Rules Injection — Harness Multi-Agent System]\\nThe following project rules apply to the file you just accessed:\\n\\n"
+CONTEXT="${PREFIX}${INJECTION}"
+
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+  printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' "$CONTEXT"
+else
+  printf '{"additionalContext":"%s"}\n' "$CONTEXT"
+fi
+
+exit 0

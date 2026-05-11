@@ -174,6 +174,56 @@ Plan execution fans out tasks in parallel waves by default, with 4-phase verific
 ### Evidence-Driven Verification (Sisyphus → all agents)
 "NO EVIDENCE = NOT COMPLETE." Every completion claim must be backed by fresh verification evidence: diagnostics clean, build passing, tests passing. Re-run verification immediately before reporting DONE.
 
+## Agent Behavior Rules (Hook Equivalents)
+
+These rules are enforced by Claude Code hooks (`hooks/hooks.json` → PreToolUse + PostToolUse events) and documented here as binding instructions for all platforms including Codex.
+
+### Write Safety Rule (`write-safety-guard` hook)
+
+**Before using Write or Edit on an existing file, you MUST have read that file first in the current conversation.** This ensures you understand current content before modifying it.
+
+- **New files:** Can create without reading (file does not exist yet).
+- **Existing files:** MUST read first using the Read tool. The Claude Code hook actively blocks unread writes.
+- **Infrastructure paths:** `.sisyphus/` and workspace-external paths are exempt.
+- If blocked: read the file, then write.
+
+### Delegation Discipline (`delegation-reminder` hook)
+
+**The hw-controller and hw-plan-executor MUST delegate non-trivial work to specialized subagents.** Direct tool calls are for trivial tasks only. After 3+ direct tool calls without using the Agent tool, the hook injects a reminder.
+
+When to delegate (MUST):
+- Complex, multi-step operations → `hw-tdd-agent` (via `hw-worktree-controller`)
+- Code reviews → `hw-reviewer-logic`, `hw-reviewer-security`, `hw-reviewer-performance`, `hw-reviewer-context`
+- Codebase exploration → `hw-codebase-explorer` (parallel with `hw-external-researcher`)
+- External research → `hw-external-researcher`
+- Strategic planning → `hw-strategic-planner`
+- Plan execution → `hw-plan-executor`
+- Deep technical consultation → `hw-strategic-advisor`
+- Media file analysis → `hw-media-interpreter`
+
+When direct work is OK:
+- Single file, known location, trivial change (<10 lines)
+- Reading a specific known file path
+- Simple configuration validation
+
+If you find yourself making 3+ direct tool calls without delegation: STOP. Ask yourself — am I doing work that a specialized subagent should handle?
+
+### Rules Awareness (`rules-injector` hook)
+
+**After reading or modifying a file, you SHOULD check for nearby instruction files** that may apply to that file's directory tree:
+- `AGENTS.md` or `CLAUDE.md` in the file's directory or parent directories
+- `.claude/rules/*.md` for Claude Code file-type rules
+- `.cursor/rules/*.md` for Cursor editor rules
+- `.github/instructions/*.md` for repository workflow instructions
+
+The Claude Code hook automatically scans and injects matching rules (filtered by `globs` / `alwaysApply` frontmatter). On Codex, proactively check for `AGENTS.md` in the file's directory tree.
+
+### State Cleanup (`hook-cleanup` hook)
+
+Hook state files in `hooks/hook-state/*.json` are automatically cleaned on `PreCompact` (before context compaction) and on `SessionStart` (`startup|clear|compact` matchers). Files older than 7 days are auto-pruned.
+
+---
+
 ## Multi-Platform Target
 
 This project's skills run identically on three agent platforms:

@@ -11,6 +11,72 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|Read|Grep|Glob|Agent|TodoWrite|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" delegation-reminder",
+            "async": true,
+            "timeout": 5000
+          }
+        ],
+        "description": "Remind orchestrator agents to delegate work to specialized subagents"
+      },
+      {
+        "matcher": "Read|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" rules-injector",
+            "async": true,
+            "timeout": 10000
+          }
+        ],
+        "description": "Inject nearby project rules (AGENTS.md/CLAUDE.md) into tool output"
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" write-safety-guard-read",
+            "async": true,
+            "timeout": 3000
+          }
+        ],
+        "description": "Track file reads for write-safety-guard"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" write-safety-guard",
+            "async": false,
+            "timeout": 5000
+          }
+        ],
+        "description": "Block writes to existing files that haven't been read this session"
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" hook-cleanup",
+            "async": true,
+            "timeout": 3000
+          }
+        ],
+        "description": "Clear per-session hook state before context compaction"
+      }
     ]
   }
 }

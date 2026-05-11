@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# write-safety-guard — PreToolUse hook for Harness multiagents
+# Event: PreToolUse (Write|Edit)
+# Purpose: Blocks writes to existing files that have not been read in
+#           the current session. Forces the agent to understand file
+#           contents before modifying them.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+STATE_DIR="${PLUGIN_ROOT}/hooks/hook-state/write-safety-guard"
+mkdir -p "$STATE_DIR"
+
+# --- Parse stdin JSON ---
+INPUT_JSON=$(cat)
+
+session_id=$(python3 -c "import json,sys; print(json.loads(sys.stdin.read()).get('session_id',''))" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+file_path=$(python3 -c "
+import json,sys
+d = json.loads(sys.stdin.read())
+ti = d.get('tool_input', {})
+print(ti.get('file_path', ti.get('filePath', '')))
+" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+tool_name=$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('tool_name',''))" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+cwd=$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('cwd',''))" <<< "$INPUT_JSON" 2>/dev/null || echo "")
+
+# No file path → nothing to guard
+if [ -z "$file_path" ]; then
+  exit 0
+fi
+
+# Resolve to absolute path
+if [[ "$file_path" != /* ]]; then
+  file_path="${cwd}/${file_path}"
+fi
+CANONICAL=$(realpath "$file_path" 2>/dev/null || echo "$file_path")
+
+# --- Exemptions ---
+
+# New file (doesn't exist yet) → always allow
+if [ ! -f "$CANONICAL" ]; then
+  exit 0
+fi
+
+# .sisyphus/ infrastructure files → always allow
+if [[ "$CANONICAL" == *"/.sisyphus/"* ]]; then
+  exit 0
+fi
+
+# Outside project root (e.g., /tmp, system paths) → allow
+# Detect project root by walking up from cwd, fall back to file_path's directory
+detect_project_root() {
+  local start_dir="$1"
+  local d="$start_dir"
+  while [ "$d" != "/" ] && [ "$d" != "" ]; do
+    if [ -d "${d}/.git" ] || [ -f "${d}/pyproject.toml" ] || \
+       [ -f "${d}/go.mod" ] || [ -f "${d}/Cargo.toml" ] || \
+       [ -f "${d}/package.json" ]; then
+      echo "$d"
+      return 0
+    fi
+    local parent
+    parent="$(dirname "$d")"
+    [ "$parent" = "$d" ] && break
+    d="$parent"
+  done
+  echo ""
+}
+
+PROJECT_ROOT=$(detect_project_root "$cwd")
+# Fallback: try detecting from the target file's directory
+if [ -z "$PROJECT_ROOT" ]; then
+  PROJECT_ROOT=$(detect_project_root "$(dirname "$CANONICAL")")
+fi
+# If still no project root found, allow writes (can't determine project context)
+if [ -z "$PROJECT_ROOT" ]; then
+  exit 0
+fi
+if [[ "$CANONICAL" != "$PROJECT_ROOT"/* ]]; then
+  exit 0
+fi
+
+# --- Check if file has been read ---
+STATE_FILE="${STATE_DIR}/${session_id}.json"
+has_been_read="false"
+if [ -f "$STATE_FILE" ]; then
+  has_been_read=$(python3 -c "
+import json,sys
+with open(sys.argv[1]) as f:
+    d = json.load(f)
+paths = d.get('readPaths', [])
+canonical = sys.argv[2]
+# Check both exact match and realpath match (symlink handling)
+for p in paths:
+    real_p = p  # already canonicalized on insert
+    if real_p == canonical:
+        print('true')
+        sys.exit(0)
+print('false')
+" "$STATE_FILE" "$CANONICAL" 2>/dev/null || echo "false")
+fi
+
+if [ "$has_been_read" = "true" ]; then
+  # Consume the permission (one write per read, re-read required for re-write)
+  python3 -c "
+import json,time,sys
+with open(sys.argv[1]) as f:
+    d = json.load(f)
+paths = d.get('readPaths', [])
+canonical = sys.argv[2]
+if canonical in paths:
+    paths.remove(canonical)
+d['readPaths'] = paths
+d['updatedAt'] = int(time.time())
+with open(sys.argv[1], 'w') as f:
+    json.dump(d, f, indent=2)
+" "$STATE_FILE" "$CANONICAL" 2>/dev/null || true
+  exit 0
+fi
+
+# --- Block: file not read ---
+FILENAME=$(basename "$file_path")
+REASON="Write blocked: file '${FILENAME}' has not been read in this session. You MUST read the file first using the Read tool before modifying it. This is a safety measure to ensure you understand the current content before making changes."
+
+# Output permission denial (Claude Code format)
+printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$REASON"
+exit 2
