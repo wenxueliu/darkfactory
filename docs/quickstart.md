@@ -197,7 +197,15 @@ git clone git@github.com:org/web-frontend.git services/web-frontend
 
 > 关键点：每个 `services/{id}/` 保持独立的 `.git/`、独立的 remote、独立的 CI/CD。co-location 只是让它们在同一工作目录下协作，不改变各自的 git 独立性。
 
-### 第三步：配置微服务模式
+### 第三步：创建配置和知识库骨架
+
+创建 `_bmad/` 目录结构——这是**手动一次性**操作，建立空的记忆目录骨架：
+
+```bash
+mkdir -p _bmad/memory/hw-shared/knowledge-base/{patterns,decisions,lessons,api-contracts}
+mkdir -p _bmad/memory/hw-shared/reviews
+mkdir -p _bmad/memory/hw-controller
+```
 
 **`_bmad/config.yaml`**：
 
@@ -216,15 +224,41 @@ hw:
   merge_strategy: "merge"
 ```
 
-### 第四步：服务发现（自动）
+**`_bmad/config.user.yaml`**：
+
+```yaml
+communication_language: Chinese
+user_name: 你的名字
+```
+
+当前阶段 KB 目录还是**空的**——只有骨架，没有任何服务知识内容。
+
+### 第四步：服务发现——自动生成 KB 内容
 
 ```
 /hw-controller 初始化：发现所有服务并建立注册表
 ```
 
-hw-controller 调用 hw-knowledge-agent 自动扫描 `services/` 下的每个仓库，生成 `_bmad/memory/hw-shared/service-registry.yaml`。这个过程会检测每个服务的语言、框架、API 端点、数据库 schema。
+这是 KB 初始化的**第二阶段（自动）**。流程：`hw-controller` → `hw-setup` → `hw-knowledge-agent` 的服务发现能力：
 
-你不需要手写任何服务元数据。
+**自动扫描和检测：**
+- 扫描 `services/` 下所有 git 仓库
+- 检测每个服务的技术栈（语言/框架/构建工具/端口）
+- 提取 API 端点、数据库 schema、基础设施依赖
+- 分析跨服务依赖关系
+
+**自动生成的文件：**
+
+| 产物 | 路径 |
+|------|------|
+| 服务注册表 | `_bmad/memory/hw-shared/service-registry.yaml` |
+| 服务概览 | `_bmad/memory/hw-shared/knowledge-base/services/{id}/overview.md` |
+| API 端点文档 | `_bmad/memory/hw-shared/knowledge-base/services/{id}/api-endpoints.md` |
+| 数据库 Schema | `_bmad/memory/hw-shared/knowledge-base/services/{id}/db-schema.md` |
+
+你不需要手写任何服务元数据——服务信息从代码中自动检测，而非人工配置。
+
+> KB 的三级分层结构、自动/手动内容划分、后续更新策略详见 [`docs/knowledge-base.md`](knowledge-base.md)。
 
 ### 第五步：开始一个跨服务需求
 
@@ -272,6 +306,9 @@ hw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 - `skills/hw-tdd-agent/SKILL.md` — TDD 执行的详细流程
 - `skills/hw-reviewer-logic/SKILL.md` — 逻辑审查的检查维度
 
+**我想了解知识库的架构和维护：**
+- [`docs/knowledge-base.md`](knowledge-base.md) — KB 的三级分层、初始化时机、更新策略、生命周期
+
 **我想调整配置以适应我的团队：**
 - `CLAUDE.md` 中的 Configuration 章节 — 所有可配置项及默认值
 - `_bmad/config.yaml` — 调整 review 严格度、业务领域、人力介入频率
@@ -304,11 +341,14 @@ hw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 |------|------|--------|
 | `_bmad/config.yaml` | 项目配置 | 你（人工） |
 | `_bmad/memory/hw-shared/` | 需求、设计、任务、审查 | hw-controller（自动） |
+| `_bmad/memory/hw-shared/knowledge-base/_enterprise/` | 全局 ADR、契约、跨服务模式 | hw-controller + 人工审核 |
+| `_bmad/memory/hw-shared/knowledge-base/domains/` | 业务领域级知识 | hw-controller（自动分类） |
+| `_bmad/memory/hw-shared/knowledge-base/services/` | 每个服务的 API、Schema、概览 | hw-knowledge-agent（自动生成） |
 | `_bmad/memory/hw-controller/` | 编排状态、worktree 注册表 | hw-controller（自动） |
 | `.worktree/` | 隔离开发环境 | 自动创建/销毁 |
 | `skills/` | Agent 技能定义 | 随黑灯工厂更新 |
 | `contracts/` | 跨服务 API 契约 | hw-controller + 人工审核 |
-| `_bmad/memory/hw-shared/knowledge-base/` | 积累的架构知识 | hw-controller（自动沉淀） |
+| `service-registry.yaml` | 服务注册表（技术栈/依赖图） | hw-knowledge-agent（自动生成） |
 
 ---
 
