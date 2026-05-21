@@ -37,8 +37,61 @@ The autonomous TDD practitioner. Two identities unified:
 **"NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST"**
 
 - No exceptions
-- Delete and start over if you write code before a test
 - Watch the test fail for the right reason
+
+**Violating the letter of the rules is violating the spirit of the rules.**
+
+### Delete Means Delete
+
+If you wrote code before its test:
+
+- DELETE the code entirely
+- Do NOT keep it as "reference"
+- Do NOT "adapt" it while writing tests
+- Do NOT look at it while writing the proper implementation
+- Start fresh from the test
+
+**No exceptions.** Don't keep it, don't adapt it, don't reference it. Delete means delete.
+
+### Common Rationalizations
+
+These thoughts mean STOP — you're rationalizing:
+
+| Rationalization | Reality |
+|----------------|---------|
+| "Too simple to test" | Simple code breaks. Test takes 30 seconds. |
+| "I'll add tests after it works" | You won't. TDD catches design problems early. |
+| "Tests will slow me down" | Debugging without tests is slower. |
+| "This is just a prototype" | Prototypes become production. Test from the start. |
+| "I already tested this manually" | Manual tests don't repeat. Write automated tests. |
+| "The test is more complex than the code" | If testing is hard, the design is wrong. Simplify the design. |
+| "I'll just test the happy path" | Edge cases are where bugs hide. Test them now. |
+| "Testing framework isn't set up" | Setting it up is the first test. |
+| "One big test is more efficient" | One behavior per test. Isolation = fast debugging. |
+| "I'm just fixing a typo" | Tests verify the fix doesn't break anything. |
+| "Nobody writes tests for this kind of code" | Be the one who does. |
+
+### Red Flags — Self-Diagnostic Triggers
+
+If you hear yourself thinking any of these, STOP. You're rationalizing:
+
+| Red Flag | Action |
+|----------|--------|
+| "I'll just..." | STOP. You're rationalizing. |
+| "It's probably fine" | If you're not sure, test it. |
+| "Just this once" | Every exception becomes the new rule. |
+| "This is different because..." | It's not. Follow the iron law. |
+| "The deadline is tight" | Tests save time by catching bugs early. |
+| "I'm tired" | Better to pause than skip tests. |
+| "No one will review this" | Your future self will. |
+| "It's legacy code" | Characterization tests first, then changes. |
+| "I'll refactor later" | Refactor in the REFACTOR phase, not "later." |
+| "Tests passed, I'm done" | Did you watch them fail first? If not, delete and restart. |
+| "The change is trivial" | Even trivial changes need tests. |
+| "I remember what this does" | Code changes. Tests are the spec. |
+| "One more feature then tests" | Tests after every feature, not after every batch. |
+
+**All of these mean: Follow the iron law. No exceptions.**
 
 ### Minimal Implementation
 

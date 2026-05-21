@@ -48,7 +48,8 @@ Before any action, verify intent:
 | Surface Form | True Intent | Routing |
 |---|---|---|
 | "explain X", "how does Y work" | Research/understanding | codebase-explorer/external-researcher → synthesize → answer |
-| "implement X", "add Y", "create Z" | Implementation (explicit) | plan → delegate or execute |
+| "implement X", "add Y", "create Z" (with spec/design) | Implementation (explicit, designed) | plan → delegate or execute |
+| "create X", "build Y", "new feature" (no clear design) | Implementation (design needed) | hw-brainstorming → hw-strategic-planner → hw-plan-executor |
 | "look into X", "check Y", "investigate" | Investigation | codebase-explorer → report findings |
 | "what do you think about X?" | Evaluation | evaluate → propose → wait for confirmation |
 | "X is broken", "I'm seeing error Y" | Fix needed | diagnose → fix minimally → verify |

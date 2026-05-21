@@ -54,14 +54,19 @@ Harness organizes agents in a tree — always start at the root and traverse dow
 
 ```
 hw-controller (orchestrator — the entry point for any development workflow)
+  ├── hw-brainstorming (pre-design exploration — HARD-GATE before any implementation)
   ├── hw-setup (environment initialization)
   ├── hw-systematic-debugging (4-phase root cause debugging — use BEFORE any fix)
   ├── hw-verification-before-completion (evidence before claims — use BEFORE declaring DONE)
+  ├── hw-receiving-review (review feedback processing — verify before implementing)
+  ├── hw-finishing-branch (branch completion — 4-option terminal state)
+  ├── hw-writing-skills (meta-skill for skill authoring — TDD for documentation)
   └── hw-worktree-controller (per-task coordinator) × N
         ├── hw-tdd-agent (RED → GREEN → REFACTOR)
         ├── hw-reviewer-logic (correctness + edge cases)
         ├── hw-reviewer-security (vulnerabilities + data exposure)
-        └── hw-reviewer-performance (bottlenecks + scalability)
+        ├── hw-reviewer-performance (bottlenecks + scalability)
+        └── hw-reviewer-context (context mining — missed requirements discovery)
 ```
 
 **Rule:** When a user asks to build, fix, or develop something, start with `hw-controller`. The controller assesses the request, runs value judgment, initiates design phases, decomposes into tasks, and dispatches worktree controllers. Never jump directly to `hw-tdd-agent` or reviewers — they expect to be invoked within the controller's workflow.
@@ -70,16 +75,21 @@ hw-controller (orchestrator — the entry point for any development workflow)
 
 When multiple skills could apply, traverse the hierarchy from top to bottom:
 
-1. **Process skills first** — `hw-systematic-debugging` for any bug/error/test failure (BEFORE proposing fixes); `hw-verification-before-completion` before declaring ANY completion
+0. **Brainstorming before all creative work** — `hw-brainstorming` for ANY new feature, creation, or design task (HARD-GATE: no implementation without approved design)
+1. **Process skills first** — `hw-systematic-debugging` for any bug/error/test failure (BEFORE proposing fixes); `hw-verification-before-completion` before declaring ANY completion; `hw-receiving-review` when processing review feedback
 2. **Orchestration second** — `hw-controller` for any development workflow; `hw-setup` for environment initialization
 3. **Execution third** — `hw-worktree-controller` dispatches `hw-tdd-agent` per task
-4. **Review fourth** — `hw-reviewer-logic`, `hw-reviewer-security`, `hw-reviewer-performance` run in parallel after TDD cycles
+4. **Review fourth** — `hw-reviewer-logic`, `hw-reviewer-security`, `hw-reviewer-performance`, `hw-reviewer-context` run in parallel after TDD cycles
 5. **Design skills** — `hw-feature-designer`, `hw-service-designer`, `hw-e2e-designer` are invoked by hw-controller during design phases
+6. **Terminal skills** — `hw-finishing-branch` when all work is complete; `hw-writing-skills` when creating or editing agent skills
 
 "Fix a bug" → hw-systematic-debugging first (debug BEFORE fixing), then hw-verification-before-completion (verify BEFORE claiming fixed).
-"Build a new feature" → hw-controller first.
-"Review this code" → hw-reviewer-logic + hw-reviewer-security + hw-reviewer-performance in parallel.
+"Build a new feature" → hw-brainstorming first (design BEFORE code), then hw-controller for full workflow.
+"Review this code" → hw-reviewer-logic + hw-reviewer-security + hw-reviewer-performance + hw-reviewer-context in parallel.
+"Process review feedback" → hw-receiving-review (verify BEFORE implementing).
 "Mark this task DONE" → hw-verification-before-completion first.
+"Complete the branch" → hw-finishing-branch (structured terminal options).
+"Create a new agent skill" → hw-writing-skills (TDD for documentation).
 
 ## Red Flags
 
@@ -100,12 +110,16 @@ These thoughts mean STOP — you're rationalizing:
 | "I'll just try a quick fix" | Systematic debugging first. Random fixes create new bugs. |
 | "It's probably fixed, no need to verify" | Verification-before-completion is non-negotiable. Evidence first. |
 | "I can claim DONE, reviews were clean" | Verify independently. Subagent reports ≠ evidence. |
+| "I already know the design" | Brainstorming surfaces hidden assumptions. Run hw-brainstorming. |
+| "Just start coding, we'll design as we go" | Design first. Rework costs 10x more than upfront design. |
+| "The branch is done, just leave it" | Use hw-finishing-branch to properly close out. |
+| "I'll just accept all review feedback" | Verify before implementing. Use hw-receiving-review. |
 
 ## Skill Types
 
-**Rigid** (TDD, reviews, debugging, verification): Follow exactly. Don't adapt away discipline. The TDD iron law, review gates, debugging process, and verification requirement are non-negotiable.
+**Rigid** (brainstorming, TDD, reviews, debugging, verification, receiving-review, finishing-branch): Follow exactly. Don't adapt away discipline. The brainstorming HARD-GATE, TDD iron law, review gates, debugging process, verification requirement, and branch completion options are non-negotiable.
 
-**Flexible** (design, setup): Adapt principles to context. The designer agents present options for human judgment.
+**Flexible** (design, setup, writing-skills): Adapt principles to context. The designer agents present options for human judgment. Skill writing adapts to the skill type being created.
 
 The skill itself tells you which type it is.
 

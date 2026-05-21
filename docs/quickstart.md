@@ -64,7 +64,9 @@ user_name: 你的名字
 
 ### 第三步：复制技能目录
 
-将黑灯工厂的 `skills/` 目录复制到你的项目根目录下。**最少需要 4 个技能：**
+将黑灯工厂的技能文件复制到你的项目根目录下。
+
+**仅用 Claude Code：** 复制 `skills/` 即可。最少 4 个，推荐全套 22 个。
 
 | 技能 | 作用 |
 |------|------|
@@ -80,6 +82,8 @@ user_name: 你的名字
 | `hw-reviewer-security` | 安全审查 |
 | `hw-reviewer-performance` | 性能审查 |
 | `hw-setup` | 环境初始化 |
+
+**多平台（Claude Code + Codex + OpenCode）：** 同时复制 `skills/` 和 `agents/`。`skills/` 是完整的技能定义（Claude Code 使用），`agents/` 是自包含的独立 prompt 模板（Codex/OpenCode 使用），每个 `agents/hw-*.md` 内部委托给对应的 `skills/` 获取详细流程。
 
 ### 第四步：更新 .gitignore
 
@@ -145,7 +149,10 @@ user_name: 你的名字
 
 ### 第三步：复制技能
 
-将黑灯工厂 `skills/` 下的所有 `hw-*` 技能目录复制到你的 `skills/` 下。
+将黑灯工厂的技能文件复制到你的项目根目录下：
+
+- **仅用 Claude Code：** 复制 `skills/` 下的所有 `hw-*` 技能目录到你的 `skills/` 下。
+- **多平台（Claude Code + Codex + OpenCode）：** 同时复制 `skills/` 和 `agents/`。`agents/` 是 Codex/OpenCode 使用的自包含 prompt 模板。
 
 ### 第四步：让 hw-controller 带你走
 
@@ -233,7 +240,14 @@ user_name: 你的名字
 
 当前阶段 KB 目录还是**空的**——只有骨架，没有任何服务知识内容。
 
-### 第四步：服务发现——自动生成 KB 内容
+### 第四步：复制技能
+
+将黑灯工厂的技能文件复制到工作空间根目录下：
+
+- **仅用 Claude Code：** 复制 `skills/` 下的所有 `hw-*` 技能目录到你的 `skills/` 下。
+- **多平台（Claude Code + Codex + OpenCode）：** 同时复制 `skills/` 和 `agents/`。
+
+### 第五步：服务发现——自动生成 KB 内容
 
 ```
 /hw-controller 初始化：发现所有服务并建立注册表
@@ -260,7 +274,7 @@ user_name: 你的名字
 
 > KB 的三级分层结构、自动/手动内容划分、后续更新策略详见 [`docs/knowledge-base.md`](knowledge-base.md)。
 
-### 第五步：开始一个跨服务需求
+### 第六步：开始一个跨服务需求
 
 ```
 /hw-controller 用户下单时需要校验信用分，涉及 user-service（新增信用分接口）、
@@ -346,7 +360,8 @@ hw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 | `_bmad/memory/hw-shared/knowledge-base/services/` | 每个服务的 API、Schema、概览 | hw-knowledge-agent（自动生成） |
 | `_bmad/memory/hw-controller/` | 编排状态、worktree 注册表 | hw-controller（自动） |
 | `.worktree/` | 隔离开发环境 | 自动创建/销毁 |
-| `skills/` | Agent 技能定义 | 随黑灯工厂更新 |
+| `skills/` | Agent 技能定义（Claude Code） | 随黑灯工厂更新 |
+| `agents/` | Agent 独立 prompt 模板（Codex/OpenCode） | 随黑灯工厂更新 |
 | `contracts/` | 跨服务 API 契约 | hw-controller + 人工审核 |
 | `service-registry.yaml` | 服务注册表（技术栈/依赖图） | hw-knowledge-agent（自动生成） |
 
