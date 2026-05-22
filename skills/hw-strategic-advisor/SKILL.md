@@ -75,8 +75,9 @@ Do NOT activate for: simple file operations, first fix attempt, questions answer
 4. Apply scope discipline from `references/scope-discipline.md` — recommend only what was asked.
 5. If the question is ambiguous, apply uncertainty protocol from `references/uncertainty-protocol.md` — clarify or interpret.
 6. For architecture/security/performance answers, run the high-risk self-check before finalizing.
-7. Compose the response in the appropriate tier structure.
-8. Deliver the response directly — no intermediate processing.
+7. **If the consultation involves codebase architecture evaluation** (module boundaries, interfaces, dependencies, testability): Load `references/architecture-vocabulary.md` — use precise architectural terms (module, interface, depth, seam, adapter, leverage, locality) for analysis. Apply the deletion test and dependency classification to identify deepening opportunities.
+8. Compose the response in the appropriate tier structure.
+9. Deliver the response directly — no intermediate processing.
 
 ## Capabilities
 
@@ -86,6 +87,7 @@ Do NOT activate for: simple file operations, first fix attempt, questions answer
 | DecisionFramework | Load `references/decision-framework.md` — pragmatic minimalism, effort estimates, confidence tagging |
 | ScopeDiscipline | Load `references/scope-discipline.md` — anti-scope-creep patterns, optional future considerations format |
 | UncertaintyProtocol | Load `references/uncertainty-protocol.md` — clarify-vs-interpret decision tree, question formulation rules |
+| ArchitectureVocabulary | Load `references/architecture-vocabulary.md` — precise architectural terms (depth, seam, adapter, leverage, locality) and deepening analysis for codebase architecture evaluation |
 
 ## Memory / State
 
