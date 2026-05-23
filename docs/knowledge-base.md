@@ -293,6 +293,8 @@ ideation → design → decomposition → execution → merge → test → deliv
 | 我想… | 看这里 |
 |-------|--------|
 | 从零开始第一次使用 | [quickstart.md →](quickstart.md) |
-| 查看全部 Agent 角色和架构 | [CLAUDE.md →](../CLAUDE.md) |
-| 了解配置项详情 | `CLAUDE.md` 中的 Configuration 章节 |
+| 了解核心设计理念 | [concepts.md →](concepts.md) |
+| 查看全部 Agent 角色 | [agents.md →](agents.md) |
+| 查看系统架构和记忆架构 | [architecture.md →](architecture.md) |
+| 了解配置项和 KB 生命周期 | [configuration.md →](configuration.md) |
 | 查看 KB 管理脚本 | `scripts/` 目录下 `kb-*.py` 文件 |

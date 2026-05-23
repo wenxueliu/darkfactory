@@ -373,8 +373,11 @@ hw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 
 | 我想… | 看这里 |
 |-------|--------|
-| 深入了解知识库架构和维护 | [knowledge-base.md →](knowledge-base.md) |
-| 查看全部 Agent 角色和配置 | [CLAUDE.md →](../CLAUDE.md) |
+| 了解核心设计理念 | [concepts.md →](concepts.md) |
+| 浏览全部 Agent 目录 | [agents.md →](agents.md) |
+| 深入了解知识库架构 | [knowledge-base.md →](knowledge-base.md) |
+| 查看系统架构 | [architecture.md →](architecture.md) |
+| 查看配置项详情 | [configuration.md →](configuration.md) |
 | 了解总控 Agent 的能力 | `skills/hw-controller/SKILL.md` |
 | 了解 TDD Agent 的执行流程 | `skills/hw-tdd-agent/SKILL.md` |
 | 在 Codex 上使用黑灯工厂 | [INSTALL-codex.md →](INSTALL-codex.md) |

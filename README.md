@@ -119,12 +119,12 @@ Four scenarios — pick your starting point:
 
 | Scenario | Start Here |
 |----------|-----------|
-| I have an existing project | See [Scenario A](docs/quickstart.md#scenario-a-existing-project) |
-| I'm starting a new project from scratch | See [Scenario B](docs/quickstart.md#scenario-b-new-project) |
-| I have multiple microservices | See [Scenario C](docs/quickstart.md#scenario-c-microservices-multi-repo) |
+| I have an existing project | See [Scenario A](docs/quickstart-en.md#scenario-a-add-to-existing-project) |
+| I'm starting a new project from scratch | See [Scenario B](docs/quickstart-en.md#scenario-b-new-project) |
+| I have multiple microservices | See [Scenario C](docs/quickstart-en.md#scenario-c-microservices-multi-repo) |
 | I just want a 5-minute tour | Run `/hw-controller demo mode` |
 
-Detailed walkthrough: [docs/quickstart.md](docs/quickstart.md)
+Detailed walkthrough: [docs/quickstart-en.md](docs/quickstart-en.md)
 
 ### Agent Architecture (v2)
 
@@ -198,8 +198,12 @@ multiagents/
 
 ### Next Steps
 
-- Read [CLAUDE.md](CLAUDE.md) for the full project guide
-- Read [docs/quickstart.md](docs/quickstart.md) for detailed walkthroughs
+- Read [CLAUDE.md](CLAUDE.md) for agent instructions and behavior rules
+- Read [docs/quickstart-en.md](docs/quickstart-en.md) for detailed walkthroughs
+- Learn core concepts: [docs/concepts.md](docs/concepts.md)
+- Browse the agent catalog: [docs/agents.md](docs/agents.md)
+- Understand the architecture: [docs/architecture.md](docs/architecture.md)
+- Configure your project: [docs/configuration.md](docs/configuration.md)
 - Explore skill definitions: `skills/hw-controller/SKILL.md`, `skills/hw-tdd-agent/SKILL.md`
 - Learn the Harness Framework: [../harness_framework/](../harness_framework/)
 
@@ -401,8 +405,12 @@ multiagents/
 
 ### 下一步
 
-- 阅读 [CLAUDE.md](CLAUDE.md) 了解完整项目指南
+- 阅读 [CLAUDE.md](CLAUDE.md) 了解 Agent 行为规则和指令
 - 阅读 [docs/quickstart.md](docs/quickstart.md) 查看详细教程
+- 了解核心概念：[docs/concepts.md](docs/concepts.md)
+- 浏览全部 Agent 目录：[docs/agents.md](docs/agents.md)
+- 了解系统架构：[docs/architecture.md](docs/architecture.md)
+- 查看配置项：[docs/configuration.md](docs/configuration.md)
 - 探索技能定义：`skills/hw-controller/SKILL.md`、`skills/hw-tdd-agent/SKILL.md`
 - 了解 Harness Framework：[../harness_framework/](../harness_framework/)
 

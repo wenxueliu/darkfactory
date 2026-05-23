@@ -314,8 +314,11 @@ Congrats! You've used Black灯 Factory. Here's where to go next:
 
 | I want to… | Go here |
 |------------|---------|
-| Deep-dive into the knowledge base architecture | [knowledge-base.md →](knowledge-base.md) |
-| See all Agent roles and full configuration | [CLAUDE.md →](../CLAUDE.md) |
+| Learn core design concepts | [concepts.md →](concepts.md) |
+| Browse the full agent catalog | [agents.md →](agents.md) |
+| Deep-dive into the knowledge base | [knowledge-base.md →](knowledge-base.md) |
+| Understand system architecture | [architecture.md →](architecture.md) |
+| View configuration reference | [configuration.md →](configuration.md) |
 | Understand the orchestrator's capabilities | `skills/hw-controller/SKILL.md` |
 | Learn the TDD execution flow | `skills/hw-tdd-agent/SKILL.md` |
 | Use HW on Codex | [INSTALL-codex.md →](INSTALL-codex.md) |
