@@ -1,5 +1,7 @@
 # 知识库 (Knowledge Base)
 
+> **初次接触？** 先看 [README.md](../README.md) 和 [quickstart.md](quickstart.md)。本文是知识库架构的完整说明，覆盖三级分层、两阶段初始化、更新策略和生命周期。
+
 > 黑灯工厂的知识管理架构：如何初始化、如何分层、何时更新、如何维护。
 
 ---
@@ -283,3 +285,14 @@ ideation → design → decomposition → execution → merge → test → deliv
 ### Q: 什么时候应该清理 KB？
 
 每周运行 `kb-index.py --check-staleness` 检查陈旧条目，每个 delivery 阶段运行 `kb-health.py`。过期的条目自动标记并在查询时过滤——不需要手动删除，但需要定期审查。
+
+---
+
+## 下一步
+
+| 我想… | 看这里 |
+|-------|--------|
+| 从零开始第一次使用 | [quickstart.md →](quickstart.md) |
+| 查看全部 Agent 角色和架构 | [CLAUDE.md →](../CLAUDE.md) |
+| 了解配置项详情 | `CLAUDE.md` 中的 Configuration 章节 |
+| 查看 KB 管理脚本 | `scripts/` 目录下 `kb-*.py` 文件 |

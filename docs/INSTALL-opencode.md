@@ -1,5 +1,7 @@
 # Installing Harness Multi-Agent System for OpenCode
 
+> **New here?** See [README.md](../README.md#opencode) for the quick install. This is the detailed OpenCode installation and configuration guide.
+
 Complete guide for using Harness with [OpenCode.ai](https://opencode.ai).
 
 ## Installation

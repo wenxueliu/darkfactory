@@ -1,5 +1,7 @@
 # Installing Harness Multi-Agent System for Codex
 
+> **New here?** See [README.md](../README.md#codex-openai) for the quick install. This is the detailed Codex installation and configuration guide.
+
 Enable Harness skills in Codex via native skill discovery.
 
 ## Prerequisites

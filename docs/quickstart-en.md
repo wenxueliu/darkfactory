@@ -1,5 +1,7 @@
 # Black灯 Factory — Quickstart
 
+> **New here?** Start with [README.md](../README.md) for overview and installation. This is a complete tutorial covering four onboarding scenarios.
+
 > From zero to first delivery. Just follow the conversation.
 
 ---
@@ -302,4 +304,19 @@ Congrats! You've used Black灯 Factory. Here's where to go next:
 
 ---
 
+---
+
 **Ready?** Pick your scenario, open Claude Code, and type `/hw-controller` to start your first human-AI collaborative development session.
+
+---
+
+## Next Steps
+
+| I want to… | Go here |
+|------------|---------|
+| Deep-dive into the knowledge base architecture | [knowledge-base.md →](knowledge-base.md) |
+| See all Agent roles and full configuration | [CLAUDE.md →](../CLAUDE.md) |
+| Understand the orchestrator's capabilities | `skills/hw-controller/SKILL.md` |
+| Learn the TDD execution flow | `skills/hw-tdd-agent/SKILL.md` |
+| Use HW on Codex | [INSTALL-codex.md →](INSTALL-codex.md) |
+| Use HW on OpenCode | [INSTALL-opencode.md →](INSTALL-opencode.md) |

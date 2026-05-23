@@ -38,7 +38,7 @@ The platform follows **acceptance-driven development** with a strict TDD iron la
 
 ## Agent Architecture
 
-The system has 22 skills in v2 (9 new + 2 enhanced + 8 existing + 4 superpowers-integrated):
+The system has 28 skills in v2:
 
 ```
 hw-controller (增强: Intent Gate + Phase 0-3 + 委派纪律 + 知识管理 + 价值判断)
@@ -84,7 +84,7 @@ hw-controller (增强: Intent Gate + Phase 0-3 + 委派纪律 + 知识管理 + �
         using-harness (bootstrap技能)
 ```
 
-### Agent Roles (v2, 22 skills)
+### Agent Roles (v2, 28 skills)
 
 **Core Orchestration (2 enhanced)**
 

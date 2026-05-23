@@ -1,5 +1,7 @@
 # 黑灯工厂 快速开始
 
+> **初次接触？** 先看 [README.md](../README.md) 了解项目概览和安装。本文是四个接入场景的完整教程。
+
 > 从零到第一次交付，跟着这段对话走。
 
 ---
@@ -367,4 +369,13 @@ hw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 
 ---
 
-**下一步？** 选好你的场景，打开 Claude Code，输入 `/hw-controller` 开始你的第一次人机协同开发。
+## 下一步
+
+| 我想… | 看这里 |
+|-------|--------|
+| 深入了解知识库架构和维护 | [knowledge-base.md →](knowledge-base.md) |
+| 查看全部 Agent 角色和配置 | [CLAUDE.md →](../CLAUDE.md) |
+| 了解总控 Agent 的能力 | `skills/hw-controller/SKILL.md` |
+| 了解 TDD Agent 的执行流程 | `skills/hw-tdd-agent/SKILL.md` |
+| 在 Codex 上使用黑灯工厂 | [INSTALL-codex.md →](INSTALL-codex.md) |
+| 在 OpenCode 上使用黑灯工厂 | [INSTALL-opencode.md →](INSTALL-opencode.md) |
