@@ -10,7 +10,7 @@
 
 黑灯工厂 (Black-light Factory) is a **human-AI collaborative software generation system** — orchestrate multiple specialized AI Agents in a pipeline from requirements to delivery. It implements the **Harness Engineering** philosophy: humans own strategic decisions, AI Agents handle execution and review.
 
-**28 skills** covering the full E2E pipeline (v2), following acceptance-driven development with a strict TDD iron law (no failing test, no production code).
+**34 skills** covering the full E2E pipeline (v2), following acceptance-driven development with a strict TDD iron law (no failing test, no production code).
 
 ### Supported Platforms
 
@@ -129,7 +129,10 @@ Detailed walkthrough: [docs/quickstart-en.md](docs/quickstart-en.md)
 ### Agent Architecture (v2)
 
 ```
-hw-controller (Orchestrator: Intent Gate + Phase 0-3 + Delegation)
+hw-controller (Orchestrator: Intent Gate + Phase Transition + Delegation)
+  │
+  ├── [需求层 Ideation]
+  │     hw-requirements-clarifier / hw-value-judgment
   │
   ├── [规划层 Planning]
   │     hw-strategic-planner
@@ -142,6 +145,9 @@ hw-controller (Orchestrator: Intent Gate + Phase 0-3 + Delegation)
   │     hw-brainstorming
   │     hw-feature-designer → hw-service-designer × N → hw-e2e-designer
   │
+  ├── [拆分层 Decomposition]
+  │     hw-task-decomposer
+  │
   ├── [执行层 Execution]
   │     hw-plan-executor
   │       └── hw-worktree-controller × N
@@ -149,11 +155,17 @@ hw-controller (Orchestrator: Intent Gate + Phase 0-3 + Delegation)
   │                   ├── hw-reviewer-logic / security / performance / context
   │     hw-receiving-review
   │
+  ├── [测试层 Test]
+  │     hw-integration-tester
+  │
+  ├── [交付层 Delivery]
+  │     hw-delivery-manager
+  │
   ├── [咨询层 Consultation]
   │     hw-strategic-advisor / hw-codebase-explorer / hw-external-researcher / hw-media-interpreter
   │
   └── [基础设施层 Infrastructure]
-        hw-setup / hw-knowledge-agent / hw-value-judgment / hw-systematic-debugging
+        hw-setup / hw-knowledge-agent / hw-systematic-debugging
         hw-verification-before-completion / hw-finishing-branch / hw-document-project
         hw-writing-skills / using-harness
 ```
@@ -162,7 +174,7 @@ hw-controller (Orchestrator: Intent Gate + Phase 0-3 + Delegation)
 
 ```
 multiagents/
-├── skills/                  # Agent skill definitions (28 skills)
+├── skills/                  # Agent skill definitions (34 skills)
 │   ├── hw-controller/       # Top-level orchestrator
 │   ├── hw-tdd-agent/        # TDD cycle execution
 │   ├── hw-worktree-controller/ # Single-task coordinator
@@ -172,7 +184,7 @@ multiagents/
 │   ├── hw-strategic-planner/ # Strategic planner (NEW)
 │   ├── hw-plan-executor/    # Plan execution orchestrator (NEW)
 │   ├── hw-brainstorming/    # Pre-design exploration (NEW)
-│   └── ...                  # 18 more specialized skills
+│   └── ...                  # 24 more specialized skills
 ├── agents/                  # Standalone agent prompt templates
 ├── _bmad/                   # BMAD framework (config + memory)
 │   ├── config.yaml          # Project configuration
@@ -215,7 +227,7 @@ multiagents/
 
 黑灯工厂是一套**人机协同的软件生成系统**——协调多个专业化 AI Agent 组成流水线，将人类决策与 AI 执行能力结合，实现从需求到交付的端到端自动化。遵循**验收驱动开发**和 TDD 铁律（无失败测试不写代码）。
 
-**28 个技能**覆盖完整 E2E 流水线（v2）：需求 → 设计 → 拆分 → 执行 → 合并 → 测试 → 交付。
+**34 个技能**覆盖完整 E2E 流水线（v2）：需求 → 设计 → 拆分 → 执行 → 合并 → 测试 → 交付。
 
 ### 支持的平台
 
@@ -336,7 +348,10 @@ multi_agent = true
 ### Agent 架构（v2）
 
 ```
-hw-controller（总控：Intent Gate + Phase 0-3 + 委派纪律）
+hw-controller（总控：Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行）
+  │
+  ├── [需求层 Ideation]
+  │     hw-requirements-clarifier / hw-value-judgment
   │
   ├── [规划层 Planning]
   │     hw-strategic-planner
@@ -349,6 +364,9 @@ hw-controller（总控：Intent Gate + Phase 0-3 + 委派纪律）
   │     hw-brainstorming
   │     hw-feature-designer → hw-service-designer × N → hw-e2e-designer
   │
+  ├── [拆分层 Decomposition]
+  │     hw-task-decomposer
+  │
   ├── [执行层 Execution]
   │     hw-plan-executor
   │       └── hw-worktree-controller × N
@@ -356,11 +374,17 @@ hw-controller（总控：Intent Gate + Phase 0-3 + 委派纪律）
   │                   ├── hw-reviewer-logic / security / performance / context
   │     hw-receiving-review
   │
+  ├── [测试层 Test]
+  │     hw-integration-tester
+  │
+  ├── [交付层 Delivery]
+  │     hw-delivery-manager
+  │
   ├── [咨询层 Consultation]
   │     hw-strategic-advisor / hw-codebase-explorer / hw-external-researcher / hw-media-interpreter
   │
   └── [基础设施层 Infrastructure]
-        hw-setup / hw-knowledge-agent / hw-value-judgment / hw-systematic-debugging
+        hw-setup / hw-knowledge-agent / hw-systematic-debugging
         hw-verification-before-completion / hw-finishing-branch / hw-document-project
         hw-writing-skills / using-harness
 ```
@@ -369,7 +393,7 @@ hw-controller（总控：Intent Gate + Phase 0-3 + 委派纪律）
 
 ```
 multiagents/
-├── skills/                  # Agent 技能定义（28 个技能）
+├── skills/                  # Agent 技能定义（34 个技能）
 │   ├── hw-controller/       # 总控
 │   ├── hw-tdd-agent/        # TDD 执行
 │   ├── hw-worktree-controller/ # 单任务协调

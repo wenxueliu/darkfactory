@@ -49,12 +49,24 @@ Before any action, verify intent:
 | Surface Form | True Intent | Routing |
 |---|---|---|
 | "explain X", "how does Y work" | Research/understanding | codebase-explorer/external-researcher → synthesize → answer |
-| "implement X", "add Y", "create Z" (with spec/design) | Implementation (explicit, designed) | plan → delegate or execute |
-| "create X", "build Y", "new feature" (no clear design) | Implementation (design needed) | hw-brainstorming → hw-strategic-planner → hw-plan-executor |
+| "implement X", "add Y", "create Z" (with spec/design) | Implementation (explicit, designed) | ideation (requirement-clarification) → plan → delegate or execute |
+| "create X", "build Y", "new feature" (no clear design) | Implementation (design needed) | ideation (requirement-clarification) → hw-brainstorming → hw-strategic-planner → hw-plan-executor |
 | "look into X", "check Y", "investigate" | Investigation | codebase-explorer → report findings |
 | "what do you think about X?" | Evaluation | evaluate → propose → wait for confirmation |
 | "X is broken", "I'm seeing error Y" | Fix needed | diagnose → fix minimally → verify |
 | "refactor", "improve", "clean up" | Open-ended change | assess codebase → propose approach → wait for approval |
+
+### Ideation (需求阶段) — for new feature/requirement requests
+
+When Intent Gate classifies the request as a new feature, implementation, or open-ended change (Explicit/Open-ended), **delegate ideation work to specialized agents — never execute directly**:
+
+1. **Requirements Clarification** — Delegate to `hw-requirements-clarifier`. It runs progressive 4-step clarification dialogue (Listen First → Ambiguity Scan → Prioritized Question Queue → Incremental Spec Update). Stops when Substantiality Threshold is met. Writes `requirements/{id}.md`.
+2. **Value Assessment** — Delegate to `hw-value-judgment`. Scores 5 dimensions (Impact / Effort / Risk / Dependencies / Strategic Fit). If P3 (don't do), archive the requirement. Writes `value-assessment/{id}.md`.
+3. **Knowledge Base Pre-Query** — Delegate to `hw-knowledge-agent`. Scans for relevant ADRs, patterns, lessons, and API contracts. Writes `knowledge-base/pre-query-{id}.md`.
+4. **Requirements Gate** — Read gate results from `references/requirements-gate.md`. Check G1-G4 (Completeness / Measurability / Value Alignment / Risk Readiness). Only proceed to design when all gates PASS. Max 3 retries → escalate to human.
+5. **Phase Transition** — When all ideation gates PASS → proceed to design phase (3-Stage delegation). See Phase Transition Rules below for `ideation → design` criteria.
+
+Skip ideation for: Trivial (direct execution), Exploratory (research → answer), Ambiguous (ask one question → re-classify).
 
 ### Codebase Assessment (Phase 1) — for open-ended tasks
 
@@ -115,14 +127,11 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 ### 需求阶段 (Ideation)
 | Capability | Route |
 | ---------- | ----- |
-| 需求理解与澄清 | Load `references/requirement-clarification.md` |
-| 需求规格模板 (通用) | Load `references/requirements-spec-template.md` |
-| 需求规格模板 (金融) | Load `references/requirements-spec-template-fintech.md` |
-| 需求规格模板 (电商) | Load `references/requirements-spec-template-ecommerce.md` |
-| 需求规格模板 (内部工具) | Load `references/requirements-spec-template-internal-tools.md` |
-| 需求价值判断 | Load `../hw-value-judgment/references/value-assessment.md` |
-| ROI 评估 | Load `../hw-value-judgment/references/roi-evaluation.md` |
-| 需求门禁检查 | Load `references/requirements-gate.md` |
+| 需求理解与澄清 | Delegate to `hw-requirements-clarifier` |
+| 需求规格生成 | Delegate to `hw-requirements-clarifier` |
+| 需求价值判断 | Delegate to `hw-value-judgment` |
+| ROI 评估 | Delegate to `hw-value-judgment` |
+| 需求门禁检查 | Check gate results; escalate on failure |
 
 ### 设计阶段 (Design) — 3-Stage 委托
 
@@ -141,32 +150,32 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 ### 知识库 (Knowledge)
 | Capability | Route |
 | ---------- | ----- |
-| 知识查询 | Load `../hw-knowledge-agent/references/knowledge-query.md` |
-| 知识更新 | Load `../hw-knowledge-agent/references/knowledge-update.md` |
-| 知识索引 | Load `../hw-knowledge-agent/references/knowledge-index.md` |
+| 知识查询 | Delegate to `hw-knowledge-agent` |
+| 知识更新 | Delegate to `hw-knowledge-agent` |
+| 知识索引 | Delegate to `hw-knowledge-agent` |
+| 服务发现 | Delegate to `hw-knowledge-agent` |
 
 ### 执行阶段 (Execution)
 | Capability | Route |
 | ---------- | ----- |
-| 任务拆分 | Load `references/task-decomposition.md` |
+| 任务拆分 | Delegate to `hw-task-decomposer` |
 | Worktree管理 | Load `references/worktree-management.md` |
-| 并行执行协调 | Load `references/parallel-execution.md` |
+| 并行执行协调 | Load `references/parallel-execution.md` (monitor loop only) |
 | 质量门禁验证 | Load `references/quality-gates.md` |
 
 ### 集成与测试 (Integration & Test)
 | Capability | Route |
 | ---------- | ----- |
-| 测试环境协调 | Load `references/test-environment.md` |
-| API 测试 Postman 规范 | Load `references/api-test-postman-schema.md` |
-| 集成测试计划 | Load `references/integration-test-plan.md` |
+| 集成测试执行 | Delegate to `hw-integration-tester` |
+| API 测试执行 | Delegate to `hw-integration-tester` |
 
 ### 交付阶段 (Delivery)
 | Capability | Route |
 | ---------- | ----- |
-| 合并管理 | Load `references/merge-management.md` |
-| 交付检查清单 | Load `references/delivery-checklist.md` |
-| Release Notes | Load `references/release-notes-template.md` |
-| 交付验收门禁 | Load `references/delivery-acceptance-gate.md` |
+| 合并管理 | Load `references/merge-management.md` (coordinate hw-finishing-branch) |
+| 交付管理 | Delegate to `hw-delivery-manager` |
+| KB 全量更新 | Delegate to `hw-knowledge-agent` |
+| 交付验收门禁 | Check gate results; escalate on failure |
 
 ### 通用
 | Capability | Route |
@@ -194,11 +203,15 @@ Load available config from `{project-root}/_bmad/config.yaml` and `{project-root
 
 ### When to Delegate vs. Do It Yourself
 
-- **Delegate by default.** Work yourself only when the task is trivially simple (single file, known location, <10 lines).
+- **Delegate by default.** Work yourself only when the task is trivially simple (single file, known location, <10 lines). Your role is Intent Gate + Phase Transition — route and gate, never execute phase work.
+- **Ideation phase:** Delegate requirements clarification to `hw-requirements-clarifier`, value assessment to `hw-value-judgment`, KB query to `hw-knowledge-agent`.
 - **Planning phase:** Delegate to hw-strategic-planner for any multi-step, ambiguous, or complex request. The planner interviews the user and generates a structured plan.
 - **Design phase:** Use the existing 3-stage delegation: hw-feature-designer → hw-service-designer (parallel per service) → hw-e2e-designer.
-- **Execution phase (plan-based):** Delegate to hw-plan-executor with the plan file path. It handles all task fan-out and verification.
-- **Execution phase (single task):** Delegate to hw-worktree-controller for isolated tasks that don't need multi-task coordination.
+- **Decomposition phase:** Delegate to `hw-task-decomposer`. It handles service identification, DAG construction, wave batching, tasks.yaml + dependencies.json output.
+- **Execution phase:** Delegate to hw-plan-executor with the plan file path. It handles all task fan-out and verification.
+- **Merge phase:** Delegate to `hw-finishing-branch` for the 4-option terminal state.
+- **Test phase:** Delegate to `hw-integration-tester` for env health check, integration test execution, and result analysis.
+- **Delivery phase:** Delegate to `hw-delivery-manager` for checklist verification and release notes. Delegate KB update to `hw-knowledge-agent`.
 - **Research:** Fire hw-codebase-explorer (internal) and hw-external-researcher (external) in PARALLEL for non-trivial questions. Always run in background.
 - **Deep consultation:** Delegate to hw-strategic-advisor for complex architecture, security/performance questions, or after 3+ consecutive failures.
 - **Media analysis:** Delegate to hw-media-interpreter for PDFs, images, diagrams.
