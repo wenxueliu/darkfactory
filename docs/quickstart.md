@@ -64,11 +64,22 @@ user_name: 你的名字
 
 > 完整的配置项说明见 `CLAUDE.md` 中的 Configuration 章节。
 
-### 第三步：复制技能目录
+### 第三步：安装技能
 
-将黑灯工厂的技能文件复制到你的项目根目录下。
+使用 `install.py` 一键安装技能到你的项目目录：
 
-**仅用 Claude Code：** 复制 `skills/` 即可。最少 4 个，推荐全套 22 个。
+```bash
+# 在你的项目目录下执行
+python /path/to/harness/services/multiagents/install.py
+
+# 只安装 4 个核心技能
+python /path/to/harness/services/multiagents/install.py --minimal
+
+# 安装到指定路径
+python /path/to/harness/services/multiagents/install.py --target /path/to/your/project
+```
+
+4 个核心技能：
 
 | 技能 | 作用 |
 |------|------|
@@ -77,15 +88,13 @@ user_name: 你的名字
 | `hw-reviewer-logic` | 逻辑审查：发现正确性问题和边界情况 |
 | `hw-worktree-controller` | 任务执行：在隔离 worktree 中完成单个任务 |
 
-可选但推荐：
+安装完成后，你的项目下会出现 `skills/` 目录（Claude Code）或 `.agents/skills/` 目录（Codex）。
 
-| 技能 | 作用 |
-|------|------|
-| `hw-reviewer-security` | 安全审查 |
-| `hw-reviewer-performance` | 性能审查 |
-| `hw-setup` | 环境初始化 |
+**多平台：** `--claude`（默认）安装到 `skills/`，`--codex` 安装到 `.agents/skills/`，可同时指定：
 
-**多平台（Claude Code + Codex + OpenCode）：** 同时复制 `skills/` 和 `agents/`。`skills/` 是完整的技能定义（Claude Code 使用），`agents/` 是自包含的独立 prompt 模板（Codex/OpenCode 使用），每个 `agents/hw-*.md` 内部委托给对应的 `skills/` 获取详细流程。
+```bash
+python /path/to/harness/services/multiagents/install.py --claude --codex
+```
 
 ### 第四步：更新 .gitignore
 
@@ -149,12 +158,12 @@ communication_language: Chinese
 user_name: 你的名字
 ```
 
-### 第三步：复制技能
+### 第三步：安装技能
 
-将黑灯工厂的技能文件复制到你的项目根目录下：
-
-- **仅用 Claude Code：** 复制 `skills/` 下的所有 `hw-*` 技能目录到你的 `skills/` 下。
-- **多平台（Claude Code + Codex + OpenCode）：** 同时复制 `skills/` 和 `agents/`。`agents/` 是 Codex/OpenCode 使用的自包含 prompt 模板。
+```bash
+# 从黑灯工厂仓库安装全部技能
+python /path/to/harness/services/multiagents/install.py --target .
+```
 
 ### 第四步：让 hw-controller 带你走
 
@@ -242,12 +251,11 @@ user_name: 你的名字
 
 当前阶段 KB 目录还是**空的**——只有骨架，没有任何服务知识内容。
 
-### 第四步：复制技能
+### 第四步：安装技能
 
-将黑灯工厂的技能文件复制到工作空间根目录下：
-
-- **仅用 Claude Code：** 复制 `skills/` 下的所有 `hw-*` 技能目录到你的 `skills/` 下。
-- **多平台（Claude Code + Codex + OpenCode）：** 同时复制 `skills/` 和 `agents/`。
+```bash
+python /path/to/harness/services/multiagents/install.py --target .
+```
 
 ### 第五步：服务发现——自动生成 KB 内容
 

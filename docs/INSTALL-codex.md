@@ -11,7 +11,17 @@ Enable Harness skills in Codex via native skill discovery.
 
 ## Installation
 
-### Option 1: Symlink from existing clone (recommended)
+### Option 0: One-click install (recommended)
+
+If you already have the Harness repo cloned:
+
+```bash
+python /path/to/harness/services/multiagents/install.py --codex --user
+```
+
+This copies all skills to `~/.agents/skills/`. Add `--minimal` for just the 4 core skills, or `--target /path/to/project` for project-local install.
+
+### Option 1: Symlink from existing clone
 
 If you already have the Harness repo cloned:
 
