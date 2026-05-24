@@ -22,7 +22,7 @@ The platform follows **acceptance-driven development** with a strict TDD iron la
 
 ## Agent Architecture
 
-The system has 34 skills in v2:
+The system has 32 skills in v2:
 
 ```
 hw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
@@ -81,7 +81,7 @@ hw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协�
 ```
 
 <!-- Agent Roles and E2E Phase Coverage extracted to standalone docs -->
-> All 34 agent roles, triggers, and capabilities: [docs/agents.md](docs/agents.md).
+> All 32 agent roles, triggers, and capabilities: [docs/agents.md](docs/agents.md).
 > E2E phase coverage and gate checks: [docs/architecture.md](docs/architecture.md).
 
 ### Development Flow
@@ -200,7 +200,7 @@ Hook state files in `hooks/hook-state/*.json` are automatically cleaned on `PreC
 
 ```
 multiagents/
-├── skills/                  # 34 skill directories
+├── skills/                  # 32 skill directories
 ├── agents/                  # Standalone agent prompt templates
 ├── docs/                    # Documentation
 ├── hooks/                   # Session-start bootstrap

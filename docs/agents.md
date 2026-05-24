@@ -1,6 +1,6 @@
 # Agent 目录 (Agent Catalog)
 
-> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了 v2 全部 34 个 Agent 的技能、角色和触发词。
+> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了 v2 全部 32 个 Agent 的技能、角色和触发词。
 
 ---
 
@@ -91,7 +91,7 @@
 
 ## 需求端到端流程 (E2E Requirements Flow)
 
-一个需求从提出到交付，经过 7 个阶段，34 个 Agent 各司其职。
+一个需求从提出到交付，经过 7 个阶段，32 个 Agent 各司其职。
 
 > **两条路径：** 简单需求走 设计(3-stage) → 拆分 路径；复杂/多步骤需求在头脑风暴后进入 **规划层** (hw-strategic-planner)，由规划层替代设计+拆分，直接产出可执行计划。
 

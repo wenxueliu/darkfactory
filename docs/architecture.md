@@ -4,7 +4,7 @@
 
 ---
 
-## Agent 架构 (v2, 34 skills)
+## Agent 架构 (v2, 32 skills)
 
 ```
 hw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
