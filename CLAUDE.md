@@ -251,6 +251,41 @@ Worktree controllers report to the top controller using these states:
 | `NEEDS_CONTEXT` | Blocked on missing information | Provide context or escalate |
 | `BLOCKED` | Stuck on dependency or issue | Analyze cause, resolve or escalate |
 
+## 安装脚本
+
+`install.py` 用于将黑灯工厂 skills 安装到其他项目：
+
+```bash
+# 安装到当前目录（Claude Code 模式，默认全部 skill）
+python install.py
+
+# 安装到指定项目
+python install.py --target /path/to/project
+
+# 安装到用户全局目录
+python install.py --user
+
+# 安装到 Codex 平台
+python install.py --codex
+
+# 只安装核心 skill（hw-controller, hw-tdd-agent, hw-reviewer-logic, hw-worktree-controller）
+python install.py --minimal
+
+# 预览安装效果（不实际写入）
+python install.py --target /path/to/project --dry-run
+
+# 同时安装到 Claude Code + Codex
+python install.py --claude --codex
+```
+
+参数说明：
+- `--target PATH` — 安装到指定项目目录（默认当前目录）
+- `--user` — 安装到用户全局目录（`~/.claude/skills/`）
+- `--claude` / `--codex` — 目标平台（默认 `--claude`）
+- `--minimal` — 只安装 4 个核心 skill
+- `--dry-run` — 预览模式，不实际写入
+- `--force` — 跳过确认提示
+
 ## Commit Conventions
 
 - Prefix based on intent: `feat:`, `fix:`, `docs:`, `refactor:`, etc.
