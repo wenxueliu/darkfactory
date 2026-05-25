@@ -1,9 +1,9 @@
 ---
-name: hw-feature-designer
+name: sw-feature-designer
 description: 黑灯工厂特性设计Agent. Use when designing cross-service feature architecture, user journeys, service interaction, and deployment strategy. [trigger: 特性设计, 跨服务设计, 用户旅程设计, 特性设计文档, feature design]
 ---
 
-# 黑灯工厂 特性设计者 (hw-feature-designer)
+# 黑灯工厂 特性设计者 (sw-feature-designer)
 
 ## Overview
 
@@ -31,14 +31,14 @@ The systems-level designer. Thinks in terms of user experience flows and service
 ## On Activation
 
 Load context:
-- Requirements spec from `{project-root}/_bmad/memory/hw-shared/requirements/{requirement_id}.md`
-- Knowledge base: ADRs, patterns, lessons from `{project-root}/_bmad/memory/hw-shared/knowledge-base/`
-- Service registry (if `architecture: "microservices"`): `{project-root}/_bmad/memory/hw-shared/service-registry.yaml`
-- Business domain config: `{project-root}/_bmad/config.yaml` → `hw.business_domain`
+- Requirements spec from `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`
+- Knowledge base: ADRs, patterns, lessons from `{project-root}/_context/memory/sw-shared/knowledge-base/`
+- Service registry (if `architecture: "microservices"`): `{project-root}/_context/memory/sw-shared/service-registry.yaml`
+- Business domain config: `{project-root}/_context/config.yaml` → `sw.business_domain`
 
 Template resolution (microservices mode):
-1. Load `references/template-router.md` (hw-controller) to determine feature design template by `business_domain`
-2. Load `references/microservice-adaptation.md` (hw-controller) for service impact analysis patterns
+1. Load `references/template-router.md` (sw-controller) to determine feature design template by `business_domain`
+2. Load `references/microservice-adaptation.md` (sw-controller) for service impact analysis patterns
 3. Fallback: `references/feature-design-template.md` (general)
 
 In monolith mode, use `references/feature-design-template.md` directly.
@@ -54,10 +54,20 @@ In monolith mode, use `references/feature-design-template.md` directly.
 
 ## Output
 
-Write the completed feature design to `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-design.md`.
+Write the completed feature design to `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md`.
 
-Report to hw-controller:
+Report to sw-controller:
 - Design ID and path
 - Number of affected services (from service impact analysis)
 - Key cross-service contracts defined
 - Any open questions requiring human input
+
+After reporting, update `_context/memory/sw-shared/requirements-tracker.yaml`:
+- Read the tracker file and locate the requirement entry by `id` matching `{requirement_id}`
+- Update `phases.design.status` to `done`
+- Add artifact path `_context/memory/sw-shared/designs/{requirement_id}-design.md`
+- Set `phases.design.completed_at` to today's date (`YYYY-MM-DD`)
+- Update `current_phase` to `design`
+- Update `updated_at` to today
+- Re-derive overall `status` per the derivation rules in the tracker header
+- Write back

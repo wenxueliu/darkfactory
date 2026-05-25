@@ -1,9 +1,9 @@
 ---
-name: hw-task-decomposer
+name: sw-task-decomposer
 description: 黑灯工厂任务拆分Agent. Use when decomposing designs into executable tasks, building dependency graphs, or generating tasks.yaml. [trigger: 任务拆分, task decomposition, 任务分解, 拆分任务, DAG, tasks.yaml]
 ---
 
-# 黑灯工厂 任务拆分者 (hw-task-decomposer)
+# 黑灯工厂 任务拆分者 (sw-task-decomposer)
 
 ## Overview
 
@@ -33,7 +33,7 @@ The decomposition specialist. Thinks in DAGs and waves. Knows when to split (ind
    - **Step 5: Write tasks.yaml** — Full schema with dependencies, ACs, test bindings, review requirements, capability verification
    - **Step 6: Export dependencies.json** — Convert wave structure to harness_framework-compatible format
 2. Validate: no circular dependencies, each task has AC, capability checks passed, tests self-contained per task
-3. Report results to hw-controller
+3. Report results to sw-controller
 
 ## Capabilities
 
@@ -44,9 +44,10 @@ The decomposition specialist. Thinks in DAGs and waves. Knows when to split (ind
 
 ## Output
 
-- Write `_bmad/memory/hw-shared/tasks.yaml` — task definitions with dependencies, waves, ACs
-- Write `_bmad/memory/hw-controller/worktree-registry.yaml` — initialized per-task entries
-- Export `_bmad-output/{requirement_id}/dependencies.json` — harness_framework format
+- Write `_context/memory/sw-shared/tasks.yaml` — task definitions with dependencies, waves, ACs
+- Write `_context/memory/sw-controller/worktree-registry.yaml` — initialized per-task entries
+- Export `_context-output/{requirement_id}/dependencies.json` — harness_framework format
+- Update `_context/memory/sw-shared/requirements-tracker.yaml` — decomposition phase status
 
 ## Quality Gates
 
@@ -58,3 +59,19 @@ Before reporting completion:
 - [ ] Wave plan ≤ max_parallel_worktrees per wave
 - [ ] E2E task is last wave, depends on all implementation tasks
 - [ ] tasks.yaml + worktree-registry.yaml + dependencies.json all written
+- [ ] requirements-tracker.yaml updated (decomposition phase: done)
+
+### Tracker Update
+
+After writing the three output files, update `_context/memory/sw-shared/requirements-tracker.yaml`:
+- Read the tracker file and locate the requirement entry by `id` matching `{requirement_id}`
+- Update `phases.decomposition.status` to `done`
+- Add artifact paths:
+  - `_context/memory/sw-shared/tasks.yaml`
+  - `_context/memory/sw-controller/worktree-registry.yaml`
+  - `_context-output/{requirement_id}/dependencies.json`
+- Set `phases.decomposition.completed_at` to today's date (`YYYY-MM-DD`)
+- Update `current_phase` to `decomposition`
+- Update `updated_at` to today
+- Re-derive overall `status` per the derivation rules in the tracker header
+- Write back

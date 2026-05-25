@@ -1,9 +1,9 @@
 ---
-name: hw-value-judgment
+name: sw-value-judgment
 description: 黑灯工厂需求价值判断Agent. Use when evaluating if a requirement or feature is worth building, assessing ROI, priority, or strategic alignment. [trigger: 需求价值, ROI评估, 优先级判断, 值不值得做]
 ---
 
-# 黑灯工厂 需求价值判断者 (hw-value-judgment)
+# 黑灯工厂 需求价值判断者 (sw-value-judgment)
 
 ## Overview
 
@@ -66,7 +66,16 @@ Load config:
 
 ## Output
 
-Write assessment to `{project-root}/_bmad/memory/hw-shared/value-assessment/{requirement_id}.md`
+Write assessment to `{project-root}/_context/memory/sw-shared/value-assessment/{requirement_id}.md`
+
+After writing the assessment, update `_context/memory/sw-shared/requirements-tracker.yaml`:
+- Read the tracker file and locate the requirement entry by `id` matching `{requirement_id}`
+- Update `phases.value_assessment.status` to `done`
+- Add artifact path `_context/memory/sw-shared/value-assessment/{requirement_id}.md`
+- Set `phases.value_assessment.completed_at` to today's date (`YYYY-MM-DD`)
+- Update `updated_at` to today
+- Re-derive overall `status` per the derivation rules in the tracker header
+- Write back
 
 ## Capabilities
 

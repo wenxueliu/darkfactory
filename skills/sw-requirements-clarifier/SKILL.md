@@ -1,9 +1,9 @@
 ---
-name: hw-requirements-clarifier
+name: sw-requirements-clarifier
 description: 黑灯工厂需求澄清Agent. Use when clarifying ambiguous requirements, running progressive dialogue to extract specs, or generating requirements specification documents. [trigger: 需求澄清, requirements clarification, clarify requirements, 需求分析]
 ---
 
-# 黑灯工厂 需求澄清 (hw-requirements-clarifier)
+# 黑灯工厂 需求澄清 (sw-requirements-clarifier)
 
 ## Overview
 
@@ -47,7 +47,8 @@ The requirements detective. Asks precise questions, not open-ended ones. Validat
    - Ecommerce: `references/requirements-spec-template-ecommerce.md`
    - Internal tools: `references/requirements-spec-template-internal-tools.md`
 4. Run requirements gate checks via `references/requirements-gate.md` (G1-G4)
-5. Write output to `requirements/{id}.md`
+5. Write output to `_context/memory/sw-shared/requirements/{id}.md`
+6. Update `_context/memory/sw-shared/requirements-tracker.yaml` — 写入需求条目。详见 `references/tracker-update.md`
 
 ## Capabilities
 
@@ -59,6 +60,7 @@ The requirements detective. Asks precise questions, not open-ended ones. Validat
 | Requirements Spec (Ecommerce) | Load `references/requirements-spec-template-ecommerce.md` |
 | Requirements Spec (Internal Tools) | Load `references/requirements-spec-template-internal-tools.md` |
 | Requirements Gate Check | Load `references/requirements-gate.md` |
+| Requirements Tracker Update | Load `references/tracker-update.md` |
 
 ## Output
 

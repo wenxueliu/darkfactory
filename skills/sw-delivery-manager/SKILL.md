@@ -1,9 +1,9 @@
 ---
-name: hw-delivery-manager
+name: sw-delivery-manager
 description: 黑灯工厂交付管理Agent. Use when preparing for delivery, verifying release readiness, or generating release notes. [trigger: 交付管理, delivery, release notes, 发布准备, 交付检查, delivery checklist]
 ---
 
-# 黑灯工厂 交付管理者 (hw-delivery-manager)
+# 黑灯工厂 交付管理者 (sw-delivery-manager)
 
 ## Overview
 
@@ -33,7 +33,7 @@ The release gatekeeper. Methodical, checklist-driven, suspicious of shortcuts. E
    - Include: summary, changed components, known issues, rollback plan
 3. **Delivery Acceptance Gate** — Load `references/delivery-acceptance-gate.md`:
    - Run gate checks
-   - Report pass/fail to hw-controller
+   - Report pass/fail to sw-controller
 4. **On Failure** — If any checklist item or gate fails: report exact failure with context, do NOT proceed
 
 ## Capabilities
@@ -46,9 +46,21 @@ The release gatekeeper. Methodical, checklist-driven, suspicious of shortcuts. E
 
 ## Output
 
-- Delivery checklist results (verified items with evidence)
-- Release notes document
-- Gate pass/fail report to hw-controller
+- Delivery checklist results (verified items with evidence) → `_context-output/{requirement_id}/delivery-checklist.md`
+- Release notes document → `_context-output/{requirement_id}/release-notes.md`
+- Gate pass/fail report to sw-controller
+
+After writing the outputs, update `_context/memory/sw-shared/requirements-tracker.yaml`:
+- Read the tracker file and locate the requirement entry by `id` matching `{requirement_id}`
+- Update `phases.delivery.status` to `done`
+- Add artifact paths:
+  - `_context-output/{requirement_id}/delivery-checklist.md`
+  - `_context-output/{requirement_id}/release-notes.md`
+- Set `phases.delivery.completed_at` to today's date (`YYYY-MM-DD`)
+- Update `current_phase` to `delivery`
+- Update `updated_at` to today
+- Re-derive overall `status` per the derivation rules in the tracker header
+- Write back
 
 ## Quality Gates
 
