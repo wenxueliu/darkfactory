@@ -62,6 +62,18 @@
           }
         ],
         "description": "Block writes to existing files that haven't been read this session"
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/ideation-gate.py\"",
+            "async": false,
+            "timeout": 5000
+          }
+        ],
+        "description": "Block delegation to implementation agents before ideation phase is complete"
       }
     ],
     "PreCompact": [

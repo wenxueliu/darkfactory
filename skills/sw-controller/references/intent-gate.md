@@ -34,7 +34,7 @@
 | 类型 | 描述 | 示例 | 路由决策 |
 |------|------|------|---------|
 | **Trivial** (简单) | 单文件、已知位置、<10 行改动 | "在 UserController 加个日志" | 直接执行，不委托 |
-| **Explicit** (明确实现) | 明确的实现动词 + 具体范围 | "实现 OrderService 的 createOrder 方法" | 规划后委托或自行实现 |
+| **Explicit** (明确实现) | 明确的实现动词 + 具体范围——但需求未经澄清验证 | "实现 OrderService 的 createOrder 方法" | ideation (requirement-clarification 验证) → 规划 → 委托 |
 | **Exploratory** (探索) | 理解某物如何工作 | "解释一下认证流程" | 并行搜索 → 综合 → 回答 |
 | **Open-ended** (开放) | 无具体范围的重构/改进 | "优化代码质量" | 评估代码库 → 提案 → 等待确认 |
 | **Ambiguous** (模糊) | 多个合理解读，或缺少关键信息 | "改一下那个接口" | 问 1 个精确问题，不猜测 |
@@ -46,7 +46,7 @@
 ├─ 是否只需要单文件 + 已知位置 + <10 行？
 │   └─ YES → Trivial → 直接执行
 ├─ 是否有明确的实现动词 (implement/add/create) + 具体范围 (module/endpoint/component)？
-│   └─ YES → Explicit → 规划 → 委托或实现
+│   └─ YES → Explicit → 需求澄清验证 → 规划 → 委托
 ├─ 是否以 "解释/如何工作/是什么" 开头？
 │   └─ YES → Exploratory → 探索 → 回答
 ├─ 是否以 "重构/改进/优化/清理" 开头但无具体范围？
@@ -108,11 +108,14 @@
 
 ### 第 5 步: Context-Completion Gate (上下文完备门禁)
 
-**仅适用于实现类请求。** 只有以下 3 个条件全部满足时才能开始实现：
+**仅适用于实现类请求。** 只有以下 4 个条件全部满足时才能开始实现：
 
 1. **明确的实现动词存在** — implement, add, create, build, 实现, 新增, 创建
 2. **范围是具体的** — 具体的 module/endpoint/component，不是 "改一下系统"
-3. **没有阻塞性专家结果待返回** — 没有在等待 codebase-explorer 的搜索结果，没有在等待 external-researcher 的文档
+3. **需求已通过澄清验证** — 表面明确不等于需求已澄清。澄清本身就是检查——必须通过 sw-requirements-clarifier 的 Substantiality Threshold
+4. **没有阻塞性专家结果待返回** — 没有在等待 codebase-explorer 的搜索结果，没有在等待 external-researcher 的文档
+
+**Explicit 不等于 "已澄清":** 即使请求有明确的实现动词和具体范围，也必须先通过需求澄清。需求澄清不是"澄清模糊需求"的工具，而是"验证表面明确度是否可信"的检查。
 
 **门禁失败时的处理:**
 
@@ -120,6 +123,7 @@
 |---------|------|
 | 缺少实现动词 | 询问: "你是想让我探索/理解，还是实际实现？" |
 | 范围不具体 | 询问: "你希望改动哪个模块/服务的哪个具体部分？" |
+| 需求未经过澄清 | 委托 sw-requirements-clarifier 执行 4 步澄清对话，直到 Substantiality Threshold 满足 |
 | 专家结果待返回 | 等待 or 告知用户 "正在搜索 X，等结果返回后再开始实现" |
 
 ## 意图路由映射表 (完整)
@@ -127,7 +131,7 @@
 | 表面形式 | 真实意图 | 路由 |
 |---------|---------|------|
 | "explain X", "how does Y work", "解释", "怎么工作" | Research/understanding | codebase-explorer + external-researcher (并行) → synthesize → answer |
-| "implement X", "add Y", "create Z", "实现", "新增", "创建" | Implementation (explicit) | plan → delegate or execute |
+| "implement X", "add Y", "create Z", "实现", "新增", "创建" | Implementation (explicit — requires clarification verification) | ideation (requirement-clarification) → plan → delegate or execute |
 | "look into X", "check Y", "investigate", "看看", "查一下" | Investigation | codebase-explorer → report findings |
 | "what do you think about X?", "你觉得", "建议" | Evaluation | evaluate → propose → wait for confirmation |
 | "X is broken", "I'm seeing error Y", "有问题", "报错" | Fix needed | diagnose → fix minimally → verify |
@@ -177,7 +181,7 @@ Turn 2: 用户说 "我看了一下 response 格式"
 
 ```
 Trivial    → 直接执行，不经过后续阶段
-Explicit   → Phase 1 (Codebase Assessment) → Phase 2A (Exploration) → 实现
+Explicit   → ideation (requirement-clarification) → Phase 1 (Codebase Assessment) → Phase 2A (Exploration) → 实现
 Exploratory → Phase 2A (Exploration) → 综合回答
 Open-ended → Phase 1 (Codebase Assessment) → 提案 → 等待确认
 Ambiguous  → 追问澄清 → 重新进入意图门禁

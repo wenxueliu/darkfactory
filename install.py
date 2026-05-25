@@ -11,6 +11,7 @@ Installation targets:
 """
 
 import argparse
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -22,10 +23,10 @@ SOURCE_SKILLS = SCRIPT_DIR / "skills"
 SOURCE_AGENTS = SCRIPT_DIR / "agents"
 
 MINIMAL_SKILLS = {
-    "hw-controller",
-    "hw-tdd-agent",
-    "hw-reviewer-logic",
-    "hw-worktree-controller",
+    "sw-controller",
+    "sw-tdd-agent",
+    "sw-reviewer-logic",
+    "sw-worktree-controller",
 }
 
 PLATFORM_CLAUDE = "claude"
@@ -43,7 +44,7 @@ PLATFORM_CONFIG = {
         "user_skills": Path.home() / ".claude" / "skills",
         "project_agents": ".claude/agents",
         "user_agents": Path.home() / ".claude" / "agents",
-        "invoke_hint": "/hw-controller",
+        "invoke_hint": "/sw-controller",
     },
     PLATFORM_CODEX: {
         "label": "Codex",
@@ -51,7 +52,7 @@ PLATFORM_CONFIG = {
         "user_skills": Path.home() / ".agents" / "skills",
         "project_agents": ".agents/skills",
         "user_agents": Path.home() / ".agents" / "skills",
-        "invoke_hint": "hw-controller (after restart)",
+        "invoke_hint": "sw-controller (after restart)",
     },
 }
 
@@ -91,10 +92,10 @@ def build_parser() -> argparse.ArgumentParser:
             "  python install.py --target /tmp/test --dry-run       # preview\n"
             "\n"
             "MINIMAL SKILLS (4):\n"
-            "  hw-controller          Top-level orchestrator\n"
-            "  hw-tdd-agent           TDD execution: RED -> GREEN -> REFACTOR\n"
-            "  hw-reviewer-logic      Logic review: correctness + edge cases\n"
-            "  hw-worktree-controller Single-task coordinator\n"
+            "  sw-controller          Top-level orchestrator\n"
+            "  sw-tdd-agent           TDD execution: RED -> GREEN -> REFACTOR\n"
+            "  sw-reviewer-logic      Logic review: correctness + edge cases\n"
+            "  sw-worktree-controller Single-task coordinator\n"
             "\n"
             "FULL: all skill directories under skills/ (excluding reports/)\n"
             "\n"
@@ -320,6 +321,170 @@ def install_agent_templates(
         success(f"[{label}] Installed {count} agent template(s) to {dest_root}")
 
 
+# ---- hook settings template ---------------------------------------------
+
+HOOK_SETTINGS_TEMPLATE: dict = {
+    "hooks": {
+        "SessionStart": [
+            {
+                "matcher": "startup|clear|compact",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" session-start",
+                        "async": False,
+                    }
+                ],
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Bash|Write|Edit|Read|Grep|Glob|Agent|TodoWrite|Skill",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" delegation-reminder",
+                        "async": True,
+                        "timeout": 5000,
+                    }
+                ],
+                "description": "Remind orchestrator agents to delegate work to specialized subagents",
+            },
+            {
+                "matcher": "Read|Write|Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" rules-injector",
+                        "async": True,
+                        "timeout": 10000,
+                    }
+                ],
+                "description": "Inject nearby project rules (AGENTS.md/CLAUDE.md) into tool output",
+            },
+            {
+                "matcher": "Read",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" write-safety-guard-read",
+                        "async": True,
+                        "timeout": 3000,
+                    }
+                ],
+                "description": "Track file reads for write-safety-guard",
+            },
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Write|Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" write-safety-guard",
+                        "async": False,
+                        "timeout": 5000,
+                    }
+                ],
+                "description": "Block writes to existing files that haven't been read this session",
+            },
+            {
+                "matcher": "Agent",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"${workspaceFolder}/hooks/ideation-gate.py\"",
+                        "async": False,
+                        "timeout": 5000,
+                    }
+                ],
+                "description": "Block delegation to implementation agents before ideation phase is complete",
+            },
+        ],
+        "PreCompact": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" hook-cleanup",
+                        "async": True,
+                        "timeout": 3000,
+                    }
+                ],
+                "description": "Clear per-session hook state before context compaction",
+            },
+        ],
+    }
+}
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge override into base. override values take precedence."""
+    result = base.copy()
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+# ---- install hooks ------------------------------------------------------
+
+def install_hooks(
+    args: argparse.Namespace,
+    platform_roots: dict[str, Path],
+    dry_run: bool,
+) -> None:
+    """Copy hooks/ directory and merge hook config into target .claude/settings.local.json."""
+    source_hooks = SCRIPT_DIR / "hooks"
+    if not source_hooks.is_dir():
+        warn("hooks/ not found; skipping hook installation.")
+        return
+
+    # Only Claude Code supports hook installation via settings.local.json
+    if not args.claude:
+        return
+
+    if args.user:
+        dest_hooks = Path.home() / ".claude" / "hooks"
+        settings_file = Path.home() / ".claude" / "settings.local.json"
+    else:
+        assert args.target is not None
+        dest_hooks = args.target / "hooks"
+        settings_file = args.target / ".claude" / "settings.local.json"
+
+    if dry_run:
+        info(f"[Claude Code] hooks/ -> {dest_hooks}/")
+        info(f"[Claude Code] merge hook config -> {settings_file}")
+        return
+
+    # Copy hooks directory
+    if dest_hooks.exists():
+        shutil.rmtree(dest_hooks)
+    shutil.copytree(source_hooks, dest_hooks, symlinks=False)
+    info(f"[Claude Code] Installed hooks to {dest_hooks}")
+
+    # Merge hook settings into settings.local.json
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+
+    existing: dict = {}
+    if settings_file.exists():
+        try:
+            existing = json.loads(settings_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            warn(f"Could not parse {settings_file}; overwriting with fresh hook config.")
+            existing = {}
+
+    merged = deep_merge(existing, HOOK_SETTINGS_TEMPLATE)
+    settings_file.write_text(
+        json.dumps(merged, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    info(f"[Claude Code] Hook config merged into {settings_file}")
+
+
 # ---- summary ------------------------------------------------------------
 
 def print_summary(
@@ -377,6 +542,7 @@ def main(argv: list[str] | None = None) -> None:
 
     install_skills(args, skill_list, platform_roots, dry_run)
     install_agent_templates(args, platform_roots, dry_run)
+    install_hooks(args, platform_roots, dry_run)
 
     print_summary(args, platform_roots)
 

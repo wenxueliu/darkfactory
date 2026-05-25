@@ -62,6 +62,18 @@
           }
         ],
         "description": "Block writes to existing files that haven't been read this session"
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${workspaceFolder}/hooks/ideation-gate.py\"",
+            "async": false,
+            "timeout": 5000
+          }
+        ],
+        "description": "Block delegation to implementation agents before ideation phase is complete"
       }
     ],
     "PreCompact": [
@@ -85,7 +97,7 @@
       "Bash(ls:*)",
       "Bash(wc -l ~/.claude/projects/-home-chengnanfeng-code-multiagents/*.jsonl)",
       "Bash(cat ~/.claude/projects/-home-chengnanfeng-code-multiagents/.remember/*.md)",
-      "Bash(wc -l /home/chengnanfeng/code/multiagents/skills/hw-*/*.md)"
+      "Bash(wc -l /home/chengnanfeng/code/multiagents/skills/sw-*/*.md)"
     ]
   }
 }
