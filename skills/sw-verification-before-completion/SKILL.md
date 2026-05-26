@@ -1,9 +1,9 @@
 ---
-name: hw-verification-before-completion
+name: sw-verification-before-completion
 description: 完成前验证。Use when about to claim work is complete, fixed, or passing — before committing, creating PRs, or marking tasks DONE. Requires running verification commands and confirming output before making any success claims. Evidence before assertions, always. [trigger: 验证, verification, 完成, complete, done, fixed, passing, 提交, commit, PR]
 ---
 
-# 完成前验证 (hw-verification-before-completion)
+# 完成前验证 (sw-verification-before-completion)
 
 ## Overview
 
@@ -30,7 +30,7 @@ If you haven't run the verification command in THIS message, you cannot claim it
 - Committing code
 - Creating a PR
 - Moving to the next task in a workflow
-- Reporting a worktree-controller status as DONE to hw-controller
+- Reporting a worktree-controller status as DONE to sw-controller
 - Any positive statement about work state
 
 ## The Gate Function
@@ -54,7 +54,7 @@ Skip any step = lying, not verifying
 | Claim | Requires | Not Sufficient |
 |-------|----------|----------------|
 | Tests pass | `pytest` output: 0 failed | Previous run, "should pass", code review |
-| Linter clean | `ruff check .` output: 0 errors | Partial check, extrapolation |
+| Linter clean | `ruff check .` (Python) / `eslint .` (JS) / `golangci-lint run ./...` (Go) — language-specific tool output: 0 errors. Delegate to sw-lint-checker for automatic language detection and multi-tool execution. | Partial check, extrapolation |
 | Build succeeds | Build command: exit 0 | Linter passing, "logs look good" |
 | Bug fixed | Test the original symptom: passes | Code changed, assumed fixed |
 | TDD cycle done | RED→GREEN→REFACTOR trace: all three verified | "I wrote a test" without seeing RED |
@@ -80,7 +80,7 @@ python scripts/complete_task.py           # Mark task DONE (only after verificat
 ### Worktree Controller Status Report
 
 ```
-Before reporting DONE to hw-controller:
+Before reporting DONE to sw-controller:
 ✅ All TDD cycles: RED→GREEN→REFACTOR verified for each cycle
 ✅ All reviews: output files written to reviews/ for logic, security, performance
 ✅ All P0/P1/P2 issues: resolved and verified
@@ -92,7 +92,7 @@ Before reporting DONE to hw-controller:
 
 ```
 Before claiming review complete:
-✅ Review file written: _bmad/memory/hw-shared/reviews/{task_id}-{type}.md
+✅ Review file written: _context/memory/sw-shared/reviews/{task_id}-{type}.md
 ✅ Review contains: specific file:line references, severity ratings, fix recommendations
 ✅ Review covers: full diff, not just changed files
 ```
@@ -175,19 +175,19 @@ STOP. Identify the verification command. Run it. THEN make the claim.
 
 ## Integration with Harness System
 
-**With hw-systematic-debugging:**
+**With sw-systematic-debugging:**
 - After applying a fix (Phase 4), run verification-before-completion BEFORE claiming the bug is fixed
 - The debugging skill's Phase 4, Step 3 ("Verify Fix") is the trigger point
 
-**With hw-tdd-agent:**
+**With sw-tdd-agent:**
 - After each RED→GREEN→REFACTOR cycle, verify before committing
 - After all TDD cycles complete, verify full test suite before reporting DONE
 
-**With hw-worktree-controller:**
-- Before reporting DONE/DONE_WITH_CONCERNS to hw-controller, verify all gates
+**With sw-worktree-controller:**
+- Before reporting DONE/DONE_WITH_CONCERNS to sw-controller, verify all gates
 - Verify review files exist on disk, not just "review completed" claims
 
-**With hw-controller:**
+**With sw-controller:**
 - Before advancing to the next phase, verify current phase gates
 - Before declaring delivery ready, run the delivery acceptance checklist
 

@@ -1,9 +1,9 @@
 ---
-name: hw-worktree-controller
+name: sw-worktree-controller
 description: 黑灯工厂Worktree协调Agent. Use when coordinating a single task's TDD execution, code review, or quality gates within an isolated worktree. [trigger: worktree执行, 任务开发, 单任务协调]
 ---
 
-# 黑灯工厂 Worktree 控制器 (hw-worktree-controller)
+# 黑灯工厂 Worktree 控制器 (sw-worktree-controller)
 
 ## Overview
 
@@ -31,8 +31,8 @@ The focused executor. Takes a task assignment and drives it to completion — on
 ## On Activation
 
 Load task context from shared memory:
-- `{project-root}/_bmad/memory/hw-shared/tasks.yaml` — task definition and acceptance criteria
-- `{project-root}/_bmad/memory/hw-controller/worktree-registry.yaml` — worktree status
+- `{project-root}/_context/memory/sw-shared/tasks.yaml` — task definition and acceptance criteria
+- `{project-root}/_context/memory/sw-controller/worktree-registry.yaml` — worktree status
 
 Read the task assigned to this worktree. Confirm task ID and acceptance criteria.
 
@@ -42,9 +42,9 @@ Initialize worktree context if running for the first time.
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `tasks.yaml` | `{project-root}/_bmad/memory/hw-shared/` | Task definition (read) |
-| `worktree-registry.yaml` | `{project-root}/_bmad/memory/hw-controller/` | Worktree status (write) |
-| `reviews/{task_id}-{type}.md` | `{project-root}/_bmad/memory/hw-shared/` | Review results (write) |
+| `tasks.yaml` | `{project-root}/_context/memory/sw-shared/` | Task definition (read) |
+| `worktree-registry.yaml` | `{project-root}/_context/memory/sw-controller/` | Worktree status (write) |
+| `reviews/{task_id}-{type}.md` | `{project-root}/_context/memory/sw-shared/` | Review results (write) |
 
 ## Capabilities
 
@@ -52,6 +52,7 @@ Initialize worktree context if running for the first time.
 | ---------- | ----- |
 | TDD-UT循环 | Load `references/tdd-ut-cycle.md` |
 | TDD-API循环 | Load `references/tdd-api-cycle.md` |
+| 跨语言规范检查 | Delegate to `sw-lint-checker` agent |
 | 代码审核协调 | Load `references/code-review.md` |
 | 质量门禁检查 | Load `references/quality-gates.md` |
 | 迭代管理 | Load `references/iteration-management.md` |
@@ -69,6 +70,7 @@ Layer 2: API Test Cycle (only after Layer 1 passes)
   RED → Write failing API test → GREEN → Pass API test → REFACTOR
 
 After both layers complete:
+  → Standards check (sw-lint-checker: auto-detect languages, run linters, auto-fix, re-check until clean)
   → Code review (heterogeneous parallel)
   → Quality gates (P0/P1/P2 check)
   → Knowledge capture (write patterns, lessons, ADRs to KB — see references/knowledge-capture.md)

@@ -10,7 +10,7 @@ All quality gates pass — P0/P1/P2 issues resolved, no exceptions without human
 |------|-------|-----------|
 | UT Coverage | % code covered by unit tests | Configurable |
 | API Test Pass | All API contract tests | 100% |
-| Code Style | Style guide compliance | P0/P1/P2 only |
+| Code Style | Style guide compliance — delegate to sw-lint-checker | P0/P1/P2 only |
 | Security Scan | Vulnerability scan | P0/P1/P2 only |
 | Review Closure | All P0/P1/P2 resolved | 100% |
 
@@ -37,7 +37,11 @@ All quality gates pass — P0/P1/P2 issues resolved, no exceptions without human
 ```bash
 # Run gates
 pytest --cov --cov-report=term tests/unit/
-eslint src/ --quiet
+
+# Standards check (delegate to sw-lint-checker for all languages)
+# Covers: ruff/eslint/golangci-lint/shellcheck/markdownlint/etc.
+# See skills/sw-lint-checker/references/ for language-specific tool instructions
+
 security-scan.sh
 
 # Aggregate results
