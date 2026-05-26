@@ -34,13 +34,20 @@
 # current_phase 取值 (pipeline 阶段):
 #   ideation → design → decomposition → execution → merge → test → delivery
 #
+# execution 进度 (phases.execution.progress), 仅 execution 阶段有效:
+#   tasks_total:     任务总数 (sw-task-decomposer 初始化)
+#   tasks_done:      已完成任务数 (sw-plan-executor 每 wave 更新)
+#   worktrees_active: 当前活跃 worktree 数 (sw-plan-executor 每 wave 更新)
+#   tasks_blocked:   阻塞任务数 (sw-plan-executor 更新)
+#   进度计算: tasks_done / tasks_total → 完成百分比
+#
 # --- 更新责任 (写入者) ---
 #
 #   sw-requirements-clarifier:  创建条目 + phases.ideation
 #   sw-value-judgment:          更新 phases.value_assessment
 #   sw-feature-designer:        更新 phases.design
 #   sw-task-decomposer:         更新 phases.decomposition
-#   sw-plan-executor:           更新 phases.execution (start → in_progress, end → done)
+#   sw-plan-executor:           更新 phases.execution (start → in_progress, end → done) + progress
 #   sw-finishing-branch:        更新 phases.merge
 #   sw-integration-tester:      更新 phases.test
 #   sw-delivery-manager:        更新 phases.delivery
@@ -83,6 +90,11 @@ requirements:
   #       completed_at: '2026-04-11'
   #     execution:
   #       status: done
+  #       progress:
+  #         tasks_total: 5
+  #         tasks_done: 5
+  #         worktrees_active: 0
+  #         tasks_blocked: 0
   #       artifacts:
   #         - _context/memory/sw-shared/plans/example-plan.md
   #         - _context/memory/sw-shared/reviews/

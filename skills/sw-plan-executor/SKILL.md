@@ -85,6 +85,8 @@ Use TodoWrite to register orchestration items:
 Update `_context/memory/sw-shared/requirements-tracker.yaml`:
 - Read the tracker and locate the requirement entry by `id` matching the requirement associated with this plan
 - Set `phases.execution.status` to `in_progress`
+- Read `phases.execution.progress.tasks_total` (initialized by sw-task-decomposer). If zero, count tasks from `_context/memory/sw-shared/tasks.yaml` and update it
+- Update `phases.execution.progress.worktrees_active` to the number of tasks in the first wave
 - Update `current_phase` to `execution`
 - Update `updated_at` to today's date (`YYYY-MM-DD`)
 - Write back
@@ -137,8 +139,13 @@ Execute tasks following the parallel-by-default mandate.
 2. **Fan out in parallel:** Delegate ALL tasks in the wave simultaneously
 3. **Verify each result:** Apply 4-phase verification to every completed delegation
 4. **Update plan and notepad:** Mark checkboxes, append learnings
-5. **Handle failures:** Retry up to 3 times with same session; document if still failing
-6. **Repeat:** Go to step 1 for next wave
+5. **Update tracker progress:** After each wave completes, update `requirements-tracker.yaml`:
+   - `phases.execution.progress.tasks_done`: count of tasks with status `done` in tasks.yaml or worktree-registry
+   - `phases.execution.progress.worktrees_active`: count of tasks in the next wave (0 if all done)
+   - `phases.execution.progress.tasks_blocked`: count of blocked tasks
+   - `updated_at` to today
+6. **Handle failures:** Retry up to 3 times with same session; document if still failing
+7. **Repeat:** Go to step 1 for next wave
 
 ### Step 4: Final Verification Wave
 
@@ -171,6 +178,8 @@ FILES MODIFIED: [summary list]
 Finalize `_context/memory/sw-shared/requirements-tracker.yaml`:
 - Read the tracker and locate the requirement entry by `id`
 - Set `phases.execution.status` to `done`
+- Set `phases.execution.progress.tasks_done` to `tasks_total`
+- Set `phases.execution.progress.worktrees_active` to 0
 - Add artifact paths:
   - `_context/memory/sw-shared/plans/{plan-name}.md`
   - `_context/memory/sw-shared/reviews/` (directory)

@@ -60,6 +60,11 @@ phases:
     completed_at: null
   execution:
     status: pending
+    progress:
+      tasks_total: 0
+      tasks_done: 0
+      worktrees_active: 0
+      tasks_blocked: 0
     artifacts: []
     completed_at: null
   merge:
@@ -136,6 +141,11 @@ requirements:
         completed_at: null
       execution:
         status: pending
+        progress:
+          tasks_total: 0
+          tasks_done: 0
+          worktrees_active: 0
+          tasks_blocked: 0
         artifacts: []
         completed_at: null
       merge:

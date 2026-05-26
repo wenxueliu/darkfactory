@@ -70,6 +70,11 @@ After writing the three output files, update `_context/memory/sw-shared/requirem
   - `_context/memory/sw-shared/tasks.yaml`
   - `_context/memory/sw-controller/worktree-registry.yaml`
   - `_context-output/{requirement_id}/dependencies.json`
+- Initialize `phases.execution.progress` with task counts:
+  - `tasks_total`: total number of tasks in tasks.yaml
+  - `tasks_done`: 0
+  - `worktrees_active`: 0
+  - `tasks_blocked`: 0
 - Set `phases.decomposition.completed_at` to today's date (`YYYY-MM-DD`)
 - Update `current_phase` to `decomposition`
 - Update `updated_at` to today
