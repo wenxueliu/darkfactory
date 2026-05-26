@@ -10,20 +10,21 @@ The shared memory structure is created with proper permissions and initial conte
 
 ```bash
 # Create all directories
-{project-root}/_bmad/memory/hw-shared/
-{project-root}/_bmad/memory/hw-shared/knowledge-base/
-{project-root}/_bmad/memory/hw-shared/knowledge-base/patterns/
-{project-root}/_bmad/memory/hw-shared/knowledge-base/decisions/
-{project-root}/_bmad/memory/hw-shared/knowledge-base/lessons/
-{project-root}/_bmad/memory/hw-shared/knowledge-base/api-contracts/
-{project-root}/_bmad/memory/hw-shared/reviews/
-{project-root}/_bmad/memory/hw-controller/
+{project-root}/_context/memory/sw-shared/
+{project-root}/_context/memory/sw-shared/knowledge-base/
+{project-root}/_context/memory/sw-shared/knowledge-base/patterns/
+{project-root}/_context/memory/sw-shared/knowledge-base/decisions/
+{project-root}/_context/memory/sw-shared/knowledge-base/lessons/
+{project-root}/_context/memory/sw-shared/knowledge-base/api-contracts/
+{project-root}/_context/memory/sw-shared/reviews/
+{project-root}/_context/memory/sw-controller/
 ```
 
 ### Create Initial Files
 
 | File | Content |
 |------|---------|
+| `requirements-tracker.yaml` | Tracker template with schema docs and TODO placeholder |
 | `tasks.yaml` | Empty tasks list |
 | `design-decisions.md` | Header only |
 | `human-interventions.md` | Header only |

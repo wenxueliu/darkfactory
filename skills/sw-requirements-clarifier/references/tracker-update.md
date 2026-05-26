@@ -19,6 +19,7 @@
 ### Step 2: Determine mode
 
 - **Create mode（首次使用）**: 文件只有模板注释和 `# TODO` 占位行，`requirements:` 列表下无实际条目。
+- **File missing（文件不存在）**: `sw-setup` 未初始化。按仓库中的模板文件（`_context/memory/sw-shared/requirements-tracker.yaml`）内容从零创建，然后按 Create mode 处理。
 - **Append mode（已有需求）**: `requirements:` 列表下已有至少一个非注释的需求条目。
 
 ### Step 3: Build the new entry

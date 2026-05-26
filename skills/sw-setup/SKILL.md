@@ -1,13 +1,13 @@
 ---
-name: hw-setup
+name: sw-setup
 description: 黑灯工厂模块安装配置. Use when installing or updating the 黑灯工厂 module, configuring worktree directories, or initializing shared memory structure. [trigger: 安装黑灯工厂, 配置hw, 初始化]
 ---
 
-# 黑灯工厂 模块安装 (hw-setup)
+# 黑灯工厂 模块安装 (sw-setup)
 
 ## Overview
 
-This skill installs and configures the **黑灯工厂 (HW)** module. It sets up shared memory structure, configures worktree directories, and registers the module capabilities.
+This skill installs and configures the **黑灯工厂 (SW)** module. It sets up shared memory structure, configures worktree directories, and registers the module capabilities.
 
 **Your Mission:** Get 黑灯工厂 ready to run.
 
@@ -16,7 +16,7 @@ This skill installs and configures the **黑灯工厂 (HW)** module. It sets up 
 ### Module Identity
 
 - **Module name:** 黑灯工厂
-- **Module code:** hw
+- **Module code:** sw
 - **Version:** 1.0.0
 
 ### Configuration Collected
@@ -45,8 +45,9 @@ git check-ignore {worktree_base} || echo "{worktree_base} not in gitignore!"
 
 ```bash
 # Create shared memory structure
-{project-root}/_bmad/memory/
-├── hw-shared/
+{project-root}/_context/memory/
+├── sw-shared/
+│   ├── requirements-tracker.yaml
 │   ├── tasks.yaml
 │   ├── design-decisions.md
 │   ├── human-interventions.md
@@ -57,7 +58,7 @@ git check-ignore {worktree_base} || echo "{worktree_base} not in gitignore!"
 │   │   ├── lessons/
 │   │   └── api-contracts/
 │   └── reviews/
-└── hw-controller/
+└── sw-controller/
     ├── global-state.yaml
     └── worktree-registry.yaml
 ```
@@ -69,8 +70,8 @@ Register all 黑灯工厂 skills in the module help system.
 ## Configuration Files
 
 Config is written to:
-- `{project-root}/_bmad/config.yaml` — module section (hw)
-- `{project-root}/_bmad/config.user.yaml` — user settings
+- `{project-root}/_context/config.yaml` — module section (sw)
+- `{project-root}/_context/config.user.yaml` — user settings
 
 ## Capabilities
 
