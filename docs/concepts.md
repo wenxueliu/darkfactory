@@ -20,8 +20,8 @@
 ### 多语言支持
 
 - **编程语言无关** — Agent 不绑定特定编程语言。TDD Agent 适配 pytest/Jest/JUnit/Go test 等主流框架；Reviewer Agent 按语言加载对应的审查模式。新增语言只需扩展 `references/` 下的模式文件。
-- **自然语言灵活切换** — 通过 `_bmad/config.user.yaml` 的 `communication_language` 控制。可切换为 `English`/`Japanese`/`Korean` 等。
-- **业务场景快速适配** — 通过 `_bmad/config.yaml` 配置不同业务领域，无需修改 Agent 代码。
+- **自然语言灵活切换** — 通过 `_context/config.user.yaml` 的 `communication_language` 控制。可切换为 `English`/`Japanese`/`Korean` 等。
+- **业务场景快速适配** — 通过 `_context/config.yaml` 配置不同业务领域，无需修改 Agent 代码。
 
 ### 配置驱动的业务适配
 
@@ -43,6 +43,33 @@ ideation → design → decomposition → execution → merge → test → deliv
 ```
 
 每个阶段转换必须通过验收标准验证。未通过质量门禁的阶段不能推进。人类判断是最终安全阀——当迭代次数达到上限时升级到人工；未解决的 P0/P1/P2 问题不能推进。
+
+### 需求生命周期跟踪 (Requirement Lifecycle Tracking)
+
+每个需求从 ideation 到 delivery 的全生命周期状态记录在 `_context/memory/sw-shared/requirements-tracker.yaml` 中。该文件是 **sw-controller 判断阶段转换的权威数据源**。
+
+**跟踪维度：**
+
+| 维度 | 字段 | 更新者 |
+|------|------|--------|
+| 当前阶段 | `current_phase` | 各阶段 Agent 完成时更新 |
+| 阶段状态 | `phases.<phase>.status` | pending / in_progress / done / blocked / skipped |
+| 产出物清单 | `phases.<phase>.artifacts` | 每个阶段完成后记录产物文件路径 |
+| 执行进度 | `phases.execution.progress` | sw-plan-executor 每 wave 更新 tasks_done/worktrees_active |
+| 整体状态 | `status` | 自动推导（任一 blocked→blocked，任一 in_progress→active，全部 done→done） |
+
+**8 个跟踪阶段与 pipeline 对应关系：**
+
+```
+ideation → value_assessment → design → decomposition → execution → merge → test → delivery
+   ↑              ↑              ↑           ↑             ↑          ↑       ↑        ↑
+  需求澄清      价值评估       特性设计    任务拆分      计划执行    分支合并  集成测试  交付管理
+```
+
+**与 harness_framework 的分工：**
+- `requirements-tracker.yaml` 记录**需求级**阶段状态和进度快照，给人看、给 sw-controller 做决策
+- Consul KV 记录**任务级**实时状态（BLOCKED/PENDING/IN_PROGRESS/DONE），给 Aggregator/Watchdog 做调度和故障恢复
+- 二者通过 `dependencies.json`（sw-task-decomposer 导出）和 Consul KV 状态变更事件串联
 
 ---
 

@@ -220,6 +220,10 @@ multiagents/
 ├── _context/                   # BMAD framework (config + memory)
 │   ├── config.yaml          # Module configuration
 │   └── memory/              # Agent shared state
+│       └── sw-shared/
+│           ├── requirements-tracker.yaml  # 需求全生命周期跟踪
+│           ├── tasks.yaml                 # 任务定义
+│           └── ...
 ├── .claude-plugin/          # Claude Code plugin manifest
 ├── .codex-plugin/           # Codex plugin manifest
 └── .opencode/               # OpenCode plugin + config

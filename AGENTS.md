@@ -211,6 +211,12 @@ multiagents/
 ├── docs/                    # Documentation
 ├── hooks/                   # Session-start bootstrap
 ├── _context/                   # BMAD framework (config + memory)
+│   ├── config.yaml              # Module configuration
+│   └── memory/                  # Agent shared state
+│       └── sw-shared/
+│           ├── requirements-tracker.yaml  # Requirement lifecycle tracking
+│           ├── tasks.yaml                 # Task definitions
+│           └── ...
 ├── .claude-plugin/          # Claude Code plugin manifest
 ├── .codex-plugin/           # Codex plugin manifest
 └── .opencode/               # OpenCode plugin + config

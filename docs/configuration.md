@@ -6,7 +6,7 @@
 
 ## 配置项总表
 
-以下配置项在 `_bmad/config.yaml` 和 `_bmad/config.user.yaml` 中设置：
+以下配置项在 `_context/config.yaml` 和 `_context/config.user.yaml` 中设置：
 
 | Key | Default | Description |
 |-----|---------|-------------|
@@ -42,7 +42,7 @@
 
 **新增业务领域：** 创建 `requirements-spec-template-{domain}.md` → 在 `template-router.md` 添加一行映射 → 提交 PR。Agent 核心逻辑零改动。
 
-**完全自定义模板：** 在 `_bmad/config.yaml` 中指定 `custom_templates.requirements` 路径，覆盖内置模板。
+**完全自定义模板：** 在 `_context/config.yaml` 中指定 `custom_templates.requirements` 路径，覆盖内置模板。
 
 ---
 
@@ -51,14 +51,14 @@
 ### 金融 API 服务
 
 ```yaml
-# _bmad/config.yaml
-hw:
+# _context/config.yaml
+sw:
   enabled_reviewers: "security,logic,performance"  # 全开
   business_domain: "fintech"
   knowledge_base_auto_update: true
   min_iteration_before_human: 2  # 关键项目加强人工介入
 
-# _bmad/config.user.yaml — 日文团队
+# _context/config.user.yaml — 日文团队
 communication_language: Japanese
 user_name: Tanaka
 ```
@@ -66,8 +66,8 @@ user_name: Tanaka
 ### 内部工具脚本
 
 ```yaml
-# _bmad/config.yaml
-hw:
+# _context/config.yaml
+sw:
   enabled_reviewers: "logic"  # 仅逻辑审查
   business_domain: "internal-tools"
   knowledge_base_auto_update: false
@@ -75,6 +75,53 @@ hw:
 ```
 
 ---
+
+---
+
+## 需求跟踪器 (Requirements Tracker)
+
+需求全生命周期跟踪由 `_context/memory/sw-shared/requirements-tracker.yaml` 实现。该文件**不是配置文件**，而是各阶段 Agent 自动写入的共享状态文件——sw-controller 将其作为阶段转换检查的权威数据源。
+
+### 文件结构
+
+```yaml
+requirements:
+  - id: REQ-YYYYMMDD-NNN
+    title: 需求标题
+    priority: P1
+    current_phase: execution
+    status: active
+    phases:
+      ideation:           { status: done, artifacts: [...], completed_at: '...' }
+      value_assessment:   { status: done, artifacts: [...], completed_at: '...' }
+      design:             { status: done, artifacts: [...], completed_at: '...' }
+      decomposition:      { status: done, artifacts: [...], completed_at: '...' }
+      execution:          { status: in_progress, progress: {...}, artifacts: [...] }
+      merge:              { status: pending, artifacts: [], completed_at: null }
+      test:               { status: pending, artifacts: [], completed_at: null }
+      delivery:           { status: pending, artifacts: [], completed_at: null }
+```
+
+### 与 harness_framework 的协作
+
+| 层级 | 跟踪文件 | 粒度 | 用途 |
+|------|---------|------|------|
+| 需求级 | `requirements-tracker.yaml` | 阶段 + 任务计数 | sw-controller 决策、人工查进度 |
+| 任务级 | Consul KV `workflows/<req_id>/tasks/` | 每个任务实时状态 | Aggregator 调度、Watchdog 恢复 |
+| 仪表盘 | WebAPI `/api/workflows` | 全局实时视图 | DAG 可视化、控制操作 |
+
+### 如何查看进度
+
+```bash
+# 查看所有需求的阶段状态（一行一个需求）
+grep -A1 '^  - id:' _context/memory/sw-shared/requirements-tracker.yaml
+
+# 查看特定需求的执行进度
+# 找 phases.execution.progress 字段
+
+# 查看运行时任务级状态（需 harness_framework 运行中）
+curl http://localhost:8080/api/workflows
+```
 
 ## 下一步
 

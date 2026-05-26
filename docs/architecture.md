@@ -67,17 +67,18 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 
 ## E2E 阶段覆盖
 
-每个阶段有结构化模板和质量门禁：
+每个阶段有结构化模板和质量门禁，全生命周期状态记录在 `requirements-tracker.yaml` 中：
 
-| Phase | Templates | Gate Check |
-|-------|-----------|------------|
-| **ideation (需求)** | `requirements-spec-template.md`, value assessment | `requirements-gate.md` |
-| **design (设计)** | `design-doc-template.md`, `adr-template.md` | `design-gate.md` |
-| **decomposition (拆分)** | `task-decomposition.md` → `tasks.yaml` | dependency check |
-| **execution (执行)** | TDD cycles + lint check + parallel review | P0/P1/P2 gate |
-| **merge (合并)** | `merge-management.md` | conflict-free merge |
-| **test (测试)** | `integration-test-plan.md` | all IT PASS |
-| **delivery (交付)** | `delivery-checklist.md`, `release-notes-template.md` | `delivery-acceptance-gate.md` |
+| Phase | Templates | Gate Check | Tracker 更新者 |
+|-------|-----------|------------|---------------|
+| **ideation (需求)** | `requirements-spec-template.md`, value assessment | `requirements-gate.md` | sw-requirements-clarifier |
+| **value_assessment (价值)** | `value-assessment.md`, `roi-evaluation.md` | value scoring | sw-value-judgment |
+| **design (设计)** | `design-doc-template.md`, `adr-template.md` | `design-gate.md` | sw-feature-designer |
+| **decomposition (拆分)** | `task-decomposition.md` → `tasks.yaml` | dependency check | sw-task-decomposer |
+| **execution (执行)** | TDD cycles + lint check + parallel review | P0/P1/P2 gate | sw-plan-executor |
+| **merge (合并)** | `merge-management.md` | conflict-free merge | sw-controller |
+| **test (测试)** | `integration-test-plan.md` | all IT PASS | sw-controller |
+| **delivery (交付)** | `delivery-checklist.md`, `release-notes-template.md` | `delivery-acceptance-gate.md` | sw-delivery-manager |
 
 知识库在所有阶段持续维护：ADR 在 `decisions/`、模式在 `patterns/`、经验教训在 `lessons/`。
 
@@ -152,6 +153,7 @@ multiagents/
 ```
 _context/memory/
 ├── sw-shared/                    # Cross-agent shared state
+│   ├── requirements-tracker.yaml # Requirement lifecycle tracking (phase status, progress, artifacts)
 │   ├── tasks.yaml                # Task definitions and status
 │   ├── design-decisions.md       # Architecture decision records
 │   ├── human-interventions.md    # Human intervention history
