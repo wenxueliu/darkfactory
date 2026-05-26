@@ -138,11 +138,11 @@ API 验证流程 (provider-agnostic):
 
 ```bash
 # Newman 执行 (baseUrl 由 provider.get_endpoint() 动态注入，不硬编码 localhost:8080)
-newman run _bmad/memory/hw-shared/tests/api-{requirement_id}.json \
-  -e _bmad/memory/hw-shared/tests/api-{requirement_id}-env.json \
+newman run _context/memory/sw-shared/tests/api-{requirement_id}.json \
+  -e _context/memory/sw-shared/tests/api-{requirement_id}-env.json \
   --env-var baseUrl={provider_endpoint} \
   --reporters cli,junit \
-  --reporter-junit-export _bmad/memory/hw-shared/tests/api-{requirement_id}-report.xml
+  --reporter-junit-export _context/memory/sw-shared/tests/api-{requirement_id}-report.xml
 ```
 
 **验证规则:**
@@ -167,6 +167,10 @@ newman run _bmad/memory/hw-shared/tests/api-{requirement_id}.json \
 ### 1C. E2E 层验证 (合并后)
 
 E2E 测试在所有 worktree 合并后执行（见 GATE 3 跨任务回归）。不在单个 worktree 内执行 E2E——E2E 需要完整系统。
+
+E2E 测试分为两层：
+- **L2 API/集成测试**：由 `sw-integration-tester` 执行（Newman + Postman Schema）
+- **L3 浏览器 E2E 测试**：由 `sw-browser-tester` 执行（Playwright 脚本生成 + 视觉回归 + 控制台/网络证据采集）
 
 ## GATE 2: 审查门禁 (Heterogeneous Review)
 
@@ -260,8 +264,8 @@ review_status:
 ```
 1. git checkout -b staging-{requirement_id} {base_branch}
 2. 按 wave 顺序合并所有 worktree:
-   git merge hw-task-001 --no-ff
-   git merge hw-task-002 --no-ff
+   git merge sw-task-001 --no-ff
+   git merge sw-task-002 --no-ff
    ...
 
 3. provider = load_provider(config.environments.integration.provider)
@@ -282,12 +286,18 @@ review_status:
      newman run contracts/{svc}-contract-tests.json \
        --env-var baseUrl={provider.get_endpoint(provider_svc)}
 
-9. E2E 测试:
+9. API E2E 测试 (L2):
    web_url = provider.get_endpoint(web-frontend)
    npx playwright test e2e/ --baseURL={web_url}
 
-10. 全部 PASS → provider.stop(all_services) → 合并到主分支
-11. 有 FAIL → 定位问题 worktree → 修复或回滚
+10. 浏览器 E2E 测试 (L3):
+   sw-browser-tester 生成并执行 Playwright 测试脚本
+   → 功能 + 非功能 + 兼容性 + 视觉回归 全覆盖
+   → 控制台错误 + 网络故障 + 性能指标采集
+   → 输出 browser-e2e-results.yaml
+
+11. 全部 PASS → provider.stop(all_services) → 合并到主分支
+12. 有 FAIL → 定位问题 worktree → 修复或回滚
 ```
 
 **回归定位流程:**
@@ -332,7 +342,8 @@ review_status:
 
 - [ ] GATE 1: 100% UT PASS + 100% API PASS (Newman exit 0)
 - [ ] GATE 2: 安全/逻辑/性能审查 0 P0, 0 P1, 0 P2
-- [ ] GATE 3: worktree 内回归 PASS（merge 主分支后 UT 仍然 PASS）
+- [ ] GATE 3: worktree 内回归 PASS（merge 主分支后 UT 仍然 PASS）+ 跨任务全量回归 PASS（UT + API + 浏览器 E2E）
+- [ ] 浏览器 E2E: 功能 + 非功能 + 兼容性 全部 PASS (browser-e2e-results.yaml)
 - [ ] 代码覆盖率 ≥ domain 阈值
 - [ ] 无 `{占位符}` 残留的测试用例
 

@@ -4,7 +4,7 @@
 
 端到端 (E2E) 测试用例的结构化设计模板。覆盖功能、非功能、兼容性三大类测试场景，并支持用户自定义扩展。E2E 验证从用户入口到数据库再返回的完整链路——跨页面、跨组件、跨服务。
 
-**定位:** 设计阶段由 hw-controller 加载，填充后写入设计文档 Section 10.5。执行阶段由 Playwright/Cypress/Selenium 等框架运行。E2E 不在 TDD Agent 的两层循环（UT+API）内——E2E 用例在 UT+API 全量通过后再执行。
+**定位:** 设计阶段由 sw-controller 加载，填充后写入设计文档 Section 10.5。执行阶段由 `sw-browser-tester` 生成 Playwright `.spec.ts` 脚本并通过 `npx playwright test` 运行。E2E 不在 TDD Agent 的两层循环（UT+API）内——E2E 用例在 UT+API 全量通过后再执行。
 
 ## When to Use
 
@@ -42,7 +42,8 @@ AND   {持久化验证: DB/API 状态一致}
 | 设计要素 | 要求 | 示例 |
 |---------|------|------|
 | 起始状态 | 具体的数据行、配置、权限 | `INSERT INTO users VALUES ('e2e-u-001', 'e2e@test.com', role='member', balance=1000.00)` |
-| 操作步骤 | 每步含: 页面路由 + 元素定位 + 操作 + 等待条件 | `1. 打开 /products → 2. data-testid="search-input" type "test-product" → 3. 等待 .result-list 可见 → 4. data-testid="buy-btn" click` |
+| 操作步骤 | 每步含: 页面路由 + 元素定位(data-testid 必填) + 操作 + 等待条件 | `1. 打开 /products → 2. data-testid="search-input" type "test-product" → 3. 等待 .result-list 可见 → 4. data-testid="buy-btn" click` |
+| 选择器 | **必须指定 `data-testid`**，供 `sw-browser-tester` 生成 Playwright 脚本使用。回退: ARIA role/name → text → CSS class | `data-testid="search-input"`, `data-testid="buy-btn"`, `data-testid="order-number"` |
 | 验证点 | UI 断言 + API 断言 + DB 断言 | `页面显示"支付成功" AND GET /orders?userId=e2e-u-001 → status=PAID AND DB orders 表 status='PAID'` |
 | 数据清理 | 具体的 DELETE/UPDATE 语句，恢复原始状态 | `DELETE FROM orders WHERE user_id='e2e-u-001'; UPDATE inventory SET stock=100 WHERE id=1` |
 
@@ -276,10 +277,10 @@ E2E 模板支持三种扩展方式，互不冲突：
 
 ### 5.2 A. 场景扩类 (Scenario Extension)
 
-在任意现有类别下追加场景子类型。在 `_bmad/config.yaml` 中声明：
+在任意现有类别下追加场景子类型。在 `_context/config.yaml` 中声明：
 
 ```yaml
-hw:
+sw:
   e2e_extensions:
     scenarios:
       functional:
@@ -312,7 +313,7 @@ hw:
 当业务领域需要标准模板未覆盖的独立测试维度时，创建自定义类别：
 
 ```yaml
-hw:
+sw:
   e2e_extensions:
     custom_categories:
       - name: "regulatory:sox"
@@ -346,10 +347,10 @@ hw:
 
 ### 5.4 C. 脚本钩子 (Script Hooks)
 
-注入自定义验证逻辑到 E2E 执行流程。在 `_bmad/memory/hw-shared/e2e-hooks/` 下放置钩子脚本：
+注入自定义验证逻辑到 E2E 执行流程。在 `_context/memory/sw-shared/e2e-hooks/` 下放置钩子脚本：
 
 ```
-_bmad/memory/hw-shared/e2e-hooks/
+_context/memory/sw-shared/e2e-hooks/
 ├── before-all.js       # 所有用例执行前: 环境准备、全局 mock
 ├── after-all.js        # 所有用例执行后: 全局清理、报告聚合
 ├── before-each.js      # 每个用例前: 登录、重置状态
@@ -406,7 +407,7 @@ async function createTestUser(role = 'member') {
 自定义扩展可以覆盖模板的默认优先级：
 
 ```yaml
-hw:
+sw:
   e2e_extensions:
     priority_overrides:
       # 将支付相关的所有用例提升到 P0
@@ -442,10 +443,10 @@ hw:
 | **兼容性-网络** | 4G+3G+Offline | 4G+3G+Offline | 4G | 4G |
 | **自定义扩展** | 按配置 | 按配置 | 按配置 | 按配置 |
 
-可通过 `_bmad/config.yaml` 覆盖任意默认值：
+可通过 `_context/config.yaml` 覆盖任意默认值：
 
 ```yaml
-hw:
+sw:
   e2e:
     scenario_overrides:
       non_functional.performance: "P0"   # 对非金融项目也强制开启性能测试
@@ -506,11 +507,11 @@ CLEANUP:
 
 ```
 L1 UT (test-case-template.md)
-  └─ 函数/方法 → 秒级反馈 → hw-tdd-agent 执行
+  └─ 函数/方法 → 秒级反馈 → sw-tdd-agent 执行
 L2 API (api-test-case-template.json)
-  └─ 端点/契约 → 秒~分钟级 → Newman + hw-tdd-agent 执行
+  └─ 端点/契约 → 秒~分钟级 → Newman + sw-tdd-agent (GATE 1B), sw-integration-tester (GATE 3)
 L3 E2E (e2e-test-case-template.md) ← 本模板
-  └─ 用户旅程 → 分钟级 → Playwright/Cypress + Worktree Controller 执行
+  └─ 用户旅程 → 分钟级 → Playwright + sw-browser-tester 执行 (GATE 3)
       ├─ 功能 (happy/error/boundary/state/auth)
       ├─ 非功能 (perf/security/a11y/reliability/i18n)
       ├─ 兼容性 (browser/device/screen/network)
@@ -525,7 +526,7 @@ L3 E2E (e2e-test-case-template.md) ← 本模板
 
 | 产物 | 路径 | 何时生成 |
 |------|------|---------|
-| E2E 用例设计 | `designs/{id}-design.md` Section 10.5 | 设计阶段 (hw-controller 加载本模板填充) |
+| E2E 用例设计 | `designs/{id}-design.md` Section 10.5 | 设计阶段 (sw-controller 加载本模板填充) |
 | E2E 测试脚本 | `tests/e2e/{requirement_id}/` | 执行阶段 (由 Worktree Controller 协调生成) |
-| 扩展配置 | `_bmad/config.yaml` (hw.e2e_extensions) | 项目初始化或按需追加 |
-| 钩子脚本 | `_bmad/memory/hw-shared/e2e-hooks/` | 按需创建 |
+| 扩展配置 | `_context/config.yaml` (sw.e2e_extensions) | 项目初始化或按需追加 |
+| 钩子脚本 | `_context/memory/sw-shared/e2e-hooks/` | 按需创建 |

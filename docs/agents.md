@@ -1,6 +1,6 @@
 # Agent 目录 (Agent Catalog)
 
-> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了 v2 全部 34 个 Agent 的技能、角色和触发词。
+> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了 v2 全部 35 个 Agent 的技能、角色和触发词。
 
 ---
 
@@ -53,11 +53,12 @@
 | `sw-reviewer-context` | Context miner — searches git/GitHub/Slack/codebase for missed requirements and background knowledge (NEW) | context mining, 上下文挖掘 |
 | `sw-receiving-review` | Review feedback processor — technical verification before implementation, no performative agreement, pushback protocol. Based on Superpowers receiving-code-review. (NEW) | receiving review, 接收审查, review feedback, 审查反馈 |
 
-## 测试层 (Test Layer, 1 NEW)
+## 测试层 (Test Layer, 2 NEW)
 
 | Agent | Role | Trigger |
 |-------|------|---------|
 | `sw-integration-tester` | Integration tester — env health check → smoke test → integration test execution → result analysis → test-results.yaml. Connects to real backends. (NEW) | 集成测试, integration test, 测试执行 |
+| `sw-browser-tester` | Browser E2E tester — generates Playwright `.spec.ts` from E2E design → executes against real Chromium → visual regression + console/network diagnostics → browser-e2e-results.yaml. Adapted from gstack browse snapshot-based QA patterns. (NEW) | 浏览器测试, 浏览器E2E, browser test, Playwright, 前端自动化测试 |
 
 ## 交付层 (Delivery Layer, 1 NEW)
 
@@ -93,7 +94,7 @@
 
 ## 需求端到端流程 (E2E Requirements Flow)
 
-一个需求从提出到交付，经过 7 个阶段，32 个 Agent 各司其职。
+一个需求从提出到交付，经过 7 个阶段，35 个 Agent 各司其职。
 
 > **两条路径：** 简单需求走 设计(3-stage) → 拆分 路径；复杂/多步骤需求在头脑风暴后进入 **规划层** (sw-strategic-planner)，由规划层替代设计+拆分，直接产出可执行计划。
 
@@ -207,13 +208,18 @@
 ┌──────────────────────────────────────────────────────────────────────┐
 │ Phase 6: test (测试)                                                  │
 │                                                                      │
-│   sw-integration-tester:                                             │
+│   sw-integration-tester (L2 API/集成测试):                            │
 │   ├── 集成环境健康检查 (test-environment.md)                          │
 │   ├── 集成测试执行 (integration-test-plan.md)                         │
 │   └── API 测试 (api-test-postman-schema.md)                          │
 │                                                                      │
-│   Gate: all integration tests PASS                                   │
-│   Output: test-results.yaml                                          │
+│   sw-browser-tester (L3 浏览器 E2E 测试):                             │
+│   ├── 从 E2E 设计文档生成 Playwright .spec.ts 脚本                    │
+│   ├── 执行浏览器 E2E (功能 + 非功能 + 兼容性 + 视觉回归)             │
+│   └── 控制台错误 + 网络故障 + 性能指标采集                            │
+│                                                                      │
+│   Gate: all integration tests PASS + all browser E2E tests PASS      │
+│   Output: test-results.yaml + browser-e2e-results.yaml               │
 └──────────────────┬───────────────────────────────────────────────────┘
                    │ ✅ All IT PASS
                    ▼
@@ -244,7 +250,7 @@
 | **decomposition** (简单需求) | sw-task-decomposer | — | task-decomposition.md, parallel-execution.md | dependency check |
 | **execution** | sw-plan-executor | sw-worktree-controller, sw-tdd-agent, sw-reviewer-logic, sw-reviewer-security, sw-reviewer-performance, sw-reviewer-context, sw-receiving-review, sw-lint-checker, sw-verification-before-completion, sw-systematic-debugging | worktree-management.md, quality-gates.md | P0/P1/P2 gate |
 | **merge** | sw-finishing-branch | — | merge-management.md | conflict-free |
-| **test** | sw-integration-tester | — | test-environment.md, integration-test-plan.md, api-test-postman-schema.md | all IT PASS |
+| **test** | sw-integration-tester | sw-browser-tester | test-environment.md, integration-test-plan.md, api-test-postman-schema.md, playwright-test-template.md, snapshot-strategy.md, visual-regression.md | all IT PASS + all browser E2E PASS |
 | **delivery** | sw-delivery-manager | sw-knowledge-agent | delivery-checklist.md, release-notes-template.md | delivery-acceptance-gate.md |
 
 > 详细阶段转换规则（含每阶段的具体检查项和失败处理）见 `skills/sw-controller/SKILL.md` → Phase Transition Rules。

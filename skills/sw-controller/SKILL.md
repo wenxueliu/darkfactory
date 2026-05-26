@@ -177,6 +177,8 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 | ---------- | ----- |
 | 集成测试执行 | Delegate to `sw-integration-tester` |
 | API 测试执行 | Delegate to `sw-integration-tester` |
+| 浏览器 E2E 测试执行 | Delegate to `sw-browser-tester` |
+| 浏览器自动化测试 | Delegate to `sw-browser-tester` |
 
 ### 交付阶段 (Delivery)
 | Capability | Route |
@@ -219,7 +221,7 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 - **Decomposition phase:** Delegate to `sw-task-decomposer`. It handles service identification, DAG construction, wave batching, tasks.yaml + dependencies.json output.
 - **Execution phase:** Delegate to sw-plan-executor with the plan file path. It handles all task fan-out and verification.
 - **Merge phase:** Delegate to `sw-finishing-branch` for the 4-option terminal state.
-- **Test phase:** Delegate to `sw-integration-tester` for env health check, integration test execution, and result analysis.
+- **Test phase:** Delegate to `sw-integration-tester` for env health check, integration test execution, and API result analysis. Delegate to `sw-browser-tester` for L3 browser E2E test execution (generates Playwright scripts, runs visual regression, captures console/network diagnostics).
 - **Delivery phase:** Delegate to `sw-delivery-manager` for checklist verification and release notes. Delegate KB update to `sw-knowledge-agent`.
 - **Research:** Fire sw-codebase-explorer (internal) and sw-external-researcher (external) in PARALLEL for non-trivial questions. Always run in background.
 - **Deep consultation:** Delegate to sw-strategic-advisor for complex architecture, security/performance questions, or after 3+ consecutive failures.
@@ -287,6 +289,7 @@ merge → test:
   ✅ Merge complete, no conflicts
   ✅ Integration test plan filled
   ✅ All integration tests PASS
+  ✅ All browser E2E tests PASS (browser-e2e-results.yaml)
   → Update tracker: phases.merge.status = done, completed_at = today
 
 test → delivery:
@@ -294,6 +297,8 @@ test → delivery:
   ✅ Release notes written
   ✅ Delivery acceptance gate PASS
   ✅ Rollback plan confirmed
+  ✅ Browser E2E: all functional/non-functional/compatibility PASS
+  ✅ Visual regression approved (or baselines updated)
   → Update tracker: phases.test.status = done, completed_at = today
 ```
 

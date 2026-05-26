@@ -4,7 +4,7 @@
 
 在集成测试通过后、代码部署到生产环境前使用。
 
-写入 `{project-root}/_bmad/memory/hw-shared/delivery/delivery-checklist-{requirement_id}.md`
+写入 `{project-root}/_context/memory/sw-shared/delivery/delivery-checklist-{requirement_id}.md`
 
 ---
 
@@ -21,6 +21,8 @@
 - [ ] 代码审查通过（logic + security + performance review: 0 P0, 0 P1）
 - [ ] 单元测试 + API 测试全部 PASS
 - [ ] 集成测试全部 PASS
+- [ ] 浏览器 E2E 测试全部 PASS (browser-e2e-results.yaml: 功能 + 非功能 + 兼容性)
+- [ ] 视觉回归检查通过（无未预期的视觉变化）
 - [ ] 代码覆盖率 ≥ 目标值（默认 80%）
 - [ ] 无未解决的 TODO/FIXME（或已记录在 TODOS.md）
 

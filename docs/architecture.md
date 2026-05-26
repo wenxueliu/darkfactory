@@ -4,7 +4,7 @@
 
 ---
 
-## Agent 架构 (v2, 33 skills)
+## Agent 架构 (v2, 35 skills)
 
 ```
 sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
@@ -42,6 +42,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   │
   ├── [测试层 — Test]
   │     sw-integration-tester (NEW: 集成测试 — 环境检查→执行→结果分析)
+  │     sw-browser-tester (NEW: 浏览器E2E测试 — Playwright脚本生成+视觉回归+证据采集)
   │
   ├── [交付层 — Delivery]
   │     sw-delivery-manager (NEW: 交付管理 — 检查清单+Release Notes)
@@ -77,7 +78,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 | **decomposition (拆分)** | `task-decomposition.md` → `tasks.yaml` | dependency check | sw-task-decomposer |
 | **execution (执行)** | TDD cycles + lint check + parallel review | P0/P1/P2 gate | sw-plan-executor |
 | **merge (合并)** | `merge-management.md` | conflict-free merge | sw-controller |
-| **test (测试)** | `integration-test-plan.md` | all IT PASS | sw-controller |
+| **test (测试)** | `integration-test-plan.md`, `browser-test-plan.md` | all IT PASS + all browser E2E PASS | sw-controller |
 | **delivery (交付)** | `delivery-checklist.md`, `release-notes-template.md` | `delivery-acceptance-gate.md` | sw-delivery-manager |
 
 知识库在所有阶段持续维护：ADR 在 `decisions/`、模式在 `patterns/`、经验教训在 `lessons/`。
