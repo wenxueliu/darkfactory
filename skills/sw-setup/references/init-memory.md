@@ -24,7 +24,7 @@ The shared memory structure is created with proper permissions and initial conte
 
 | File | Content |
 |------|---------|
-| `requirements-tracker.yaml` | Tracker template with schema docs and TODO placeholder |
+| `requirements-tracker.yaml` | Copy from `references/requirements-tracker-template.yaml` |
 | `tasks.yaml` | Empty tasks list |
 | `design-decisions.md` | Header only |
 | `human-interventions.md` | Header only |
