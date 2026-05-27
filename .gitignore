@@ -6,3 +6,5 @@ __pycache__/
 .remember/
 hooks/hook-state/
 hooks/hook-state/*.json
+skills/sw-lint-checker/checkers_local/*
+!skills/sw-lint-checker/checkers_local/_example.py
