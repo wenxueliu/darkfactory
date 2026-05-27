@@ -22,15 +22,17 @@ The shared memory structure is created with proper permissions and initial conte
 
 ### Create Initial Files
 
-| File | Content |
-|------|---------|
-| `requirements-tracker.yaml` | Copy from `references/requirements-tracker-template.yaml` |
-| `tasks.yaml` | Empty tasks list |
-| `design-decisions.md` | Header only |
-| `human-interventions.md` | Header only |
-| `knowledge-base/index.md` | Index structure |
-| `global-state.yaml` | Initial state |
-| `worktree-registry.yaml` | Empty registry |
+For each file below: read the template from `references/<template>` and write it to the target path under `{project-root}/_context/memory/`.
+
+| Target Path | Template Source |
+|-------------|----------------|
+| `_context/memory/sw-shared/requirements-tracker.yaml` | `references/requirements-tracker-template.yaml` |
+| `_context/memory/sw-shared/tasks.yaml` | `references/tasks-template.yaml` |
+| `_context/memory/sw-shared/design-decisions.md` | `references/design-decisions-template.md` |
+| `_context/memory/sw-shared/human-interventions.md` | `references/human-interventions-template.md` |
+| `_context/memory/sw-shared/knowledge-base/index.md` | `references/knowledge-base-index-template.md` |
+| `_context/memory/sw-controller/global-state.yaml` | `references/global-state-template.yaml` |
+| `_context/memory/sw-controller/worktree-registry.yaml` | `references/worktree-registry-template.yaml` |
 
 ### Verify Permissions
 

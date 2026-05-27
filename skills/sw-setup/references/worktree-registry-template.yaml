@@ -1,0 +1,17 @@
+# Worktree注册表
+
+## 格式说明
+
+```yaml
+worktrees:
+  - id: WT-001
+    name: feature-xxx
+    task_id: TASK-001
+    status: created|ready|executing|done|merged
+    created_at: YYYY-MM-DD
+    updated_at: YYYY-MM-DD
+```
+
+## 注册的Worktrees
+
+# TODO: 添加worktree记录
