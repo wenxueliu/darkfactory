@@ -36,17 +36,17 @@ Answer three questions before you start:
 
 ### Step 2: Create Configuration
 
-Create `_bmad/` under your project root:
+Create `_context/` under your project root:
 
 ```bash
-mkdir -p _bmad/memory/hw-shared
-mkdir -p _bmad/memory/hw-controller
+mkdir -p _context/memory/sw-shared
+mkdir -p _context/memory/sw-controller
 ```
 
-**`_bmad/config.yaml`** (adjust based on your answers above):
+**`_context/config.yaml`** (adjust based on your answers above):
 
 ```yaml
-hw:
+sw:
   architecture: "monolith"
   business_domain: "general"            # general | fintech | ecommerce | internal-tools
   min_iteration_before_human: 3         # AI iterations before escalating to human
@@ -55,7 +55,7 @@ hw:
   merge_strategy: "merge"
 ```
 
-**`_bmad/config.user.yaml`**:
+**`_context/config.user.yaml`**:
 
 ```yaml
 communication_language: English
@@ -70,24 +70,24 @@ Copy the `skills/` directory from the HW repo into your project root. **Minimum 
 
 | Skill | Role |
 |-------|------|
-| `hw-controller` | Orchestrator: requirements → design → decomposition → execution |
-| `hw-tdd-agent` | TDD enforcer: RED → GREEN → REFACTOR |
-| `hw-reviewer-logic` | Logic reviewer: correctness bugs and edge cases |
-| `hw-worktree-controller` | Task executor: completes one task in an isolated worktree |
+| `sw-controller` | Orchestrator: requirements → design → decomposition → execution |
+| `sw-tdd-agent` | TDD enforcer: RED → GREEN → REFACTOR |
+| `sw-reviewer-logic` | Logic reviewer: correctness bugs and edge cases |
+| `sw-worktree-controller` | Task executor: completes one task in an isolated worktree |
 
 Optional but recommended:
 
 | Skill | Role |
 |-------|------|
-| `hw-reviewer-security` | Security review |
-| `hw-reviewer-performance` | Performance review |
-| `hw-setup` | Environment initialization |
+| `sw-reviewer-security` | Security review |
+| `sw-reviewer-performance` | Performance review |
+| `sw-setup` | Environment initialization |
 
 ### Step 4: Update .gitignore
 
 ```bash
 echo ".worktree/" >> .gitignore
-echo "_bmad-output/" >> .gitignore
+echo "_context-output/" >> .gitignore
 ```
 
 ### Step 5: Take It for a Spin
@@ -95,17 +95,17 @@ echo "_bmad-output/" >> .gitignore
 In Claude Code:
 
 ```
-/hw-controller I want to add a health check endpoint to the project
+/sw-controller I want to add a health check endpoint to the project
 ```
 
-You'll see hw-controller kick off and walk through:
+You'll see sw-controller kick off and walk through:
 1. Requirement clarification (asks you a few questions)
 2. Design output (generates design doc)
 3. Task decomposition (generates tasks.yaml)
 4. Task execution (launches worktree-controller → tdd-agent → reviewer)
 5. Merge after quality gates pass
 
-> For a quick taste, try: `/hw-controller demo mode: add a /health endpoint`
+> For a quick taste, try: `/sw-controller demo mode: add a /health endpoint`
 
 ---
 
@@ -119,17 +119,17 @@ git init
 
 # Create base directories
 mkdir -p src tests
-mkdir -p _bmad/memory/hw-shared
-mkdir -p _bmad/memory/hw-controller
+mkdir -p _context/memory/sw-shared
+mkdir -p _context/memory/sw-controller
 mkdir -p skills
 ```
 
 ### Step 2: Configure
 
-**`_bmad/config.yaml`**:
+**`_context/config.yaml`**:
 
 ```yaml
-hw:
+sw:
   architecture: "monolith"
   business_domain: "general"
   min_iteration_before_human: 3
@@ -140,16 +140,16 @@ hw:
 
 ### Step 3: Copy Skills
 
-Copy all `hw-*` skill directories from the HW repo's `skills/` into your `skills/`.
+Copy all `sw-*` skill directories from the HW repo's `skills/` into your `skills/`.
 
-### Step 4: Let hw-controller Guide You
+### Step 4: Let sw-controller Guide You
 
 ```
-/hw-controller I'm starting a new project. Tech stack: {Python FastAPI / Go Gin / Java Spring Boot / ...}.
+/sw-controller I'm starting a new project. Tech stack: {Python FastAPI / Go Gin / Java Spring Boot / ...}.
 Core functionality: {one-sentence description}
 ```
 
-hw-controller will guide you through:
+sw-controller will guide you through:
 1. **Requirements spec** — expands your one-liner into a full requirements document
 2. **Design doc** — generates architecture, API, and test design
 3. **Task decomposition** — breaks design into parallel TDD tasks
@@ -159,7 +159,7 @@ hw-controller will guide you through:
 
 ### Step 5: Harvest Knowledge
 
-After your first development cycle, check `_bmad/memory/hw-shared/knowledge-base/`:
+After your first development cycle, check `_context/memory/sw-shared/knowledge-base/`:
 - `patterns/` — reusable patterns discovered
 - `decisions/ADR-0001-*.md` — architecture decision records
 - `lessons/` — lessons learned
@@ -175,8 +175,8 @@ Before you start: you have multiple independent service repos (e.g. `user-servic
 ### Step 1: Create Workspace
 
 ```bash
-mkdir hw-workspace && cd hw-workspace
-git init  # this repo only holds _bmad + skills, not service code
+mkdir sw-workspace && cd sw-workspace
+git init  # this repo only holds _context + skills, not service code
 ```
 
 ### Step 2: Clone All Services
@@ -192,10 +192,10 @@ git clone git@github.com:org/web-frontend.git services/web-frontend
 
 ### Step 3: Configure for Microservices
 
-**`_bmad/config.yaml`**:
+**`_context/config.yaml`**:
 
 ```yaml
-hw:
+sw:
   architecture: "microservices"
 
   microservices:
@@ -212,15 +212,15 @@ hw:
 ### Step 4: Auto-Discover Services
 
 ```
-/hw-controller initialize: discover all services and build registry
+/sw-controller initialize: discover all services and build registry
 ```
 
-hw-controller invokes hw-knowledge-agent to scan every repo under `services/`, auto-generating `_bmad/memory/hw-shared/service-registry.yaml`. It detects language, framework, API endpoints, and DB schema for each service — no manual metadata entry needed.
+sw-controller invokes sw-knowledge-agent to scan every repo under `services/`, auto-generating `_context/memory/sw-shared/service-registry.yaml`. It detects language, framework, API endpoints, and DB schema for each service — no manual metadata entry needed.
 
 ### Step 5: Start a Cross-Service Requirement
 
 ```
-/hw-controller When a user places an order, we need to check their credit score.
+/sw-controller When a user places an order, we need to check their credit score.
 This touches user-service (new credit score API), order-service (call credit check),
 and web-frontend (show credit limit on checkout page)
 ```
@@ -243,10 +243,10 @@ Key differences from monolith mode:
 No project setup needed. Experience HW directly inside the HW repo:
 
 ```
-/hw-controller demo mode: run the simplest example from reference/
+/sw-controller demo mode: run the simplest example from reference/
 ```
 
-hw-controller skips config checks and runs a minimal path with defaults:
+sw-controller skips config checks and runs a minimal path with defaults:
 1. Generates a sample requirement
 2. Walks through the full flow: requirements → design → decomposition → execution → merge
 3. You'll see how agents collaborate, how quality gates work, how worktrees are managed
@@ -260,22 +260,22 @@ Expect 5-10 minutes end to end.
 Congrats! You've used Black灯 Factory. Here's where to go next:
 
 **I want to understand an agent deeply:**
-- `skills/hw-controller/SKILL.md` — full orchestrator capability table
-- `skills/hw-tdd-agent/SKILL.md` — TDD cycle details
-- `skills/hw-reviewer-logic/SKILL.md` — logic review dimensions
+- `skills/sw-controller/SKILL.md` — full orchestrator capability table
+- `skills/sw-tdd-agent/SKILL.md` — TDD cycle details
+- `skills/sw-reviewer-logic/SKILL.md` — logic review dimensions
 
 **I want to tune configuration for my team:**
 - Configuration section in `CLAUDE.md` — all configurable keys and defaults
-- Adjust `_bmad/config.yaml` — review strictness, business domain, human intervention frequency
+- Adjust `_context/config.yaml` — review strictness, business domain, human intervention frequency
 
 **I want to add a new business domain template:**
-- `skills/hw-controller/references/template-router.md` — how to register a new domain template
-- `skills/hw-controller/references/requirements-spec-template.md` — base template structure
+- `skills/sw-controller/references/template-router.md` — how to register a new domain template
+- `skills/sw-controller/references/requirements-spec-template.md` — base template structure
 
 **I ran into a problem:**
-- Check `_bmad/memory/hw-shared/human-interventions.md` — any blocking escalations
-- Check `_bmad/memory/hw-controller/global-state.yaml` — current phase and progress
-- Describe the problem directly to hw-controller — it self-diagnoses
+- Check `_context/memory/sw-shared/human-interventions.md` — any blocking escalations
+- Check `_context/memory/sw-controller/global-state.yaml` — current phase and progress
+- Describe the problem directly to sw-controller — it self-diagnoses
 
 ---
 
@@ -285,28 +285,28 @@ Congrats! You've used Black灯 Factory. Here's where to go next:
 
 | Command | What it does |
 |---------|-------------|
-| `/hw-controller {requirement}` | Start a new requirement |
-| `/hw-controller status` | Show current progress |
-| `/hw-controller continue` | Resume from last interruption |
-| `/hw-controller escalate` | Escalate a blocker to human decision |
+| `/sw-controller {requirement}` | Start a new requirement |
+| `/sw-controller status` | Show current progress |
+| `/sw-controller continue` | Resume from last interruption |
+| `/sw-controller escalate` | Escalate a blocker to human decision |
 
 ### Directory Map
 
 | Directory | Contents | Maintained by |
 |-----------|----------|---------------|
-| `_bmad/config.yaml` | Project configuration | You (human) |
-| `_bmad/memory/hw-shared/` | Requirements, designs, tasks, reviews | hw-controller (auto) |
-| `_bmad/memory/hw-controller/` | Orchestration state, worktree registry | hw-controller (auto) |
+| `_context/config.yaml` | Project configuration | You (human) |
+| `_context/memory/sw-shared/` | Requirements, designs, tasks, reviews | sw-controller (auto) |
+| `_context/memory/sw-controller/` | Orchestration state, worktree registry | sw-controller (auto) |
 | `.worktree/` | Isolated dev environments | Auto created/destroyed |
 | `skills/` | Agent skill definitions | Updated with HW releases |
-| `contracts/` | Cross-service API contracts | hw-controller + human review |
-| `_bmad/memory/hw-shared/knowledge-base/` | Accumulated architecture knowledge | hw-controller (auto) |
+| `contracts/` | Cross-service API contracts | sw-controller + human review |
+| `_context/memory/sw-shared/knowledge-base/` | Accumulated architecture knowledge | sw-controller (auto) |
 
 ---
 
 ---
 
-**Ready?** Pick your scenario, open Claude Code, and type `/hw-controller` to start your first human-AI collaborative development session.
+**Ready?** Pick your scenario, open Claude Code, and type `/sw-controller` to start your first human-AI collaborative development session.
 
 ---
 
@@ -319,7 +319,7 @@ Congrats! You've used Black灯 Factory. Here's where to go next:
 | Deep-dive into the knowledge base | [knowledge-base.md →](knowledge-base.md) |
 | Understand system architecture | [architecture.md →](architecture.md) |
 | View configuration reference | [configuration.md →](configuration.md) |
-| Understand the orchestrator's capabilities | `skills/hw-controller/SKILL.md` |
-| Learn the TDD execution flow | `skills/hw-tdd-agent/SKILL.md` |
+| Understand the orchestrator's capabilities | `skills/sw-controller/SKILL.md` |
+| Learn the TDD execution flow | `skills/sw-tdd-agent/SKILL.md` |
 | Use HW on Codex | [INSTALL-codex.md →](INSTALL-codex.md) |
 | Use HW on OpenCode | [INSTALL-opencode.md →](INSTALL-opencode.md) |

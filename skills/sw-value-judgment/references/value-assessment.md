@@ -44,7 +44,7 @@ ROI: Impact / Effort (1-5)
 
 **需求ID**: REQ-XXX
 **评估时间**: YYYY-MM-DD
-**评估人**: hw-value-judgment
+**评估人**: sw-value-judgment
 
 ### 价值评分: X/5 ({等级})
 
@@ -92,4 +92,4 @@ Before submitting assessment:
 
 ## Output
 
-Write to `{project-root}/_bmad/memory/hw-shared/value-assessment/{requirement_id}.md`
+Write to `{project-root}/_context/memory/sw-shared/value-assessment/{requirement_id}.md`

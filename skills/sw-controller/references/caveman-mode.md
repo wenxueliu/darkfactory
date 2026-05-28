@@ -57,7 +57,7 @@
 
 - 一旦触发，**每个响应**都保持此模式。不会在几轮后自动恢复。
 - 即使不确定也保持——猜测也比填充好。
-- 在所有 Agent 间持久: 如果 hw-controller 启用，子 Agent 委托也应遵循。
+- 在所有 Agent 间持久: 如果 sw-controller 启用，子 Agent 委托也应遵循。
 - 关闭条件: 用户明确说 "stop caveman"、"normal mode"、"恢复正常模式"。
 
 ---

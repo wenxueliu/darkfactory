@@ -7,7 +7,7 @@
 ## 路由机制
 
 ```
-_bmad/config.yaml
+_context/config.yaml
   business_domain: "{domain}"
   architecture: "monolith | microservices"
          │
@@ -17,7 +17,7 @@ _bmad/config.yaml
          │                              (若 architecture = microservices)
          │
          ├── 需求阶段 → 加载 {domain} 对应的 requirements-spec-template
-         ├── 设计阶段 → 3 阶段委托: hw-feature-designer → hw-service-designer → hw-e2e-designer
+         ├── 设计阶段 → 3 阶段委托: sw-feature-designer → sw-service-designer → sw-e2e-designer
          ├── 门禁检查 → 加载 {domain} 对应的 gate 规则 (如有)
          ├── 若 architecture = microservices → 叠加适配层 (服务影响分析/契约/多 repo)
          │
@@ -42,19 +42,19 @@ _bmad/config.yaml
 
 ## 模板加载逻辑
 
-当 hw-controller 进入需求阶段时:
+当 sw-controller 进入需求阶段时:
 
-1. **读取 config:** `{project-root}/_bmad/config.yaml` → `hw.business_domain`
+1. **读取 config:** `{project-root}/_context/config.yaml` → `sw.business_domain`
 2. **查映射表:** 在本文档的领域映射表中查找匹配的模板
 3. **加载模板:** 加载对应的 `requirements-spec-template-{domain}.md`
 4. **Fallback:** 如果 `{domain}` 不在映射表中 → 加载 `requirements-spec-template.md` (通用)
-5. **用户自定义:** 如果 `_bmad/config.yaml` 中指定了 `custom_template_path` → 加载用户自定义模板（优先级最高）
+5. **用户自定义:** 如果 `_context/config.yaml` 中指定了 `custom_template_path` → 加载用户自定义模板（优先级最高）
 
 ## 用户自定义模板
 
 ```yaml
-# _bmad/config.yaml
-hw:
+# _context/config.yaml
+sw:
   business_domain: "fintech"
 
 # 可选：完全自定义模板路径（覆盖内置模板）
@@ -89,4 +89,4 @@ hw:
 | `internal-tools` | G1 + G4 (简化) | G1 + G2 (简化) | 关闭 | 生产数据破坏 |
 | `general` | G1-G4 | G1-G4 | 可选 (2 模型) | 功能不可用 |
 
-门禁强度由 hw-controller 根据 `business_domain` 在门禁检查时动态调整。
+门禁强度由 sw-controller 根据 `business_domain` 在门禁检查时动态调整。

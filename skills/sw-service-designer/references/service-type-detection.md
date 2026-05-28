@@ -35,9 +35,9 @@
 
 ## 自定义服务类型
 
-在 `_bmad/config.yaml` 中扩展:
+在 `_context/config.yaml` 中扩展:
 ```yaml
-hw:
+sw:
   design_phase:
     service_design_templates:
       ml-model: "service-design-template-ml-model.md"

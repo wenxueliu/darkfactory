@@ -1,9 +1,9 @@
 ---
-name: hw-tdd-agent
+name: sw-tdd-agent
 description: 黑灯工厂TDD执行Agent. Use when executing TDD cycles, writing unit tests, or implementing test-driven API development. [trigger: TDD, 单元测试, 测试先行, RED-GREEN-REFACTOR]
 ---
 
-# 黑灯工厂 TDD 执行者 (hw-tdd-agent)
+# 黑灯工厂 TDD 执行者 (sw-tdd-agent)
 
 ## Overview
 

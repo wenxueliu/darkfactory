@@ -136,7 +136,7 @@ Fix all three. Remove ALL TODO comments from production code."
 // CORRECT: task_id 恢复同一 session
 
 // 第一次委托
-Delegate task to hw-tdd-agent:
+Delegate task to sw-tdd-agent:
   prompt = "实现用户注册 API..."
   Result: task_id="ses_abc123", status=completed
 
@@ -156,12 +156,12 @@ Delegate (same session):
 ```
 // WRONG: 不使用 task_id，重新开始
 
-Delegate task to hw-tdd-agent:
+Delegate task to sw-tdd-agent:
   prompt = "实现用户注册 API..."
   Result: session="ses_abc123"
 
 // 验证失败，但新开一个 session
-Delegate task to hw-tdd-agent:
+Delegate task to sw-tdd-agent:
   prompt = "The register API build failed. Fix it. The code is in src/api/auth/register.go."
   // WRONG: 新 session 不知道之前做了什么，需要重复所有上下文
 ```
@@ -218,7 +218,7 @@ We now know (from learnings.md added by task-3):
 Try task-2 one more time with this corrected knowledge."
 ```
 
-## 升级到 hw-controller
+## 升级到 sw-controller
 
 ### 必须升级的情况
 
@@ -231,9 +231,9 @@ Try task-2 one more time with this corrected knowledge."
 ### 升级模板
 
 ```
-ESCALATION TO hw-controller
+ESCALATION TO sw-controller
 
-From: hw-plan-executor
+From: sw-plan-executor
 Plan: {plan-name}
 Progress: {completed}/{total} tasks completed, {n} BLOCKED
 
@@ -245,9 +245,9 @@ Blocked Tasks:
   - task-{id}: {任务描述} -- 外部依赖不可用
     原因: {具体问题}
 
-Notepad: {project-root}/_bmad/memory/hw-plan-executor/notepads/{plan-name}/
+Notepad: {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/
 
-What we need from hw-controller:
+What we need from sw-controller:
   {具体的所需行动}
 
 Continue without blocked tasks? {YES/NO, 理由}

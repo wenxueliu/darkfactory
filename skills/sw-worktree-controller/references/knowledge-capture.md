@@ -83,7 +83,7 @@ For each item identified, use the kb-log.py script. The script handles: filename
 
 ```bash
 python scripts/kb-log.py pattern "{Pattern Title}" \
-  --author "hw-worktree-controller" --dedup-check --stdin <<'EOF'
+  --author "sw-worktree-controller" --dedup-check --stdin <<'EOF'
 ## Summary
 {One-sentence description of the pattern}
 ## Details
@@ -101,7 +101,7 @@ EOF
 
 ```bash
 python scripts/kb-log.py lesson "{Lesson Title}" \
-  --author "hw-worktree-controller" --dedup-check --stdin <<'EOF'
+  --author "sw-worktree-controller" --dedup-check --stdin <<'EOF'
 ## Summary
 {What happened and what was learned}
 ## Details
@@ -119,7 +119,7 @@ EOF
 
 ```bash
 python scripts/kb-log.py decision "{Decision Title}" \
-  --status accepted --author "hw-worktree-controller" --dedup-check --stdin <<'EOF'
+  --status accepted --author "sw-worktree-controller" --dedup-check --stdin <<'EOF'
 ## 背景
 {What triggered this decision during implementation}
 ## 决策
@@ -137,7 +137,7 @@ EOF
 
 ```bash
 python scripts/kb-log.py api "{API Title}" \
-  --author "hw-worktree-controller" --dedup-check --stdin <<'EOF'
+  --author "sw-worktree-controller" --dedup-check --stdin <<'EOF'
 ## Summary
 {What this API does}
 ## Details
@@ -166,7 +166,7 @@ Confirm `total_results >= 1` and the entry appears in results.
 Include knowledge capture summary in the final DONE report:
 
 ```yaml
-task_id: hw-001
+task_id: sw-001
 status: DONE
 summary:
   ut_tests: {n} passed
@@ -212,19 +212,19 @@ Ask: "If this service were replaced with a different implementation, would this 
 ```bash
 # Enterprise-wide pattern
 python scripts/kb-log.py pattern "Pattern Name" \
-  --scope enterprise --author "hw-worktree-controller" --dedup-check --stdin <<'EOF'
+  --scope enterprise --author "sw-worktree-controller" --dedup-check --stdin <<'EOF'
 ...
 EOF
 
 # Domain-specific lesson
 python scripts/kb-log.py lesson "Lesson Name" \
-  --scope domain --domain payment --author "hw-worktree-controller" --dedup-check --stdin <<'EOF'
+  --scope domain --domain payment --author "sw-worktree-controller" --dedup-check --stdin <<'EOF'
 ...
 EOF
 
 # Service-specific ADR
 python scripts/kb-log.py decision "Decision Name" \
-  --scope service --service user-service --status accepted --author "hw-worktree-controller" --dedup-check --stdin <<'EOF'
+  --scope service --service user-service --status accepted --author "sw-worktree-controller" --dedup-check --stdin <<'EOF'
 ...
 EOF
 ```

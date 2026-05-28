@@ -1,21 +1,21 @@
 ---
-title: '黑灯工厂 (HW) - 验收驱动开发平台'
+title: '黑灯工厂 (SW) - 验收驱动开发平台'
 status: 'complete'
 module_name: '黑灯工厂'
-module_code: 'hw'
+module_code: 'sw'
 module_description: '通过验收驱动开发实现需求及交付的智能研发平台'
 architecture: '分层Controller模式: Top Controller + Worktree Controllers'
 standalone: true
 expands_module: ''
 skills_planned:
-  - hw-controller
-  - hw-worktree-controller
-  - hw-tdd-agent
-  - hw-reviewer-security
-  - hw-reviewer-logic
-  - hw-reviewer-performance
-  - hw-knowledge-agent
-  - hw-setup
+  - sw-controller
+  - sw-worktree-controller
+  - sw-tdd-agent
+  - sw-reviewer-security
+  - sw-reviewer-logic
+  - sw-reviewer-performance
+  - sw-knowledge-agent
+  - sw-setup
 config_variables:
   - worktree_base
   - min_iteration_before_human
@@ -26,7 +26,7 @@ created: '2026-04-11'
 updated: '2026-04-11'
 ---
 
-# 黑灯工厂 (HW) - 验收驱动开发平台
+# 黑灯工厂 (SW) - 验收驱动开发平台
 
 ## Vision
 
@@ -47,7 +47,7 @@ updated: '2026-04-11'
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      Top Controller                          │
-│                  (hw-controller - 总控)                     │
+│                  (sw-controller - 总控)                     │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │ - 需求理解与澄清                                    │   │
 │  │ - 协调头脑风暴                                      │   │
@@ -95,7 +95,7 @@ updated: '2026-04-11'
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    个人Memory (Per Agent)                   │
-│  路径: _bmad/memory/{agent-name}/                          │
+│  路径: _context/memory/{agent-name}/                          │
 │  内容:                                                      │
 │    - daily/{date}.md: 本Agent的日常活动记录                 │
 │    - preferences.md: 本Agent的学习偏好                       │
@@ -104,7 +104,7 @@ updated: '2026-04-11'
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    共享Memory (Shared)                      │
-│  路径: _bmad/memory/hw-shared/                             │
+│  路径: _context/memory/sw-shared/                             │
 │  内容:                                                      │
 │    - tasks.yaml: 所有任务状态和依赖关系                     │
 │    - design-decisions.md: 架构和设计决策记录               │
@@ -115,7 +115,7 @@ updated: '2026-04-11'
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    Controller状态                           │
-│  路径: _bmad/memory/hw-controller/                         │
+│  路径: _context/memory/sw-controller/                         │
 │  内容:                                                      │
 │    - global-state.yaml: 全局进度、当前阶段                  │
 │    - worktree-registry.yaml: 所有worktree状态               │
@@ -136,7 +136,7 @@ updated: '2026-04-11'
 ### Cross-Agent Patterns
 
 #### 1. Top Controller → Worktree Controller
-- **通信方式**: 共享内存 (_bmad/memory/hw-controller/worktree-registry.yaml)
+- **通信方式**: 共享内存 (_context/memory/sw-controller/worktree-registry.yaml)
 - **消息类型**: 任务分配、状态查询、进度更新
 - **模式**: 异步，通过共享状态协调
 
@@ -166,7 +166,7 @@ updated: '2026-04-11'
 
 ## Skills
 
-### hw-controller (Top Controller)
+### sw-controller (Top Controller)
 
 **Type:** Agent
 
@@ -192,8 +192,8 @@ updated: '2026-04-11'
 | 知识库整合 | 协调知识库查询和更新 | 设计文档、代码库 | 更新的知识库 |
 
 **Memory:**
-- 读取: `_bmad/memory/hw-shared/*` (共享内存), `_bmad/memory/hw-controller/*` (全局状态)
-- 写入: `_bmad/memory/hw-controller/global-state.yaml`, `_bmad/memory/hw-controller/worktree-registry.yaml`, `_bmad/memory/hw-shared/tasks.yaml`
+- 读取: `_context/memory/sw-shared/*` (共享内存), `_context/memory/sw-controller/*` (全局状态)
+- 写入: `_context/memory/sw-controller/global-state.yaml`, `_context/memory/sw-controller/worktree-registry.yaml`, `_context/memory/sw-shared/tasks.yaml`
 
 **Init Responsibility:** 初始化共享内存结构，创建全局状态文件
 
@@ -208,7 +208,7 @@ updated: '2026-04-11'
 
 ---
 
-### hw-worktree-controller (Worktree Controller)
+### sw-worktree-controller (Worktree Controller)
 
 **Type:** Agent
 
@@ -232,8 +232,8 @@ updated: '2026-04-11'
 | 任务状态上报 | 向Top Controller报告状态 | 任务状态 | 状态更新 |
 
 **Memory:**
-- 读取: `_bmad/memory/hw-shared/tasks.yaml`, `_bmad/memory/hw-shared/design-decisions.md`
-- 写入: `_bmad/memory/hw-controller/worktree-registry.yaml`, `_bmad/memory/hw-shared/reviews/{task-id}.md`
+- 读取: `_context/memory/sw-shared/tasks.yaml`, `_context/memory/sw-shared/design-decisions.md`
+- 写入: `_context/memory/sw-controller/worktree-registry.yaml`, `_context/memory/sw-shared/reviews/{task-id}.md`
 
 **Init Responsibility:** 初始化本任务的worktree，建立worktree内的开发环境
 
@@ -249,7 +249,7 @@ updated: '2026-04-11'
 
 ---
 
-### hw-tdd-agent (TDD执行Agent)
+### sw-tdd-agent (TDD执行Agent)
 
 **Type:** Agent
 
@@ -272,8 +272,8 @@ updated: '2026-04-11'
 | 测试验证 | 确认测试确实失败/通过 | 测试运行结果 | 验证报告 |
 
 **Memory:**
-- 读取: `_bmad/memory/{agent-name}/preferences.md`
-- 写入: `_bmad/memory/{agent-name}/daily/{date}.md`
+- 读取: `_context/memory/{agent-name}/preferences.md`
+- 写入: `_context/memory/{agent-name}/daily/{date}.md`
 
 **Init Responsibility:** 理解任务的验收条件和测试范围
 
@@ -290,7 +290,7 @@ updated: '2026-04-11'
 
 ---
 
-### hw-reviewer-{type} (审核Agent基类)
+### sw-reviewer-{type} (审核Agent基类)
 
 **Type:** Agent (可扩展)
 
@@ -311,8 +311,8 @@ updated: '2026-04-11'
 | 架构审核 | 发现架构问题 | 设计文档 | 架构问题报告(P0-P3分级) |
 
 **Memory:**
-- 读取: `_bmad/memory/{agent-name}/preferences.md` (审核标准)
-- 写入: `_bmad/memory/hw-shared/reviews/{task-id}-{type}.md`
+- 读取: `_context/memory/{agent-name}/preferences.md` (审核标准)
+- 写入: `_context/memory/sw-shared/reviews/{task-id}-{type}.md`
 
 **Activation Modes:** Interactive, Headless
 
@@ -323,7 +323,7 @@ updated: '2026-04-11'
 
 ---
 
-### hw-knowledge-agent (知识库Agent)
+### sw-knowledge-agent (知识库Agent)
 
 **Type:** Agent
 
@@ -343,7 +343,7 @@ updated: '2026-04-11'
 | 知识索引维护 | 维护知识库索引 | - | 索引更新报告 |
 
 **Memory:**
-- 读取/写入: `_bmad/memory/hw-shared/knowledge-base/`
+- 读取/写入: `_context/memory/sw-shared/knowledge-base/`
 
 **Activation Modes:** Interactive (设计阶段), Headless (开发后自动更新)
 
@@ -384,8 +384,8 @@ updated: '2026-04-11'
 ## Setup Extensions
 
 1. **初始化Worktree目录**: 创建`.worktree/`目录并加入gitignore
-2. **初始化共享内存**: 创建`_bmad/memory/hw-shared/`结构
-3. **初始化Controller状态**: 创建`_bmad/memory/hw-controller/`结构
+2. **初始化共享内存**: 创建`_context/memory/sw-shared/`结构
+3. **初始化Controller状态**: 创建`_context/memory/sw-controller/`结构
 4. **配置审核Agent**: 根据`enabled_reviewers`配置启用对应的审核skill
 
 ## Integration
@@ -619,29 +619,29 @@ updated: '2026-04-11'
 
 | 顺序 | 技能 | 理由 |
 |------|------|------|
-| 1 | **hw-controller** | 核心协调者，其他技能依赖它 |
-| 2 | **hw-worktree-controller** | 依赖hw-controller提供任务上下文 |
-| 3 | **hw-tdd-agent** | 核心执行单元 |
-| 4 | **hw-reviewer-security** | 基础审核类型 |
-| 5 | **hw-reviewer-logic** | 基础审核类型 |
-| 6 | **hw-reviewer-performance** | 基础审核类型 |
-| 7 | **hw-knowledge-agent** | 知识库功能（可选后置） |
-| 8 | **hw-setup** | 模块安装skill |
+| 1 | **sw-controller** | 核心协调者，其他技能依赖它 |
+| 2 | **sw-worktree-controller** | 依赖sw-controller提供任务上下文 |
+| 3 | **sw-tdd-agent** | 核心执行单元 |
+| 4 | **sw-reviewer-security** | 基础审核类型 |
+| 5 | **sw-reviewer-logic** | 基础审核类型 |
+| 6 | **sw-reviewer-performance** | 基础审核类型 |
+| 7 | **sw-knowledge-agent** | 知识库功能（可选后置） |
+| 8 | **sw-setup** | 模块安装skill |
 
 ### 构建说明
 
 **第一批 (核心)**:
-- hw-controller: 最复杂，先构建便于其他技能调试
-- hw-worktree-controller: 依赖controller的状态定义
-- hw-tdd-agent: 核心TDD执行
+- sw-controller: 最复杂，先构建便于其他技能调试
+- sw-worktree-controller: 依赖controller的状态定义
+- sw-tdd-agent: 核心TDD执行
 
 **第二批 (审核)**:
 - 审核agents可并行构建
 - 每个审核类型独立，按需添加新类型
 
 **第三批 (辅助)**:
-- hw-knowledge-agent: 可选，知识库功能
-- hw-setup: 完整安装体验
+- sw-knowledge-agent: 可选，知识库功能
+- sw-setup: 完整安装体验
 
 ### 下一步行动
 
@@ -652,6 +652,6 @@ updated: '2026-04-11'
 
 ---
 
-**Your plan is complete at `skills/reports/2026-04-11-module-plan-ideation.md`. The build roadmap suggests starting with **hw-controller** — shall I invoke **Build an Agent (BA)** now to start building it? I'll pass the plan document as context so the builder understands the bigger picture.**
+**Your plan is complete at `skills/reports/2026-04-11-module-plan-ideation.md`. The build roadmap suggests starting with **sw-controller** — shall I invoke **Build an Agent (BA)** now to start building it? I'll pass the plan document as context so the builder understands the bigger picture.**
 
 When all skills are built, return to **Create Module (CM)** to scaffold the module infrastructure.

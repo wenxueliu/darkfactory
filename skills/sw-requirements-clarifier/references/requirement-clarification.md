@@ -118,7 +118,7 @@ C) {自定义 — 用自己的话描述}
 
 ## 连接到需求规格
 
-澄清完后，将收集到的信息填入 `requirements-spec-template.md` 结构，写入 `{project-root}/_bmad/memory/hw-shared/requirements/{requirement_id}.md`。
+澄清完后，将收集到的信息填入 `requirements-spec-template.md` 结构，写入 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`。
 
 然后触发 `requirements-gate.md` 门禁检查。
 
@@ -126,15 +126,15 @@ C) {自定义 — 用自己的话描述}
 
 如果需求的价值维度（用户价值/业务价值/战略对齐）仍然是 Partial，在澄清流程中调度价值评估能力:
 
-Load `../hw-value-judgment/references/value-assessment.md`
+Load `../sw-value-judgment/references/value-assessment.md`
 
-对需求进行 5 维度评分（Impact / Effort / Risk / Dependencies / Strategic Fit），结果写入 `{project-root}/_bmad/memory/hw-shared/value-assessment/{requirement_id}.md`。
+对需求进行 5 维度评分（Impact / Effort / Risk / Dependencies / Strategic Fit），结果写入 `{project-root}/_context/memory/sw-shared/value-assessment/{requirement_id}.md`。
 
 ## 连接到知识库
 
 如果在澄清过程中发现了可复用的模式、经验教训或设计决策，写入知识库:
 
-Load `../hw-knowledge-agent/references/knowledge-update.md`
+Load `../sw-knowledge-agent/references/knowledge-update.md`
 
 ## 知识库预查询 (进入设计前)
 
@@ -145,7 +145,7 @@ Load `../hw-knowledge-agent/references/knowledge-update.md`
 3. 如果有冲突或需要参考的历史决策，在需求规格中注明，并提供知识库链接
 4. 知识库查询结果作为设计阶段的输入，确保设计不会重复造轮子或偏离既有架构方向
 
-预查询结果写入 `{project-root}/_bmad/memory/hw-shared/knowledge-base/pre-query-{requirement_id}.md`。
+预查询结果写入 `{project-root}/_context/memory/sw-shared/knowledge-base/pre-query-{requirement_id}.md`。
 
 ## 输出产物
 

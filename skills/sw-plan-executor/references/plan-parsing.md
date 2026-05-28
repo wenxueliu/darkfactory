@@ -8,7 +8,7 @@
 
 标准路径:
 ```
-{project-root}/_bmad/memory/hw-shared/plans/{plan-name}.md
+{project-root}/_context/memory/sw-shared/plans/{plan-name}.md
 ```
 
 ## 解析步骤
@@ -124,9 +124,9 @@ SEQUENTIAL (named dependencies):
     Depends on: task-2 (实现用户登录 API)
 
 FINAL VERIFICATION WAVE:
-  F1: 逻辑审查 (hw-reviewer-logic)
-  F2: 安全审查 (hw-reviewer-security)
-  F3: 性能审查 (hw-reviewer-performance)
+  F1: 逻辑审查 (sw-reviewer-logic)
+  F2: 安全审查 (sw-reviewer-security)
+  F3: 性能审查 (sw-reviewer-performance)
 
 EXECUTION PLAN:
   Wave 1 (parallel): task-1, task-3

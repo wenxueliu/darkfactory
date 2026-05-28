@@ -52,11 +52,11 @@
 
 | 委托类型 | 验证方式 | 验证通过标准 |
 |---------|---------|------------|
-| hw-tdd-agent | 运行 UT + API 测试 | 100% PASS |
-| hw-reviewer-* | 阅读审查报告 | 0 P0, 0 P1, 0 P2 |
-| hw-codebase-explorer | 交叉验证搜索结果 | 信息准确，无遗漏关键文件 |
-| hw-strategic-advisor | 评估建议合理性 | 建议可行，不违反已知约束 |
-| hw-plan-executor | 检查执行结果 | 所有子任务的测试 PASS |
+| sw-tdd-agent | 运行 UT + API 测试 | 100% PASS |
+| sw-reviewer-* | 阅读审查报告 | 0 P0, 0 P1, 0 P2 |
+| sw-codebase-explorer | 交叉验证搜索结果 | 信息准确，无遗漏关键文件 |
+| sw-strategic-advisor | 评估建议合理性 | 建议可行，不违反已知约束 |
+| sw-plan-executor | 检查执行结果 | 所有子任务的测试 PASS |
 
 ## 完成检查清单
 
@@ -115,9 +115,9 @@
 - 审查: security PASS, logic PASS, performance PASS (0 P0, 0 P1, 0 P2)
 
 ### 委托验证
-- hw-tdd-agent: ✅ UT + API 测试独立验证通过
-- hw-reviewer-logic: ✅ 审查报告已读取，P0/P1/P2=0
-- hw-reviewer-security: ✅ 审查报告已读取，P0/P1/P2=0
+- sw-tdd-agent: ✅ UT + API 测试独立验证通过
+- sw-reviewer-logic: ✅ 审查报告已读取，P0/P1/P2=0
+- sw-reviewer-security: ✅ 审查报告已读取，P0/P1/P2=0
 
 ### 门禁状态
 - GATE 1 (TDD): ✅ PASS

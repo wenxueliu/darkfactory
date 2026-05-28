@@ -1,9 +1,9 @@
 ---
-name: hw-media-interpreter
+name: sw-media-interpreter
 description: 媒体文件解读Agent. Interprets PDFs, images, diagrams that require analysis beyond raw text. Use for extracting information from documents, describing visual content. [trigger: PDF解读, 图片分析, diagram interpretation, media analysis, 图表解读]
 ---
 
-# 黑灯工厂 媒体文件解读 (hw-media-interpreter)
+# 黑灯工厂 媒体文件解读 (sw-media-interpreter)
 
 ## Overview
 
@@ -101,9 +101,9 @@ For diagrams:
 
 This agent is **stateless**. It does not read from or write to any shared memory:
 
-- Does NOT read `_bmad/memory/hw-shared/tasks.yaml`
-- Does NOT write to `_bmad/memory/hw-shared/reviews/`
-- Does NOT access `_bmad/memory/hw-controller/`
+- Does NOT read `_context/memory/sw-shared/tasks.yaml`
+- Does NOT write to `_context/memory/sw-shared/reviews/`
+- Does NOT access `_context/memory/sw-controller/`
 - Has no private memory directory
 
 All context comes from the caller's `file_path` and `goal` parameters. All output returns directly to the caller as the response.

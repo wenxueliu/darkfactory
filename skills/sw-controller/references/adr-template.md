@@ -2,7 +2,7 @@
 
 ## 使用说明
 
-每个重要的技术决策记录为一个 ADR。写入 `{project-root}/_bmad/memory/hw-shared/knowledge-base/decisions/ADR-{NNNN}-{slug}.md`。
+每个重要的技术决策记录为一个 ADR。写入 `{project-root}/_context/memory/sw-shared/knowledge-base/decisions/ADR-{NNNN}-{slug}.md`。
 
 ADR 是不可变的历史记录。如果决策被推翻，创建新的 ADR 并引用被替代的 ADR，不要修改原 ADR。
 

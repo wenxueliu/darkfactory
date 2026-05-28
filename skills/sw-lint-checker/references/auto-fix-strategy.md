@@ -12,15 +12,27 @@ lint_runner.py --auto-fix --json returns errors
   ├─ error.auto_fixable == true → handled by the script (each checker's auto_fix())
   │   → Re-run lint_runner.py, check if fixed
   │
-  ├─ error.severity in [P0, P1] and auto_fixable == false
-  │   → Delegate to sw-tdd-agent (type errors, logic, security)
-  │
-  ├─ error.severity == P2 and auto_fixable == false
-  │   → Delegate to sw-tdd-agent (blocks next phase)
+  ├─ error.auto_fixable == false and severity in [P0, P1, P2]
+  │   ├─ Phase A: LLM direct fix (sw-lint-checker agent reads file, applies targeted Edit, re-verifies)
+  │   │   → Re-run lint_runner.py --files <fixed_file> --json after each file
+  │   │   → If error_count increases → revert that fix
+  │   └─ Phase B: Delegate remaining to sw-tdd-agent (for issues LLM could not fix)
+  │       → type errors, logic issues, cross-file changes, or complex restructures
   │
   └─ error.severity == P3
       → Document only, don't block
 ```
+
+## LLM Direct Fix (Phase A) — Rules
+
+The sw-lint-checker agent applies LLM fixes BEFORE delegating to sw-tdd-agent:
+
+1. **One file at a time.** Read → analyze error → Edit → verify → next file.
+2. **Targeted fix only.** Fix ONLY the reported lint error. Do not refactor or change behavior.
+3. **Verify after each file.** `lint_runner.py --files <fixed_file> --auto-fix --json`
+4. **Revert on regression.** If error_count increases after fix → revert and skip that error.
+5. **Know your limits.** Complex cross-file changes, type system issues, or security-sensitive code → skip LLM fix, leave for sw-tdd-agent.
+6. **Evidence rule.** Every fix must cite before/after lint_runner.py output.
 
 ## Auto-Fix: Handled by Python Checker Classes
 
@@ -43,11 +55,12 @@ Per-checker auto-fix capabilities are defined in the checker classes under `chec
 
 \* E501 (line too long) can sometimes be fixed by `ruff format`, sometimes not.
 
-## When to Delegate to sw-tdd-agent
+## When to Delegate to sw-tdd-agent (Phase B — after LLM fix)
 
-Delegate when ALL of these apply:
+Only delegate after LLM direct fix (Phase A) has been attempted. Delegate when ALL of these apply:
 - `error.auto_fixable == false` (from lint_runner.py JSON output)
 - `error.severity` is P0, P1, or P2
+- LLM direct fix was attempted and failed, or the fix requires cross-file changes / complex type restructure
 - The error is not a tool-missing (`tool_missing == true`)
 
 ### Delegation Prompt Template
@@ -73,12 +86,12 @@ All tests pass. The lint issues are the ONLY remaining blockers.
 
 ## Fix Iteration Limit
 
-Maximum 3 iteration rounds:
+Maximum 3 total rounds:
 
 ```
-Round 1: lint_runner.py --auto-fix --json → auto-fixes via checker classes → re-check
-Round 2: Delegate remaining auto_fixable=false issues → sw-tdd-agent → re-run lint_runner.py
-Round 3: Final attempt → direct fix for simple issues → re-run lint_runner.py
+Round 1: lint_runner.py --auto-fix --json → tool auto-fixes via checker classes → re-check
+Round 2: LLM direct fix for remaining auto_fixable=false P0/P1/P2 → re-check per file → full re-check
+Round 3: Delegate to sw-tdd-agent for issues LLM could not fix → re-run lint_runner.py
 
 If after Round 3 P0/P1 issues remain → LINT_BLOCKED, escalate to human
 ```

@@ -1,9 +1,9 @@
 ---
-name: hw-finishing-branch
+name: sw-finishing-branch
 description: 分支收尾Agent. Use when implementation is complete, all tests pass, and you need to decide how to integrate the work — guides completion of development by presenting structured options for merge, PR, or cleanup. [trigger: 完成开发, 分支收尾, 合并, merge, PR, 提交代码, finish branch, complete development, 收尾]
 ---
 
-# 黑灯工厂 分支收尾 (hw-finishing-branch)
+# 黑灯工厂 分支收尾 (sw-finishing-branch)
 
 ## Overview
 
@@ -31,8 +31,8 @@ The terminal conductor. When implementation is done, presents clear choices with
 ## On Activation
 
 1. Run project's test suite to verify all tests pass
-2. Determine the base branch (check `_bmad/config.yaml` for `merge_strategy`)
-3. Identify worktree location from git or `_bmad/memory/hw-controller/worktree-registry.yaml`
+2. Determine the base branch (check `_context/config.yaml` for `merge_strategy`)
+3. Identify worktree location from git or `_context/memory/sw-controller/worktree-registry.yaml`
 4. Present the 4 options (only if tests pass)
 
 ## The Process
@@ -41,7 +41,7 @@ The terminal conductor. When implementation is done, presents clear choices with
 
 **Before presenting options, run verification:**
 
-- Invoke `hw-verification-before-completion` to verify all claims
+- Invoke `sw-verification-before-completion` to verify all claims
 - Run the project's test suite (language auto-detected)
 - Check diagnostics are clean
 - Check build succeeds
@@ -95,7 +95,7 @@ Which option?
 2. Create PR with structured body:
    - Summary: 2-3 bullets of what changed
    - Test Plan: verification steps checklist
-   - Link to design docs in _bmad-output/
+   - Link to design docs in _context-output/
 3. Keep worktree (don't clean up)
 4. Report PR URL
 ```
@@ -112,7 +112,7 @@ Which option?
 - [ ] Manual verification steps
 
 ## Design
-- Design doc: _bmad-output/designs/<design-doc>.md
+- Design doc: _context-output/designs/<design-doc>.md
 
 Generated with [Claude Code](https://claude.ai/code)
 via [Happy](https://happy.engineering)
@@ -152,7 +152,7 @@ If confirmed:
 
 **For Options 1 and 4:** Remove the worktree if one was created for this task.
 
-Check `{project-root}/_bmad/memory/hw-controller/worktree-registry.yaml` for worktree path. Remove worktree and update registry.
+Check `{project-root}/_context/memory/sw-controller/worktree-registry.yaml` for worktree path. Remove worktree and update registry.
 
 **For Option 2:** Keep worktree (PR may need follow-up commits).
 
@@ -187,7 +187,7 @@ Check `{project-root}/_bmad/memory/hw-controller/worktree-registry.yaml` for wor
 - Present more or fewer than 4 options
 
 **Always:**
-- Run `hw-verification-before-completion` before offering options
+- Run `sw-verification-before-completion` before offering options
 - Present exactly 4 options with no elaboration
 - Get typed "discard" confirmation for Option 4
 - Clean up worktree for Options 1 and 4 only
@@ -195,11 +195,11 @@ Check `{project-root}/_bmad/memory/hw-controller/worktree-registry.yaml` for wor
 ## Integration
 
 **Called by:**
-- `hw-plan-executor` — after all tasks complete
-- `hw-worktree-controller` — after task DONE with gates passed
+- `sw-plan-executor` — after all tasks complete
+- `sw-worktree-controller` — after task DONE with gates passed
 - Developer directly — when manually finishing work
 
 **Integrates with:**
-- `hw-verification-before-completion` — verification gate before presenting options
-- `hw-controller` — merge and delivery phase transitions
-- `_bmad/memory/hw-controller/worktree-registry.yaml` — worktree cleanup tracking
+- `sw-verification-before-completion` — verification gate before presenting options
+- `sw-controller` — merge and delivery phase transitions
+- `_context/memory/sw-controller/worktree-registry.yaml` — worktree cleanup tracking

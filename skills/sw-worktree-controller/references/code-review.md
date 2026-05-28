@@ -44,7 +44,7 @@ Before dispatching, collect the inputs each reviewer needs:
 ### Architecture Conflicts
 
 If reviewers disagree on architecture:
-1. Log conflict to `{project-root}/_bmad/memory/hw-shared/reviews/{task_id}-conflicts.md`
+1. Log conflict to `{project-root}/_context/memory/sw-shared/reviews/{task_id}-conflicts.md`
 2. Escalate to human via Top Controller
 3. Wait for resolution before proceeding
 
@@ -92,7 +92,7 @@ Each reviewer should output:
 
    ```bash
    python scripts/kb-log.py lesson "(P3) {简短模式名}" \
-     --author "hw-worktree-controller" --stdin <<'EOF'
+     --author "sw-worktree-controller" --stdin <<'EOF'
    ## Summary
    {从 P3 Issue 标题提炼的一句话描述}
    ## Details
@@ -114,7 +114,7 @@ Each reviewer should output:
 
 ### Config 控制
 
-当 `hw.knowledge_base_auto_update` 为 false 时跳过本步骤，直接进入状态报告。
+当 `sw.knowledge_base_auto_update` 为 false 时跳过本步骤，直接进入状态报告。
 
 ## Transition
 

@@ -1,6 +1,6 @@
 # 草稿管理 (Draft Management)
 
-草稿是 hw-strategic-planner 的外部工作记忆。在长会话中，上下文窗口是有限的，草稿文件作为 "备份大脑" 确保没有信息丢失。
+草稿是 sw-strategic-planner 的外部工作记忆。在长会话中，上下文窗口是有限的，草稿文件作为 "备份大脑" 确保没有信息丢失。
 
 ---
 
@@ -9,7 +9,7 @@
 ### 命名约定
 
 ```
-{project-root}/_bmad/memory/hw-shared/drafts/{topic-slug}.md
+{project-root}/_context/memory/sw-shared/drafts/{topic-slug}.md
 ```
 
 - **topic-slug**: 用 kebab-case 描述主题，如 `jwt-auth-plan`, `refactor-user-module`, `dark-mode-feature`
@@ -18,7 +18,7 @@
 
 ### 文件路径规则
 
-- 草稿仅保存在 `{project-root}/_bmad/memory/hw-shared/drafts/` 下
+- 草稿仅保存在 `{project-root}/_context/memory/sw-shared/drafts/` 下
 - 草稿是 `.md` 文件
 - 其他任何路径将被拒绝
 
@@ -159,7 +159,7 @@
 ```markdown
 在第一个实质性交流时创建草稿:
 
-Write("{project-root}/_bmad/memory/hw-shared/drafts/{topic-slug}.md", initialDraftContent)
+Write("{project-root}/_context/memory/sw-shared/drafts/{topic-slug}.md", initialDraftContent)
 ```
 
 ### 追加更新
@@ -167,7 +167,7 @@ Write("{project-root}/_bmad/memory/hw-shared/drafts/{topic-slug}.md", initialDra
 ```markdown
 在每个有意义的用户响应或研究结果后:
 
-Edit("{project-root}/_bmad/memory/hw-shared/drafts/{topic-slug}.md",
+Edit("{project-root}/_context/memory/sw-shared/drafts/{topic-slug}.md",
   oldString="## Notes",
   newString="## Clarification Log\n\n### Q{N}: {question}\n- **Answer**: {answer}\n- **Impact**: {impact}\n\n## Notes")
 ```
@@ -180,7 +180,7 @@ Edit("{project-root}/_bmad/memory/hw-shared/drafts/{topic-slug}.md",
 
 ```markdown
 在草稿创建/首次提及时告知用户:
-"我正在将我们的讨论记录在 _bmad/memory/hw-shared/drafts/{name}.md ——你可以随时查阅。"
+"我正在将我们的讨论记录在 _context/memory/sw-shared/drafts/{name}.md ——你可以随时查阅。"
 ```
 
 ---
@@ -200,7 +200,7 @@ Edit("{project-root}/_bmad/memory/hw-shared/drafts/{topic-slug}.md",
 ### 状态更新示例
 
 ```
-[草稿已更新: _bmad/memory/hw-shared/drafts/jwt-auth-plan.md]
+[草稿已更新: _context/memory/sw-shared/drafts/jwt-auth-plan.md]
 - 添加: Q3 关于 token 过期策略的回答
 - 更新: Scope Boundaries - 明确了 OAuth 不在范围内
 - 添加: Key Decision - 使用 JWT access + refresh token 方案

@@ -1,9 +1,9 @@
 ---
-name: hw-document-project
+name: sw-document-project
 description: 项目文档生成Agent — 扫描现有项目生成完整AI可读文档。Supports 3 scan levels (quick/deep/exhaustive) and 2 modes (full scan, deep dive). Generates index, architecture, source tree, API contracts, data models, and deployment guides. Based on BMAD document-project. [trigger: 项目文档生成, document project, generate project docs, brownfield documentation, 代码库文档, codebase documentation]
 ---
 
-# 项目文档生成 (hw-document-project)
+# 项目文档生成 (sw-document-project)
 
 ## Overview
 
@@ -37,11 +37,11 @@ The project documentation specialist — systematic, thorough, and disciplined. 
 
 ### Config Loading
 
-Load available config from `{project-root}/_bmad/config.yaml` and `{project-root}/_bmad/config.user.yaml`. If specific config keys are missing, use defaults:
+Load available config from `{project-root}/_context/config.yaml` and `{project-root}/_context/config.user.yaml`. If specific config keys are missing, use defaults:
 
-- `hw.document_project.scan_level` — default: `deep` (quick | deep | exhaustive)
-- `hw.document_project.output_dir` — default: `_bmad-output/project-docs/`
-- `hw.document_project.default_mode` — default: `full_scan` (full_scan | deep_dive)
+- `sw.document_project.scan_level` — default: `deep` (quick | deep | exhaustive)
+- `sw.document_project.output_dir` — default: `_context-output/project-docs/`
+- `sw.document_project.default_mode` — default: `full_scan` (full_scan | deep_dive)
 - `communication_language` — default: `Chinese`
 - `document_output_language` — default: `Chinese`
 
@@ -54,7 +54,7 @@ Before any action, classify the request:
 | "document this project", "generate project docs", "scan this codebase" | Full scan: load `references/workflow-router.md` |
 | "deep dive into X", "analyze this module", "exhaustive doc for Y" | Deep dive: load `references/deep-dive.md` |
 | "update docs", "re-scan", "refresh documentation" | Full rescan: load `references/workflow-router.md` (detects existing index.md) |
-| "what does hw-document-project do?", "how does this skill work?" | Explain capabilities and workflow, then ask what to do |
+| "what does sw-document-project do?", "how does this skill work?" | Explain capabilities and workflow, then ask what to do |
 
 ### Ambiguity Check
 
@@ -79,7 +79,7 @@ If the user's request is ambiguous:
 
 ## Output
 
-Generated documentation is written to `{output_dir}` (from config, default: `{project-root}/_bmad-output/project-docs/`):
+Generated documentation is written to `{output_dir}` (from config, default: `{project-root}/_context-output/project-docs/`):
 
 ```
 {output_dir}/
@@ -100,4 +100,4 @@ Generated documentation is written to `{output_dir}` (from config, default: `{pr
 
 ---
 
-_Generated using hw-document-project workflow. Based on BMAD Method document-project._
+_Generated using sw-document-project workflow. Based on BMAD Method document-project._

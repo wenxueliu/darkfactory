@@ -1,9 +1,9 @@
 ---
-name: hw-knowledge-agent
+name: sw-knowledge-agent
 description: 黑灯工厂知识库Agent. Use when querying project knowledge base, updating design decisions, or maintaining institutional memory. [trigger: 知识库, 知识查询, 设计决策记录]
 ---
 
-# 黑灯工厂 知识库Agent (hw-knowledge-agent)
+# 黑灯工厂 知识库Agent (sw-knowledge-agent)
 
 ## Overview
 
@@ -33,7 +33,7 @@ The institutional memory keeper. Ensures lessons learned aren't forgotten and pa
 ## Knowledge Base Structure
 
 ```
-{project-root}/_bmad/memory/hw-shared/knowledge-base/
+{project-root}/_context/memory/sw-shared/knowledge-base/
 ├── index.md                           # 全局知识索引
 ├── _enterprise/                       # 企业级全局知识
 │   ├── decisions/                     # 架构决策 (ADRs)
@@ -69,4 +69,4 @@ The institutional memory keeper. Ensures lessons learned aren't forgotten and pa
 
 ## Output
 
-All knowledge writes go to `{project-root}/_bmad/memory/hw-shared/knowledge-base/`
+All knowledge writes go to `{project-root}/_context/memory/sw-shared/knowledge-base/`

@@ -18,20 +18,42 @@ class GoChecker(LintChecker):
     def install_hint(self) -> str:
         return "go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
 
+    # -- customisation points -------------------------------------------
     @staticmethod
-    def _map_severity(linter: str) -> Severity:
-        critical = {"errcheck", "govet", "staticcheck"}
-        major = {"unused", "ineffassign", "nilerr", "gosec"}
-        if linter in critical:
-            return Severity.P0
-        if linter in major:
-            return Severity.P1
-        if linter in {"revive", "stylecheck", "misspell", "goimports"}:
-            return Severity.P2
-        return Severity.P3  # gosimple, etc.
+    def severity_map() -> dict[str, Severity]:
+        """Linter name → severity.  Override to adjust per-linter severity."""
+        return {
+            "errcheck": Severity.P0, "govet": Severity.P0, "staticcheck": Severity.P0,
+            "unused": Severity.P1, "ineffassign": Severity.P1,
+            "nilerr": Severity.P1, "gosec": Severity.P1,
+            "revive": Severity.P2, "stylecheck": Severity.P2,
+            "misspell": Severity.P2, "goimports": Severity.P2,
+        }
 
     @staticmethod
-    def _parse_line(raw: str) -> LintError | None:
+    def auto_fixable_rules() -> set[str]:
+        return {"gofmt", "goimports", "misspell"}
+
+    def _check_cmd(self, files: list[str]) -> list[str]:
+        return ["golangci-lint", "run"] + files
+
+    def _fix_cmds(self, files: list[str]) -> list[list[str]]:
+        cmds = [["golangci-lint", "run", "--fix"] + files]
+        if tool_is_available("gofmt"):
+            cmds.append(["gofmt", "-w"] + files)
+        if tool_is_available("goimports"):
+            cmds.append(["goimports", "-w"] + files)
+        return cmds
+
+    # -- severity helper ------------------------------------------------
+    @classmethod
+    def _map_severity(cls, linter: str) -> Severity:
+        sm = cls.severity_map()
+        return sm.get(linter, Severity.P3)
+
+    # -- parsing --------------------------------------------------------
+    @classmethod
+    def _parse_line(cls, raw: str) -> LintError | None:
         """golangci-lint output: ``file:line:col: message (linter)``"""
         m = re.match(r"^(.+?):(\d+):(\d+):\s+(.+?)\s+\((\w+)\)\s*$", raw.strip())
         if not m:
@@ -43,8 +65,8 @@ class GoChecker(LintChecker):
             column=int(m.group(3)),
             rule=linter,
             message=m.group(4),
-            severity=GoChecker._map_severity(linter),
-            auto_fixable=linter in {"gofmt", "goimports", "misspell"},
+            severity=cls._map_severity(linter),
+            auto_fixable=linter in cls.auto_fixable_rules(),
             raw_line=raw.strip(),
         )
 
@@ -53,24 +75,22 @@ class GoChecker(LintChecker):
             return CheckResult(language=self.language, tool_name=self.tool_name, exit_code=0)
 
         errors: list[LintError] = []
+        combined_rc = 0
 
         # golangci-lint
         if self.is_available():
-            rc, out, err = self.run(["golangci-lint", "run"] + files)
+            rc, out, err = self.run(self._check_cmd(files))
             for line in out.splitlines() + err.splitlines():
                 parsed = self._parse_line(line)
                 if parsed:
                     errors.append(parsed)
-            lint_rc = rc
-        else:
-            lint_rc = 0
+            combined_rc = combined_rc or rc
 
         # gofmt
         if tool_is_available("gofmt"):
             fmt_rc, fmt_out, fmt_err = self.run(["gofmt", "-d"] + files)
             for line in fmt_out.splitlines():
                 if line.startswith("diff "):
-                    # Parse filename from diff line: diff a/foo.go b/foo.go
                     parts = line.split()
                     if len(parts) >= 4:
                         fname = parts[3].replace("b/", "")
@@ -79,8 +99,7 @@ class GoChecker(LintChecker):
                             message="File needs formatting (gofmt)", severity=Severity.P2,
                             auto_fixable=True, raw_line=line.strip(),
                         ))
-        else:
-            fmt_rc = 0
+            combined_rc = combined_rc or fmt_rc
 
         # go vet
         if tool_is_available("go"):
@@ -94,10 +113,8 @@ class GoChecker(LintChecker):
                         message=m.group(4), severity=Severity.P0,
                         auto_fixable=False, raw_line=line.strip(),
                     ))
-        else:
-            vet_rc = 0
+            combined_rc = combined_rc or vet_rc
 
-        combined_rc = lint_rc or fmt_rc or vet_rc
         if not self.is_available():
             return CheckResult(
                 language=self.language, tool_name=self.tool_name, exit_code=combined_rc,
@@ -106,16 +123,12 @@ class GoChecker(LintChecker):
         return CheckResult(
             language=self.language, tool_name=self.tool_name,
             exit_code=combined_rc, errors=errors,
-            raw_output="\n".join(filter(None, [out if 'out' in dir() else "", err if 'err' in dir() else ""])),
+            raw_output="",
         )
 
     def auto_fix(self, files: list[str]) -> FixResult:
-        if self.is_available():
-            self.run(["golangci-lint", "run", "--fix"] + files)
-        if tool_is_available("gofmt"):
-            self.run(["gofmt", "-w"] + files)
-        if tool_is_available("goimports"):
-            self.run(["goimports", "-w"] + files)
+        for cmd in self._fix_cmds(files):
+            self.run(cmd)
         result = self.check(files)
         return FixResult(
             language=self.language, tool_name=self.tool_name,

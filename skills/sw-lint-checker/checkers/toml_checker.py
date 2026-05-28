@@ -17,6 +17,13 @@ class TomlChecker(LintChecker):
     def install_hint(self) -> str:
         return "npm install -D @taplo/cli  OR  cargo install taplo-cli"
 
+    # -- customisation points -------------------------------------------
+    def _check_cmd(self, files: list[str]) -> list[str]:
+        return ["taplo", "format", "--check"] + files
+
+    def _fix_cmds(self, files: list[str]) -> list[list[str]]:
+        return [["taplo", "format"] + files]
+
     def check(self, files: list[str]) -> CheckResult:
         if not files:
             return CheckResult(language=self.language, tool_name=self.tool_name, exit_code=0)
@@ -28,8 +35,7 @@ class TomlChecker(LintChecker):
 
         errors: list[LintError] = []
 
-        # taplo format --check
-        rc, out, err = self.run(["taplo", "format", "--check"] + files)
+        rc, out, err = self.run(self._check_cmd(files))
         for line in out.splitlines() + err.splitlines():
             stripped = line.strip()
             if not stripped:
@@ -40,7 +46,7 @@ class TomlChecker(LintChecker):
                 auto_fixable=True, raw_line=stripped,
             ))
 
-        # taplo lint (if available)
+        # taplo lint
         lint_rc, lint_out, lint_err = self.run(["taplo", "lint"] + files)
         for line in lint_out.splitlines() + lint_err.splitlines():
             stripped = line.strip()
@@ -62,7 +68,8 @@ class TomlChecker(LintChecker):
     def auto_fix(self, files: list[str]) -> FixResult:
         if not self.is_available():
             return FixResult(language=self.language, tool_name=self.tool_name, exit_code=-1, fixed_count=0)
-        self.run(["taplo", "format"] + files)
+        for cmd in self._fix_cmds(files):
+            self.run(cmd)
         result = self.check(files)
         return FixResult(
             language=self.language, tool_name=self.tool_name,

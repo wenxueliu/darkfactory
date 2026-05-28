@@ -78,9 +78,9 @@
 
 设计阶段的核心工作由 3 个专用 Agent 依次执行。总控负责串联和验证，不直接编写设计文档。
 
-#### Stage 1: 特性设计 (hw-feature-designer)
+#### Stage 1: 特性设计 (sw-feature-designer)
 
-**委托:** Delegate to `hw-feature-designer`
+**委托:** Delegate to `sw-feature-designer`
 **输入:** 需求规格文档 + 知识库 (ADRs, patterns, lessons) + 服务注册表 (微服务模式)
 **输出:** `designs/{id}-design.md` — 跨服务特性设计文档
 **验证:** 输出后调用 `feature-design-validator.md` 检查 G1-G4
@@ -145,7 +145,7 @@
 ```
 
 **为什么必须调查代码:**
-- `service-registry.yaml` 的元数据可能过时（hw-knowledge-agent 是定期更新，不是实时）
+- `service-registry.yaml` 的元数据可能过时（sw-knowledge-agent 是定期更新，不是实时）
 - 服务名称不能反映其实际能力（"user-service" 不一定只做用户相关的事）
 - API 端点清单、数据所有权、外部依赖这些细节在代码中，不在 registry 摘要中
 - 不调查代码直接写服务影响分析 = 臆想 = 设计返工的主要原因
@@ -161,9 +161,9 @@
 - Section 7: 部署策略 (发布序列 + 特性开关 + 回滚 + 监控)
 - Section 8-9: 开放问题 + 下游引用
 
-#### Stage 2: 服务详细设计 (hw-service-designer)
+#### Stage 2: 服务详细设计 (sw-service-designer)
 
-**委托:** Delegate to `hw-service-designer` — 对每个受影响服务并行启动
+**委托:** Delegate to `sw-service-designer` — 对每个受影响服务并行启动
 **输入:** Stage 1 输出 (服务影响分析 + 服务能力摘要 + 服务交互 + 跨服务契约) + 服务注册表 + 服务代码仓库 (`services/{id}/`)
 **输出:** `designs/{id}-service-{service_id}-design.md` × N + `tests/api-{id}-{service_id}.json` × N
 **验证:** 对每个服务调用 `service-design-validator.md` 检查 V1-V4
@@ -172,9 +172,9 @@
 **并行度:** 最多 `max_parallel_services` 个服务同时设计 (默认 4)
 **模板选择:** 自动检测服务类型 (backend/frontend/bff/data-pipeline)，加载对应模板
 
-#### Stage 3: E2E 测试设计 (hw-e2e-designer)
+#### Stage 3: E2E 测试设计 (sw-e2e-designer)
 
-**委托:** Delegate to `hw-e2e-designer`
+**委托:** Delegate to `sw-e2e-designer`
 **输入:** Stage 1 输出 (用户旅程 + 服务交互 + 降级策略) + 所有 Stage 2 输出 (API 契约 + 错误处理)
 **输出:** `designs/{id}-e2e-design.md`
 **验证:** 调用 `e2e-design-validator.md` 检查 V1-V5
@@ -182,7 +182,7 @@
 - 功能 E2E (每用户旅程 happy + error + boundary)
 - 非功能 E2E (性能/安全/可靠性/无障碍, 按 business_domain 矩阵启用)
 - 兼容性 E2E (浏览器/设备/屏幕/网络, 按 business_domain 矩阵启用)
-- 自定义扩展 (按 hw.e2e_extensions 配置)
+- 自定义扩展 (按 sw.e2e_extensions 配置)
 
 #### 阶段协调
 
@@ -234,7 +234,7 @@ Stage 2 消费:
 
    ```bash
    python scripts/kb-log.py decision "{决策标题}" \
-     --scope enterprise --status accepted --author "hw-controller" --stdin <<'EOF'
+     --scope enterprise --status accepted --author "sw-controller" --stdin <<'EOF'
    ## 背景
    {从设计概述提取: 触发此决策的场景和约束条件}
    ## 决策
@@ -322,7 +322,7 @@ Stage 2 消费:
 **并行执行规则:**
 - 安全、逻辑、性能三个审查同时启动（互不依赖）
 - 每个审查者只拿到设计文档的路径（不是内容），自己去读
-- 审查结果写入 `{project-root}/_bmad/memory/hw-shared/reviews/{design-id}-review-{type}.md`
+- 审查结果写入 `{project-root}/_context/memory/sw-shared/reviews/{design-id}-review-{type}.md`
 
 **审查结果汇总:**
 
@@ -348,7 +348,7 @@ Stage 2 消费:
 **审查者冲突处理:**
 如果两个审查者的建议互相矛盾（如: 安全要求加密 → 性能担心加密开销）:
 
-1. **记录冲突:** 写入 `{project-root}/_bmad/memory/hw-shared/reviews/{design-id}-conflicts.md`:
+1. **记录冲突:** 写入 `{project-root}/_context/memory/sw-shared/reviews/{design-id}-conflicts.md`:
    ```markdown
    | # | 冲突 | 审查者 A | 审查者 B | 影响 |
    |---|------|---------|---------|------|

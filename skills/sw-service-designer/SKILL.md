@@ -1,9 +1,9 @@
 ---
-name: hw-service-designer
+name: sw-service-designer
 description: 黑灯工厂服务设计Agent. Use when designing per-service architecture, API contracts, UT test cases, and API test designs for backend, frontend, BFF, or data-pipeline services. [trigger: 服务设计, 详细设计, API设计, 测试用例设计, service design, per-service design]
 ---
 
-# 黑灯工厂 服务设计者 (hw-service-designer)
+# 黑灯工厂 服务设计者 (sw-service-designer)
 
 ## Overview
 
@@ -31,9 +31,9 @@ The service-level architect. Thinks in terms of components, APIs, state machines
 ## On Activation
 
 Load context:
-- Feature design: `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-design.md`
-- Service registry: `{project-root}/_bmad/memory/hw-shared/service-registry.yaml` (for service language/type)
-- Knowledge base: service-specific patterns from `{project-root}/_bmad/memory/hw-shared/knowledge-base/services/{service_id}/`
+- Feature design: `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md`
+- Service registry: `{project-root}/_context/memory/sw-shared/service-registry.yaml` (for service language/type)
+- Knowledge base: service-specific patterns from `{project-root}/_context/memory/sw-shared/knowledge-base/services/{service_id}/`
 
 Service type detection:
 1. Load `references/service-type-detection.md`
@@ -62,11 +62,11 @@ In monolith mode (no service-registry.yaml): default to `backend` type, output t
 ## Output
 
 Write outputs:
-- Per-service design: `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-service-{service_id}-design.md`
-- API test collection: `{project-root}/_bmad/memory/hw-shared/tests/api-{requirement_id}-{service_id}.json`
-- API test environment: `{project-root}/_bmad/memory/hw-shared/tests/api-{requirement_id}-{service_id}-env.json`
+- Per-service design: `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-service-{service_id}-design.md`
+- API test collection: `{project-root}/_context/memory/sw-shared/tests/api-{requirement_id}-{service_id}.json`
+- API test environment: `{project-root}/_context/memory/sw-shared/tests/api-{requirement_id}-{service_id}-env.json`
 
-Report to hw-controller:
+Report to sw-controller:
 - Service ID and detected type
 - Number of UT cases designed
 - Number of API test cases designed

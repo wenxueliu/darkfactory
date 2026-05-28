@@ -14,7 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SKILLS="$SCRIPT_DIR/skills"
 SOURCE_AGENTS="$SCRIPT_DIR/agents"
-MINIMAL_SKILLS=("hw-controller" "hw-tdd-agent" "hw-reviewer-logic" "hw-worktree-controller")
+MINIMAL_SKILLS=("sw-controller" "sw-tdd-agent" "sw-reviewer-logic" "sw-worktree-controller")
 
 # ---- defaults -----------------------------------------------------------
 INSTALL_USER=false
@@ -55,10 +55,10 @@ EXAMPLES:
   ./install.sh --target /tmp/test --dry-run       # preview only
 
 MINIMAL SKILLS (4):
-  hw-controller          Top-level orchestrator
-  hw-tdd-agent           TDD execution: RED -> GREEN -> REFACTOR
-  hw-reviewer-logic      Logic review: correctness + edge cases
-  hw-worktree-controller Single-task coordinator
+  sw-controller          Top-level orchestrator
+  sw-tdd-agent           TDD execution: RED -> GREEN -> REFACTOR
+  sw-reviewer-logic      Logic review: correctness + edge cases
+  sw-worktree-controller Single-task coordinator
 
 FULL: all skill directories under skills/ (excluding reports/)
 HELPEOF
@@ -318,9 +318,9 @@ print_summary() {
     fi
     echo ""
     echo "  To start using Harness:"
-    echo "    Claude Code:  /hw-controller <your request>"
-    echo "    Codex:        hw-controller              (after restart)"
-    echo "    OpenCode:     skill tool: hw-controller  (after restart)"
+    echo "    Claude Code:  /sw-controller <your request>"
+    echo "    Codex:        sw-controller              (after restart)"
+    echo "    OpenCode:     skill tool: sw-controller  (after restart)"
     echo ""
     echo "  Tip: re-run this script anytime to update to the latest skills."
     echo "============================================"

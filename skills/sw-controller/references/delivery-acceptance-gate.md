@@ -45,4 +45,4 @@ FAIL: → 标记阻塞原因。最大重试 2 轮。
 
 ## 输出文件
 
-门禁结果写入 `{project-root}/_bmad/memory/hw-shared/delivery/acceptance-gate-{requirement_id}.md`
+门禁结果写入 `{project-root}/_context/memory/sw-shared/delivery/acceptance-gate-{requirement_id}.md`

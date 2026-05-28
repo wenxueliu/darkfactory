@@ -92,5 +92,5 @@
 |------|------|---------|
 | 需求规格 | 特性设计 | 需求 AC → 用户旅程步骤 |
 | 头脑风暴 | 特性设计 | 推荐方向 → 技术决策种子 |
-| 特性设计 | Per-service 设计 (Stage 2) | 服务影响分析 → hw-service-designer 输入 |
-| 特性设计 | E2E 设计 (Stage 3) | 用户旅程 + 服务交互 → hw-e2e-designer 输入 |
+| 特性设计 | Per-service 设计 (Stage 2) | 服务影响分析 → sw-service-designer 输入 |
+| 特性设计 | E2E 设计 (Stage 3) | 用户旅程 + 服务交互 → sw-e2e-designer 输入 |

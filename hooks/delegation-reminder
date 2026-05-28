@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # delegation-reminder — PostToolUse hook for Harness multiagents
 # Event: PostToolUse (Bash|Write|Edit|Read|Grep|Glob|Agent|TodoWrite|Skill)
-# Purpose: Reminds orchestrator agents (hw-controller, hw-plan-executor) to
+# Purpose: Reminds orchestrator agents (sw-controller, sw-plan-executor) to
 #           delegate non-trivial work to specialized subagents. After 3+
 #           direct tool calls without delegation, injects a reminder message.
 
@@ -96,13 +96,13 @@ fi
 REMINDER="\\n[Delegation Reminder — Harness Multi-Agent System]\\n\
 You have made ${tool_call_count} direct tool calls without delegating to subagents.\\n\
 \\n\
-hw-controller delegation rules:\\n\
+sw-controller delegation rules:\\n\
 - Delegate non-trivial work to specialized agents via parallel Agent calls\\n\
-- Explore: hw-codebase-explorer (internal) + hw-external-researcher (external)\\n\
-- Plan: hw-strategic-planner for multi-step or ambiguous work\\n\
-- Execute: hw-plan-executor for multi-task plans, hw-worktree-controller for single tasks\\n\
-- Review: hw-reviewer-logic + hw-reviewer-security + hw-reviewer-performance + hw-reviewer-context\\n\
-- Advise: hw-strategic-advisor for deep architecture/security reasoning\\n\
+- Explore: sw-codebase-explorer (internal) + sw-external-researcher (external)\\n\
+- Plan: sw-strategic-planner for multi-step or ambiguous work\\n\
+- Execute: sw-plan-executor for multi-task plans, sw-worktree-controller for single tasks\\n\
+- Review: sw-reviewer-logic + sw-reviewer-security + sw-reviewer-performance + sw-reviewer-context\\n\
+- Advise: sw-strategic-advisor for deep architecture/security reasoning\\n\
 \\n\
 ALWAYS prefer delegation over direct tool calls for non-trivial work."
 

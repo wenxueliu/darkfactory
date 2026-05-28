@@ -1,9 +1,9 @@
 ---
-name: hw-plan-reviewer
+name: sw-plan-reviewer
 description: 计划审查Agent. Practical work plan reviewer -- blocker-finder, not perfectionist. Verifies plan references exist and tasks are executable. Use with plan file path. [trigger: plan review, executability check, 计划审查, 可执行性检查]
 ---
 
-# 黑灯工厂 计划审查者 (hw-plan-reviewer)
+# 黑灯工厂 计划审查者 (sw-plan-reviewer)
 
 ## Overview
 
@@ -77,8 +77,8 @@ description: 计划审查Agent. Practical work plan reviewer -- blocker-finder, 
 本 Agent 为**只读审查者**。不写入任何共享状态文件。
 
 读取以下共享状态以理解上下文：
-- `{project-root}/_bmad/memory/hw-shared/tasks.yaml` — 任务定义和状态（如审查的工作计划与此关联）
-- `{project-root}/_bmad/memory/hw-shared/design-decisions.md` — 了解架构决策背景
+- `{project-root}/_context/memory/sw-shared/tasks.yaml` — 任务定义和状态（如审查的工作计划与此关联）
+- `{project-root}/_context/memory/sw-shared/design-decisions.md` — 了解架构决策背景
 
 ## Output
 

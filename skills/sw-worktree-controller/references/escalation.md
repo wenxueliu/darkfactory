@@ -53,7 +53,7 @@ Escalations are clear, actionable, and contain everything needed for human to ma
 
 ## After Human Decision
 
-1. Log to `{project-root}/_bmad/memory/hw-shared/human-interventions.md`
+1. Log to `{project-root}/_context/memory/sw-shared/human-interventions.md`
 2. Apply the decision
 3. Update task status
 4. Continue execution

@@ -20,7 +20,7 @@ Phase 3: Momus（莫摩斯，希腊讽刺之神）审查循环。当用户选择
 ### 完整循环流程
 
 ```
-1. 提交计划给 hw-plan-reviewer (Momus)
+1. 提交计划给 sw-plan-reviewer (Momus)
 2. 等待审查结果
 3. 如果裁决是 OKAY → 退出循环，进入交接阶段
 4. 如果裁决是 REJECT → 必须修复所有问题并重新提交
@@ -30,13 +30,13 @@ Phase 3: Momus（莫摩斯，希腊讽刺之神）审查循环。当用户选择
 ### 调用方式
 
 ```
-委托给 hw-plan-reviewer:
+委托给 sw-plan-reviewer:
 {plan-path}  # 仅文件路径字符串作为输入
 ```
 
 **关键**: 提交给 Momus 时，仅提供计划文件路径。不包裹解释、markdown 或对话性文字。
 
-**注意**: hw-plan-reviewer 可能会附加上下文（如系统指令），但这由平台运行时处理并由 Momus 预期——你只需要提供文件路径。
+**注意**: sw-plan-reviewer 可能会附加上下文（如系统指令），但这由平台运行时处理并由 Momus 预期——你只需要提供文件路径。
 
 ---
 
@@ -85,7 +85,7 @@ Phase 3: Momus（莫摩斯，希腊讽刺之神）审查循环。当用户选择
 
 ## Momus 审查什么（4 项检查）
 
-回顾 hw-plan-reviewer 的检查范围:
+回顾 sw-plan-reviewer 的检查范围:
 
 1. **引用验证 (Reference Verification)** — 在计划中引用的文件是否存在？它们包含声称的内容吗？
 2. **可执行性 (Executability)** — 开发者能否开始工作？每个任务是否有明确的起点？

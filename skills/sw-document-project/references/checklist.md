@@ -1,4 +1,4 @@
-# hw-document-project Validation Checklist
+# sw-document-project Validation Checklist
 
 ## Scan Level
 

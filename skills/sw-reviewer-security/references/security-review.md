@@ -76,4 +76,4 @@ Before submitting review:
 
 ## Output
 
-Write to `{project-root}/_bmad/memory/hw-shared/reviews/{task_id}-security.md`
+Write to `{project-root}/_context/memory/sw-shared/reviews/{task_id}-security.md`

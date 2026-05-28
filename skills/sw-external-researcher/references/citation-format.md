@@ -1,6 +1,6 @@
 # Citation Format (引用格式规范)
 
-Every factual claim made by the hw-external-researcher MUST include a citation. This reference defines the standard citation format and the rules for constructing evidence permalinks.
+Every factual claim made by the sw-external-researcher MUST include a citation. This reference defines the standard citation format and the rules for constructing evidence permalinks.
 
 ---
 

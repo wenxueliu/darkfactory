@@ -1,9 +1,9 @@
 ---
-name: hw-integration-tester
+name: sw-integration-tester
 description: 黑灯工厂集成测试Agent. Use when running integration tests, verifying test environments, or analyzing test results. [trigger: 集成测试, integration test, 测试执行, test environment, 回归测试]
 ---
 
-# 黑灯工厂 集成测试者 (hw-integration-tester)
+# 黑灯工厂 集成测试者 (sw-integration-tester)
 
 ## Overview
 
@@ -49,7 +49,7 @@ The integration verifier. Treats the test environment as a black box — verify 
 
 ## Output
 
-- Write `_bmad/memory/hw-shared/test-results.yaml` — structured pass/fail/diagnostic results
+- Write `_context/memory/sw-shared/test-results.yaml` — structured pass/fail/diagnostic results
 
 ## Quality Gates
 

@@ -17,7 +17,7 @@ Harness skills use platform-neutral intent descriptions. When you encounter thes
 
 ## Multi-Agent Support
 
-Harness heavily uses subagent dispatch (hw-controller → worktree-controller → tdd-agent / reviewers). Enable multi-agent support in your Codex config:
+Harness heavily uses subagent dispatch (sw-controller → worktree-controller → tdd-agent / reviewers). Enable multi-agent support in your Codex config:
 
 ```toml
 # ~/.codex/config.toml
@@ -29,7 +29,7 @@ This enables `spawn_agent`, `wait`, and `close_agent`.
 
 ## Named Agent Dispatch
 
-Harness skills reference named agent types like `hw-reviewer-security`, `hw-tdd-agent`, etc. Codex does not have a named agent registry — `spawn_agent` creates generic agents from built-in roles (`default`, `explorer`, `worker`).
+Harness skills reference named agent types like `sw-reviewer-security`, `sw-tdd-agent`, etc. Codex does not have a named agent registry — `spawn_agent` creates generic agents from built-in roles (`default`, `explorer`, `worker`).
 
 When a skill says to dispatch a named agent:
 
@@ -40,10 +40,10 @@ When a skill says to dispatch a named agent:
 
 | Skill instruction | Codex equivalent |
 |-------------------|------------------|
-| "Dispatch hw-reviewer-logic" | `spawn_agent(agent_type="worker", message=...)` with `agents/hw-reviewer-logic.md` content |
-| "Dispatch hw-tdd-agent for this task" | `spawn_agent(agent_type="worker", message=...)` with `agents/hw-tdd-agent.md` content |
+| "Dispatch sw-reviewer-logic" | `spawn_agent(agent_type="worker", message=...)` with `agents/sw-reviewer-logic-agent.md` content |
+| "Dispatch sw-tdd-agent for this task" | `spawn_agent(agent_type="worker", message=...)` with `agents/sw-tdd-agent.md` content |
 | "Run reviews in parallel" | Multiple simultaneous `spawn_agent` calls |
-| "Delegate to hw-worktree-controller" | `spawn_agent(agent_type="worker", message=...)` with worktree-controller prompt |
+| "Delegate to sw-worktree-controller" | `spawn_agent(agent_type="worker", message=...)` with worktree-controller prompt |
 
 ### Message Framing
 

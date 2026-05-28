@@ -96,6 +96,17 @@ class LintChecker(ABC):
 
     The runner calls `handles()` to map files → checker, then `check()`
     followed by `auto_fix()` (in a loop).  Everything else is internal.
+
+    **Business customization — subclass and override:**
+        - ``_check_cmd(files)`` — change tool or add flags (e.g. flake8 instead of ruff).
+        - ``_fix_cmds(files)`` — change fix tool or add extra fix steps.
+        - ``severity_map()`` — adjust P0/P1/P2/P3 per rule.
+        - ``auto_fixable_rules()`` — mark additional rules as tool-auto-fixable.
+        - ``handles()`` — add custom file extensions.
+        - ``get_config()`` — pass tool-specific config paths or flags.
+
+    Place custom subclasses in ``checkers_local/`` — they are discovered
+    first and take priority over built-in checkers for the same language.
     """
 
     # -- identity -------------------------------------------------------
@@ -131,6 +142,45 @@ class LintChecker(ABC):
     def install_hint(self) -> str:
         """One-line install command for the primary tool."""
         ...
+
+    # -- customisation points (override in subclass) ---------------------
+
+    def get_config(self) -> dict:
+        """Return tool-specific config.  Override to pass custom flags or
+        config file paths.  Keys are consumed by ``_check_cmd`` and
+        ``_fix_cmds`` in each checker."""
+        return {}
+
+    def _check_cmd(self, files: list[str]) -> list[str]:
+        """Build the check command for *files*.  Override to switch tools
+        (e.g. ``flake8`` instead of ``ruff``) or to add custom flags."""
+        raise NotImplementedError(
+            f"{type(self).__name__} must implement _check_cmd()"
+        )
+
+    def _fix_cmds(self, files: list[str]) -> list[list[str]]:
+        """Build one or more fix commands for *files*.  Each inner list is a
+        complete command (tool + args + files).  Override to add / remove /
+        reorder fix steps (e.g. run ``eslint --fix`` then ``prettier --write``)."""
+        raise NotImplementedError(
+            f"{type(self).__name__} must implement _fix_cmds()"
+        )
+
+    @staticmethod
+    def severity_map() -> dict[str, Severity]:
+        """Return ``{rule_prefix_or_code: Severity}``.  Override to adjust
+        which rules are considered P0 / P1 / P2 / P3 for your team's
+        standards.  Keys are matched as **prefixes** (e.g. ``"E"`` matches
+        ``"E711"``, ``"F"`` matches ``"F401"``).  Exact keys are also
+        supported (e.g. ``"F401"``)."""
+        return {}
+
+    @staticmethod
+    def auto_fixable_rules() -> set[str]:
+        """Return a set of rule codes the tool CAN auto-fix.  Override to
+        add / remove rules from the auto-fixable set (e.g. mark an
+        additional eslint rule as auto-fixable if your config enables it)."""
+        return set()
 
     # -- core operations -------------------------------------------------
 

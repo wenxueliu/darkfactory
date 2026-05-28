@@ -17,6 +17,16 @@ class CssChecker(LintChecker):
     def install_hint(self) -> str:
         return "npm install -D stylelint"
 
+    # -- customisation points -------------------------------------------
+    def _check_cmd(self, files: list[str]) -> list[str]:
+        return ["npx", "stylelint"] + files
+
+    def _fix_cmds(self, files: list[str]) -> list[list[str]]:
+        return [
+            ["npx", "stylelint", "--fix"] + files,
+            ["npx", "prettier", "--write"] + files,
+        ]
+
     def check(self, files: list[str]) -> CheckResult:
         if not files:
             return CheckResult(language=self.language, tool_name=self.tool_name, exit_code=0)
@@ -29,12 +39,11 @@ class CssChecker(LintChecker):
         errors: list[LintError] = []
 
         # stylelint
-        rc, out, err = self.run(["npx", "stylelint"] + files)
+        rc, out, err = self.run(self._check_cmd(files))
         for line in out.splitlines() + err.splitlines():
             stripped = line.strip()
             if not stripped:
                 continue
-            # stylelint output varies; collect as-is
             errors.append(LintError(
                 file="", line=None, column=None, rule="stylelint",
                 message=stripped, severity=Severity.P2,
@@ -66,8 +75,8 @@ class CssChecker(LintChecker):
     def auto_fix(self, files: list[str]) -> FixResult:
         if not self.is_available():
             return FixResult(language=self.language, tool_name=self.tool_name, exit_code=-1, fixed_count=0)
-        self.run(["npx", "stylelint", "--fix"] + files)
-        self.run(["npx", "prettier", "--write"] + files)
+        for cmd in self._fix_cmds(files):
+            self.run(cmd)
         result = self.check(files)
         return FixResult(
             language=self.language, tool_name=self.tool_name,

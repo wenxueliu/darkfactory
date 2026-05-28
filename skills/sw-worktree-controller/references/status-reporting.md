@@ -16,11 +16,11 @@ Top Controller has accurate, timely information about worktree progress. Status 
 
 ## Report Format
 
-Update `{project-root}/_bmad/memory/hw-controller/worktree-registry.yaml`:
+Update `{project-root}/_context/memory/sw-controller/worktree-registry.yaml`:
 
 ```yaml
 worktrees:
-  hw-task-{id}:
+  sw-task-{id}:
     status: {RUNNING/DONE/BLOCKED/etc}
     task_id: {id}
     current_phase: {tdd-ut/tdd-api/review/gates}
@@ -51,7 +51,7 @@ worktrees:
 Keep reports concise but informative:
 
 ```
-[Task hw-001] Progress: 65%
+[Task sw-001] Progress: 65%
 - Phase: TDD-API Cycle (Layer 2)
 - UT: PASS (23 tests)
 - API Tests: 12/18 passing
@@ -62,7 +62,7 @@ Keep reports concise but informative:
 ## Final Report (DONE)
 
 ```yaml
-task_id: hw-001
+task_id: sw-001
 status: DONE
 summary:
   ut_tests: {n} passed

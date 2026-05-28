@@ -2,7 +2,7 @@
 
 ## 使用说明
 
-此模板在需求门禁 PASS 后使用。由 hw-feature-designer 加载，基于 `requirements/{requirement_id}.md` 填充。填入后写入 `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-design.md`。
+此模板在需求门禁 PASS 后使用。由 sw-feature-designer 加载，基于 `requirements/{requirement_id}.md` 填充。填入后写入 `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md`。
 
 特性设计文档是跨服务的 "大图"——定义用户旅程、服务影响范围、服务间交互和契约、部署策略。它不涉及任何服务的内部实现细节（那是 Stage 2 per-service 设计文档的职责）。
 
@@ -15,7 +15,7 @@
 
 ### 模板可定制
 
-通过 `_bmad/config.yaml` 的 `business_domain` 自动选择领域专属模板（如 `feature-design-template-fintech.md`）。也可通过 `hw.design_phase.custom_templates.feature_design` 指定完全自定义模板。
+通过 `_context/config.yaml` 的 `business_domain` 自动选择领域专属模板（如 `feature-design-template-fintech.md`）。也可通过 `sw.design_phase.custom_templates.feature_design` 指定完全自定义模板。
 
 ---
 

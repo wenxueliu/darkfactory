@@ -1,9 +1,9 @@
 ---
-name: hw-brainstorming
+name: sw-brainstorming
 description: 头脑风暴设计Agent. Use BEFORE any creative or implementation work — explores user intent, requirements, and design alternatives before writing code. HARD-GATE: no implementation until design is approved. [trigger: 头脑风暴, brainstorming, 设计讨论, 新功能讨论, 方案设计, idea exploration, 需求探索, feature brainstorming]
 ---
 
-# 黑灯工厂 头脑风暴 (hw-brainstorming)
+# 黑灯工厂 头脑风暴 (sw-brainstorming)
 
 ## Overview
 
@@ -36,8 +36,8 @@ Every project goes through this process. "Simple" projects are where unexamined 
 
 ## On Activation
 
-1. Read the current project context: `_bmad/config.yaml`, recent design docs in `_bmad-output/designs/`, knowledge base in `_bmad/memory/hw-shared/knowledge-base/`
-2. Run `hw-controller`'s Intent Gate (Phase 0) to classify the request
+1. Read the current project context: `_context/config.yaml`, recent design docs in `_context-output/designs/`, knowledge base in `_context/memory/sw-shared/knowledge-base/`
+2. Run `sw-controller`'s Intent Gate (Phase 0) to classify the request
 3. If implementation intent with no clear design: proceed with brainstorming
 4. Create a todo list for the brainstorming checklist
 
@@ -50,10 +50,11 @@ Every project goes through this process. "Simple" projects are where unexamined 
 3. **Ask clarifying questions** — One at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — With trade-offs and your recommendation
 5. **Present design sections** — Incrementally, get approval after each
-6. **Write design doc** — Save to `{project-root}/_bmad-output/designs/YYYY-MM-DD-<topic>-design.md`
+6. **Write design doc** — Save to `{project-root}/_context-output/designs/YYYY-MM-DD-<topic>-design.md`
 7. **Design self-review** — Check for placeholders, contradictions, ambiguity, scope
-8. **User reviews design** — Present the design doc for human approval
-9. **Transition to planning** — Invoke `hw-strategic-planner` to create implementation plan
+8. **Grill design against docs** — Activate `sw-grill-docs` to verify terminology consistency with CONTEXT.md and ADR compliance. Update docs inline as decisions crystallize.
+9. **User reviews design** — Present the design doc (with grill results) for human approval
+10. **Transition to planning** — Invoke `sw-strategic-planner` to create implementation plan
 
 ### Process Flow
 
@@ -61,20 +62,21 @@ Every project goes through this process. "Simple" projects are where unexamined 
 Explore Context → Assess Scope → Clarifying Questions (one at a time)
   → Propose Approaches (2-3 with trade-offs) → Present Design (incremental)
   → User Approves? (no → revise) (yes → Write Design Doc)
-  → Design Self-Review → User Reviews Spec? (changes → revise) (approved → hw-strategic-planner)
+  → Design Self-Review → Grill Design Against Docs (sw-grill-docs: CONTEXT.md + ADRs)
+  → User Reviews Spec? (changes → revise) (approved → sw-strategic-planner)
 ```
 
-**The terminal state is invoking `hw-strategic-planner`.** Do NOT invoke any implementation skill. The ONLY skill invoked after brainstorming is `hw-strategic-planner`.
+**The terminal state is invoking `sw-strategic-planner`.** Do NOT invoke any implementation skill. The ONLY skill invoked after brainstorming is `sw-strategic-planner`.
 
 ## Phase Details
 
 ### Phase 1: Explore Project Context
 
 Before asking questions, understand the current state:
-- Read `_bmad/config.yaml` for business domain and project settings
-- Check `_bmad/memory/hw-shared/design-decisions.md` for existing ADRs
-- Check `_bmad/memory/hw-shared/knowledge-base/` for relevant patterns and lessons
-- Check `_bmad-output/designs/` for related design documents
+- Read `_context/config.yaml` for business domain and project settings
+- Check `_context/memory/sw-shared/design-decisions.md` for existing ADRs
+- Check `_context/memory/sw-shared/knowledge-base/` for relevant patterns and lessons
+- Check `_context-output/designs/` for related design documents
 - Check recent git history for active areas of development
 
 ### Phase 2: Assess Scope
@@ -119,7 +121,7 @@ Once you understand what needs to be built, present the design incrementally:
 
 ### Phase 6: Write Design Doc
 
-Write the validated design to `{project-root}/_bmad-output/designs/YYYY-MM-DD-<topic>-design.md`.
+Write the validated design to `{project-root}/_context-output/designs/YYYY-MM-DD-<topic>-design.md`.
 
 Document structure:
 - Overview and goals
@@ -141,32 +143,44 @@ Review the written design document:
 
 Fix issues inline. No need to re-review — just fix and move on.
 
-### Phase 8: User Review Gate
+### Phase 8: Grill Design Against Docs
+
+Once the design passes self-review, activate `sw-grill-docs` to verify it against the project's existing documentation:
+
+1. Pass the design document path to `sw-grill-docs`
+2. `sw-grill-docs` will: audit terminology against CONTEXT.md, check ADR compliance, stress-test with scenarios, cross-reference with code
+3. Review the grill report — address any CHALLENGE or CONFLICT findings
+4. Update the design doc based on grill results
+5. New/updated terms are written to CONTEXT.md inline by `sw-grill-docs`
+
+This ensures the design speaks the same language as the project and respects all documented architectural decisions before it reaches the user for final approval.
+
+### Phase 9: User Review Gate
 
 Present the design document for human approval:
 
-> "Design written to `_bmad-output/designs/YYYY-MM-DD-<topic>-design.md`. Please review and let me know if you want any changes before we create the implementation plan."
+> "Design written to `_context-output/designs/YYYY-MM-DD-<topic>-design.md`. Please review and let me know if you want any changes before we create the implementation plan."
 
 Wait for user response. If changes requested, make them and re-present. Only proceed once approved.
 
-### Phase 9: Transition to Planning
+### Phase 10: Transition to Planning
 
 Once the design is approved:
 
-Invoke `hw-strategic-planner` to create the implementation plan from the approved design.
+Invoke `sw-strategic-planner` to create the implementation plan from the approved design.
 
-**Do NOT invoke any other skill.** `hw-strategic-planner` is the ONLY next step. It will interview, research, and generate the executable work plan.
+**Do NOT invoke any other skill.** `sw-strategic-planner` is the ONLY next step. It will interview, research, and generate the executable work plan.
 
-## Integration with hw-controller
+## Integration with sw-controller
 
-This skill is invoked by `hw-controller`'s Intent Gate (Phase 0) when:
+This skill is invoked by `sw-controller`'s Intent Gate (Phase 0) when:
 - Intent is "implementation" but no design exists
 - Request is open-ended ("create X", "build Y") without concrete spec
 - User explicitly asks for brainstorming
 
 **Intent Routing:**
 ```
-"new feature", "create X", "build Y" (no design) → hw-brainstorming → hw-strategic-planner → hw-plan-executor
+"new feature", "create X", "build Y" (no design) → sw-brainstorming → sw-strategic-planner → sw-plan-executor
 ```
 
 ## Key Principles
@@ -194,15 +208,15 @@ This skill is invoked by `hw-controller`'s Intent Gate (Phase 0) when:
 
 **Never:**
 - Write code, scaffold projects, or create files during brainstorming
-- Invoke implementation skills (hw-tdd-agent, hw-plan-executor) directly from brainstorming
+- Invoke implementation skills (sw-tdd-agent, sw-plan-executor) directly from brainstorming
 - Skip user review gate
 - Propose only one approach
 - Ask multiple questions in one message
 
 **Always:**
-- Complete the full 9-phase checklist
+- Complete the full 10-phase checklist
 - Get explicit user approval before transitioning
-- Transition to `hw-strategic-planner` (and ONLY that skill) when done
+- Transition to `sw-strategic-planner` (and ONLY that skill) when done
 
 ## The Bottom Line
 
@@ -210,4 +224,4 @@ This skill is invoked by `hw-controller`'s Intent Gate (Phase 0) when:
 
 Every project — regardless of size — goes through design first. The HARD-GATE prevents "just start coding" behavior that leads to wasted work, missed requirements, and unexamined assumptions.
 
-The terminal state is `hw-strategic-planner`. Design approved → plan created → code written.
+The terminal state is `sw-strategic-planner`. Design approved → plan created → code written.

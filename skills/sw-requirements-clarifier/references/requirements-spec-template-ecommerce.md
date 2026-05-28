@@ -155,5 +155,5 @@
 ## 14. 下游引用
 
 - 设计文档: `{path}`
-- 任务拆分: `_bmad/memory/hw-shared/tasks.yaml`
+- 任务拆分: `_context/memory/sw-shared/tasks.yaml`
 - A/B 测试结果: `{path}`

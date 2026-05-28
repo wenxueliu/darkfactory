@@ -26,7 +26,7 @@ Track 4: 实现复杂度对比 (不同方案的代码量、基础设施需求)
 
 ### Step 1.2: 委托研究
 
-**委托给 `hw-external-researcher`**，为每条轨道提供精确的搜索指令:
+**委托给 `sw-external-researcher`**，为每条轨道提供精确的搜索指令:
 
 ```
 Track 1 指令: "Research real-time notification delivery mechanisms.
@@ -40,7 +40,7 @@ Track 2 指令: "Research [已知技术栈/语言] integration with real-time pr
 
 如果需要内部代码库调查:
 ```
-Delegate to hw-codebase-explorer:
+Delegate to sw-codebase-explorer:
 "Find any existing real-time communication code in the codebase.
  Search for: WebSocket, SSE, EventSource, socket.io, polling, push notification,
  message queue consumer."

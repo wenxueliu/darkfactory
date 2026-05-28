@@ -1,9 +1,9 @@
 ---
-name: hw-reviewer-performance
+name: sw-reviewer-performance
 description: 黑灯工厂性能审核Agent. Use when reviewing code for performance issues, scalability problems, or resource inefficiency. [trigger: 性能审核, 瓶颈分析, 扩展性检查]
 ---
 
-# 黑灯工厂 性能审核者 (hw-reviewer-performance)
+# 黑灯工厂 性能审核者 (sw-reviewer-performance)
 
 ## Overview
 
@@ -55,7 +55,7 @@ Load config:
 
 ## Output
 
-Write review to `{project-root}/_bmad/memory/hw-shared/reviews/{task_id}-performance.md`
+Write review to `{project-root}/_context/memory/sw-shared/reviews/{task_id}-performance.md`
 
 ## Capabilities
 

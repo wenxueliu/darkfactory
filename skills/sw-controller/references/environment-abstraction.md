@@ -131,8 +131,8 @@ service_defaults:
 
 compose:
   file: "docker-compose.{tier}.yaml"  # 按环境层级自动选择
-  project_name: "hw-{requirement_id}"
-  network: "hw-integration"
+  project_name: "sw-{requirement_id}"
+  network: "sw-integration"
 ```
 
 **操作映射:**
@@ -152,7 +152,7 @@ compose:
 - 集成测试需要隔离的网络环境
 
 **compose 文件生成:**
-- 由 hw-controller 在设计阶段生成 `docker-compose.integration.yaml`
+- 由 sw-controller 在设计阶段生成 `docker-compose.integration.yaml`
 - 基于 `service-registry.yaml` 中的服务列表和端口自动编排
 - 用户可提供 `docker-compose.integration.override.yaml` 覆盖
 
@@ -165,10 +165,10 @@ compose:
 provider: "kubernetes"
 
 service_defaults:
-  namespace: "hw-{tier}"           # 按环境层级自动选择 namespace
+  namespace: "sw-{tier}"           # 按环境层级自动选择 namespace
   kubeconfig: "~/.kube/config"
   context: "{cluster_context}"
-  image_registry: "{registry}/hw-{service_id}"
+  image_registry: "{registry}/sw-{service_id}"
   image_tag: "{git_commit_sha}"
   health_check_timeout: 120
 
@@ -260,8 +260,8 @@ services:
 ## 配置 (config.yaml)
 
 ```yaml
-# _bmad/config.yaml
-hw:
+# _context/config.yaml
+sw:
   architecture: "microservices"
 
   # 环境 Provider 配置 — 按层级选择 Provider
@@ -273,9 +273,9 @@ hw:
       provider: "docker-compose"          # "local-process" | "docker-compose" | "kubernetes"
       # 不同 provider 的配置由 provider 实现解析
       compose:
-        project_name: "hw-integration"
-        network: "hw-net"
-        generate_compose: true            # hw-controller 自动生成 compose 文件
+        project_name: "sw-integration"
+        network: "sw-net"
+        generate_compose: true            # sw-controller 自动生成 compose 文件
     
     staging:
       provider: "kubernetes"
@@ -349,7 +349,7 @@ hw:
 
 1. 在 `environment-abstraction.md` 添加 Provider 实现章节
 2. 实现 Provider 接口的 7 个操作
-3. 在 `_bmad/config.yaml` 的 `environments` 配置块中引用新 provider 名称
+3. 在 `_context/config.yaml` 的 `environments` 配置块中引用新 provider 名称
 4. 如果新 provider 改变了服务启动方式，在 `service-registry.yaml` 的 `lifecycle` 中添加对应的命令配置
 
 不需要修改 `quality-gates.md`、`task-decomposition.md` 等框架核心文档。

@@ -16,7 +16,6 @@ class ShellChecker(LintChecker):
     def handles(cls, file_path: str) -> bool:
         if file_path.endswith(tuple(SHELL_EXTENSIONS)):
             return True
-        # extensionless file with shell shebang
         try:
             with open(file_path) as f:
                 first = f.readline()
@@ -30,20 +29,35 @@ class ShellChecker(LintChecker):
     def install_hint(self) -> str:
         return "apt install shellcheck"
 
+    # -- customisation points -------------------------------------------
     @staticmethod
-    def _map_severity(level: str) -> Severity:
+    def severity_map() -> dict[str, Severity]:
         return {"error": Severity.P0, "warning": Severity.P1,
-                "info": Severity.P2, "style": Severity.P3}.get(level, Severity.P2)
+                "info": Severity.P2, "style": Severity.P3}
 
-    @staticmethod
-    def _parse_line(raw: str) -> LintError | None:
+    def _check_cmd(self, files: list[str]) -> list[str]:
+        return ["shellcheck"] + files
+
+    def _fix_cmds(self, files: list[str]) -> list[list[str]]:
+        # shellcheck has no auto-fix; shfmt formats
+        cmds: list[list[str]] = []
+        if tool_is_available("shfmt"):
+            cmds.append(["shfmt", "-w"] + files)
+        return cmds
+
+    # -- parsing --------------------------------------------------------
+    @classmethod
+    def _map_severity(cls, level: str) -> Severity:
+        return cls.severity_map().get(level, Severity.P2)
+
+    @classmethod
+    def _parse_line(cls, raw: str) -> LintError | None:
         """shellcheck output: ``file:line:col: level: message [SC####]``"""
         m = re.match(
             r"^(.+?):(\d+):(\d+):\s+(error|warning|info|style):\s+(.+?)\s+\[(SC\d+)\]\s*$",
             raw.strip(),
         )
         if not m:
-            # Older format: In file line N:
             return None
         return LintError(
             file=m.group(1),
@@ -51,7 +65,7 @@ class ShellChecker(LintChecker):
             column=int(m.group(3)),
             rule=m.group(6),
             message=m.group(5),
-            severity=ShellChecker._map_severity(m.group(4)),
+            severity=cls._map_severity(m.group(4)),
             auto_fixable=False,  # shellcheck has no auto-fix
             raw_line=raw.strip(),
         )
@@ -65,8 +79,7 @@ class ShellChecker(LintChecker):
                 tool_missing=True, install_hint=self.install_hint(),
             )
 
-        # shellcheck
-        rc, out, err = self.run(["shellcheck"] + files)
+        rc, out, err = self.run(self._check_cmd(files))
         errors: list[LintError] = []
         for line in (out + "\n" + err).splitlines():
             if not line.strip():
@@ -94,10 +107,8 @@ class ShellChecker(LintChecker):
         )
 
     def auto_fix(self, files: list[str]) -> FixResult:
-        # shellcheck: no auto-fix
-        # shfmt: auto-format
-        if tool_is_available("shfmt"):
-            self.run(["shfmt", "-w"] + files)
+        for cmd in self._fix_cmds(files):
+            self.run(cmd)
         result = self.check(files)
         return FixResult(
             language=self.language, tool_name=self.tool_name,

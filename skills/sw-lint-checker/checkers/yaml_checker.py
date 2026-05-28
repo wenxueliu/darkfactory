@@ -18,9 +18,23 @@ class YamlChecker(LintChecker):
     def install_hint(self) -> str:
         return "pip install yamllint"
 
+    # -- customisation points -------------------------------------------
+    @staticmethod
+    def severity_map() -> dict[str, Severity]:
+        return {"error": Severity.P2, "warning": Severity.P3}
+
+    def _check_cmd(self, files: list[str]) -> list[str]:
+        return ["yamllint"] + files
+
+    def _fix_cmds(self, files: list[str]) -> list[list[str]]:
+        # yamllint has no auto-fix; prettier can format YAML
+        if tool_is_available("npx"):
+            return [["npx", "prettier", "--write"] + files]
+        return []
+
     @staticmethod
     def _map_severity(level: str) -> Severity:
-        return {"error": Severity.P2, "warning": Severity.P3}.get(level, Severity.P3)
+        return YamlChecker.severity_map().get(level, Severity.P3)
 
     @staticmethod
     def _parse_line(raw: str) -> LintError | None:
@@ -38,7 +52,7 @@ class YamlChecker(LintChecker):
             rule=m.group(6),
             message=m.group(5),
             severity=YamlChecker._map_severity(m.group(4)),
-            auto_fixable=False,  # yamllint has no auto-fix
+            auto_fixable=False,
             raw_line=raw.strip(),
         )
 
@@ -51,7 +65,7 @@ class YamlChecker(LintChecker):
                 tool_missing=True, install_hint=self.install_hint(),
             )
 
-        rc, out, err = self.run(["yamllint"] + files)
+        rc, out, err = self.run(self._check_cmd(files))
         errors: list[LintError] = []
         for line in (out + "\n" + err).splitlines():
             parsed = self._parse_line(line)
@@ -65,9 +79,8 @@ class YamlChecker(LintChecker):
         )
 
     def auto_fix(self, files: list[str]) -> FixResult:
-        # yamllint has no auto-fix; prettier can format YAML
-        if tool_is_available("npx"):
-            self.run(["npx", "prettier", "--write"] + files)
+        for cmd in self._fix_cmds(files):
+            self.run(cmd)
         result = self.check(files)
         return FixResult(
             language=self.language, tool_name=self.tool_name,

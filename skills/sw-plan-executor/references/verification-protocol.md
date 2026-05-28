@@ -241,7 +241,7 @@ print(validate_password('Str0ng!Pass')) # 期望 True
 **步骤 D1: 重新读取计划文件**
 
 ```bash
-Read {project-root}/_bmad/memory/hw-shared/plans/{plan-name}.md
+Read {project-root}/_context/memory/sw-shared/plans/{plan-name}.md
 ```
 
 **步骤 D2: 确认复选框更新**

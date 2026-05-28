@@ -27,9 +27,9 @@
 
 ### V3: 可过渡性
 
-- [ ] 服务影响分析足够清晰，hw-service-designer 能从中提取每个服务的变更范围
-- [ ] 跨服务契约足够具体，hw-service-designer 能从中生成 API 测试
-- [ ] 用户旅程足够具体，hw-e2e-designer 能从中设计 E2E 场景
+- [ ] 服务影响分析足够清晰，sw-service-designer 能从中提取每个服务的变更范围
+- [ ] 跨服务契约足够具体，sw-service-designer 能从中生成 API 测试
+- [ ] 用户旅程足够具体，sw-e2e-designer 能从中设计 E2E 场景
 - [ ] 开放问题不会阻塞 Stage 2 启动 (阻塞性问题已解决或升级)
 
 ## 输出

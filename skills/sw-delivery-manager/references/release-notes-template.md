@@ -4,7 +4,7 @@
 
 交付前编写。受众是使用此产品的开发者/用户，不是内部开发团队。
 
-写入 `{project-root}/_bmad/memory/hw-shared/delivery/release-notes-{version}.md`
+写入 `{project-root}/_context/memory/sw-shared/delivery/release-notes-{version}.md`
 
 ---
 

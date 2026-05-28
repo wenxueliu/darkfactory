@@ -135,5 +135,5 @@
 ## 12. 下游引用
 
 - 设计文档: `{path}`
-- 任务拆分: `_bmad/memory/hw-shared/tasks.yaml`
-- 合规审查记录: `_bmad/memory/hw-shared/reviews/compliance-*.md`
+- 任务拆分: `_context/memory/sw-shared/tasks.yaml`
+- 合规审查记录: `_context/memory/sw-shared/reviews/compliance-*.md`

@@ -22,7 +22,7 @@
   STOP    → 停止一切修复尝试
   REVERT  → 回退所有变更到最后一个已知 good 状态
   DOCUMENT → 记录: 尝试了什么、为什么失败、学到了什么
-  CONSULT → 委托 hw-strategic-advisor 分析
+  CONSULT → 委托 sw-strategic-advisor 分析
   ASK USER → 简洁的问题陈述 + 可选方案，等待用户决策
 ```
 
@@ -158,7 +158,7 @@
 
 ### 第 4 步: CONSULT
 
-委托 hw-strategic-advisor 做深度分析：
+委托 sw-strategic-advisor 做深度分析：
 
 ```
 TASK: 分析 {问题描述} 的 3 次失败尝试

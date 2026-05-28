@@ -7,7 +7,7 @@ API 层测试用例使用 Postman Collection v2.1 JSON 格式承载，通过 New
 ## 文件组织
 
 ```
-_bmad/memory/hw-shared/tests/
+_context/memory/sw-shared/tests/
 ├── api-{requirement_id}.json          # Postman Collection — 所有 API 测试用例
 ├── api-{requirement_id}-env.json      # Postman Environment — 变量（baseUrl, tokens, 动态值）
 └── api-{requirement_id}-data.json     # 测试数据文件 (Newman -d 参数) — 数据驱动测试的数据集
@@ -302,19 +302,19 @@ pm.sendRequest({
 
 ```bash
 # 基础执行
-newman run _bmad/memory/hw-shared/tests/api-{requirement_id}.json \
-  -e _bmad/memory/hw-shared/tests/api-{requirement_id}-env.json \
+newman run _context/memory/sw-shared/tests/api-{requirement_id}.json \
+  -e _context/memory/sw-shared/tests/api-{requirement_id}-env.json \
   --reporters cli,junit \
-  --reporter-junit-export _bmad/memory/hw-shared/tests/api-{requirement_id}-report.xml
+  --reporter-junit-export _context/memory/sw-shared/tests/api-{requirement_id}-report.xml
 
 # 数据驱动执行 (如有多个数据集)
-newman run _bmad/memory/hw-shared/tests/api-{requirement_id}.json \
-  -e _bmad/memory/hw-shared/tests/api-{requirement_id}-env.json \
-  -d _bmad/memory/hw-shared/tests/api-{requirement_id}-data.json
+newman run _context/memory/sw-shared/tests/api-{requirement_id}.json \
+  -e _context/memory/sw-shared/tests/api-{requirement_id}-env.json \
+  -d _context/memory/sw-shared/tests/api-{requirement_id}-data.json
 
 # CI 模式 — 失败立即退出 + 超时
-newman run _bmad/memory/hw-shared/tests/api-{requirement_id}.json \
-  -e _bmad/memory/hw-shared/tests/api-{requirement_id}-env.json \
+newman run _context/memory/sw-shared/tests/api-{requirement_id}.json \
+  -e _context/memory/sw-shared/tests/api-{requirement_id}-env.json \
   --bail \
   --timeout-request 10000
 ```

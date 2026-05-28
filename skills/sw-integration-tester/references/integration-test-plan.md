@@ -4,7 +4,7 @@
 
 此模板在 TDD 两层测试（UT + API）通过后，代码合并到主分支之前使用。确保各 worktree 产出的代码集成后不相互破坏。
 
-写入 `{project-root}/_bmad/memory/hw-shared/tests/integration-plan-{requirement_id}.md`
+写入 `{project-root}/_context/memory/sw-shared/tests/integration-plan-{requirement_id}.md`
 
 ---
 

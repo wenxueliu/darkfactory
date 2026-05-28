@@ -63,7 +63,7 @@ multi_agent = true
 ls -la ~/.agents/skills/harness
 ```
 
-You should see the Harness skills directory with all hw-* skill directories and SKILL.md files. Restart Codex and ask:
+You should see the Harness skills directory with all sw-* skill directories and SKILL.md files. Restart Codex and ask:
 
 ```
 What Harness skills are available?
@@ -74,9 +74,9 @@ Codex should discover all Harness skills. The `using-harness` bootstrap skill es
 ## Usage
 
 Skills are discovered automatically. Invoke by name:
-- `hw-controller` — start a development workflow
-- `hw-tdd-agent` — TDD cycle execution
-- `hw-reviewer-security` — security review
+- `sw-controller` — start a development workflow
+- `sw-tdd-agent` — TDD cycle execution
+- `sw-reviewer-security` — security review
 
 The `using-harness` skill loads automatically and directs proper skill usage.
 

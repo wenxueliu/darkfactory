@@ -176,9 +176,9 @@ After Wave N completes:
 
 ```
 // CORRECT: Wave 2 有 3 个任务，全部并行派遣
-Delegate task-2 to hw-tdd-agent
-Delegate task-3 to hw-tdd-agent
-Delegate task-4 to hw-tdd-agent
+Delegate task-2 to sw-tdd-agent
+Delegate task-3 to sw-tdd-agent
+Delegate task-4 to sw-tdd-agent
 // All three fire in ONE response
 
 // WRONG: 逐个派遣，人为串行化

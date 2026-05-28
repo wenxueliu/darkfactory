@@ -26,7 +26,7 @@ echo "{worktree_base}" >> .gitignore
 
 Write worktree_base to config:
 ```yaml
-hw:
+sw:
   worktree_base: {worktree_base}
 ```
 

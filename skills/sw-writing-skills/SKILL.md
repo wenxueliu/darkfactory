@@ -1,9 +1,9 @@
 ---
-name: hw-writing-skills
+name: sw-writing-skills
 description: 元技能：编写Agent技能. Use when creating new skills, editing existing skills, or verifying skills work before deployment. TDD applied to process documentation — no skill without a failing test first. [trigger: 编写技能, 创建技能, 写skill, writing skills, create skill, new agent, skill authoring]
 ---
 
-# 黑灯工厂 技能编写 (hw-writing-skills)
+# 黑灯工厂 技能编写 (sw-writing-skills)
 
 ## Overview
 
@@ -13,7 +13,7 @@ You write test cases (pressure scenarios with subagents), watch them fail (basel
 
 **Core principle:** If you didn't watch an agent fail without the skill, you don't know if the skill teaches the right thing.
 
-**REQUIRED BACKGROUND:** You MUST understand `hw-tdd-agent` before using this skill. That skill defines the fundamental RED-GREEN-REFACTOR cycle. This skill adapts TDD to documentation.
+**REQUIRED BACKGROUND:** You MUST understand `sw-tdd-agent` before using this skill. That skill defines the fundamental RED-GREEN-REFACTOR cycle. This skill adapts TDD to documentation.
 
 ## Identity
 
@@ -102,7 +102,7 @@ Edit skill without testing? Delete the edit. Start over.
 ## Directory Structure
 
 ```
-skills/hw-skill-name/
+skills/sw-skill-name/
   SKILL.md              # Main skill definition
   references/           # Detailed capability instructions
     capability-1.md
@@ -110,7 +110,7 @@ skills/hw-skill-name/
   scripts/              # Executable tools (optional)
 ```
 
-**Flat namespace within `skills/`** — each `hw-` prefixed directory is one skill.
+**Flat namespace within `skills/`** — each `sw-` prefixed directory is one skill.
 
 **Separate files for:**
 1. Heavy reference (100+ lines) — API docs, comprehensive syntax
@@ -132,7 +132,7 @@ Follow the Harness skill template:
 
 ```yaml
 ---
-name: hw-skill-name        # ≤100 characters, kebab-case, ASCII only, hw- prefix
+name: sw-skill-name        # ≤100 characters, kebab-case, ASCII only, sw- prefix
 description: Use when [triggering conditions]. Include Chinese + English keywords for cross-platform discovery. [trigger: keyword1, 关键词2, keyword3]
 ---
 ```
@@ -275,7 +275,7 @@ Agent found new rationalization? Add explicit counter. Re-test until bulletproof
 - [ ] Identify patterns in rationalizations/failures
 
 ### GREEN Phase — Write Minimal Skill
-- [ ] Name: `hw-` prefix, kebab-case, ≤100 characters, ASCII only
+- [ ] Name: `sw-` prefix, kebab-case, ≤100 characters, ASCII only
 - [ ] Frontmatter: `name` + `description` only (no `allowed-tools` or other platform-specific fields)
 - [ ] Description: ≤500 characters, starts with "Use when...", bilingual trigger keywords
 - [ ] Description: triggering conditions ONLY, no workflow summary (CSO rule)
@@ -295,7 +295,7 @@ Agent found new rationalization? Add explicit counter. Re-test until bulletproof
 
 ### Quality Checks
 - [ ] All file references use relative paths from skill directory
-- [ ] No cross-skill references (`../hw-xxx/`)
+- [ ] No cross-skill references (`../sw-xxx/`)
 - [ ] No platform-specific variables (`${CLAUDE_PLUGIN_ROOT}` etc.)
 - [ ] No platform-specific tool invocation names
 - [ ] Common mistakes section with fixes
@@ -309,7 +309,7 @@ Agent found new rationalization? Add explicit counter. Re-test until bulletproof
 | Multi-language examples (example-js.js, example-py.py, example-go.go) | Mediocre quality, maintenance burden | One excellent example in the most relevant language |
 | Platform-specific tool names in skill body | Breaks on other platforms | Describe intent, not tool names |
 | Workflow summary in description | Claude follows description, skips skill body | Description = triggering conditions only |
-| Cross-skill file references (`../hw-xxx/references/`) | Breaks portability between platforms | Duplicate shared files into each skill directory |
+| Cross-skill file references (`../sw-xxx/references/`) | Breaks portability between platforms | Duplicate shared files into each skill directory |
 
 ## The Bottom Line
 
@@ -324,7 +324,7 @@ If you follow TDD for code, follow it for skills. It's the same discipline appli
 ## Integration
 
 **Integrates with:**
-- `hw-tdd-agent` — the TDD cycle this meta-skill adapts
+- `sw-tdd-agent` — the TDD cycle this meta-skill adapts
 - Harness skill template — the structure all Harness skills follow
 - `AGENTS.md` Platform Feature Matrix — cross-platform compatibility rules
-- `_bmad/config.yaml` — configuration-driven skill behavior
+- `_context/config.yaml` — configuration-driven skill behavior

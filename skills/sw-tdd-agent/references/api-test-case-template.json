@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "{requirement_id} — {requirement_title}",
-    "description": "关联设计: designs/{requirement_id}-design.md\n关联需求: requirements/{requirement_id}.md\n生成时间: {timestamp}\n校验规范: references/api-test-postman-schema.md (hw-controller)",
+    "description": "关联设计: designs/{requirement_id}-design.md\n关联需求: requirements/{requirement_id}.md\n生成时间: {timestamp}\n校验规范: references/api-test-postman-schema.md (sw-controller)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

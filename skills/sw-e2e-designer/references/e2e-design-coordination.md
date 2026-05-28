@@ -17,8 +17,8 @@ E2E 测试设计的目标是基于 Stage 1 的用户旅程和 Stage 2 的 per-se
 2. 读取所有 Stage 2 输出: `designs/{requirement_id}-service-*-design.md`
    - 每个服务的 S3: API/接口设计 (端点、数据模型)
    - 每个服务的 S5: 错误处理策略
-3. 读取配置: `_bmad/config.yaml` → `hw.business_domain` (驱动场景启用矩阵)
-4. 读取扩展配置: `_bmad/config.yaml` → `hw.e2e_extensions` (自定义场景/类别/钩子)
+3. 读取配置: `_context/config.yaml` → `sw.business_domain` (驱动场景启用矩阵)
+4. 读取扩展配置: `_context/config.yaml` → `sw.e2e_extensions` (自定义场景/类别/钩子)
 
 ### 第 2 步: 场景规划
 
@@ -35,7 +35,7 @@ E2E 测试设计的目标是基于 Stage 1 的用户旅程和 Stage 2 的 per-se
 | 非功能-安全 | 检查跨服务安全关注点 (Token 传播、数据泄露) |
 | 非功能-可靠性 | 从降级策略 (Section 5) 提取 E2E 可靠性场景 |
 | 兼容性 | 按 domain 矩阵确定浏览器/设备/屏幕/网络覆盖 |
-| 自定义 | 加载 `hw.e2e_extensions` 配置 |
+| 自定义 | 加载 `sw.e2e_extensions` 配置 |
 
 ### 第 3 步: 用例填充
 
@@ -68,7 +68,7 @@ CLEANUP {回滚所有受影响服务的测试数据}
 
 #### 自定义 E2E
 
-如果 `hw.e2e_extensions.custom_categories` 有定义，逐类别填充。
+如果 `sw.e2e_extensions.custom_categories` 有定义，逐类别填充。
 
 ### 第 4 步: 输出
 

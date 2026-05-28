@@ -64,7 +64,7 @@
         "description": "Block writes to existing files that haven't been read this session"
       },
       {
-        "matcher": "Agent",
+        "matcher": "Agent|Write|Edit",
         "hooks": [
           {
             "type": "command",
@@ -73,7 +73,7 @@
             "timeout": 5000
           }
         ],
-        "description": "Block delegation to implementation agents before ideation phase is complete"
+        "description": "Block ANY code-writing (Agent delegation or direct Write/Edit) before ideation phase is complete"
       }
     ],
     "PreCompact": [

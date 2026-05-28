@@ -6,12 +6,12 @@
 
 | 原章节 | 新归属 | Agent | 新模板 |
 |--------|--------|-------|--------|
-| Section 1-3: 概述/用户旅程/页面 | Cross-service 特性设计 | hw-feature-designer | `feature-design-template.md` |
-| Section 4-9: 技术决策/架构/API/状态/错误/安全 | Per-service 详细设计 | hw-service-designer | `service-design-template-{type}.md` |
-| Section 10.1-10.4: UT/API 测试设计 | Per-service 详细设计 | hw-service-designer | `test-case-template.md` + `api-test-case-template.json` |
-| Section 10.5: E2E 测试设计 | Cross-service E2E 设计 | hw-e2e-designer | `e2e-test-case-template.md` |
-| Section 10.6-10.7: 追溯/数据策略 | Cross-service 特性设计 | hw-feature-designer | `feature-design-template.md` |
-| Section 11-13: 部署/问题/引用 | Cross-service 特性设计 | hw-feature-designer | `feature-design-template.md` |
+| Section 1-3: 概述/用户旅程/页面 | Cross-service 特性设计 | sw-feature-designer | `feature-design-template.md` |
+| Section 4-9: 技术决策/架构/API/状态/错误/安全 | Per-service 详细设计 | sw-service-designer | `service-design-template-{type}.md` |
+| Section 10.1-10.4: UT/API 测试设计 | Per-service 详细设计 | sw-service-designer | `test-case-template.md` + `api-test-case-template.json` |
+| Section 10.5: E2E 测试设计 | Cross-service E2E 设计 | sw-e2e-designer | `e2e-test-case-template.md` |
+| Section 10.6-10.7: 追溯/数据策略 | Cross-service 特性设计 | sw-feature-designer | `feature-design-template.md` |
+| Section 11-13: 部署/问题/引用 | Cross-service 特性设计 | sw-feature-designer | `feature-design-template.md` |
 
 ---
 
@@ -52,7 +52,7 @@
 
 ### 单体模式
 
-填入后写入 `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-design.md`。
+填入后写入 `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md`。
 
 设计文档是开发阶段的唯一技术事实源。代码实现必须回溯到设计决策。
 
@@ -442,22 +442,22 @@ JSON 文件格式规范见 `references/api-test-postman-schema.md`。
 
 | 文件 | 路径 | 用途 |
 |------|------|------|
-| Postman Collection | `_bmad/memory/hw-shared/tests/api-{requirement_id}.json` | Newman 执行 |
-| Environment 文件 | `_bmad/memory/hw-shared/tests/api-{requirement_id}-env.json` | 环境变量 (baseUrl, tokens) |
-| Newman 报告 | `_bmad/memory/hw-shared/tests/api-{requirement_id}-report.xml` | CI 集成 |
+| Postman Collection | `_context/memory/sw-shared/tests/api-{requirement_id}.json` | Newman 执行 |
+| Environment 文件 | `_context/memory/sw-shared/tests/api-{requirement_id}-env.json` | 环境变量 (baseUrl, tokens) |
+| Newman 报告 | `_context/memory/sw-shared/tests/api-{requirement_id}-report.xml` | CI 集成 |
 
 ### 10.5 第三层: E2E 测试设计 (端到端集成)
 
 对用户旅程（Section 2.1 + Section 3），定义端到端集成测试用例。这层验证完整流程——从用户入口到数据库再返回用户。
 
-**E2E 用例设计使用独立模板 `references/e2e-test-case-template.md` (hw-tdd-agent)。** 该模板覆盖三大类场景:
+**E2E 用例设计使用独立模板 `references/e2e-test-case-template.md` (sw-tdd-agent)。** 该模板覆盖三大类场景:
 
 | 类别 | 子类型 | 最少要求 |
 |------|--------|---------|
 | **功能测试** | 正常流程 / 异常流程 / 边界条件 / 状态转换 / 权限控制 | 每旅程 ≥1 happy + ≥1 异常，关键旅程 ≥3 异常 |
 | **非功能测试** | 性能 / 安全 / 无障碍 / 可靠性 / 国际化 | 按 business_domain 启用 (见模板 Section 6 场景启用矩阵) |
 | **兼容性测试** | 浏览器 / 设备 / 屏幕尺寸 / 网络条件 | 按 business_domain 启用 |
-| **自定义扩展** | 场景扩类 / 自定义类别 / 脚本钩子 | 按 `_bmad/config.yaml` (hw.e2e_extensions) 配置 |
+| **自定义扩展** | 场景扩类 / 自定义类别 / 脚本钩子 | 按 `_context/config.yaml` (sw.e2e_extensions) 配置 |
 
 **使用流程:**
 
@@ -544,5 +544,5 @@ JSON 文件格式规范见 `references/api-test-postman-schema.md`。
 ## 13. 下游引用
 
 - 需求规格: `requirements/{requirement_id}.md`
-- 任务拆分: `_bmad/memory/hw-shared/tasks.yaml`
-- 知识库: `_bmad/memory/hw-shared/knowledge-base/decisions/`
+- 任务拆分: `_context/memory/sw-shared/tasks.yaml`
+- 知识库: `_context/memory/sw-shared/knowledge-base/decisions/`

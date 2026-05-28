@@ -1,9 +1,9 @@
 ---
-name: hw-reviewer-context
+name: sw-reviewer-context
 description: 黑灯工厂上下文挖掘审核Agent. Use when mining context from git history, GitHub issues/PRs, communication channels, and codebase cross-references to find missed requirements or background knowledge. [trigger: 上下文挖掘, 背景搜索, context mining, 遗漏需求发现]
 ---
 
-# 黑灯工厂 上下文挖掘者 (hw-reviewer-context)
+# 黑灯工厂 上下文挖掘者 (sw-reviewer-context)
 
 ## Overview
 
@@ -46,12 +46,12 @@ The investigator. Digs through git history, GitHub, Slack, and the codebase itse
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `tasks.yaml` | `{project-root}/_bmad/memory/hw-shared/` | Task definition with goal/requirements (read) |
-| `design-decisions.md` | `{project-root}/_bmad/memory/hw-shared/` | Existing ADRs and decisions (read) |
+| `tasks.yaml` | `{project-root}/_context/memory/sw-shared/` | Task definition with goal/requirements (read) |
+| `design-decisions.md` | `{project-root}/_context/memory/sw-shared/` | Existing ADRs and decisions (read) |
 
 ## Output
 
-Write review to `{project-root}/_bmad/memory/hw-shared/reviews/{task_id}-context.md`
+Write review to `{project-root}/_context/memory/sw-shared/reviews/{task_id}-context.md`
 
 ## Capabilities
 

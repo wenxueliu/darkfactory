@@ -72,4 +72,4 @@ FAIL: → 标记阻塞原因，回到设计修订。最大重试 3 轮。
 
 ## 输出文件
 
-门禁结果写入 `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-design-gate.md`
+门禁结果写入 `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design-gate.md`

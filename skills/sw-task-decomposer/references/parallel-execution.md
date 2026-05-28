@@ -61,10 +61,10 @@
 
 ```
 # 并行启动（不等待上一个完成）
-Worktree Controller 1 ← Task hw-001 (wave 1)
-Worktree Controller 2 ← Task hw-002 (wave 1)  同时启动
-Worktree Controller 3 ← Task hw-003 (wave 1)  同时启动
-Worktree Controller 4 ← Task hw-004 (wave 1)  同时启动
+Worktree Controller 1 ← Task sw-001 (wave 1)
+Worktree Controller 2 ← Task sw-002 (wave 1)  同时启动
+Worktree Controller 3 ← Task sw-003 (wave 1)  同时启动
+Worktree Controller 4 ← Task sw-004 (wave 1)  同时启动
 ```
 
 每个 Worktree Controller 收到:
@@ -103,7 +103,7 @@ Worktree Controller 4 ← Task hw-004 (wave 1)  同时启动
 **状态聚合:**
 
 ```yaml
-# _bmad/memory/hw-controller/global-state.yaml
+# _context/memory/sw-controller/global-state.yaml
 phase: execution
 wave: {current_wave}
 started_at: "{timestamp}"
@@ -119,16 +119,16 @@ summary:
 
 waves:
   - wave: 1
-    tasks: ["hw-001", "hw-002", "hw-003"]
-    done: ["hw-001", "hw-002"]
-    running: ["hw-003"]
+    tasks: ["sw-001", "sw-002", "sw-003"]
+    done: ["sw-001", "sw-002"]
+    running: ["sw-003"]
     blocked: []
   - wave: 2
-    tasks: ["hw-004", "hw-005"]
+    tasks: ["sw-004", "sw-005"]
     status: "waiting_for_wave_1"
 
 blockers:
-  - task_id: "hw-003"
+  - task_id: "sw-003"
     status: "needs_context"
     description: "{具体缺少什么信息}"
     escalated: false
@@ -214,18 +214,18 @@ Phase: Execution | Wave: {current}/{total}
 Progress: {pct}% ({done}/{total} tasks)
 
 ✅ Done ({n}):
-  - hw-001: {name} ({duration})
-  - hw-002: {name} ({duration})
+  - sw-001: {name} ({duration})
+  - sw-002: {name} ({duration})
 
 🔄 Running ({n}):
-  - hw-003: {name} — {current_phase} ({elapsed})
-  - hw-004: {name} — {current_phase} ({elapsed})
+  - sw-003: {name} — {current_phase} ({elapsed})
+  - sw-004: {name} — {current_phase} ({elapsed})
 
 ⏳ Pending ({n}):
-  - hw-005: {name} — 等待 wave {n}
+  - sw-005: {name} — 等待 wave {n}
 
 🚫 Blocked ({n}):
-  - hw-006: {name} — {reason} — {action_taken}
+  - sw-006: {name} — {reason} — {action_taken}
 
 💰 Cost: ${spent} / ${budget} budget
 

@@ -1,9 +1,9 @@
 ---
-name: hw-reviewer-logic
+name: sw-reviewer-logic
 description: 黑灯工厂逻辑审核Agent. Use when reviewing code for correctness, edge cases, error handling, or logical bugs. [trigger: 逻辑审核, 正确性审查, 边界检查]
 ---
 
-# 黑灯工厂 逻辑审核者 (hw-reviewer-logic)
+# 黑灯工厂 逻辑审核者 (sw-reviewer-logic)
 
 ## Overview
 
@@ -55,7 +55,7 @@ Load config:
 
 ## Output
 
-Write review to `{project-root}/_bmad/memory/hw-shared/reviews/{task_id}-logic.md`
+Write review to `{project-root}/_context/memory/sw-shared/reviews/{task_id}-logic.md`
 
 ## Capabilities
 

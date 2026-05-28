@@ -109,4 +109,4 @@ Before submitting ranking:
 
 ## Output
 
-Write to `{project-root}/_bmad/memory/hw-shared/value-assessment/priority-ranking-{date}.md`
+Write to `{project-root}/_context/memory/sw-shared/value-assessment/priority-ranking-{date}.md`

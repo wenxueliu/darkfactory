@@ -32,22 +32,47 @@ class JavaScriptChecker(LintChecker):
     def install_hint(self) -> str:
         return "npm install -D eslint"
 
-    # -- eslint output parsing ------------------------------------------
+    # -- customisation points -------------------------------------------
     @staticmethod
-    def _parse_line(raw: str) -> LintError | None:
+    def severity_map() -> dict[str, Severity]:
+        """eslint severity level → Harness.  error→P0, warning→P2."""
+        return {"error": Severity.P0, "warning": Severity.P2}
+
+    @staticmethod
+    def auto_fixable_rules() -> set[str]:
+        return {
+            "semi", "quotes", "indent", "no-var", "prefer-const",
+            "eqeqeq", "arrow-parens", "comma-dangle", "comma-spacing",
+            "comma-style", "key-spacing", "object-curly-spacing",
+            "space-before-blocks", "space-infix-ops", "space-unary-ops",
+            "eol-last", "no-multi-spaces", "no-trailing-spaces",
+        }
+
+    def _check_cmd(self, files: list[str]) -> list[str]:
+        return ["npx", "eslint"] + files
+
+    def _fix_cmds(self, files: list[str]) -> list[list[str]]:
+        return [
+            ["npx", "eslint", "--fix"] + files,
+            ["npx", "prettier", "--write"] + files,
+        ]
+
+    # -- eslint output parsing ------------------------------------------
+    @classmethod
+    def _parse_line(cls, raw: str) -> LintError | None:
         """eslint stylish/formatter output patterns handled."""
-        raw = raw.strip()
+        raw_s = raw.strip()
         # Pattern: /path/to/file.js
-        #   line:col  error/warning  message  rule-name
-        m = re.match(r"^(.+?\.\w+)\s*$", raw)
+        m = re.match(r"^(.+?\.\w+)\s*$", raw_s)
         if m:
             return None  # file header line, followed by detail lines
         m = re.match(
             r"^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s{2,}([\w\-/]+)\s*$",
-            raw,
+            raw_s,
         )
         if m:
-            sev = Severity.P0 if m.group(3) == "error" else Severity.P2
+            sev_map = cls.severity_map()
+            sev = sev_map.get(m.group(3), Severity.P2)
             return LintError(
                 file="",  # filled by caller
                 line=int(m.group(1)),
@@ -55,22 +80,17 @@ class JavaScriptChecker(LintChecker):
                 rule=m.group(5),
                 message=m.group(4),
                 severity=sev,
-                auto_fixable=m.group(5) in {
-                    "semi", "quotes", "indent", "no-var", "prefer-const",
-                    "eqeqeq", "arrow-parens", "comma-dangle", "comma-spacing",
-                    "comma-style", "key-spacing", "object-curly-spacing",
-                    "space-before-blocks", "space-infix-ops", "space-unary-ops",
-                    "eol-last", "no-multi-spaces", "no-trailing-spaces",
-                },
-                raw_line=raw,
+                auto_fixable=m.group(5) in cls.auto_fixable_rules(),
+                raw_line=raw_s,
             )
         # Compact: file:line:col: error  message  rule [compact formatter]
         m = re.match(
             r"^(.+?):(\d+):(\d+):\s+(error|warning)\s+(.+?)\s{2,}([\w\-/]+)\s*$",
-            raw,
+            raw_s,
         )
         if m:
-            sev = Severity.P0 if m.group(4) == "error" else Severity.P2
+            sev_map = cls.severity_map()
+            sev = sev_map.get(m.group(4), Severity.P2)
             return LintError(
                 file=m.group(1),
                 line=int(m.group(2)),
@@ -78,14 +98,8 @@ class JavaScriptChecker(LintChecker):
                 rule=m.group(6),
                 message=m.group(5),
                 severity=sev,
-                auto_fixable=m.group(6) in {
-                    "semi", "quotes", "indent", "no-var", "prefer-const",
-                    "eqeqeq", "arrow-parens", "comma-dangle", "comma-spacing",
-                    "comma-style", "key-spacing", "object-curly-spacing",
-                    "space-before-blocks", "space-infix-ops", "space-unary-ops",
-                    "eol-last", "no-multi-spaces", "no-trailing-spaces",
-                },
-                raw_line=raw,
+                auto_fixable=m.group(6) in cls.auto_fixable_rules(),
+                raw_line=raw_s,
             )
         return None
 
@@ -98,12 +112,11 @@ class JavaScriptChecker(LintChecker):
                 tool_missing=True, install_hint=self.install_hint(),
             )
         # eslint
-        eslint_rc, eslint_out, eslint_err = self.run(["npx", "eslint"] + files)
+        eslint_rc, eslint_out, eslint_err = self.run(self._check_cmd(files))
         errors: list[LintError] = []
         current_file = ""
         for line in eslint_out.splitlines() + eslint_err.splitlines():
             stripped = line.strip()
-            # Detect file header
             if stripped.endswith((".js", ".mjs", ".cjs")) and ":" not in stripped:
                 current_file = stripped
                 continue
@@ -118,7 +131,6 @@ class JavaScriptChecker(LintChecker):
         fmt_rc, fmt_out, fmt_err = self.run(["npx", "prettier", "--check"] + files)
         for line in fmt_out.splitlines() + fmt_err.splitlines():
             stripped = line.strip()
-            # prettier may prefix with [warn] / [error]
             if stripped.startswith("[warn] "):
                 stripped = stripped[7:]
             elif stripped.startswith("[error] "):
@@ -140,13 +152,13 @@ class JavaScriptChecker(LintChecker):
     def auto_fix(self, files: list[str]) -> FixResult:
         if not self.is_available():
             return FixResult(language=self.language, tool_name=self.tool_name, exit_code=-1, fixed_count=0)
-        self.run(["npx", "eslint", "--fix"] + files)
-        self.run(["npx", "prettier", "--write"] + files)
+        for cmd in self._fix_cmds(files):
+            self.run(cmd)
         result = self.check(files)
         return FixResult(
             language=self.language, tool_name=self.tool_name,
             exit_code=result.exit_code,
-            fixed_count=max(0, len(files)),  # best-effort
+            fixed_count=max(0, len(files)),
             remaining_errors=result.errors,
             raw_output=result.raw_output,
         )

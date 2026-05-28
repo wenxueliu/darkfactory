@@ -151,7 +151,7 @@ Issue: {发现的问题和严重性}
 Impact: {如果不处理会怎样}
 
 This is outside the current plan's scope.
-Recommendation: {你的建议 -- 暂停计划 / 先做 X / 升级到 hw-controller}
+Recommendation: {你的建议 -- 暂停计划 / 先做 X / 升级到 sw-controller}
 ```
 
 ## 暂停沟通规则
@@ -184,7 +184,7 @@ Recommendation: {你的建议 -- 暂停计划 / 先做 X / 升级到 hw-controll
     │       ├── YES → 自动重试（同一 session）
     │       └── NO  → 有独立任务可做？
     │           ├── YES → 放弃当前 → 记录 → 自动继续独立任务
-    │           └── NO  → 暂停 (上报给 hw-controller)
+    │           └── NO  → 暂停 (上报给 sw-controller)
     │
     ├── 被外部依赖阻塞？
     │   └── 暂停 (上报外部依赖)
@@ -196,26 +196,26 @@ Recommendation: {你的建议 -- 暂停计划 / 先做 X / 升级到 hw-controll
         └── 暂停 (报告问题)
 ```
 
-## 与 hw-controller 的交互
+## 与 sw-controller 的交互
 
-当暂停条件触发时，hw-plan-executor 应该：
+当暂停条件触发时，sw-plan-executor 应该：
 
 1. **优先自行解决**：绝大多数问题可以在计划执行级别解决
-2. **跨计划问题时升级**：如果阻塞涉及其他计划或全局状态，升级到 hw-controller
+2. **跨计划问题时升级**：如果阻塞涉及其他计划或全局状态，升级到 sw-controller
 3. **最终决策权在人**：当暂停需要人工决策时，明确说明这是需要人的判断
 
-升级到 hw-controller 的模板：
+升级到 sw-controller 的模板：
 ```
-ESCALATION TO hw-controller
+ESCALATION TO sw-controller
 
-From: hw-plan-executor
+From: sw-plan-executor
 Plan: {plan-name}
 Status: {完成了多少 / 总共多少}
 Blocked tasks: {任务列表及原因}
 
-Issue: {为什么需要 hw-controller 介入}
+Issue: {为什么需要 sw-controller 介入}
 Context: {相关计划和 shared state}
 Notepad: {notepad 路径和关键记录}
 
-Request: {希望 hw-controller 做什么}
+Request: {希望 sw-controller 做什么}
 ```

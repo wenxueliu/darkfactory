@@ -19,7 +19,7 @@
 
 **输入 (按加载顺序):**
 
-1. **服务注册表:** `_bmad/memory/hw-shared/service-registry.yaml` — 所有已注册服务的权威列表（auto-generated, 由 hw-knowledge-agent 维护）
+1. **服务注册表:** `_context/memory/sw-shared/service-registry.yaml` — 所有已注册服务的权威列表（auto-generated, 由 sw-knowledge-agent 维护）
 2. **Stage 1 跨服务设计:** `designs/{id}-design.md` — 其中的「服务影响分析」表列出了本次需求实际涉及的服务（从 service-registry 中筛选，不可臆想）
 3. **Stage 2 Per-service 设计:** `designs/{id}-service-{svc}-design.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
 4. **Stage 3 E2E 测试设计:** `designs/{id}-e2e-design.md` — 用于最后一个 wave 的 E2E 任务
@@ -58,7 +58,7 @@
   ├─ 第 3 优先: 从 Stage 1 设计文档直接提取
   │     读取 designs/{id}-design.md 的「服务影响分析」表
   │     如果表中有服务列表 → 直接使用（跳过 service-registry 验证，因为 registry 不存在）
-  │     警告用户: "service-registry.yaml 不存在，已从设计文档直接提取服务列表。建议运行 hw-knowledge-agent service-discovery 生成注册表。"
+  │     警告用户: "service-registry.yaml 不存在，已从设计文档直接提取服务列表。建议运行 sw-knowledge-agent service-discovery 生成注册表。"
   │     如果设计文档也没有服务影响分析表 → 进入第 4 优先
   │
   └─ 第 4 优先: 用户交互输入
@@ -68,7 +68,7 @@
          选项 B: 只有 1 个服务（单体模式，直接输入服务路径）
          选项 C: 跳过服务验证，手动指定 per-service 设计文档路径
        用户输入后，记录到临时服务清单，继续后续步骤
-       同时提示: "建议运行 hw-knowledge-agent service-discovery 生成 service-registry.yaml，避免下次重复询问。"
+       同时提示: "建议运行 sw-knowledge-agent service-discovery 生成 service-registry.yaml，避免下次重复询问。"
 ```
 
 **单体模式 (architecture: "monolith"):**
@@ -77,10 +77,10 @@
 - 任务不绑定 `service` 字段，使用 `component` 字段
 
 **为什么不能臆想服务:**
-- 服务列表的唯一权威来源是 `service-registry.yaml`（由 hw-knowledge-agent 从代码自动发现）
+- 服务列表的唯一权威来源是 `service-registry.yaml`（由 sw-knowledge-agent 从代码自动发现）
 - 本次需求涉及哪些服务的唯一权威来源是 Stage 1 设计文档的「服务影响分析」表
 - 如果跳过这步直接猜测 "可能涉及 user-service 和 order-service"，会遗漏实际受影响的服务或引入不存在的服务
-- 新服务必须先通过 hw-knowledge-agent 的 service-discovery 注册到 service-registry.yaml，才能在任务拆分中被引用
+- 新服务必须先通过 sw-knowledge-agent 的 service-discovery 注册到 service-registry.yaml，才能在任务拆分中被引用
 
 **默认模式: 1 服务 = 1 任务**
 
@@ -259,14 +259,14 @@ Final Wave: E2E 测试任务（依赖所有实现任务）
 **tasks.yaml 完整 Schema:**
 
 ```yaml
-# _bmad/memory/hw-shared/tasks.yaml
+# _context/memory/sw-shared/tasks.yaml
 requirement_id: "{REQ-YYYYMMDD-NNN}"
 created_at: "{timestamp}"
 total_estimated_hours: {n}
 split_strategy: "one-task-per-service" | "by-endpoint" | "by-component" | "by-user-story"
 
 tasks:
-  - task_id: "hw-{NNN}"
+  - task_id: "sw-{NNN}"
     name: "{描述性名称}"
     description: "{1-2 句话描述做什么}"
     service: "{对应微服务名}"
@@ -275,7 +275,7 @@ tasks:
     language: "{服务语言/框架，来自 service-registry.yaml language，如 java-springboot}"
     component: "{对应设计文档中的组件名（如适用）}"
     design_doc: "designs/{id}-service-{svc}-design.md"
-    worktree_path: "{worktree_base}/hw-task-{NNN}"
+    worktree_path: "{worktree_base}/sw-task-{NNN}"
     wave: {1|2|3|...}
     estimated_hours: {n}
     is_e2e_task: false
@@ -293,7 +293,7 @@ tasks:
         detail: "该任务涉及的 API/数据在服务 provides_apis/owns_data 范围内"
 
     dependencies:
-      - task_id: "hw-{NNN}"
+      - task_id: "sw-{NNN}"
         type: "CODE|API|DATA|CONTRACT|SEQ"
         reason: "{为什么依赖}"
         blocking: true|false   # CONTRACT 类型通常为 false（可通过 stub 并行）
@@ -315,18 +315,18 @@ tasks:
     status: "pending"
     assigned_worktree_controller: null
 
-  - task_id: "hw-E2E-{NNN}"
+  - task_id: "sw-E2E-{NNN}"
     name: "E2E 集成测试"
     description: "跨服务端到端测试，验证完整用户旅程"
     service: null
     design_doc: "designs/{id}-e2e-design.md"
-    worktree_path: "{worktree_base}/hw-task-E2E-{NNN}"
+    worktree_path: "{worktree_base}/sw-task-E2E-{NNN}"
     wave: {final}
     estimated_hours: {n}
     is_e2e_task: true
 
     dependencies:
-      - task_id: "hw-{ids}"
+      - task_id: "sw-{ids}"
         type: "TEST"
         reason: "E2E 测试需要所有服务实现完成"
         blocking: true
@@ -344,27 +344,27 @@ tasks:
 
 waves:
   - wave: 1
-    tasks: ["hw-{ids}"]
+    tasks: ["sw-{ids}"]
     max_parallel: {n}
   - wave: 2
-    tasks: ["hw-{ids}"]
+    tasks: ["sw-{ids}"]
     depends_on: [1]
   - wave: {final}
-    tasks: ["hw-E2E-{NNN}"]
+    tasks: ["sw-E2E-{NNN}"]
     depends_on: [{all_previous}]
 ```
 
 **同时初始化 worktree-registry.yaml:**
 
 ```yaml
-# _bmad/memory/hw-controller/worktree-registry.yaml
+# _context/memory/sw-controller/worktree-registry.yaml
 requirement_id: "{REQ-YYYYMMDD-NNN}"
 created_at: "{timestamp}"
 
 worktrees:
-  hw-task-{NNN}:
-    branch: "hw-task-{NNN}"
-    task_id: "hw-{NNN}"
+  sw-task-{NNN}:
+    branch: "sw-task-{NNN}"
+    task_id: "sw-{NNN}"
     status: "pending"
     wave: {1|2|3}
     created_at: null
@@ -416,10 +416,10 @@ worktrees:
       "name": "wave-1",
       "type": "parallel",
       "depends_on": [],
-      "children": ["hw-001", "hw-002"]
+      "children": ["sw-001", "sw-002"]
     },
     {
-      "name": "hw-001",
+      "name": "sw-001",
       "type": "task",
       "service_name": "user-service",
       "service_path": "services/user-service",
@@ -430,7 +430,7 @@ worktrees:
       "depends_on": [],
       "blocking": true,
       "metadata": {
-        "task_id": "hw-001",
+        "task_id": "sw-001",
         "component": "UserController",
         "design_doc": "designs/REQ-001-service-user-service-design.md",
         "estimated_hours": 2,
@@ -452,7 +452,7 @@ worktrees:
       }
     },
     {
-      "name": "hw-002",
+      "name": "sw-002",
       "type": "task",
       "service_name": "order-service",
       "service_path": "services/order-service",
@@ -460,10 +460,10 @@ worktrees:
       "language": "java-springboot",
       "capability": "dev",
       "description": "实现订单创建API",
-      "depends_on": ["hw-001"],
+      "depends_on": ["sw-001"],
       "blocking": false,
       "metadata": {
-        "task_id": "hw-002",
+        "task_id": "sw-002",
         "component": "OrderController",
         "design_doc": "designs/REQ-001-service-order-service-design.md",
         "estimated_hours": 2,
@@ -488,14 +488,14 @@ worktrees:
       "depends_on": ["wave-1"]
     },
     {
-      "name": "hw-E2E-001",
+      "name": "sw-E2E-001",
       "type": "task",
       "service_name": "_test",
       "capability": "test",
       "description": "E2E集成测试",
       "depends_on": ["wave-1-merge"],
       "metadata": {
-        "task_id": "hw-E2E-001",
+        "task_id": "sw-E2E-001",
         "design_doc": "designs/REQ-001-e2e-design.md",
         "estimated_hours": 1.5,
         "test_bindings": {
@@ -515,7 +515,7 @@ worktrees:
   "title": "用户注册功能",
   "tasks": [
     {
-      "name": "hw-001",
+      "name": "sw-001",
       "type": "task",
       "service_name": "user-service",
       "service_path": "services/user-service",
@@ -532,7 +532,7 @@ worktrees:
 }
 ```
 
-**写入位置:** `{project-root}/_bmad-output/{requirement_id}/dependencies.json`
+**写入位置:** `{project-root}/_context-output/{requirement_id}/dependencies.json`
 
 ## 过渡门禁
 
@@ -541,7 +541,7 @@ worktrees:
 - [ ] 受影响服务列表来源已记录（service-registry / auto-discovery / 设计文档 / 用户输入），未臆想
 - [ ] 每个任务的 `service_path` + `repo_url` + `language` 已从服务注册表填充（非空）
 - [ ] 每个任务的能力校验已通过（`capability_verified: true`）: 语言匹配 + 路径存在 + 能力覆盖
-- [ ] 如果使用了 fallback（第 2/3/4 优先），已提示用户运行 `hw-knowledge-agent service-discovery` 生成 service-registry.yaml
+- [ ] 如果使用了 fallback（第 2/3/4 优先），已提示用户运行 `sw-knowledge-agent service-discovery` 生成 service-registry.yaml
 - [ ] tasks.yaml 包含所有受影响服务的任务 + 1 个 E2E 任务
 - [ ] 每个任务有明确的 AC（来自需求规格）
 - [ ] 每个非 E2E 任务自包含 UT 用例 + API 用例（来自 per-service 设计文档 Section 10）

@@ -53,7 +53,7 @@ Before any action, verify intent:
 | "create X", "build Y", "new feature" (no clear design) | Implementation (design needed) | ideation (requirement-clarification) → sw-brainstorming → sw-strategic-planner → sw-plan-executor |
 | "look into X", "check Y", "investigate" | Investigation | codebase-explorer → report findings |
 | "what do you think about X?" | Evaluation | evaluate → propose → wait for confirmation |
-| "X is broken", "I'm seeing error Y" | Fix needed | diagnose → fix minimally → verify |
+| "X is broken", "I'm seeing error Y" | Fix needed | **clarify first** (what exactly? confirmed?) → diagnose → fix minimally → verify |
 | "refactor", "improve", "clean up" | Open-ended change | assess codebase → propose approach → wait for approval |
 
 ### Ideation (需求阶段) — for new feature/requirement requests
@@ -66,7 +66,9 @@ When Intent Gate classifies the request as a new feature, implementation, or ope
 4. **Requirements Gate** — Read gate results from `references/requirements-gate.md`. Check G1-G4 (Completeness / Measurability / Value Alignment / Risk Readiness). Only proceed to design when all gates PASS. Max 3 retries → escalate to human.
 5. **Phase Transition** — When all ideation gates PASS → proceed to design phase (3-Stage delegation). See Phase Transition Rules below for `ideation → design` criteria.
 
-Skip ideation for: Trivial (direct execution), Exploratory (research → answer), Ambiguous (ask one question → re-classify). Explicit requests MUST pass ideation — surface clarity is not a substitute for requirements verification.
+Skip ideation for: Trivial (direct execution — but MUST verbalize intent first), Exploratory (research → answer), Ambiguous (ask one question → re-classify). Explicit requests MUST pass ideation — surface clarity is not a substitute for requirements verification.
+
+**⚠️ Direct write protection:** The `ideation-gate.py` hook now blocks ALL source code Write/Edit calls before ideation is done. You cannot bypass ideation by writing code directly instead of delegating to sub-agents. Even for trivial changes, you must at minimum verbalize intent and get confirmation before acting.
 
 ### Codebase Assessment (Phase 1) — for open-ended tasks
 

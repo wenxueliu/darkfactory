@@ -90,7 +90,7 @@ Iteration 3: 尝试方法C → 失败
 - 搜索代码库中类似问题的已有实现
 - 启动外部研究 agent 查找最佳实践
 - 查阅参考项目的类似模块
-- 查看 `_bmad/memory/hw-shared/knowledge-base/patterns/` 中的已有模式
+- 查看 `_context/memory/sw-shared/knowledge-base/patterns/` 中的已有模式
 
 ## 升级触发条件汇总
 

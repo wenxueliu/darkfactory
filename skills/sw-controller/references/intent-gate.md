@@ -80,6 +80,14 @@
 - "好像"、"似乎"、"有点" → 可能是 bug 报告
 - "那个"、"这个" → 可能指向模糊（缺少具体名称）
 
+**「Fix needed」反模式: 不要跳过澄清**
+用户说 "X 报错了" 可能只是表面现象。在诊断前必须先澄清:
+1. 是错误还是意外行为？
+2. 具体看到了什么？
+3. 是否已经确认是 bug？
+
+在收到用户确认后再进入 diagnose → fix → verify 流程。**不要把「修 bug」变成「猜意图写代码」**。
+
 ### 第 4 步: Check for Ambiguity (模糊性检查)
 
 以下任一情况成立，请求为模糊：
@@ -180,10 +188,10 @@ Turn 2: 用户说 "我看了一下 response 格式"
 意图门禁通过后，根据分类进入对应阶段：
 
 ```
-Trivial    → 直接执行，不经过后续阶段
+Trivial    → 口头化意图 → 用户确认 → 直接执行（口头化不可跳过！即使是1行改动）
 Explicit   → ideation (requirement-clarification) → Phase 1 (Codebase Assessment) → Phase 2A (Exploration) → 实现
 Exploratory → Phase 2A (Exploration) → 综合回答
 Open-ended → Phase 1 (Codebase Assessment) → 提案 → 等待确认
 Ambiguous  → 追问澄清 → 重新进入意图门禁
-Fix needed → 诊断 → Phase 2C (Failure Recovery) → 修复 → 验证
+Fix needed → 澄清问题（问：具体看到了什么？确认是 bug？）→ 诊断 → Phase 2C (Failure Recovery) → 修复 → 验证
 ```

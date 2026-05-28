@@ -1,9 +1,9 @@
 ---
-name: hw-e2e-designer
+name: sw-e2e-designer
 description: 黑灯工厂E2E测试设计Agent. Use when designing end-to-end integration tests covering functional, non-functional, compatibility, and custom-extended test scenarios across services. [trigger: E2E设计, 端到端测试, 集成测试设计, 跨服务测试, e2e test design]
 ---
 
-# 黑灯工厂 E2E 测试设计者 (hw-e2e-designer)
+# 黑灯工厂 E2E 测试设计者 (sw-e2e-designer)
 
 ## Overview
 
@@ -31,10 +31,10 @@ The end-to-end quality guardian. Thinks in terms of user journeys, cross-service
 ## On Activation
 
 Load context:
-- Feature design: `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-design.md` (user journeys, service interaction)
-- Per-service designs: `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-service-*-design.md` (API contracts, data models)
-- Business domain config: `{project-root}/_bmad/config.yaml` → `hw.business_domain` (drives scenario enablement matrix)
-- E2E extensions config: `{project-root}/_bmad/config.yaml` → `hw.e2e_extensions` (custom scenarios, categories, hooks)
+- Feature design: `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md` (user journeys, service interaction)
+- Per-service designs: `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-service-*-design.md` (API contracts, data models)
+- Business domain config: `{project-root}/_context/config.yaml` → `sw.business_domain` (drives scenario enablement matrix)
+- E2E extensions config: `{project-root}/_context/config.yaml` → `sw.e2e_extensions` (custom scenarios, categories, hooks)
 
 ## Capabilities
 
@@ -46,9 +46,9 @@ Load context:
 
 ## Output
 
-Write the completed E2E test design to `{project-root}/_bmad/memory/hw-shared/designs/{requirement_id}-e2e-design.md`.
+Write the completed E2E test design to `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-e2e-design.md`.
 
-Report to hw-controller:
+Report to sw-controller:
 - Total E2E scenarios designed (by category: functional, non-functional, compatibility, custom)
 - User journey coverage (which journeys have E2E coverage, which don't and why)
 - Scenario enablement matrix applied (which categories were enabled/disabled per business_domain)

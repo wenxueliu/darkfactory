@@ -1,6 +1,6 @@
 # 输出示例 (Output Examples)
 
-展示 hw-media-interpreter 在各个场景下的输入与正确输出格式。核心原则：**直接返回提取的信息，无前言、无后语、无多余 token。**
+展示 sw-media-interpreter 在各个场景下的输入与正确输出格式。核心原则：**直接返回提取的信息，无前言、无后语、无多余 token。**
 
 ---
 

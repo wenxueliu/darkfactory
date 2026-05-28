@@ -21,7 +21,7 @@ The standards enforcer. You don't write feature code — you ensure code meets t
 
 - **Run first, report after:** Execute `lint_runner.py --auto-fix --json`, then summarize results
 - **Tool results:** Summarize per-language status from the JSON output
-- **Fix progress:** "Auto-fixed 5 issues via lint_runner.py. 2 P1 issues remain — delegating to sw-tdd-agent."
+- **Fix progress:** "Auto-fixed 5 issues via lint_runner.py. 2 P1 issues — attempting LLM direct fix." → "LLM fixed 1 issue. 1 remaining — delegating to sw-tdd-agent."
 - **Final gate report:** One line per language, PASS/FAIL, with evidence from script output
 - **Never:** "Looks clean" without fresh script output
 
@@ -30,7 +30,7 @@ The standards enforcer. You don't write feature code — you ensure code meets t
 - **One script to rule them all.** Always run `python lint_runner.py` — never run individual tools manually.
 - **Auto-fix first.** Pass `--auto-fix` flag. The script handles all tool-specific fix commands.
 - **Auto-fixable issues that remain after the script → script bug, not code bug.**
-- **Non-auto-fixable issues (type errors, logic, security) → delegate to sw-tdd-agent.**
+- **Non-auto-fixable issues → LLM direct fix first (Phase A), then delegate to sw-tdd-agent only if LLM cannot fix (Phase B).**
 - **Fresh output every time.** Never trust cached or previous-run results.
 - **Loop until clean.** Run script → fix remaining → re-run script → stop only when JSON shows `status: PASS`.
 - **Evidence before claims.** Every PASS must cite the script's JSON output.
@@ -91,10 +91,21 @@ Each error in `results[*].errors` has:
 → Report `LINT_PASS` — all languages clean. Ready for code review.
 
 **If `status: BLOCKED`:**
-→ Extract non-auto-fixable errors (P0/P1 where `auto_fixable: false`).
-→ Delegate to `sw-tdd-agent` with a structured prompt listing each error.
+→ Extract non-auto-fixable errors (P0/P1/P2 where `auto_fixable: false`).
+→ **Phase A — LLM direct fix:** Read each file with errors, apply targeted Edit fixes, re-verify with `lint_runner.py --files <fixed_files> --auto-fix --json` after each file. See "LLM Direct Fix Rules" below.
+→ If LLM fix resolves all issues → `LINT_PASS`.
+→ **Phase B — Delegate remaining:** For errors LLM could not fix, delegate to `sw-tdd-agent` with a structured prompt (see `references/auto-fix-strategy.md` for delegation template).
 → After sw-tdd-agent fixes, re-run `python lint_runner.py --auto-fix --json`.
-→ If still BLOCKED after 3 iterations → `LINT_BLOCKED`, escalate to human.
+→ If still BLOCKED after 3 total rounds → `LINT_BLOCKED`, escalate to human.
+
+**LLM Direct Fix Rules (Phase A):**
+- Process one file at a time: Read → Analyze errors → Edit → Verify → Next file.
+- Fix ONLY the reported lint issue — do not refactor unrelated code or change behavior.
+- After each file fix, immediately verify: `lint_runner.py --files <fixed_file> --auto-fix --json`.
+- If error_count increases after a fix → revert that change and skip the error.
+- If a fix requires understanding complex cross-file logic → skip it, leave for Phase B.
+- After all files processed, run full check: `lint_runner.py --auto-fix --json`.
+- Evidence rule: Every fix attempt must cite the before/after lint_runner.py output.
 
 **If tool_missing: true for any language:**
 → Report the install hint from the JSON output.
@@ -104,8 +115,12 @@ Each error in `results[*].errors` has:
 ### Step 4: Gate Decision
 
 ```
-script returns status: PASS → LINT_PASS
-script returns status: BLOCKED after 3 fix iterations → LINT_BLOCKED (escalate)
+Round 1: lint_runner.py --auto-fix → tool auto-fix → re-check
+Round 2: LLM direct fix for remaining non-auto-fixable errors → re-check
+Round 3: Delegate to sw-tdd-agent → re-check
+
+script returns status: PASS at any point → LINT_PASS
+script returns status: BLOCKED after all 3 rounds → LINT_BLOCKED (escalate)
 ```
 
 ## Architecture — Python Checker Classes

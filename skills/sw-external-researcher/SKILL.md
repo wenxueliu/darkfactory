@@ -1,9 +1,9 @@
 ---
-name: hw-external-researcher
+name: sw-external-researcher
 description: 外部文档/代码研究Agent. External documentation and open-source code research with GitHub permalink evidence. Use for finding official docs, library internals, best practices, or OSS usage examples. [trigger: 外部搜索, 文档查询, external search, library docs, how to use, GitHub search, 开源研究]
 ---
 
-# 黑灯工厂 外部研究员 (hw-external-researcher)
+# 黑灯工厂 外部研究员 (sw-external-researcher)
 
 ## Overview
 
@@ -159,7 +159,7 @@ git clone --depth 1 https://github.com/owner/repo.git ${TMPDIR:-/tmp}/repo-name
 
 This agent is **stateless and read-only**. It does not write to the shared memory. Research findings are delivered directly in the response.
 
-If the user wants to persist findings to the knowledge base, they should delegate to `hw-knowledge-agent` after receiving this agent's output.
+If the user wants to persist findings to the knowledge base, they should delegate to `sw-knowledge-agent` after receiving this agent's output.
 
 ## Output
 

@@ -58,7 +58,7 @@ Worktree 是任务执行的**隔离容器**——每个任务在自己的 worktr
 - [ ] `.gitignore` 中包含 `.worktree/`（验证: `grep '\.worktree' .gitignore`）
 - [ ] 主分支无未提交的更改（验证: `git status --porcelain` 为空或在 worktree_base 之外）
 - [ ] 磁盘空间充足（验证: `df -h {worktree_base}` 剩余 > 2GB）
-- [ ] 没有同名 worktree 存在（验证: `git worktree list | grep hw-task-{id}`）
+- [ ] 没有同名 worktree 存在（验证: `git worktree list | grep sw-task-{id}`）
 
 ### 2. 创建命令
 
@@ -67,10 +67,10 @@ Worktree 是任务执行的**隔离容器**——每个任务在自己的 worktr
 cd {project-root}
 
 # 创建 worktree（在新分支上）
-git worktree add {worktree_base}/hw-task-{task_id} -b hw-task-{task_id} {base_branch}
+git worktree add {worktree_base}/sw-task-{task_id} -b sw-task-{task_id} {base_branch}
 
 # 进入 worktree
-cd {worktree_base}/hw-task-{task_id}
+cd {worktree_base}/sw-task-{task_id}
 ```
 
 ### 3. 环境搭建
@@ -117,15 +117,15 @@ cd {worktree_base}/hw-task-{task_id}
 
 ```yaml
 worktrees:
-  hw-task-{NNN}:
-    branch: "hw-task-{NNN}"
-    task_id: "hw-{NNN}"
+  sw-task-{NNN}:
+    branch: "sw-task-{NNN}"
+    task_id: "sw-{NNN}"
     status: "running"
     wave: {n}
     created_at: "{timestamp}"
     started_at: "{timestamp}"
     baseline_test_passed: true
-    path: "{worktree_base}/hw-task-{NNN}"
+    path: "{worktree_base}/sw-task-{NNN}"
     environment:
       node_version: "{version}"
       java_version: "{version}"
@@ -198,7 +198,7 @@ git checkout {base_branch}
 
 # 2. 按 wave 顺序合并 (wave 1 → wave 2 → wave 3)
 for worktree in wave_1_done:
-    git merge hw-task-{id} --no-ff -m "merge(hw-task-{id}): {task_name}"
+    git merge sw-task-{id} --no-ff -m "merge(sw-task-{id}): {task_name}"
 
 # 3. 运行全量回归测试
 mvn test  # or equivalent
@@ -218,13 +218,13 @@ mvn test  # or equivalent
 
 ```bash
 # 1. 确认已合并
-git branch --merged {base_branch} | grep hw-task-{id}
+git branch --merged {base_branch} | grep sw-task-{id}
 
 # 2. 移除 worktree
-git worktree remove {worktree_base}/hw-task-{task_id}
+git worktree remove {worktree_base}/sw-task-{task_id}
 
 # 3. 删除分支 (可选，保留用于审计)
-git branch -d hw-task-{task_id}
+git branch -d sw-task-{task_id}
 
 # 4. 更新 registry
 # status: "merged" → "cleaned"
@@ -234,13 +234,13 @@ git branch -d hw-task-{task_id}
 
 ```bash
 # 1. 强制移除 worktree
-git worktree remove --force {worktree_base}/hw-task-{task_id}
+git worktree remove --force {worktree_base}/sw-task-{task_id}
 
 # 2. 删除分支
-git branch -D hw-task-{task_id}
+git branch -D sw-task-{task_id}
 
 # 3. 清理 worktree 目录下的残留文件
-rm -rf {worktree_base}/hw-task-{task_id}
+rm -rf {worktree_base}/sw-task-{task_id}
 
 # 4. 更新 registry
 # status: "blocked|abandoned" → "cleaned"
@@ -249,7 +249,7 @@ rm -rf {worktree_base}/hw-task-{task_id}
 ### 清理检查清单
 
 - [ ] `git worktree list` 不包含已清理的 worktree
-- [ ] `{worktree_base}/hw-task-{task_id}/` 目录已删除
+- [ ] `{worktree_base}/sw-task-{task_id}/` 目录已删除
 - [ ] worktree-registry.yaml 中状态已更新为 `cleaned`
 - [ ] 磁盘空间恢复正常
 

@@ -77,8 +77,8 @@
 - **Low**: 描述为"从零构建"但实际涉及替换现有系统
 
 **推荐工具组合**: 
-- **必须先探索**: 代码库探索者 (hw-codebase-explorer) — 发现 monorepo 约定、现有技术栈、共享基础设施
-- **必须先研究**: 外部研究员 (hw-external-researcher) — 了解最佳实践、库版本、starter templates
+- **必须先探索**: 代码库探索者 (sw-codebase-explorer) — 发现 monorepo 约定、现有技术栈、共享基础设施
+- **必须先研究**: 外部研究员 (sw-external-researcher) — 了解最佳实践、库版本、starter templates
 
 **关键原则: 探索先于提问 (Explore Before Asking)**
 在向用户提问之前，必须先探索代码库和外部资源。不应问用户"项目用什么 linter?"如果代码库已有 `.eslintrc`。
@@ -162,9 +162,9 @@
 - **Medium**: 请求有架构含义但用户可能未意识到
 - **Low**: 看似功能请求但实际涉及架构变更
 
-**推荐工具组合**: 战略顾问 (hw-strategic-advisor) + 知识库查询 (已有 ADR 和决策记录)
+**推荐工具组合**: 战略顾问 (sw-strategic-advisor) + 知识库查询 (已有 ADR 和决策记录)
 
-**建议**: 对于架构意图，强烈建议 (RECOMMEND) 在规划后委托 `hw-strategic-advisor` 进行深度审查。预规划阶段重点确保决策范围被正确界定、决策依据被明确记录。
+**建议**: 对于架构意图，强烈建议 (RECOMMEND) 在规划后委托 `sw-strategic-advisor` 进行深度审查。预规划阶段重点确保决策范围被正确界定、决策依据被明确记录。
 
 **应问的问题**:
 - 这个架构决策的约束条件是什么? (技术/组织/时间/成本)
@@ -191,7 +191,7 @@
 - **Low**: 功能请求伪装为研究请求 (实际是"先帮我决定再帮我做")
 
 **推荐工具组合**: 
-- **必须先探索**: 外部研究员 (hw-external-researcher) — 并行多条研究轨道
+- **必须先探索**: 外部研究员 (sw-external-researcher) — 并行多条研究轨道
 - 可能需要: 代码库探索者 (内部实现调研)
 
 **关键原则: 探索先于提问 (Explore Before Asking)**

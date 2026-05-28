@@ -39,13 +39,13 @@ use skill tool to list skills
 ### Loading a Skill
 
 ```
-use skill tool to load hw-controller
+use skill tool to load sw-controller
 ```
 
 ### Starting a Development Workflow
 
 ```
-use skill tool to load hw-controller
+use skill tool to load sw-controller
 ```
 
 The controller will guide you through ideation → design → decomposition → execution → delivery.
@@ -55,9 +55,9 @@ The controller will guide you through ideation → design → decomposition → 
 Harness provides three parallel reviewers:
 
 ```
-use skill tool to load hw-reviewer-logic
-use skill tool to load hw-reviewer-security
-use skill tool to load hw-reviewer-performance
+use skill tool to load sw-reviewer-logic
+use skill tool to load sw-reviewer-security
+use skill tool to load sw-reviewer-performance
 ```
 
 ## Agent Roles
@@ -66,15 +66,15 @@ The `opencode.json` defines these agent roles in the `agents` section:
 
 | Harness Agent | OpenCode Role | Purpose |
 |---------------|---------------|---------|
-| hw-controller | `controller` | Orchestrator |
-| hw-tdd-agent | `tdd-agent` | TDD execution |
-| hw-reviewer-logic | `reviewer-logic` | Logic review |
-| hw-reviewer-security | `reviewer-security` | Security review |
-| hw-reviewer-performance | `reviewer-performance` | Performance review |
+| sw-controller | `controller` | Orchestrator |
+| sw-tdd-agent | `tdd-agent` | TDD execution |
+| sw-reviewer-logic | `reviewer-logic` | Logic review |
+| sw-reviewer-security | `reviewer-security` | Security review |
+| sw-reviewer-performance | `reviewer-performance` | Performance review |
 
 ## Configuration
 
-Harness reads from `_bmad/config.yaml` and `_bmad/config.user.yaml`. Key settings:
+Harness reads from `_context/config.yaml` and `_context/config.user.yaml`. Key settings:
 - `communication_language` — response language (default: Chinese)
 - `business_domain` — template selection (general, fintech, ecommerce, etc.)
 - `enabled_reviewers` — which reviews are active

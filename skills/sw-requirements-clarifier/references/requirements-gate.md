@@ -43,4 +43,4 @@ FAIL: → 标记阻塞原因，回到需求澄清。最大重试 3 轮。
 
 ## 输出文件
 
-门禁结果写入 `{project-root}/_bmad/memory/hw-shared/requirements/{requirement_id}-gate.md`
+门禁结果写入 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}-gate.md`

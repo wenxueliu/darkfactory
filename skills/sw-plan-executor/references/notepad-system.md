@@ -7,7 +7,7 @@
 ## 目录结构
 
 ```
-{project-root}/_bmad/memory/hw-plan-executor/notepads/
+{project-root}/_context/memory/sw-plan-executor/notepads/
 └── {plan-name}/
     ├── learnings.md    # 发现的模式、约定、代码库知识
     ├── decisions.md    # 架构选择和理由
@@ -159,7 +159,7 @@
 
 **在每个委托之前，必须读取 notepad：**
 
-1. 执行 `glob("{project-root}/_bmad/memory/hw-plan-executor/notepads/{plan-name}/*.md")` 确认文件存在
+1. 执行 `glob("{project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/*.md")` 确认文件存在
 2. 读取 `learnings.md` -- 了解项目模式和约定
 3. 读取 `decisions.md` -- 了解影响当前任务的架构决策
 4. 读取 `issues.md` -- 了解之前遇到的问题和解决方案
@@ -184,8 +184,8 @@
 
 在委托提示的 MUST DO 中，指示子 agent:
 ```
-将发现追加到 {project-root}/_bmad/memory/hw-plan-executor/notepads/{plan-name}/learnings.md (追加，不覆盖)
-将发现追加到 {project-root}/_bmad/memory/hw-plan-executor/notepads/{plan-name}/issues.md (追加，不覆盖)
+将发现追加到 {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/learnings.md (追加，不覆盖)
+将发现追加到 {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/issues.md (追加，不覆盖)
 ```
 
 ### 写入格式规则
@@ -206,7 +206,7 @@
 
 - **创建**：Step 2 (Initialize Notepad) -- 当开始执行计划时创建
 - **累积**：每个委托前读取，每个验证后写入
-- **归档**：Final Verification Wave 全部通过后，整个 notepad 目录可以考虑合并到共享知识库 `_bmad/memory/hw-shared/knowledge-base/`
+- **归档**：Final Verification Wave 全部通过后，整个 notepad 目录可以考虑合并到共享知识库 `_context/memory/sw-shared/knowledge-base/`
 - **清理**：不自动删除。如需清理，这是人工决策。
 
 ## Notepad 使用示例

@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """ideation-gate — PreToolUse hook for Harness multiagents.
 
-Event: PreToolUse (Agent)
-Purpose: Blocks delegation to implementation agents before requirement
-         clarification (ideation phase) has been started.
+Event: PreToolUse (Agent, Write, Edit)
+Purpose: Blocks ANY code-writing action before requirement clarification
+         (ideation phase) has completed.
          "Explicit surface clarity does NOT equal clarified requirements."
 
-Check logic:
-  1. No requirements-tracker.yaml AND no requirements/*.md → BLOCK (not started)
-  2. Requirements exist but ideation status != done → WARN but allow
-  3. Requirements exist and ideation done → ALLOW
+Check logic (strict):
+  1. Read requirements-tracker.yaml → check ideation.status == done
+  2. If tracker absent OR ideation not done → BLOCK (deny)
+  3. If ideation done → ALLOW
+
+This hook monitors TWO paths:
+  - Agent tool targeting implementation agents (sw-tdd-agent, etc.)
+  - Write/Edit tool targeting source code files (not test/config/doc)
 """
 
 import json
@@ -20,9 +24,18 @@ from pathlib import Path
 
 # Implementation agents that require completed ideation first
 IMPLEMENTATION_PATTERN = re.compile(
-    r"sw-tdd-agent|sw-plan-executor|sw-worktree-controller",
+    r"sw-tdd-agent|sw-plan-executor|sw-worktree-controller|sw-controller",
     re.IGNORECASE,
 )
+
+# Source code file patterns (write-protected before ideation done)
+# Test files, config files, and docs are exempt (TDD writes tests first)
+SOURCE_CODE_PATTERNS = [
+    re.compile(r"\.(py|js|ts|tsx|jsx|java|go|rs|c|cpp|h|hpp|cs|rb|php|swift|kt)$"),
+]
+
+# Tools monitored for source code writes
+MONITORED_TOOLS = {"Agent", "Write", "Edit"}
 
 
 def detect_project_root(start_dir: str) -> str:
@@ -54,7 +67,7 @@ def parse_yaml_ideation_status(tracker_path: str) -> bool:
         if stripped in ("  ideation:",) or stripped.startswith("  ideation "):
             in_ideation = True
             continue
-        # Exit ideation section: non-empty, not 4-space indented, not a comment
+        # Exit ideation section
         if (
             in_ideation
             and stripped
@@ -74,39 +87,54 @@ def parse_yaml_ideation_status(tracker_path: str) -> bool:
     return False
 
 
-def has_requirements_artifacts(project_root: str) -> bool:
-    """Check if any requirements artifacts exist in the project."""
-    root = Path(project_root)
-
-    # Check 1: requirements-tracker.yaml
-    tracker = root / "_context" / "memory" / "sw-shared" / "requirements-tracker.yaml"
-    if tracker.exists():
-        return True
-
-    # Check 2: requirements/ directory with .md files
-    req_dir = root / "requirements"
-    if req_dir.is_dir():
-        if any(req_dir.glob("*.md")):
+def is_source_code_file(file_path: str) -> bool:
+    """Check if the file path looks like a source code file (not test/config/doc)."""
+    path = Path(file_path)
+    # Test files are exempt (TDD principle: write test first, then implement)
+    if "test" in path.name.lower() or path.name.startswith("test_"):
+        return False
+    # Config/doc files are exempt
+    exempt_patterns = [
+        ".md", ".rst", ".yaml", ".yml", ".toml", ".ini", ".cfg",
+        ".json", ".txt", ".csv",
+    ]
+    for pat in exempt_patterns:
+        if path.name.endswith(pat):
+            return False
+    # Check source code extension
+    for pat in SOURCE_CODE_PATTERNS:
+        if pat.search(file_path):
             return True
-
-    # Check 3: _context/memory/sw-shared/ requirement/clarification files
-    mem_dir = root / "_context" / "memory" / "sw-shared"
-    if mem_dir.is_dir():
-        for pattern in ["*requirement*", "*clarif*"]:
-            if any(mem_dir.glob(pattern)):
-                return True
-
     return False
+
+
+def is_write_to_source_code(tool_name: str, tool_input: dict) -> bool:
+    """Check if the tool call would write/edit a source code file."""
+    if tool_name not in ("Write", "Edit"):
+        return False
+    file_path = tool_input.get("file_path", "")
+    return bool(file_path and is_source_code_file(file_path))
 
 
 def is_implementation_agent(tool_input: dict) -> bool:
     """Check if the Agent tool call targets an implementation agent."""
     subagent_type = tool_input.get("subagent_type") or tool_input.get("subagentType") or ""
-    description = tool_input.get("description", "")
-    for field in (subagent_type, description):
+    description = tool_input.get("description", "") or ""
+    skill = tool_input.get("skill") or ""
+    for field in (subagent_type, description, skill):
         if IMPLEMENTATION_PATTERN.search(field):
             return True
     return False
+
+
+def check_ideation_completed(project_root: str) -> bool:
+    """Check if ideation phase is marked 'done' in the requirements tracker."""
+    tracker_file = os.path.join(
+        project_root, "_context", "memory", "sw-shared", "requirements-tracker.yaml"
+    )
+    if not os.path.isfile(tracker_file):
+        return False
+    return parse_yaml_ideation_status(tracker_file)
 
 
 def main() -> None:
@@ -118,7 +146,7 @@ def main() -> None:
     tool_name = input_data.get("tool_name", "")
     session_id = input_data.get("session_id", "")
 
-    if not session_id or tool_name != "Agent":
+    if not session_id or tool_name not in MONITORED_TOOLS:
         sys.exit(0)
 
     cwd = input_data.get("cwd", "")
@@ -128,51 +156,61 @@ def main() -> None:
 
     tool_input = input_data.get("tool_input", {})
 
-    if not is_implementation_agent(tool_input):
+    # Determine if this action needs ideation protection
+    needs_ideation = False
+    target_desc = "unknown"
+
+    if tool_name == "Agent":
+        if is_implementation_agent(tool_input):
+            needs_ideation = True
+            target_desc = (
+                tool_input.get("subagent_type")
+                or tool_input.get("subagentType")
+                or tool_input.get("skill")
+                or "implementation-agent"
+            )
+    elif tool_name in ("Write", "Edit"):
+        if is_write_to_source_code(tool_name, tool_input):
+            needs_ideation = True
+            target_desc = tool_input.get("file_path", "source-file")
+
+    if not needs_ideation:
         sys.exit(0)
 
-    # Check ideation status
-    tracker_file = os.path.join(
+    # --- Ideation check: HARD gate ---
+    is_done = check_ideation_completed(project_root)
+
+    if is_done:
+        sys.exit(0)  # ideation done → allow
+
+    # Ideation NOT done → DENY (with different messages for "not started" vs "in progress")
+    tracker_path = os.path.join(
         project_root, "_context", "memory", "sw-shared", "requirements-tracker.yaml"
     )
-
-    if os.path.isfile(tracker_file):
-        if parse_yaml_ideation_status(tracker_file):
-            sys.exit(0)  # ideation done → allow
-
-        # Ideation started but not done → warn but allow
+    if os.path.isfile(tracker_path):
+        # Ideation started but not done → DENY (was "warn but allow", upgraded to hard gate)
         reason = (
-            "Ideation Gate WARNING: requirements-tracker.yaml exists but ideation phase "
-            "is not marked 'done'. You are delegating to an implementation agent before "
-            "completing requirement clarification. Consider delegating to "
-            "sw-requirements-clarifier first if requirements are not yet fully clarified."
+            f"Ideation Gate DENIED: requirements-tracker.yaml exists but ideation phase "
+            f"is NOT marked 'done'. You are trying to write code via ({target_desc}) "
+            f"before completing requirement clarification. "
+            f"Complete the ideation phase first: delegate to sw-requirements-clarifier, "
+            f"pass the requirements gate, and mark ideation.status = done in the tracker. "
+            f"Explicit surface clarity does NOT equal clarified requirements."
         )
-        output = {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "allow",
-                "permissionDecisionReason": reason,
-            }
-        }
-        print(json.dumps(output, ensure_ascii=False))
-        sys.exit(0)
+    else:
+        # No requirements work found → DENY
+        reason = (
+            f"Ideation Gate DENIED: No requirements documents found. You are trying to "
+            f"write code via ({target_desc}) but requirement clarification has not been "
+            f"started. Required flow: "
+            f"1) Delegate to sw-requirements-clarifier for 4-step progressive clarification, "
+            f"2) Value assessment via sw-value-judgment, "
+            f"3) Requirements gate PASS. "
+            f"Only then may you write implementation code. "
+            f"Explicit surface clarity does NOT equal clarified requirements — "
+            f"clarification IS the check."
+        )
 
-    if has_requirements_artifacts(project_root):
-        sys.exit(0)  # artifacts exist → ideation in progress, allow
-
-    # No requirements work found → BLOCK
-    subagent_type = tool_input.get("subagent_type") or tool_input.get("subagentType") or "unknown"
-    reason = (
-        f"Ideation Gate BLOCKED: No requirements documents found. You are trying to "
-        f"delegate to an implementation agent ({subagent_type}) but requirement "
-        f"clarification has not been started. Required flow: "
-        f"1) Delegate to sw-requirements-clarifier for 4-step progressive clarification, "
-        f"2) Value assessment via sw-value-judgment, "
-        f"3) Requirements gate PASS. "
-        f"Only then may you delegate to implementation agents. "
-        f"Explicit surface clarity does NOT equal clarified requirements — "
-        f"clarification IS the check."
-    )
     output = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",

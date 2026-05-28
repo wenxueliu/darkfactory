@@ -18,10 +18,10 @@ All worktrees are successfully merged back to the main branch:
 ```bash
 # From main branch
 git checkout main
-git merge --{strategy} hw-task-{id}
+git merge --{strategy} sw-task-{id}
 # Resolve conflicts if any
 git add -A
-git commit -m "Merge worktree hw-task-{id}: {summary}"
+git commit -m "Merge worktree sw-task-{id}: {summary}"
 ```
 
 **Conflict resolution:**
@@ -31,19 +31,19 @@ If merge conflicts occur:
 3. Either:
    - Auto-resolve if trivial
    - Request human help for complex conflicts
-4. Document resolution in `{project-root}/_bmad/memory/hw-shared/design-decisions.md`
+4. Document resolution in `{project-root}/_context/memory/sw-shared/design-decisions.md`
 
 **Cleanup:**
 After successful merge:
 ```bash
-git worktree remove {worktree_base}/hw-task-{task_id}
-git branch -d hw-task-{task_id}  # Safe, branch is merged
+git worktree remove {worktree_base}/sw-task-{task_id}
+git branch -d sw-task-{task_id}  # Safe, branch is merged
 ```
 
 Update registry:
 ```yaml
 worktrees:
-  hw-task-{id}:
+  sw-task-{id}:
     status: merged
     merged_at: {timestamp}
 ```

@@ -23,10 +23,10 @@
 | `general` | **可选** | 2 | 根据需求风险等级决定 |
 | `internal-tools` | **默认关闭** | — | 内部工具风险可控，投入产出比不高 |
 
-可通过 `_bmad/config.yaml` 覆盖:
+可通过 `_context/config.yaml` 覆盖:
 
 ```yaml
-hw:
+sw:
   multi_model_validation:
     enabled: true/false        # 全局开关，覆盖 business_domain 默认值
     min_models: 2              # 最少参与验证的模型数 (2-4)
@@ -80,7 +80,7 @@ hw:
 
 **准备动作:**
 
-1. **读取配置:** 从 `_bmad/config.yaml` 读取 `multi_model_validation` 配置
+1. **读取配置:** 从 `_context/config.yaml` 读取 `multi_model_validation` 配置
 2. **确定画像组合:** 根据 `max_models` 和可用模型选择画像
 3. **分配验证指令:** 为每个选定的画像生成验证提示词
 
@@ -211,7 +211,7 @@ hw:
 每次验证运行后，更新累计成本:
 
 ```yaml
-# _bmad/memory/hw-controller/cost-tracking.yaml
+# _context/memory/sw-controller/cost-tracking.yaml
 validation_runs:
   - design_id: "DESIGN-20260501-001"
     timestamp: "2026-05-01T15:30:00Z"
@@ -231,7 +231,7 @@ validation_runs:
 |------|------|------|
 | 验证报告 | `reviews/{id}-validation-report.md` | 聚合结果表 + 共识分析 + 分歧记录 |
 | 各验证者原始输出 | `reviews/{id}-validation-{profile}.json` | 各模型的原始发现（可审计、可对比） |
-| 成本记录 | `_bmad/memory/hw-controller/cost-tracking.yaml` | 追加本次验证成本 |
+| 成本记录 | `_context/memory/sw-controller/cost-tracking.yaml` | 追加本次验证成本 |
 
 ### 验证报告模板
 

@@ -6,14 +6,14 @@
 
 ## 模板结构
 
-生成计划到: `{project-root}/_bmad/memory/hw-shared/plans/{plan-name}.md`
+生成计划到: `{project-root}/_context/memory/sw-shared/plans/{plan-name}.md`
 
 ```markdown
 # {Plan Title}
 
 > **计划名称**: {kebab-case reference name}
 > **创建时间**: {YYYY-MM-DD}
-> **创建者**: hw-strategic-planner (Prometheus)
+> **创建者**: sw-strategic-planner (Prometheus)
 > **状态**: Ready for Execution
 
 ---
@@ -59,15 +59,15 @@
 
 ### Research Findings
 
-**Codebase Analysis** (via hw-codebase-explorer):
+**Codebase Analysis** (via sw-codebase-explorer):
 - [Finding 1]: [含义 — 这对计划意味着什么]
 - [Finding 2]: [建议 — 在此基础上该怎么做]
 
-**External Research** (via hw-external-researcher):
+**External Research** (via sw-external-researcher):
 - [Finding 1]: [含义]
 - [Finding 2]: [建议]
 
-### Pre-Planning Review (hw-pre-planning-consultant)
+### Pre-Planning Review (sw-pre-planning-consultant)
 
 **Identified Gaps** (addressed):
 - [Gap 1]: [如何解决]
@@ -136,7 +136,7 @@
 ### QA Policy
 
 Every task MUST include agent-executed QA scenarios.
-Evidence saved to `{project-root}/_bmad/memory/hw-shared/evidence/task-{N}-{scenario-slug}.{ext}`.
+Evidence saved to `{project-root}/_context/memory/sw-shared/evidence/task-{N}-{scenario-slug}.{ext}`.
 
 - **Frontend/UI**: Use Playwright (browser automation skill) — Navigate, interact, assert DOM, screenshot
 - **TUI/CLI**: Use tmux (interactive bash) — Run command, send keystrokes, validate output
@@ -304,7 +304,7 @@ Max Concurrent: {N} (Wave {X})
       3. [Assertion — exact expected value, not "verify it works"]
     Expected Result: [Concrete, observable, binary pass/fail]
     Failure Indicators: [What specifically would mean this failed]
-    Evidence: {project-root}/_bmad/memory/hw-shared/evidence/task-{N}-{scenario-slug}.{ext}
+    Evidence: {project-root}/_context/memory/sw-shared/evidence/task-{N}-{scenario-slug}.{ext}
 
   Scenario: {Failure/edge case — what SHOULD fail gracefully}
     Tool: [same format]
@@ -313,7 +313,7 @@ Max Concurrent: {N} (Wave {X})
       1. [Trigger the error condition]
       2. [Assert error is handled correctly]
     Expected Result: [Graceful failure with correct error message/code]
-    Evidence: {project-root}/_bmad/memory/hw-shared/evidence/task-{N}-{scenario-slug}-error.{ext}
+    Evidence: {project-root}/_context/memory/sw-shared/evidence/task-{N}-{scenario-slug}-error.{ext}
   ```
 
   > **Specificity requirements — every scenario MUST use:**
@@ -352,7 +352,7 @@ Max Concurrent: {N} (Wave {X})
   Read the plan end-to-end executing the following:
   - **Must Have verification**: For each "Must Have" item, verify implementation exists (read file, curl endpoint, run command)
   - **Must NOT Have verification**: Search codebase for forbidden patterns — reject with file:line if found
-  - **Evidence verification**: Check evidence files exist in `_bmad/memory/hw-shared/evidence/`
+  - **Evidence verification**: Check evidence files exist in `_context/memory/sw-shared/evidence/`
   - **Deliverable verification**: Compare deliverables list against actual implementation
 
   Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | Evidence [N/N] | VERDICT: APPROVE/REJECT`
@@ -374,7 +374,7 @@ Max Concurrent: {N} (Wave {X})
   - **Per-Scenario Execution**: Follow exact steps from each task's QA scenarios, capture evidence
   - **Integration Testing**: Test features working together across tasks, not just in isolation
   - **Edge Cases**: Empty state, invalid input, rapid actions, concurrent access
-  - **Evidence Collection**: Save all evidence to `_bmad/memory/hw-shared/evidence/final-qa/`
+  - **Evidence Collection**: Save all evidence to `_context/memory/sw-shared/evidence/final-qa/`
 
   Output: `Scenarios [N/N pass] | Integration [N/N] | Edge Cases [N tested] | VERDICT: APPROVE/REJECT`
 
@@ -431,7 +431,7 @@ Commit 2: {type}({scope}): {description}
 - [ ] All QA scenarios executed with evidence
 - [ ] All Final Verification reviews APPROVED
 - [ ] User explicitly approved completion
-- [ ] Evidence directory: `_bmad/memory/hw-shared/evidence/` populated
+- [ ] Evidence directory: `_context/memory/sw-shared/evidence/` populated
 - [ ] Knowledge base updated (if auto_update enabled)
 ```
 

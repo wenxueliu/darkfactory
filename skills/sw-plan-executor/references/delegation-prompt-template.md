@@ -32,7 +32,7 @@
 
 ## 6. CONTEXT
 ### Notepad Paths
-- READ: {project-root}/_bmad/memory/hw-plan-executor/notepads/{plan-name}/*.md
+- READ: {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/*.md
 - WRITE: 追加到对应的分类文件
 
 ### Inherited Wisdom
@@ -101,10 +101,10 @@
 ## 6. CONTEXT
 
 ### Notepad Paths
-- READ: {project-root}/_bmad/memory/hw-plan-executor/notepads/user-auth-feature/learnings.md
-- READ: {project-root}/_bmad/memory/hw-plan-executor/notepads/user-auth-feature/decisions.md
-- READ: {project-root}/_bmad/memory/hw-plan-executor/notepads/user-auth-feature/issues.md
-- WRITE: {project-root}/_bmad/memory/hw-plan-executor/notepads/user-auth-feature/learnings.md (追加)
+- READ: {project-root}/_context/memory/sw-plan-executor/notepads/user-auth-feature/learnings.md
+- READ: {project-root}/_context/memory/sw-plan-executor/notepads/user-auth-feature/decisions.md
+- READ: {project-root}/_context/memory/sw-plan-executor/notepads/user-auth-feature/issues.md
+- WRITE: {project-root}/_context/memory/sw-plan-executor/notepads/user-auth-feature/learnings.md (追加)
 
 ### Inherited Wisdom
 
@@ -189,10 +189,10 @@
 ## 6. CONTEXT
 
 ### Notepad Paths
-- READ: {project-root}/_bmad/memory/hw-plan-executor/notepads/user-auth-feature/learnings.md
-- READ: {project-root}/_bmad/memory/hw-plan-executor/notepads/user-auth-feature/decisions.md
-- READ: {project-root}/_bmad/memory/hw-plan-executor/notepads/user-auth-feature/issues.md
-- WRITE: {project-root}/_bmad/memory/hw-plan-executor/notepads/user-auth-feature/learnings.md (追加)
+- READ: {project-root}/_context/memory/sw-plan-executor/notepads/user-auth-feature/learnings.md
+- READ: {project-root}/_context/memory/sw-plan-executor/notepads/user-auth-feature/decisions.md
+- READ: {project-root}/_context/memory/sw-plan-executor/notepads/user-auth-feature/issues.md
+- WRITE: {project-root}/_context/memory/sw-plan-executor/notepads/user-auth-feature/learnings.md (追加)
 
 ### Inherited Wisdom
 

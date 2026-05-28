@@ -133,7 +133,7 @@ Which direction should we explore next?
 当协作产生具体执行方向时:
 ```
 MUST capture the decisions and rationale from this collaboration session
-  in {project-root}/_bmad/memory/hw-shared/design-decisions.md
+  in {project-root}/_context/memory/sw-shared/design-decisions.md
   before initiating any implementation.
 MUST confirm with user that the captured plan matches their understanding.
 SHOULD transition to a Mid-sized Task or Build from Scratch intent with
@@ -156,7 +156,7 @@ SHOULD suggest transitioning to a concrete intent when the direction solidifies.
 1. **[Check]** 决策记录:
    ```
    验证: 所有关键决策和其理由已被记录
-   检查: {project-root}/_bmad/memory/hw-shared/design-decisions.md
+   检查: {project-root}/_context/memory/sw-shared/design-decisions.md
    包含本次协作的所有关键选择
    ```
 

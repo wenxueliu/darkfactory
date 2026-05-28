@@ -31,7 +31,7 @@
 
 ## 探索分工
 
-### hw-codebase-explorer (内部搜索)
+### sw-codebase-explorer (内部搜索)
 
 **职责:** 在当前代码库中搜索、分析、追踪代码关系
 
@@ -48,7 +48,7 @@ SCOPE: {搜索范围 — 目录/文件/模式}
 DEPTH: {shallow — grep 级别 | medium — 调用链追踪 | deep — 跨模块影响分析}
 ```
 
-### hw-external-researcher (外部搜索)
+### sw-external-researcher (外部搜索)
 
 **职责:** 搜索外部文档、最新 API 规范、最佳实践、同类解决方案
 
@@ -70,8 +70,8 @@ VERSION: {目标版本号 — 确保搜索结果是针对正确版本的}
 
 ```
 收到非 trivial 任务
-  ├─ [并行启动] hw-codebase-explorer: 搜索代码库中的相关实现
-  └─ [并行启动] hw-external-researcher: 搜索外部最佳实践/文档
+  ├─ [并行启动] sw-codebase-explorer: 搜索代码库中的相关实现
+  └─ [并行启动] sw-external-researcher: 搜索外部最佳实践/文档
       │
       ├─ 等待两个结果返回
       ├─ 内部结果 + 外部结果 → 综合
@@ -84,10 +84,10 @@ VERSION: {目标版本号 — 确保搜索结果是针对正确版本的}
 
 ```
 收到跨 3 个微服务的改动需求
-  ├─ [并行] hw-codebase-explorer #1: 搜索 user-service 认证逻辑
-  ├─ [并行] hw-codebase-explorer #2: 搜索 order-service 订单状态机
-  ├─ [并行] hw-codebase-explorer #3: 搜索 gateway 路由配置
-  └─ [并行] hw-external-researcher: 搜索微服务间认证 token 传递最佳实践
+  ├─ [并行] sw-codebase-explorer #1: 搜索 user-service 认证逻辑
+  ├─ [并行] sw-codebase-explorer #2: 搜索 order-service 订单状态机
+  ├─ [并行] sw-codebase-explorer #3: 搜索 gateway 路由配置
+  └─ [并行] sw-external-researcher: 搜索微服务间认证 token 传递最佳实践
       │
       └─ 收集所有结果 → 综合 → 实现决策
 ```

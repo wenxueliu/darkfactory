@@ -98,7 +98,7 @@ done
 
 ### 第 4 步: 触发服务发现 (Trigger Discovery)
 
-环境就绪后，触发 `hw-knowledge-agent` 的服务发现流程:
+环境就绪后，触发 `sw-knowledge-agent` 的服务发现流程:
 
 ```
 1. 扫描 services/ 目录 → 更新服务清单
@@ -109,10 +109,10 @@ done
 ```
 
 **服务发现必须产生:**
-- `_bmad/memory/hw-shared/service-registry.yaml` — 机器可读的服务元数据
-- `_bmad/memory/hw-shared/knowledge-base/services/{id}/overview.md` — 人类可读的服务概览
-- `_bmad/memory/hw-shared/knowledge-base/services/{id}/api-endpoints.md`
-- `_bmad/memory/hw-shared/knowledge-base/services/{id}/db-schema.md`
+- `_context/memory/sw-shared/service-registry.yaml` — 机器可读的服务元数据
+- `_context/memory/sw-shared/knowledge-base/services/{id}/overview.md` — 人类可读的服务概览
+- `_context/memory/sw-shared/knowledge-base/services/{id}/api-endpoints.md`
+- `_context/memory/sw-shared/knowledge-base/services/{id}/db-schema.md`
 
 ## 引导报告
 
@@ -160,12 +160,12 @@ user-service ←── order-service ←── web-frontend
 | 新增服务 | 执行完整引导流程 (4 步) |
 | 移除服务 | 从 registry 中移除，清理 worktree 目录 |
 
-## 与 hw-controller 的约定
+## 与 sw-controller 的约定
 
-引导完成后，hw-controller 可以假设:
+引导完成后，sw-controller 可以假设:
 1. `service-registry.yaml` 是最新的（反映了当前代码状态）
 2. 每个服务的基线测试是 PASS 的
 3. 服务依赖图无循环
 4. 所有服务的 API 端点、DB Schema、依赖关系已索引
 
-**hw-controller 不应自行修改 service-registry.yaml。** 服务元数据的变更必须通过 hw-knowledge-agent 的发现流程或人工显式更新。
+**sw-controller 不应自行修改 service-registry.yaml。** 服务元数据的变更必须通过 sw-knowledge-agent 的发现流程或人工显式更新。

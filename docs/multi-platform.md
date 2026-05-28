@@ -38,7 +38,7 @@ YAML frontmatter 是三个平台通用的元数据格式：
 
 ```yaml
 ---
-name: hw-tdd-agent
+name: sw-tdd-agent
 description: TDD执行Agent. Use when executing TDD cycles, writing unit tests. [trigger: TDD, 单元测试, 测试先行, RED-GREEN-REFACTOR]
 ---
 ```
@@ -53,13 +53,13 @@ Run scripts/run-tests.sh
 Load references/tdd-ut-cycle.md
 
 # 错误 — 平台特有变量
-${CLAUDE_PLUGIN_ROOT}/skills/hw-tdd-agent/references/tdd-ut-cycle.md
+${CLAUDE_PLUGIN_ROOT}/skills/sw-tdd-agent/references/tdd-ut-cycle.md
 
 # 错误 — 绝对路径
-/home/user/.claude/skills/hw-tdd-agent/references/tdd-ut-cycle.md
+/home/user/.claude/skills/sw-tdd-agent/references/tdd-ut-cycle.md
 
 # 错误 — 跨技能引用（目标平台可能不存在）
-../hw-controller/references/global-state.md
+../sw-controller/references/global-state.md
 ```
 
 原因：Claude Code 在版本化路径缓存插件；Codex 沙箱化技能；OpenCode 从多源合并配置。相对路径是唯一可移植的模式。
@@ -70,10 +70,10 @@ ${CLAUDE_PLUGIN_ROOT}/skills/hw-tdd-agent/references/tdd-ut-cycle.md
 
 ```
 # 正确 — 各平台解析为自己的记忆根目录
-Load task from {project-root}/_bmad/memory/hw-shared/tasks.yaml
+Load task from {project-root}/_context/memory/sw-shared/tasks.yaml
 
 # 错误 — 假定特定工作目录
-Load task from /home/user/project/_bmad/memory/hw-shared/tasks.yaml
+Load task from /home/user/project/_context/memory/sw-shared/tasks.yaml
 ```
 
 `{project-root}` token 由每个技能的"On Activation"步骤解析（Claude Code: 工作目录；Codex: 仓库根目录；OpenCode: 项目配置路径）。
@@ -87,10 +87,10 @@ Load task from /home/user/project/_bmad/memory/hw-shared/tasks.yaml
 Delegate the review to the security reviewer agent
 
 # 错误 — Claude Code 特有工具名
-Use the Agent tool with subagent_type=hw-reviewer-security
+Use the Agent tool with subagent_type=sw-reviewer-security
 ```
 
-需要 Agent 间委托时，用逻辑名称（`hw-reviewer-security`）描述目标 Agent。各平台运行时解析为本地委托机制。
+需要 Agent 间委托时，用逻辑名称（`sw-reviewer-security`）描述目标 Agent。各平台运行时解析为本地委托机制。
 
 ### Bash 块：自包含
 
@@ -139,7 +139,7 @@ Use Task tool with run_in_background for each review
 
 ## 技能设计模式
 
-每个技能（`skills/hw-*/SKILL.md`）遵循一致模板：
+每个技能（`skills/sw-*/SKILL.md`）遵循一致模板：
 
 1. **YAML frontmatter** — name, description with trigger keywords
 2. **Overview** — agent purpose and mission statement
@@ -155,7 +155,7 @@ Use Task tool with run_in_background for each review
 - `references/` 目录包含运行时加载的详细能力指令
 - 保持 SKILL.md 作为高层 Agent 定义；将过程细节放在 `references/` 中
 - 语言模式放在 `references/`（如 `references/patterns-python.md`）
-- 业务领域配置放在 `_bmad/config.yaml` 中
+- 业务领域配置放在 `_context/config.yaml` 中
 
 ---
 

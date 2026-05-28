@@ -48,12 +48,12 @@ export const HarnessPlugin = async ({ client, directory }) => {
 You are running the Harness multi-agent system.
 
 Harness provides a complete software development methodology with specialized agents:
-- hw-controller: Top-level orchestrator (requirements → design → execution → delivery)
-- hw-tdd-agent: TDD practitioner (RED→GREEN→REFACTOR)
-- hw-reviewer-logic: Logic and correctness review
-- hw-reviewer-security: Security vulnerability review
-- hw-reviewer-performance: Performance and scalability review
-- hw-worktree-controller: Single-task execution coordinator
+- sw-controller: Top-level orchestrator (requirements → design → execution → delivery)
+- sw-tdd-agent: TDD practitioner (RED→GREEN→REFACTOR)
+- sw-reviewer-logic: Logic and correctness review
+- sw-reviewer-security: Security vulnerability review
+- sw-reviewer-performance: Performance and scalability review
+- sw-worktree-controller: Single-task execution coordinator
 
 Use the skill tool to list and load available Harness skills. The AGENTS.md file contains
 the full platform-agnostic working agreement.

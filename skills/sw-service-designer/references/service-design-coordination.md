@@ -73,7 +73,7 @@
 ## 并行执行
 
 多个服务的设计可并行执行:
-- hw-controller 从特性设计 Section 2 提取所有受影响服务
-- 对每个服务启动 hw-service-designer 实例
+- sw-controller 从特性设计 Section 2 提取所有受影响服务
+- 对每个服务启动 sw-service-designer 实例
 - 各实例独立执行，互不阻塞
 - 总控等待全部完成后再进入 Stage 3 (E2E 设计)

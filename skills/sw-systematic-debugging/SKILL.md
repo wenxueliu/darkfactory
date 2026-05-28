@@ -1,9 +1,9 @@
 ---
-name: hw-systematic-debugging
+name: sw-systematic-debugging
 description: 系统化调试技能。Use when encountering any bug, test failure, unexpected behavior, or performance issue — before proposing any fixes. 4-phase root cause investigation with iron law: no fixes without root cause first. [trigger: 调试, debugging, 报错, error, bug, test failure, 排查, 根因分析, root cause]
 ---
 
-# 系统化调试 (hw-systematic-debugging)
+# 系统化调试 (sw-systematic-debugging)
 
 ## Overview
 
@@ -233,7 +233,7 @@ If you cannot state the prediction, the hypothesis is a vibe — discard or shar
    4. Watch it pass.
    5. Re-run the Phase 1 feedback loop against the original (un-minimised) scenario.
 
-   For writing the failing test, delegate to `hw-tdd-agent` (TDD iron law requires a failing test before any production fix).
+   For writing the failing test, delegate to `sw-tdd-agent` (TDD iron law requires a failing test before any production fix).
 
 2. **Implement Single Fix**
    - Address the root cause identified in Phase 1
@@ -245,7 +245,7 @@ If you cannot state the prediction, the hypothesis is a vibe — discard or shar
    - Test passes now?
    - No other tests broken?
    - Issue actually resolved? (re-run the feedback loop from Phase 1)
-   - Use `hw-verification-before-completion` to confirm before claiming success
+   - Use `sw-verification-before-completion` to confirm before claiming success
 
 4. **If Fix Doesn't Work**
    - STOP
@@ -289,7 +289,7 @@ If you cannot state the prediction, the hypothesis is a vibe — discard or shar
 - Was there a missing specification or ambiguous behavior? → Recommend documentation/ADR
 - Was it a misunderstanding of an API? → Recommend improved documentation or type safety
 
-**If the answer involves architectural change**, hand off with specifics to the architecture improvement capability (via hw-strategic-advisor or hw-controller). Make this recommendation **after** the fix is in, not before — you have more information now than when you started.
+**If the answer involves architectural change**, hand off with specifics to the architecture improvement capability (via sw-strategic-advisor or sw-controller). Make this recommendation **after** the fix is in, not before — you have more information now than when you started.
 
 ## Red Flags — STOP and Follow Process
 
@@ -361,7 +361,7 @@ If systematic investigation reveals issue is truly environmental, timing-depende
 2. Document what you investigated and why no root cause was found
 3. Implement appropriate handling (retry, timeout, error message, graceful degradation)
 4. Add monitoring/logging for future investigation
-5. Write to `_bmad/memory/hw-shared/lessons/` for institutional knowledge
+5. Write to `_context/memory/sw-shared/lessons/` for institutional knowledge
 
 **But:** 95% of "no root cause" cases are incomplete investigation.
 
@@ -374,10 +374,10 @@ These techniques are part of systematic debugging and available in `references/`
 
 ## Integration with Harness Agents
 
-- **hw-tdd-agent:** Delegate to this agent for creating failing test cases (Phase 4, Step 1). The TDD iron law requires a failing test before any production fix.
-- **hw-verification-before-completion:** Apply before claiming the bug is fixed. Evidence before claims, always.
-- **hw-reviewer-logic:** After fixing complex logic bugs, request a logic review to verify the fix doesn't introduce new edge cases.
-- **hw-controller:** Escalate to the controller when 3+ fixes failed — this may indicate an architectural issue requiring human judgment.
+- **sw-tdd-agent:** Delegate to this agent for creating failing test cases (Phase 4, Step 1). The TDD iron law requires a failing test before any production fix.
+- **sw-verification-before-completion:** Apply before claiming the bug is fixed. Evidence before claims, always.
+- **sw-reviewer-logic:** After fixing complex logic bugs, request a logic review to verify the fix doesn't introduce new edge cases.
+- **sw-controller:** Escalate to the controller when 3+ fixes failed — this may indicate an architectural issue requiring human judgment.
 
 ## On Activation
 

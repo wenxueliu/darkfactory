@@ -27,12 +27,12 @@ OpenCode supports subagent dispatch through agent configurations. When a Harness
 
 | Harness agent | OpenCode agent | Purpose |
 |---------------|----------------|---------|
-| hw-controller | `controller` (in opencode.json) | Top-level orchestrator |
-| hw-tdd-agent | `tdd-agent` (in opencode.json) | TDD cycle execution |
-| hw-reviewer-logic | `reviewer-logic` (in opencode.json) | Logic review |
-| hw-reviewer-security | `reviewer-security` (in opencode.json) | Security review |
-| hw-reviewer-performance | `reviewer-performance` (in opencode.json) | Performance review |
-| hw-worktree-controller | Custom subagent with worktree-controller prompt | Task execution coordinator |
+| sw-controller | `controller` (in opencode.json) | Top-level orchestrator |
+| sw-tdd-agent | `tdd-agent` (in opencode.json) | TDD cycle execution |
+| sw-reviewer-logic | `reviewer-logic` (in opencode.json) | Logic review |
+| sw-reviewer-security | `reviewer-security` (in opencode.json) | Security review |
+| sw-reviewer-performance | `reviewer-performance` (in opencode.json) | Performance review |
+| sw-worktree-controller | Custom subagent with worktree-controller prompt | Task execution coordinator |
 
 ## Parallel Dispatch
 
@@ -65,10 +65,10 @@ Skill priority: Project skills (`.opencode/skills/`) > Personal skills (`~/.conf
 
 ## Configuration Files
 
-Harness uses YAML config files in `_bmad/`. OpenCode can read these natively:
+Harness uses YAML config files in `_context/`. OpenCode can read these natively:
 
-- `_bmad/config.yaml` — module configuration (reviewers, business domain, gates)
-- `_bmad/config.user.yaml` — user-specific settings (language, user name)
+- `_context/config.yaml` — module configuration (reviewers, business domain, gates)
+- `_context/config.user.yaml` — user-specific settings (language, user name)
 
 Read these at session start to adapt behavior. The `communication_language` field controls what language to use for responses.
 

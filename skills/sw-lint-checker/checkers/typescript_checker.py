@@ -1,5 +1,6 @@
 """TypeScript checker — eslint (typescript-eslint) + tsc --noEmit + prettier."""
 
+import re
 from .base import CheckResult, FixResult, LintError, LintChecker, Severity, tool_is_available
 
 
@@ -17,11 +18,30 @@ class TypescriptChecker(LintChecker):
     def install_hint(self) -> str:
         return "npm install -D eslint typescript-eslint"
 
-    # tsc severity → Harness
+    # -- customisation points -------------------------------------------
     @staticmethod
-    def _tsc_severity(_code: str) -> Severity:
-        # All type errors are P1 — they indicate likely runtime issues
-        return Severity.P1
+    def severity_map() -> dict[str, Severity]:
+        """All type errors are P1 — they indicate likely runtime issues."""
+        return {}  # uses per-parser logic (error→P0, warning→P2)
+
+    @staticmethod
+    def auto_fixable_rules() -> set[str]:
+        return {
+            "@typescript-eslint/consistent-type-imports",
+            "@typescript-eslint/array-type",
+            "@typescript-eslint/no-empty-interface",
+            "@typescript-eslint/no-unnecessary-type-assertion",
+            "@typescript-eslint/prefer-optional-chain",
+        }
+
+    def _check_cmd(self, files: list[str]) -> list[str]:
+        return ["npx", "eslint", "--ext", ".ts,.tsx,.mts,.cts"] + files
+
+    def _fix_cmds(self, files: list[str]) -> list[list[str]]:
+        return [
+            ["npx", "eslint", "--fix", "--ext", ".ts,.tsx,.mts,.cts"] + files,
+            ["npx", "prettier", "--write"] + files,
+        ]
 
     def check(self, files: list[str]) -> CheckResult:
         if not files:
@@ -35,17 +55,13 @@ class TypescriptChecker(LintChecker):
         errors: list[LintError] = []
 
         # eslint with ts extensions
-        eslint_rc, eslint_out, eslint_err = self.run(
-            ["npx", "eslint", "--ext", ".ts,.tsx,.mts,.cts"] + files
-        )
+        eslint_rc, eslint_out, eslint_err = self.run(self._check_cmd(files))
         current_file = ""
         for line in eslint_out.splitlines() + eslint_err.splitlines():
             stripped = line.strip()
             if stripped.endswith((".ts", ".tsx", ".mts", ".cts")) and ":" not in stripped:
                 current_file = stripped
                 continue
-            # Reuse the same parser as JavaScriptChecker
-            import re
             m = re.match(
                 r"^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s{2,}([\w\-/@]+)\s*$",
                 line.strip(),
@@ -59,13 +75,7 @@ class TypescriptChecker(LintChecker):
                     rule=m.group(5),
                     message=m.group(4),
                     severity=sev,
-                    auto_fixable=m.group(5) in {
-                        "@typescript-eslint/consistent-type-imports",
-                        "@typescript-eslint/array-type",
-                        "@typescript-eslint/no-empty-interface",
-                        "@typescript-eslint/no-unnecessary-type-assertion",
-                        "@typescript-eslint/prefer-optional-chain",
-                    },
+                    auto_fixable=m.group(5) in self.auto_fixable_rules(),
                     raw_line=line.strip(),
                 ))
 
@@ -88,9 +98,7 @@ class TypescriptChecker(LintChecker):
         if tool_is_available("npx"):
             tsc_rc, tsc_out, tsc_err = self.run(["npx", "tsc", "--noEmit"])
             for line in tsc_out.splitlines() + tsc_err.splitlines():
-                # TypeScript error format: file(line,col): error TS1234: message
-                import re as _re
-                m = _re.match(
+                m = re.match(
                     r"^(.+?)\((\d+),(\d+)\):\s+error\s+TS(\d+):\s+(.+)$",
                     line.strip(),
                 )
@@ -102,7 +110,7 @@ class TypescriptChecker(LintChecker):
                         rule=f"TS{m.group(4)}",
                         message=m.group(5),
                         severity=Severity.P1,
-                        auto_fixable=False,  # type errors can't be auto-fixed
+                        auto_fixable=False,
                         raw_line=line.strip(),
                     ))
 
@@ -116,8 +124,8 @@ class TypescriptChecker(LintChecker):
     def auto_fix(self, files: list[str]) -> FixResult:
         if not self.is_available():
             return FixResult(language=self.language, tool_name=self.tool_name, exit_code=-1, fixed_count=0)
-        self.run(["npx", "eslint", "--fix", "--ext", ".ts,.tsx,.mts,.cts"] + files)
-        self.run(["npx", "prettier", "--write"] + files)
+        for cmd in self._fix_cmds(files):
+            self.run(cmd)
         # tsc has no auto-fix — remaining type errors stay
         result = self.check(files)
         return FixResult(

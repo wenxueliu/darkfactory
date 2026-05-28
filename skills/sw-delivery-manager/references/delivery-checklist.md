@@ -4,7 +4,7 @@
 
 在集成测试通过后、代码部署到生产环境前使用。
 
-写入 `{project-root}/_bmad/memory/hw-shared/delivery/delivery-checklist-{requirement_id}.md`
+写入 `{project-root}/_context/memory/sw-shared/delivery/delivery-checklist-{requirement_id}.md`
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## 使用说明
 
-用于后端服务 (Java/Go/Python/Rust 等) 的详细设计。由 hw-service-designer 加载填充，输出至 `designs/{requirement_id}-service-{service_id}-design.md`。
+用于后端服务 (Java/Go/Python/Rust 等) 的详细设计。由 sw-service-designer 加载填充，输出至 `designs/{requirement_id}-service-{service_id}-design.md`。
 
 ---
 

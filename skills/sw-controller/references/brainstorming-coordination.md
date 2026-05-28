@@ -141,7 +141,7 @@
 
 | 产物 | 路径 | 内容 |
 |------|------|------|
-| 头脑风暴记录 | `{project-root}/_bmad/memory/hw-shared/designs/{id}-brainstorm.md` | 问题空间探索结果 + 技术方向列表 + 评估矩阵 + 假设/风险列表 |
+| 头脑风暴记录 | `{project-root}/_context/memory/sw-shared/designs/{id}-brainstorm.md` | 问题空间探索结果 + 技术方向列表 + 评估矩阵 + 假设/风险列表 |
 | 设计种子 | 传递给 design-coordination.md | 推荐方案 + 关键风险 + 开放问题 |
 
 ### 头脑风暴记录模板
@@ -151,7 +151,7 @@
 
 **关联需求:** `{REQ-YYYYMMDD-NNN}`
 **时间:** `{timestamp}`
-**参与者:** Human + hw-controller
+**参与者:** Human + sw-controller
 
 ## 1. 问题空间
 - 核心问题: {一句话}

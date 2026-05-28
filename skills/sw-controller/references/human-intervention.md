@@ -57,7 +57,7 @@ Use `min_iteration_before_human` config:
 
 ## After Human Decision
 
-1. Log decision to `{project-root}/_bmad/memory/hw-shared/human-interventions.md`
+1. Log decision to `{project-root}/_context/memory/sw-shared/human-interventions.md`
 2. Record rationale for future reference
 3. Apply decision and proceed
 4. Update any affected task statuses
