@@ -453,6 +453,11 @@ Examples:
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     parser.add_argument("--kb-dir", help="Override knowledge base directory")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+    parser.add_argument("--ci", action="store_true",
+                        help="CI mode: exit 1 if any non-fresh entries exist "
+                             "(stale, expired, superseded, deprecated). "
+                             "Output is GitHub Actions / GitLab CI friendly "
+                             "via stdout summary.")
     args = parser.parse_args()
 
     kb_dir = args.kb_dir or discover_kb_dir()
@@ -603,6 +608,9 @@ Examples:
     elif args.list_deprecated:
         mode = "deprecated"
         filter_func = lambda r: r["is_deprecated"]
+    elif args.ci:
+        # CI mode: scan ALL entries to count non-fresh
+        mode = "ci"
 
     if filter_func:
         results = [r for r in results if filter_func(r)]
@@ -696,6 +704,15 @@ Examples:
     total_non_fresh = sum(v for k, v in summary.items() if k != "fresh")
     if total_non_fresh > 0:
         print(f"\nTotal non-fresh entries: {total_non_fresh} — review recommended.")
+
+    # --- CI mode: exit 1 if any non-fresh entries ---
+    if args.ci:
+        if total_non_fresh > 0:
+            print(f"\n::warning::KB freshness check failed: {total_non_fresh} non-fresh entries")
+            return 1
+        print("\n::notice::KB freshness check passed: all entries fresh")
+        return 0
+    return 0
 
 
 if __name__ == "__main__":
