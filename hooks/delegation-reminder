@@ -93,18 +93,20 @@ if [ "$should_remind" != "true" ]; then
 fi
 
 # --- Build and inject reminder ---
-REMINDER="\\n[Delegation Reminder — Harness Multi-Agent System]\\n\
-You have made ${tool_call_count} direct tool calls without delegating to subagents.\\n\
+REMINDER="\\n[Delegation Reminder — Harness] ${tool_call_count} direct tool calls without Agent/Skill delegation.\\n\
 \\n\
-sw-controller delegation rules:\\n\
-- Delegate non-trivial work to specialized agents via parallel Agent calls\\n\
-- Explore: sw-codebase-explorer (internal) + sw-external-researcher (external)\\n\
-- Plan: sw-strategic-planner for multi-step or ambiguous work\\n\
-- Execute: sw-plan-executor for multi-task plans, sw-worktree-controller for single tasks\\n\
-- Review: sw-reviewer-logic + sw-reviewer-security + sw-reviewer-performance + sw-reviewer-context\\n\
-- Advise: sw-strategic-advisor for deep architecture/security reasoning\\n\
+Quick routing guide:\\n\
+- Search/Read code: Agent(subagent_type=sw-codebase-explorer) [internal] / sw-external-researcher [external]\\n\
+- Plan multi-step: Agent(subagent_type=sw-strategic-planner)\\n\
+- Execute a plan: Agent(subagent_type=sw-plan-executor) / sw-worktree-controller [single task]\\n\
+- Reviews (4-way, mandatory after TDD): sw-reviewer-logic + sw-reviewer-security + sw-reviewer-performance + sw-reviewer-context\\n\
+- Deep architecture/security: sw-strategic-advisor\\n\
+- Knowledge: sw-knowledge-agent\\n\
+- Tests/integration: sw-integration-tester (newman hard-exec)\\n\
+- Deploy: sw-deployer\\n\
 \\n\
-ALWAYS prefer delegation over direct tool calls for non-trivial work."
+Direct Bash/Read/Write/Edit chains of 3+ are a red flag — delegate instead.\\n\
+If you genuinely need to do this work yourself (Trivial, single file, <10 lines, no cross-service), add a one-line justification in your final answer."
 
 ESCAPED=$(python3 -c "
 import json,sys

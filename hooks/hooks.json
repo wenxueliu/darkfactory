@@ -89,6 +89,34 @@
         ],
         "description": "Clear per-session hook state before context compaction"
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-clarifier.py\"",
+            "async": false,
+            "timeout": 3000
+          }
+        ],
+        "description": "Soft-nudge user toward sw-requirements-clarifier when implementation intent is detected without an in-progress requirement"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session-end-check.py\"",
+            "async": false,
+            "timeout": 5000
+          }
+        ],
+        "description": "Warn about leftover in-progress tasks and uncommitted worktrees at session end"
+      }
     ]
   }
 }

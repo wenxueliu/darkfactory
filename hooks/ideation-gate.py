@@ -7,9 +7,11 @@ Purpose: Blocks ANY code-writing action before requirement clarification
          "Explicit surface clarity does NOT equal clarified requirements."
 
 Check logic (strict):
-  1. Read requirements-tracker.yaml → check ideation.status == done
-  2. If tracker absent OR ideation not done → BLOCK (deny)
-  3. If ideation done → ALLOW
+  1. Read requirements-tracker.yaml via PyYAML → check ideation.status == done
+  2. Validate spec content: requirements/{id}.md exists with all mandatory
+     sections and each section is at least 50 characters
+  3. If tracker absent OR ideation not done OR spec validation fails → BLOCK
+  4. If ideation done AND spec valid → ALLOW
 
 This hook monitors TWO paths:
   - Agent tool targeting implementation agents (sw-tdd-agent, etc.)
@@ -53,38 +55,134 @@ def detect_project_root(start_dir: str) -> str:
     return ""
 
 
-def parse_yaml_ideation_status(tracker_path: str) -> bool:
-    """Return True if ideation phase status is 'done' in the tracker YAML."""
-    try:
-        with open(tracker_path) as f:
-            content = f.read()
-    except OSError:
-        return False
+def parse_yaml_ideation_status(tracker_path: str) -> tuple[bool, str | None, list[str]]:
+    """Read tracker via PyYAML; return (ideation_done, active_req_id, validation_errors).
 
-    in_ideation = False
-    for line in content.split("\n"):
-        stripped = line.rstrip()
-        if stripped in ("  ideation:",) or stripped.startswith("  ideation "):
-            in_ideation = True
+    Returns (False, None, [...errors]) if file is missing, malformed, or unclear.
+    Returns (True, req_id, [...errors]) if ideation.status is 'done' for some req.
+    Returns (False, req_id, [...errors]) if ideation.status is not 'done'.
+    """
+    if not os.path.isfile(tracker_path):
+        return False, None, [f"requirements-tracker.yaml not found at {tracker_path}"]
+
+    try:
+        import yaml
+    except ImportError:
+        return False, None, [
+            "PyYAML is not installed; cannot parse requirements-tracker.yaml. "
+            "Install with: pip install pyyaml"
+        ]
+
+    try:
+        with open(tracker_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        return False, None, [f"requirements-tracker.yaml is not valid YAML: {e}"]
+    except OSError as e:
+        return False, None, [f"Cannot read requirements-tracker.yaml: {e}"]
+
+    if not isinstance(data, dict):
+        return False, None, [
+            f"requirements-tracker.yaml root must be a mapping, got {type(data).__name__}"
+        ]
+
+    # Find any requirement with ideation.status == 'done'
+    # Schema: { requirements: [ { id: ..., phases: { ideation: { status: 'done' } } } ] }
+    # OR:    { REQ-XXX: { phases: { ideation: { status: 'done' } } } }
+    # OR:    { phases: { ideation: { status: 'done' } } }  (singleton, single active req)
+    candidates: list[tuple[str | None, dict]] = []
+    if "requirements" in data and isinstance(data["requirements"], list):
+        for item in data["requirements"]:
+            if isinstance(item, dict):
+                rid = item.get("id") or item.get("requirement_id")
+                candidates.append((rid, item))
+    elif "phases" in data and isinstance(data["phases"], dict):
+        candidates.append((data.get("id") or data.get("requirement_id"), data))
+    else:
+        # Flat dict: top-level keys might be req IDs
+        for k, v in data.items():
+            if isinstance(v, dict) and "phases" in v:
+                candidates.append((k, v))
+
+    for rid, item in candidates:
+        phases = item.get("phases", {}) if isinstance(item, dict) else {}
+        ideation = phases.get("ideation", {}) if isinstance(phases, dict) else {}
+        status = ideation.get("status") if isinstance(ideation, dict) else None
+        if status == "done":
+            return True, rid, []
+
+    # No 'done' status found. Return the first candidate's ID for context.
+    first_id = candidates[0][0] if candidates else None
+    return False, first_id, []
+
+
+# Mandatory sections in requirements/{id}.md spec
+MANDATORY_SPEC_SECTIONS = [
+    "问题陈述",        # Problem statement
+    "用户故事",        # User stories
+    "验收标准",        # Acceptance criteria
+    "非功能需求",      # Non-functional requirements
+    "约束",            # Constraints
+    "风险",            # Risks (or 风险与假设 / 风险与决策)
+]
+MIN_SECTION_LENGTH = 50  # chars; below this, section is considered empty
+
+
+def validate_spec_content(project_root: str, req_id: str | None) -> list[str]:
+    """Verify that requirements/{id}.md exists and has all mandatory sections.
+
+    Returns list of error messages (empty list = valid).
+    """
+    errors: list[str] = []
+    if not req_id:
+        return errors  # No req_id to validate against; tracker-level check handles this
+
+    # Try common spec filenames
+    candidates = [
+        os.path.join(project_root, "_context", "memory", "sw-shared", "requirements", f"{req_id}.md"),
+        os.path.join(project_root, "_context", "memory", "sw-shared", "requirements", f"REQ-{req_id}.md"),
+        os.path.join(project_root, "requirements", f"{req_id}.md"),
+    ]
+    spec_path = next((p for p in candidates if os.path.isfile(p)), None)
+    if not spec_path:
+        return [
+            f"Spec file not found. Expected one of: {', '.join(candidates)}. "
+            f"sw-requirements-clarifier must write requirements/{{id}}.md before marking ideation done."
+        ]
+
+    try:
+        content = Path(spec_path).read_text(encoding="utf-8")
+    except OSError as e:
+        return [f"Cannot read spec file {spec_path}: {e}"]
+
+    # Find which mandatory sections are present and validate length
+    missing: list[str] = []
+    too_short: list[str] = []
+    for section in MANDATORY_SPEC_SECTIONS:
+        # Match `## {section}` or `## {section} xxx` (allow sub-headings)
+        pattern = re.compile(rf"^##\s+{re.escape(section)}(?:\s|$)", re.MULTILINE)
+        m = pattern.search(content)
+        if not m:
+            # Try softer match (some sections have prefixes like 风险与假设)
+            if not re.search(rf"^##.*{re.escape(section[:2])}", content, re.MULTILINE):
+                missing.append(section)
             continue
-        # Exit ideation section
-        if (
-            in_ideation
-            and stripped
-            and not stripped.startswith("    ")
-            and not stripped.startswith("  #")
-        ):
-            if not stripped.startswith("  ") or (
-                len(stripped) >= 2
-                and stripped[:2] == "  "
-                and len(stripped) > 2
-                and stripped[2] != " "
-            ):
-                in_ideation = False
-                continue
-        if in_ideation and "status:" in stripped and "done" in stripped:
-            return True
-    return False
+        # Find end of section (next ## heading or EOF)
+        start = m.end()
+        next_heading = re.search(r"^##\s+", content[start:], re.MULTILINE)
+        end = start + next_heading.start() if next_heading else len(content)
+        section_text = content[start:end].strip()
+        if len(section_text) < MIN_SECTION_LENGTH:
+            too_short.append(f"{section} ({len(section_text)} chars)")
+
+    if missing:
+        errors.append(f"Spec {spec_path} is missing mandatory sections: {', '.join(missing)}")
+    if too_short:
+        errors.append(
+            f"Spec {spec_path} has too-short sections (< {MIN_SECTION_LENGTH} chars): "
+            f"{', '.join(too_short)}"
+        )
+    return errors
 
 
 def is_source_code_file(file_path: str) -> bool:
@@ -127,14 +225,25 @@ def is_implementation_agent(tool_input: dict) -> bool:
     return False
 
 
-def check_ideation_completed(project_root: str) -> bool:
-    """Check if ideation phase is marked 'done' in the requirements tracker."""
+def check_ideation_completed(project_root: str) -> tuple[bool, list[str], str | None]:
+    """Check if ideation phase is marked 'done' in the requirements tracker.
+
+    Returns (is_done, errors, req_id). When is_done is True, errors should
+    be empty. When is_done is False, errors explain why.
+    """
     tracker_file = os.path.join(
         project_root, "_context", "memory", "sw-shared", "requirements-tracker.yaml"
     )
-    if not os.path.isfile(tracker_file):
-        return False
-    return parse_yaml_ideation_status(tracker_file)
+    is_done, req_id, parse_errors = parse_yaml_ideation_status(tracker_file)
+    if not is_done:
+        return False, parse_errors or ["ideation phase is not marked 'done' in tracker"], req_id
+
+    # Tracker says done; verify spec content as a second-line check
+    spec_errors = validate_spec_content(project_root, req_id)
+    if spec_errors:
+        return False, spec_errors, req_id
+
+    return True, [], req_id
 
 
 def main() -> None:
@@ -178,26 +287,18 @@ def main() -> None:
         sys.exit(0)
 
     # --- Ideation check: HARD gate ---
-    is_done = check_ideation_completed(project_root)
+    is_done, gate_errors, req_id = check_ideation_completed(project_root)
 
     if is_done:
-        sys.exit(0)  # ideation done → allow
+        sys.exit(0)  # ideation done AND spec valid → allow
 
-    # Ideation NOT done → DENY (with different messages for "not started" vs "in progress")
+    # Ideation NOT done → DENY (with different messages for "not started" vs "in progress" vs "spec invalid")
     tracker_path = os.path.join(
         project_root, "_context", "memory", "sw-shared", "requirements-tracker.yaml"
     )
-    if os.path.isfile(tracker_path):
-        # Ideation started but not done → DENY (was "warn but allow", upgraded to hard gate)
-        reason = (
-            f"Ideation Gate DENIED: requirements-tracker.yaml exists but ideation phase "
-            f"is NOT marked 'done'. You are trying to write code via ({target_desc}) "
-            f"before completing requirement clarification. "
-            f"Complete the ideation phase first: delegate to sw-requirements-clarifier, "
-            f"pass the requirements gate, and mark ideation.status = done in the tracker. "
-            f"Explicit surface clarity does NOT equal clarified requirements."
-        )
-    else:
+    error_details = "; ".join(gate_errors) if gate_errors else "ideation not done"
+
+    if not os.path.isfile(tracker_path):
         # No requirements work found → DENY
         reason = (
             f"Ideation Gate DENIED: No requirements documents found. You are trying to "
@@ -209,6 +310,32 @@ def main() -> None:
             f"Only then may you write implementation code. "
             f"Explicit surface clarity does NOT equal clarified requirements — "
             f"clarification IS the check."
+        )
+    elif req_id and gate_errors and "Spec file not found" in error_details:
+        # Tracker says done but spec doesn't exist
+        reason = (
+            f"Ideation Gate DENIED: Tracker marks {req_id}.ideation as 'done' but "
+            f"requirements/{req_id}.md is missing. Either: "
+            f"(a) Restore the spec file from version control, or "
+            f"(b) Reset ideation.status to in_progress and re-run sw-requirements-clarifier. "
+            f"Details: {error_details}"
+        )
+    elif req_id and gate_errors:
+        # Tracker says done but spec content is incomplete
+        reason = (
+            f"Ideation Gate DENIED: Tracker marks {req_id}.ideation as 'done' but "
+            f"spec validation failed. {error_details} "
+            f"Fix the spec or reset ideation.status to in_progress."
+        )
+    else:
+        # Ideation started but not done → DENY
+        reason = (
+            f"Ideation Gate DENIED: requirements-tracker.yaml exists but ideation phase "
+            f"is NOT marked 'done'. You are trying to write code via ({target_desc}) "
+            f"before completing requirement clarification. "
+            f"Complete the ideation phase first: delegate to sw-requirements-clarifier, "
+            f"pass the requirements gate, and mark ideation.status = done in the tracker. "
+            f"Explicit surface clarity does NOT equal clarified requirements."
         )
 
     output = {
