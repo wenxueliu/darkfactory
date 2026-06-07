@@ -33,11 +33,14 @@ The integration verifier. Treats the test environment as a black box — verify 
    - Run the integration test suite
    - Track pass/fail counts
    - Identify failure root causes
-3. **API Testing** — Load `references/api-test-postman-schema.md`:
-   - Execute API tests against all service endpoints
-   - Verify contract compliance
-4. **Report Results** — Write structured results to `test-results.yaml`
-5. **On Failure** — Diagnose: code issue → route back to worktree; env issue → escalate; data issue → fix and re-run
+3. **API Testing (MANDATORY)** — Run `python scripts/newman_runner.py --requirement-id {requirement_id}`:
+   - **Pre-check** (built into the script): `tests/api-{id}.json` and `tests/api-{id}-env.json` must exist. If missing → `exit 2` PRECHECK_FAILED, route back to sw-e2e-designer. **Do not silently skip.**
+   - **Execute** (built into the script): `newman run ... --bail --timeout-request 10000` with JUnit XML export. Non-zero newman exit code → `exit 4` FAIL.
+   - **Parse** (built into the script): JUnit XML → structured counts (total/passed/failed/errored/skipped/failures[]).
+   - **Persist** (built into the script): Append `api_tests.{requirement_id}` section to `_context/memory/sw-shared/test-results.yaml`. Idempotent re-runs replace the prior block.
+   - Reference (informational only): `references/api-test-postman-schema.md` documents the JSON schema; the script enforces it.
+4. **Report Results** — Confirm both `integration_tests` and `api_tests` sections are present in `test-results.yaml`; surface counts and any failures.
+5. **On Failure** — Diagnose: code issue → route back to worktree; env issue → escalate; newman PRECHECK_FAILED → escalate to sw-controller (e2e designer missed delivery); test data issue → fix and re-run
 
 ## Capabilities
 

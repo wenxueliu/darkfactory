@@ -178,9 +178,17 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 | Capability | Route |
 | ---------- | ----- |
 | 集成测试执行 | Delegate to `sw-integration-tester` |
-| API 测试执行 | Delegate to `sw-integration-tester` |
+| API 测试执行 (Newman) | Delegate to `sw-integration-tester` — schema 文件见 `skills/sw-integration-tester/references/api-test-postman-schema.md` |
 | 浏览器 E2E 测试执行 | Delegate to `sw-browser-tester` |
 | 浏览器自动化测试 | Delegate to `sw-browser-tester` |
+
+### 部署阶段 (Deploy)
+| Capability | Route |
+| ---------- | ----- |
+| 测试环境部署 | Delegate to `sw-deployer --target test` |
+| 生产环境部署 | Delegate to `sw-deployer --target production` |
+| 部署健康检查 | Delegate to `sw-deployer --target <env> --verify` |
+| 部署回滚 | Delegate to `sw-deployer --target <env> --rollback` |
 
 ### 交付阶段 (Delivery)
 | Capability | Route |

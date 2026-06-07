@@ -220,6 +220,21 @@ Report to Worktree Controller:
 - Layer 1 complete with all tests passing
 - Layer 2 complete with all API tests passing
 
+## Reviewer Delegation Contract (MANDATORY)
+
+After Layer 1 (UT) + Layer 2 (API) pass, sw-tdd-agent **must** delegate to the following four reviewers in parallel (4-way fan-out via Agent tool):
+
+| # | Reviewer | Focus | Blocking Severity |
+|---|----------|-------|-------------------|
+| 1 | `sw-reviewer-logic` | Correctness bugs, edge cases, control-flow issues | P0 / P1 |
+| 2 | `sw-reviewer-security` | Vulnerabilities, auth bypass, data exposure, injection | P0 / P1 |
+| 3 | `sw-reviewer-performance` | Bottlenecks, N+1, lock contention, scalability | P0 / P1 |
+| 4 | `sw-reviewer-context` | Missed requirements, prior-art conflicts, hidden context from git/GitHub/issues | P0 / P1 |
+
+**Hard rule:** A task is **not DONE** until all four reviewers report 0 P0 and 0 P1 findings. The `sw-reviewer-context` slot is non-optional — its absence is what allowed context-blind implementations to slip through in earlier iterations.
+
+If any reviewer reports P0/P1 → fix locally (re-enter RED-GREEN-REFACTOR) → re-run all four reviewers. Do not skip the re-review step.
+
 ## Output
 
 Report completion with evidence:

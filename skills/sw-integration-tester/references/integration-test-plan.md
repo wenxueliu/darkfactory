@@ -77,6 +77,30 @@ SKIP: {N}/{total} cases skipped
 **阻塞项:**
 - {列出所有 FAIL 的用例及原因}
 
+### 6.1 API 测试 (Newman, 硬执行)
+
+`sw-integration-tester` 必须在集成测试阶段通过 `python scripts/newman_runner.py --requirement-id {requirement_id}` 调用 newman。**此步骤不可跳过、不可选做。**
+
+通过标准（全部满足才视为 PASS）:
+- `newman run` exit code == 0
+- JUnit XML 解析的 `failures == 0` 且 `errors == 0`
+- `test-results.yaml` 的 `api_tests.{requirement_id}` 段已写入，含 `status: PASS`
+
+退出码语义（脚本返回）:
+| 退出码 | 含义 | 路由 |
+|-------|------|------|
+| 0 | 全部通过 | 进入下一步 |
+| 2 | PRECHECK_FAILED (collection/env 缺失) | 回 sw-controller → sw-e2e-designer 补产出 |
+| 3 | NEWMAN_MISSING (newman 未安装) | 升级到人工安装 |
+| 4 | FAIL (newman 报告失败) | 诊断 → 修代码或修测试数据 |
+| 5 | PARSE_FAILED (JUnit 解析异常) | 升级到人工（通常 newman/工具链不匹配） |
+| 6 | 内部错误 | 重试一次，仍失败则升级人工 |
+
+**反模式**:
+- "newman 没跑但其他测试过了，所以整体 PASS" — 错误，newman 是硬门禁
+- "JSON 文件不存在，我直接看代码审过了" — 错误，必须有可执行测试
+- "本地能跑就行，不必每次 newman" — 错误，每次集成测试都必须跑 newman
+
 ## 7. 集成门禁
 
 - [ ] 所有 IT 用例 PASS 或 SKIP（有合理理由）

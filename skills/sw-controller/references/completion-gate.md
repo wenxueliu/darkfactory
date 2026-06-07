@@ -32,7 +32,7 @@
 | 测试层级 | 证据 | 通过标准 |
 |---------|------|---------|
 | UT | 测试运行器输出 | 100% PASS (该模块)，无 skip |
-| API 测试 | Newman/Jest/Postman 输出 | 100% PASS，exit 0 |
+| API 测试 | `python scripts/newman_runner.py --requirement-id {id}` 输出 | newman exit code == 0 **AND** JUnit XML `failures == 0` **AND** `errored == 0`；见 `skills/sw-integration-tester/references/integration-test-plan.md` §6.1 |
 | 覆盖率 | 覆盖率报告 | ≥ domain 阈值 (来自 config) |
 
 ### 委托 → 独立验证
