@@ -4,7 +4,7 @@
 
 ---
 
-## Agent 架构 (v2, 35 skills)
+## Agent 架构 (v2, 37 skills)
 
 ```
 sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
@@ -36,16 +36,17 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   │                   ├── sw-reviewer-logic (逻辑审查)
   │                   ├── sw-reviewer-security (安全审查)
   │                   ├── sw-reviewer-performance (性能审查)
-  │                   └── sw-reviewer-context (NEW: 上下文挖掘)
+  │                   ├── sw-reviewer-context (NEW: 上下文挖掘 — 4-way fan-out 必选)
+  │                   └── sw-lint-checker (NEW: 跨语言规范检查 — TDD 周期内强制)
   │     sw-receiving-review (NEW: 审查反馈处理 — 验证后实现，禁止表演性同意)
-  │     sw-lint-checker (NEW: 跨语言规范检查 — 自动检测→运行工具→修复→复查)
   │
   ├── [测试层 — Test]
-  │     sw-integration-tester (NEW: 集成测试 — 环境检查→执行→结果分析)
+  │     sw-integration-tester (NEW: 集成测试 — env health check + newman 硬执行)
   │     sw-browser-tester (NEW: 浏览器E2E测试 — Playwright脚本生成+视觉回归+证据采集)
   │
   ├── [交付层 — Delivery]
   │     sw-delivery-manager (NEW: 交付管理 — 检查清单+Release Notes)
+  │     sw-deployer (NEW: 部署执行 — 测试/生产环境部署 + 健康检查 + 回滚)
   │
   ├── [咨询层 — Consultation, 水平调用]
   │     sw-strategic-advisor (NEW: 战略技术顾问 — 只读深度推理)
@@ -61,6 +62,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
         sw-finishing-branch (NEW: 分支收尾 — 4-option终端状态)
         sw-document-project (NEW: 项目文档生成 — brownfield scanning + 3-level scan)
         sw-writing-skills (NEW: 元技能 — TDD应用于文档编写)
+        sw-grill-docs (NEW: 文档对照质询 — 设计/计划 vs CONTEXT.md + ADRs)
         using-harness (bootstrap技能)
 ```
 
@@ -123,6 +125,8 @@ multiagents/
 │   ├── sw-reviewer-performance/ # Performance and scalability review
 │   ├── sw-reviewer-context/ # Context mining — missed requirements discovery
 │   ├── sw-receiving-review/ # Review feedback processing (NEW — Superpowers)
+│   ├── sw-deployer/         # Deployment execution (NEW)
+│   ├── sw-grill-docs/       # Documentation consistency griller (NEW)
 │   ├── sw-setup/            # Module installation
 │   ├── sw-knowledge-agent/  # Knowledge base management
 │   ├── sw-value-judgment/   # Requirements value assessment

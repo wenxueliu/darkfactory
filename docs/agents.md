@@ -1,6 +1,6 @@
 # Agent 目录 (Agent Catalog)
 
-> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了 v2 全部 35 个 Agent 的技能、角色和触发词。
+> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了 v2 全部 37 个 Agent 的技能、角色和触发词。
 
 ---
 
@@ -42,7 +42,7 @@
 |-------|------|---------|
 | `sw-task-decomposer` | Task decomposer — 6-step process: service identification (4-level fallback) → DAG construction → test case assignment → wave batching → tasks.yaml → dependencies.json. No circular dependencies. Tasks 30min-3h. (NEW) | 任务拆分, task decomposition, 任务分解 |
 
-## 执行层 (Execution Layer, 6 — 5 existing, 1 NEW)
+## 执行层 (Execution Layer, 7 — 5 existing, 2 NEW)
 
 | Agent | Role | Trigger |
 |-------|------|---------|
@@ -50,7 +50,8 @@
 | `sw-reviewer-logic` | Logic reviewer — finds correctness bugs and edge cases | logic review, 逻辑审核 |
 | `sw-reviewer-security` | Security reviewer — finds vulnerabilities and data exposure | security review, 安全审核 |
 | `sw-reviewer-performance` | Performance reviewer — finds bottlenecks and scalability issues | performance review, 性能审核 |
-| `sw-reviewer-context` | Context miner — searches git/GitHub/Slack/codebase for missed requirements and background knowledge (NEW) | context mining, 上下文挖掘 |
+| `sw-reviewer-context` | Context miner — searches git/GitHub/Slack/codebase for missed requirements and background knowledge. **4-way fan-out 中必选 (logic/security/performance/context)** (NEW) | context mining, 上下文挖掘 |
+| `sw-lint-checker` | Cross-language standards checker — auto-detects languages from changed files, runs correct linters/formatters per language, auto-fixes where possible, re-checks until clean. Invoked inside TDD cycle. (NEW) | lint, 规范检查, style check, 代码规范 |
 | `sw-receiving-review` | Review feedback processor — technical verification before implementation, no performative agreement, pushback protocol. Based on Superpowers receiving-code-review. (NEW) | receiving review, 接收审查, review feedback, 审查反馈 |
 
 ## 测试层 (Test Layer, 2 NEW)
@@ -60,11 +61,12 @@
 | `sw-integration-tester` | Integration tester — env health check → smoke test → integration test execution → result analysis → test-results.yaml. Connects to real backends. (NEW) | 集成测试, integration test, 测试执行 |
 | `sw-browser-tester` | Browser E2E tester — generates Playwright `.spec.ts` from E2E design → executes against real Chromium → visual regression + console/network diagnostics → browser-e2e-results.yaml. Adapted from gstack browse snapshot-based QA patterns. (NEW) | 浏览器测试, 浏览器E2E, browser test, Playwright, 前端自动化测试 |
 
-## 交付层 (Delivery Layer, 1 NEW)
+## 交付层 (Delivery Layer, 2 NEW)
 
 | Agent | Role | Trigger |
 |-------|------|---------|
 | `sw-delivery-manager` | Delivery manager — checklist verification (delivery-checklist.md) → release notes generation (release-notes-template.md) → delivery acceptance gate. (NEW) | 交付管理, delivery, release notes, 交付检查 |
+| `sw-deployer` | Deployer — test/production environment deployment + health check + rollback. Receives deployment contract from `sw-delivery-manager`. (NEW) | 部署, deploy, deployment, rollback, rollout, 发布 |
 
 ## 咨询层 (Consultation Layer, 4 NEW)
 
@@ -94,7 +96,7 @@
 
 ## 需求端到端流程 (E2E Requirements Flow)
 
-一个需求从提出到交付，经过 7 个阶段，35 个 Agent 各司其职。
+一个需求从提出到交付，经过 7 个阶段，37 个 Agent 各司其职。
 
 > **两条路径：** 简单需求走 设计(3-stage) → 拆分 路径；复杂/多步骤需求在头脑风暴后进入 **规划层** (sw-strategic-planner)，由规划层替代设计+拆分，直接产出可执行计划。
 
