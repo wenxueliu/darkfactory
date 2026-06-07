@@ -224,6 +224,8 @@ Make it easy for agents to self-check when rationalizing:
 
 ## RED-GREEN-REFACTOR for Skills
 
+> See `references/case-library.md` for a catalog of observed rationalizations and their counters (used during REFACTOR rounds).
+
 ### RED: Write Failing Test (Baseline)
 
 Run pressure scenario with subagent WITHOUT the skill. Document exact behavior:

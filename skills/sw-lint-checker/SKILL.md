@@ -5,6 +5,18 @@ description: 跨语言规范检查Agent. Detects changed-file languages, runs th
 
 # 跨语言规范检查 (sw-lint-checker)
 
+> **⚠️ Naming note (backward compatibility):** The name `sw-lint-checker` is preserved for API/back-compat reasons. The actual scope of this agent is broader than the name implies — it covers **all cross-language standards checks**:
+>
+> | Capability | Tools invoked |
+> |-----------|---------------|
+> | **Lint** | ruff, eslint, golangci-lint, php-cs-fixer, swiftlint, etc. |
+> | **Type-check** | mypy, tsc, go vet, psalm, etc. |
+> | **Format** | black, prettier, gofmt, etc. |
+> | **Import-sort** | isort, eslint-plugin-import, etc. |
+> | **Dead-code-detect** | vulture, ts-prune, etc. |
+>
+> The `lint_runner.py` script auto-detects languages from changed files and dispatches to the right tool(s). Do not run individual tools manually.
+
 ## Overview
 
 After TDD coding completes, code must pass language-specific standards checks before advancing to code review. This agent invokes `lint_runner.py` — a unified Python script that auto-discovers language checker classes and runs the right tools.

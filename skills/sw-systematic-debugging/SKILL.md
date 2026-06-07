@@ -371,6 +371,7 @@ These techniques are part of systematic debugging and available in `references/`
 
 - **`references/root-cause-tracing.md`** — Trace bugs backward through call stack to find original trigger
 - **`references/defense-in-depth.md`** — Add validation at multiple layers after finding root cause
+- **`references/multi-component-diagnostics.md`** — Per-layer evidence template for distributed systems (Aggregator → Watchdog → Agent → …)
 
 ## Integration with Harness Agents
 
