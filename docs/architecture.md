@@ -4,7 +4,7 @@
 
 ---
 
-## Agent 架构 (v2, 37 skills)
+## Agent 架构 (v2, 38 skills)
 
 ```
 sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
@@ -52,6 +52,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   │     sw-strategic-advisor (NEW: 战略技术顾问 — 只读深度推理)
   │     sw-codebase-explorer (NEW: 内部代码搜索)
   │     sw-external-researcher (NEW: 外部研究+证据引用)
+  │     sw-multi-search (NEW: 多源搜索编排 — fan-out + 聚合 + 排序)
   │     sw-media-interpreter (NEW: PDF/图片/图表解读)
   │
   └── [基础设施层 — Infrastructure]
@@ -113,6 +114,7 @@ multiagents/
 │   ├── sw-codebase-explorer/ # Internal code search (NEW — Explore)
 │   ├── sw-external-researcher/ # External docs/OSS research (NEW — Librarian)
 │   ├── sw-strategic-advisor/ # Strategic technical advisor (NEW — Oracle)
+│   ├── sw-multi-search/     # Multi-source search orchestrator (NEW)
 │   ├── sw-media-interpreter/ # Media file interpreter (NEW — Multimodal Looker)
 │   ├── sw-feature-designer/ # Cross-service feature design
 │   ├── sw-service-designer/ # Single-service detailed design

@@ -1,6 +1,6 @@
 # Agent 目录 (Agent Catalog)
 
-> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了 v2 全部 37 个 Agent 的技能、角色和触发词。
+> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了 v2 全部 38 个 Agent 的技能、角色和触发词。
 
 ---
 
@@ -68,13 +68,14 @@
 | `sw-delivery-manager` | Delivery manager — checklist verification (delivery-checklist.md) → release notes generation (release-notes-template.md) → delivery acceptance gate. (NEW) | 交付管理, delivery, release notes, 交付检查 |
 | `sw-deployer` | Deployer — test/production environment deployment + health check + rollback. Receives deployment contract from `sw-delivery-manager`. (NEW) | 部署, deploy, deployment, rollback, rollout, 发布 |
 
-## 咨询层 (Consultation Layer, 4 NEW)
+## 咨询层 (Consultation Layer, 5 NEW)
 
 | Agent | Role | Trigger |
 |-------|------|---------|
 | `sw-strategic-advisor` | Read-only strategic advisor — pragmatic minimalism, deep reasoning for complex decisions. Based on Oracle. | architecture advice, deep reasoning, 架构咨询 |
 | `sw-codebase-explorer` | Internal codebase search specialist — intent analysis + structured results. Based on Explore. | code search, find in code, 代码搜索 |
 | `sw-external-researcher` | External documentation/OSS researcher — evidence with citations. Based on Librarian. | external search, library docs, 外部搜索 |
+| `sw-multi-search` | Multi-source search orchestrator — fans out to codebase-explorer/external-researcher/media-interpreter in parallel, then aggregates and ranks. Use when source of truth is unknown. (NEW) | multi-source, comprehensive search, cross-reference, 多源搜索, 跨源检索 |
 | `sw-media-interpreter` | Media file interpreter — PDFs, images, diagrams. Based on Multimodal Looker. | PDF解读, image analysis, 图表解读 |
 
 ## 基础设施层 (Infrastructure Layer, 10 — 5 existing, 5 NEW)
@@ -96,7 +97,7 @@
 
 ## 需求端到端流程 (E2E Requirements Flow)
 
-一个需求从提出到交付，经过 7 个阶段，37 个 Agent 各司其职。
+一个需求从提出到交付，经过 7 个阶段，38 个 Agent 各司其职。
 
 > **两条路径：** 简单需求走 设计(3-stage) → 拆分 路径；复杂/多步骤需求在头脑风暴后进入 **规划层** (sw-strategic-planner)，由规划层替代设计+拆分，直接产出可执行计划。
 

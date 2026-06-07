@@ -22,7 +22,7 @@ The platform follows **acceptance-driven development** with a strict TDD iron la
 
 ## Agent Architecture
 
-The system has 37 skills in v2 (36 sw-* specialists + 1 `using-harness` bootstrap):
+The system has 38 skills in v2 (37 sw-* specialists + 1 `using-harness` bootstrap):
 
 ```
 sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
@@ -70,6 +70,7 @@ sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协�
   │     sw-strategic-advisor (NEW: 战略技术顾问 — 只读深度推理)
   │     sw-codebase-explorer (NEW: 内部代码搜索)
   │     sw-external-researcher (NEW: 外部研究+证据引用)
+  │     sw-multi-search (NEW: 多源搜索编排 — fan-out + 聚合 + 排序)
   │     sw-media-interpreter (NEW: PDF/图片/图表解读)
   │
   └── [基础设施层 — Infrastructure]
@@ -85,7 +86,7 @@ sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协�
 ```
 
 <!-- Agent Roles and E2E Phase Coverage extracted to standalone docs -->
-> All 37 agent roles, triggers, and capabilities: [docs/agents.md](docs/agents.md).
+> All 38 agent roles, triggers, and capabilities: [docs/agents.md](docs/agents.md).
 > E2E phase coverage and gate checks: [docs/architecture.md](docs/architecture.md).
 
 ### Development Flow
