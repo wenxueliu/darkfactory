@@ -18,25 +18,84 @@
 
 ### 第 1 步: 理解问题空间 (Listen First)
 
-**1.0 知识库预检 (KB Pre-Check) — 必做，在向用户提问之前**
+**1.0 需求层 KB 预检 (Requirement-Level KB Pre-Check) — 必做，在向用户提问之前**
 
-在开口问用户之前，先扫描项目知识库了解既有上下文。这能：
-- 避免询问 KB 中已有答案的问题
-- 借鉴已沉淀的模式、决策、经验教训
-- 捕获可能影响需求理解的既有架构约束
+澄清阶段的 KB 预检**专注于"需求层面"的上下文**，不是"实现层面"。目的有三：
 
-**执行方式**：delegate to `sw-knowledge-agent` (KnowledgeQuery 能力)，用用户问题的关键词查询：
+| 目的 | 检出场景 | 查询目标 |
+|------|---------|---------|
+| **需求已实现** | 防止重复造轮子 — 避免做出已经被做过的需求 | `requirements-tracker.yaml` (status: done) + `knowledge-base/lessons/` + `knowledge-base/patterns/` |
+| **需求实现冲突** | 防止新需求与已有实现矛盾（API 行为不一致、数据模型冲突、UX 不一致） | `knowledge-base/lessons/`（历史冲突教训）+ `knowledge-base/contracts/`（已有 API 契约）+ `requirements-tracker.yaml` (status: in_progress) |
+| **确有已有需求的实现** | 帮助新需求继承/参考已有实现（命名一致、概念对齐、避免另起炉灶） | `knowledge-base/patterns/`（已有需求实现模式）+ `knowledge-base/contracts/`（已有 API 端点）+ `CONTEXT.md`（领域术语） |
 
-| 查询类型 | 适用场景 | 命令格式 |
-|---------|---------|---------|
-| 模式检索 | "这种需求我们做过吗？" | `python scripts/kb-search.py "<关键词>" --type pattern` |
-| 决策检索 | "过去对 X 怎么决定的？" | `python scripts/kb-search.py "<关键词>" --type decision` |
-| 教训检索 | "类似需求踩过什么坑？" | `python scripts/kb-search.py "<关键词>" --type lesson` |
-| 契约检索 | "已有 API 怎么定义的？" | `python scripts/kb-search.py "<关键词>" --type api` |
+**与设计阶段 KB 预检的边界：**
 
-完整命令清单与新鲜度规则见 `../sw-knowledge-agent/references/knowledge-query.md`（用 `Load` 指令加载，或委托 sw-knowledge-agent 读取）。
+| 阶段 | KB 预检焦点 | 输出 |
+|------|----------|------|
+| **需求层（本步）** | 需求-需求关系：重复、冲突、参考 | "需求全景图" — 哪些需求已存在/在做/计划中，命名一致性、API 一致性、领域概念对齐 |
+| **设计层**（澄清完成后） | 需求-实现关系：模式、契约、决策 | "实现蓝图" — 用什么模式、参考什么契约、遵循什么架构决策，确保方案与既有架构一致 |
 
-**记录到对话上下文**：把 KB 预检结果以"已知的相关背景"形式记录，作为后续问问题的参考。
+**执行方式：**
+
+1. **检查需求追踪器**（KB 之外的本地源）：
+   ```bash
+   # 读 tracker 找出所有非 cancelled 的需求
+   cat _context/memory/sw-shared/requirements-tracker.yaml
+   ```
+   重点关注：
+   - `status: done` 中标题/描述与当前需求相似的 → "需求已实现"候选
+   - `status: in_progress` 中范围重叠的 → "实现冲突"候选
+   - `status: planned` 中相关的 → 合并/串行机会
+
+2. **delegate to `sw-knowledge-agent` (KnowledgeQuery 能力)**，按"需求层"视角查询：
+   ```bash
+   # 找类似需求的实现模式（用于"需求已实现"和"参考已有实现"）
+   python scripts/kb-search.py "<需求关键词>" --type pattern
+   
+   # 找历史需求冲突的教训（用于"实现冲突"）
+   python scripts/kb-search.py "<需求关键词>" --type lesson
+   
+   # 找相关 API 契约（用于"实现冲突"和"参考已有实现"）
+   python scripts/kb-search.py "<需求关键词>" --type api
+   
+   # 找相关领域术语定义（用于"参考已有实现"，确保命名一致）
+   cat CONTEXT.md  # 读取领域术语表
+   ```
+   完整命令清单与新鲜度规则见 `../sw-knowledge-agent/references/knowledge-query.md`（用 `Load` 指令加载，或委托 sw-knowledge-agent 读取）。
+
+3. **生成本步输出**（"需求全景图"），写入对话上下文：
+   ```markdown
+   ## 需求全景图 (KB Pre-Check)
+
+   **当前需求：** {brief description}
+
+   ### 已实现的相关需求
+   - {req-id}: {title} — {link} — {为什么相关}
+   - ...
+
+   ### 正在做的相关需求
+   - {req-id}: {title} — {status} — {冲突/协同点}
+
+   ### 已有 API 契约约束
+   - {endpoint}: {summary} — {与新需求的关系}
+
+   ### 已有领域术语（必须对齐）
+   - {term}: {definition} — {新需求中的用法}
+
+   ### 历史教训（避免重蹈覆辙）
+   - {lesson}: {title} — {summary}
+   ```
+
+4. **当本步检出冲突时** — 立即告知用户，不要等到第 3 步：
+   - "需求全景图显示 {req-id} 已实现 {类似功能}。请问："
+     - A) 新需求替代旧需求（需明确迁移路径）
+     - B) 新需求是旧需求的扩展/演进
+     - C) 我没意识到旧需求的存在，请帮我看看怎么协调
+   - 把这个澄清问题加入优先队列（即使 KB 检出了，第 3 步还是要走完）
+
+**与 Step 1.1 的关系：** Step 1.0 结束后，你带着"需求全景图"开始 Step 1.1 的倾听 — 用户描述时，你能基于全景图追问："我看到我们已实现 {X}，这次的需求和它是什么关系？"
+
+**记录到对话上下文**：把"需求全景图"作为后续问问题的参考。在澄清记录中也加一条 KB 预检条目。
 
 **1.1 让用户自由描述问题空间**
 
@@ -227,6 +286,18 @@ Load `../sw-knowledge-agent/references/knowledge-update.md`
 
 ## 知识库预查询 (进入设计前)
 
+> **与 Step 1.0 的分工**：本节是**实现层**的 KB 预检（在需求澄清完成后、进入设计阶段前执行），由 sw-feature-designer 触发；Step 1.0 是**需求层**的 KB 预检（在澄清开始时执行），由 sw-requirements-clarifier 触发。两者的查询目标、产出、消费者都不同。
+
+| 维度 | 需求层 (Step 1.0) | 实现层 (本节) |
+|------|------------|-----------|
+| 触发时机 | 澄清开始时（提问用户之前） | 澄清完成后、开始设计之前 |
+| 触发者 | sw-requirements-clarifier | sw-feature-designer（或 sw-strategic-planner） |
+| 查询目标 | 需求-需求关系（重复、冲突、参考） | 需求-实现关系（模式、契约、决策） |
+| 主要消费者 | 澄清对话的优先级与问题设计 | 设计的方案选择与一致性 |
+| 核心问题 | "我们做过类似的吗？和它什么关系？" | "用什么模式实现？参考什么契约？" |
+| 典型命令 | `kb-search.py --type pattern/lesson` 查需求级条目 + tracker 状态 | `kb-search.py --type decision/pattern/api` 查实现级条目 |
+| 输出产物 | "需求全景图"（写到对话上下文） | `knowledge-base/pre-query-{id}.md`（独立文件） |
+
 在需求澄清完成、进入设计阶段之前，执行一次知识库快速扫描：
 
 1. 运行知识库预查询（delegate to `sw-knowledge-agent` KnowledgeQuery 能力）：
@@ -240,6 +311,8 @@ Load `../sw-knowledge-agent/references/knowledge-update.md`
 2. 检查是否有与当前需求相关的已有 ADR、设计模式、经验教训、API 契约
 3. 如果有冲突或需要参考的历史决策，在需求规格中注明，并提供知识库链接
 4. 知识库查询结果作为设计阶段的输入，确保设计不会重复造轮子或偏离既有架构方向
+5. **方案继承性检查**：检查设计是否与已有实现保持术语/契约/模式一致
+6. **方案一致性检查**：检查设计是否与已有架构决策（ADR）一致
 
 预查询结果写入 `{project-root}/_context/memory/sw-shared/knowledge-base/pre-query-{requirement_id}.md`。
 

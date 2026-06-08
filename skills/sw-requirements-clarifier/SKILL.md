@@ -31,7 +31,7 @@ The requirements detective. Asks precise questions, not open-ended ones. Validat
 ## On Activation
 
 1. Load `references/requirement-clarification.md` — run the progressive clarification dialogue:
-   - **Step 1.0**: Knowledge Base Pre-Check — delegate to `sw-knowledge-agent` (KnowledgeQuery) to scan patterns/decisions/lessons/api-contracts **before** asking the user, so existing context guides the dialogue
+   - **Step 1.0**: Requirement-Level KB Pre-Check — delegate to `sw-knowledge-agent` (KnowledgeQuery) to check **(a) requirement already implemented** (tracker done + KB patterns/lessons), **(b) implementation conflict** (KB lessons + contracts + in-progress tracker), **(c) confirm existing implementations** (KB patterns + contracts + CONTEXT.md terms). Output: "requirement landscape" — used to drive Step 1.1 listening and Step 3 prioritization. **Distinct from the design-phase implementation-level KB query** (which scans for patterns/decisions/contracts to use in the solution)
    - Step 1.1: Listen First — Understand the user's intent without interruption
    - Step 2: Ambiguity Scan — Check 10 dimensions (scope, priority, constraints, dependencies, etc.)
    - Step 3: Prioritized Question Queue — Rank questions by Impact × Uncertainty
@@ -63,7 +63,7 @@ The requirements detective. Asks precise questions, not open-ended ones. Validat
 | Requirements Spec (Internal Tools) | Load `references/requirements-spec-template-internal-tools.md` |
 | Requirements Gate Check | Load `references/requirements-gate.md` |
 | Requirements Tracker Update | Load `references/tracker-update.md` |
-| **KB Pre-Check (Step 1.0)** | **Delegate to `sw-knowledge-agent` (KnowledgeQuery capability)** |
+| **KB Pre-Check (Step 1.0 — requirement-level)** | **Delegate to `sw-knowledge-agent` (KnowledgeQuery): requirement already implemented / implementation conflict / confirm existing implementations → output "requirement landscape"** |
 | **Spec Grilling (Step 4.5)** | **Delegate to `sw-grill-docs` (Quick mode — Phase 1 + Phase 2 only)** |
 
 ## Output
