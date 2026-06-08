@@ -18,7 +18,29 @@
 
 ### 第 1 步: 理解问题空间 (Listen First)
 
-让用户自由描述问题空间。不打断、不挑战、不进入解决方案模式。
+**1.0 知识库预检 (KB Pre-Check) — 必做，在向用户提问之前**
+
+在开口问用户之前，先扫描项目知识库了解既有上下文。这能：
+- 避免询问 KB 中已有答案的问题
+- 借鉴已沉淀的模式、决策、经验教训
+- 捕获可能影响需求理解的既有架构约束
+
+**执行方式**：delegate to `sw-knowledge-agent` (KnowledgeQuery 能力)，用用户问题的关键词查询：
+
+| 查询类型 | 适用场景 | 命令格式 |
+|---------|---------|---------|
+| 模式检索 | "这种需求我们做过吗？" | `python scripts/kb-search.py "<关键词>" --type pattern` |
+| 决策检索 | "过去对 X 怎么决定的？" | `python scripts/kb-search.py "<关键词>" --type decision` |
+| 教训检索 | "类似需求踩过什么坑？" | `python scripts/kb-search.py "<关键词>" --type lesson` |
+| 契约检索 | "已有 API 怎么定义的？" | `python scripts/kb-search.py "<关键词>" --type api` |
+
+完整命令清单与新鲜度规则见 `../sw-knowledge-agent/references/knowledge-query.md`（用 `Load` 指令加载，或委托 sw-knowledge-agent 读取）。
+
+**记录到对话上下文**：把 KB 预检结果以"已知的相关背景"形式记录，作为后续问问题的参考。
+
+**1.1 让用户自由描述问题空间**
+
+不打断、不挑战、不进入解决方案模式。
 
 **使用这些镜头倾听:**
 - **Scope** — 什么在里面，什么明确在外面
@@ -100,7 +122,45 @@ C) {自定义 — 用自己的话描述}
 3. 重新评估该维度的状态（Partial → Clear）
 4. 更新优先队列（移除已回答的，可能新增因澄清而产生的后续问题）
 5. 如果队列为空且仍有 Partial/Missing 维度 → 回到第 3 步补充新问题
-6. 如果所有维度 Clear 或仅剩 `[设计时再解]` 或 `[待调研]` → 进入门禁
+6. 如果所有维度 Clear 或仅剩 `[设计时再解]` 或 `[待调研]` → 进入第 4.5 步需求规格质询
+
+### 第 4.5 步: 需求规格质询 (Spec Grilling — sw-grill-docs Quick)
+
+在需求规格成文之后、进入正式门禁之前，**强制委托 `sw-grill-docs` 进行 Quick 模式质询**，把规格对照项目的领域模型（CONTEXT.md）和架构决策记录（ADRs）做一次交叉验证。
+
+**为什么需要这步：**
+- 澄清过程是"问用户"导向，可能漏掉项目已有的领域约束
+- 用语可能与 CONTEXT.md 中的术语表不一致，导致下游设计歧义
+- 已有 ADR 可能已否决规格中隐含的某条架构假设
+
+**执行方式：**
+
+1. delegate to `sw-grill-docs`（Step 0 → Step 1 → Step 2 → Phase 1 + Phase 2）:
+   - **Step 0**: 读取 CONTEXT.md / CONTEXT-MAP.md / `docs/adr/` / `design-decisions.md` / `config.yaml`
+   - **Step 1**: 目标文档 = `requirements/{requirement_id}.md`（新增"需求层"调用来源）
+   - **Step 2**: 深度 = **Quick**（<3 个新概念 → 术语扫描 + ADR 冲突检查）
+   - **Phase 1 (Glossary Audit)**: 对照 CONTEXT.md 检查规格中每个领域术语
+   - **Phase 2 (ADR Compliance)**: 对照已有 ADR 检查规格中每个架构决策
+
+2. 接收 grill-docs 的 `Grill Docs Report`，按结果分流:
+
+| Result | 行动 |
+|--------|------|
+| **PASS** | 零 CONFLICT、零 GAP → 进入需求门禁 (`requirements-gate.md`) |
+| **CONCERNS** | 有 CHALLENGE 需要澄清 → 把 CHALLENGE 转化为新问题，回到第 3 步优先队列 |
+| **CONFLICT** | 与 CONTEXT.md 或 ADR 直接矛盾 → 立即告知用户，给出两种选择：(a) 修订规格 (b) 创建新 ADR 覆盖 |
+
+3. 在 `requirements/{requirement_id}.md` 末尾的"澄清记录"段追加:
+   ```markdown
+   | # | 时间 | 维度 | 问题 | 答案 | 类型 |
+   |---|------|------|------|------|------|
+   | N | {ts} | 规格质询 | sw-grill-docs Quick 报告: {PASS/CONCERNS/CONFLICT} | {response} | 设计前必解 |
+   ```
+
+**注意**:
+- 规格质询不是把澄清流程重新走一遍；它针对的是"已写下的规格" vs "项目的真理来源" 这一具体冲突
+- Quick 模式故意不执行 Phase 3/4 压力测试和代码交叉验证（保留给设计阶段）
+- 如果项目没有 CONTEXT.md / ADR → 跳过此步（直接进入门禁），并在规格中注明"无需质询，无既有约束"
 
 ## 何时停止澄清
 
@@ -136,11 +196,47 @@ Load `../sw-value-judgment/references/value-assessment.md`
 
 Load `../sw-knowledge-agent/references/knowledge-update.md`
 
+## 需求规格质询 (Spec Grilling — sw-grill-docs)
+
+在澄清对话收敛、规格成文之后，进入设计阶段之前，对规格做一次"文档对照质询"。这是与 sw-grill-docs 的契约：
+
+| 字段 | 取值 |
+|------|------|
+| 调用方 | sw-requirements-clarifier (澄清完成时) |
+| 目标文档 | `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md` |
+| 深度 | Quick (术语扫描 + ADR 冲突检查) |
+| 必做 Phase | Phase 1 (Glossary Audit) + Phase 2 (ADR Compliance) |
+| 跳过 Phase | Phase 3 (Scenario Stress-Test) + Phase 4 (Code Cross-Reference) — 保留给设计阶段 |
+| 输入 | 规格文件路径 + 需求 ID + `requirement_id` |
+| 输出 | Grill Docs Report (PASS / CONCERNS / CONFLICT) + 必须 inline 写入"澄清记录"段 |
+
+**为何选 Quick 而非 Standard/Deep：**
+- 规格阶段的目的是验证"和项目已有约束是否一致"，不是设计完整性
+- 场景压力测试和代码交叉验证在 sw-e2e-designer / sw-feature-designer 阶段更合适
+- Quick 已足以捕获 80% 的术语/ADR 冲突，避免过度质询拖慢澄清
+
+**与设计/规划层质询的边界：**
+- 设计层（sw-grill-docs 调用源 = sw-brainstorming）：质询 design 文档
+- 规划层（sw-grill-docs 调用源 = sw-strategic-planner）：质询 plan 文档
+- **需求层（本节）**：质询 requirements 规格 — 这是第三种调用源
+
+**何时跳过本步骤：**
+- 项目无 CONTEXT.md 且无 `docs/adr/` 目录 → 跳过（标注"无既有约束"）
+- 规格是 trivial typo fix / 配置微调 → 跳过
+- 用户明确说"快进到设计" → 跳过，但在 tracker 中记录 `grill_skipped: true`
+
 ## 知识库预查询 (进入设计前)
 
 在需求澄清完成、进入设计阶段之前，执行一次知识库快速扫描：
 
-1. 运行知识库预查询：`python kb-search.py --scope relevant-adrs,patterns,lessons,api-contracts`（从 `references/design-coordination.md` Step 1 获取完整查询清单和命令说明）
+1. 运行知识库预查询（delegate to `sw-knowledge-agent` KnowledgeQuery 能力）：
+   ```bash
+   python scripts/kb-search.py "<需求关键词>" --type pattern
+   python scripts/kb-search.py "<需求关键词>" --type decision
+   python scripts/kb-search.py "<需求关键词>" --type lesson
+   python scripts/kb-search.py "<需求关键词>" --type api
+   ```
+   完整命令清单与新鲜度规则见 `../sw-knowledge-agent/references/knowledge-query.md`。
 2. 检查是否有与当前需求相关的已有 ADR、设计模式、经验教训、API 契约
 3. 如果有冲突或需要参考的历史决策，在需求规格中注明，并提供知识库链接
 4. 知识库查询结果作为设计阶段的输入，确保设计不会重复造轮子或偏离既有架构方向
@@ -156,4 +252,5 @@ Load `../sw-knowledge-agent/references/knowledge-update.md`
 | 价值评估 | `value-assessment/{id}.md` | 如果价值维度 Partial |
 | 知识条目 | `knowledge-base/` | 如果发现可复用知识 |
 | 知识预查询 | `knowledge-base/pre-query-{id}.md` | 澄清完成后，进入设计前 |
+| **规格质询报告** | **嵌入在需求规格"澄清记录"段** | **第 4.5 步质询完成后** |
 | 门禁结果 | `requirements/{id}-gate.md` | 需求规格完成后 |

@@ -52,6 +52,7 @@ description: 文档对照质询Agent. Grills design or plan against the existing
 
 | 调用来源 | 目标文档 | 质询重点 |
 |---------|---------|---------|
+| `sw-requirements-clarifier` (第 4.5 步) | `_context/memory/sw-shared/requirements/{id}.md` | 需求规格与领域术语、ADR 一致性（Quick 模式） |
 | `sw-brainstorming` (Phase 7-8) | `_context-output/designs/{design}.md` | 术语一致性、领域模型对齐、ADR 合规 |
 | `sw-strategic-planner` (计划完成后) | `_context/memory/sw-shared/plans/{plan}.md` | 计划与 ADR 一致性、术语使用正确性 |
 | 用户直接调用 | 用户指定的文档 | 根据用户需求 |
@@ -212,6 +213,23 @@ description: 文档对照质询Agent. Grills design or plan against the existing
 | **CONFLICT** | 发现与 CONTEXT.md 或 ADR 的直接矛盾，必须在继续前解决 |
 
 ## Integration Points
+
+### 在需求层使用 (Phase 4.5: Spec Grilling)
+
+由 `sw-requirements-clarifier` 在规格成文之后、进入正式门禁之前调用：
+
+```
+sw-requirements-clarifier:
+  Step 1.0: KB Pre-Check → delegate to sw-knowledge-agent
+  Step 1-4: 4-step progressive clarification → writes requirements/{id}.md
+  [sw-grill-docs called here] → grill spec against CONTEXT.md + ADRs (Quick mode)
+  Step 4.5 Result:
+    PASS → enter requirements-gate
+    CONCERNS → back to Step 3 with new questions
+    CONFLICT → must resolve before continuing
+```
+
+调用方式：`sw-requirements-clarifier` 完成第 4 步（Incremental Spec Update）后，激活 `sw-grill-docs` 并将规格文件路径作为输入。深度固定为 **Quick**（Phase 1 + Phase 2，跳过 Phase 3/4 压力测试和代码交叉验证，保留给设计阶段）。
 
 ### 在设计层使用
 

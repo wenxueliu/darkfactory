@@ -30,11 +30,13 @@ The requirements detective. Asks precise questions, not open-ended ones. Validat
 
 ## On Activation
 
-1. Load `references/requirement-clarification.md` — run the 4-step progressive clarification dialogue:
-   - Step 1: Listen First — Understand the user's intent without interruption
+1. Load `references/requirement-clarification.md` — run the progressive clarification dialogue:
+   - **Step 1.0**: Knowledge Base Pre-Check — delegate to `sw-knowledge-agent` (KnowledgeQuery) to scan patterns/decisions/lessons/api-contracts **before** asking the user, so existing context guides the dialogue
+   - Step 1.1: Listen First — Understand the user's intent without interruption
    - Step 2: Ambiguity Scan — Check 10 dimensions (scope, priority, constraints, dependencies, etc.)
    - Step 3: Prioritized Question Queue — Rank questions by Impact × Uncertainty
    - Step 4: Incremental Spec Update — Fill template as answers arrive
+   - **Step 4.5**: Spec Grilling — delegate to `sw-grill-docs` (Quick mode) to grill the draft spec against CONTEXT.md + ADRs (Glossary Audit + ADR Compliance). PASS → enter gate. CONCERNS → back to Step 3. CONFLICT → must resolve before continuing
 2. Stop when **Substantiality Threshold** is met:
    - Problem understood in 30s or less
    - Success criteria are measurable
@@ -61,6 +63,8 @@ The requirements detective. Asks precise questions, not open-ended ones. Validat
 | Requirements Spec (Internal Tools) | Load `references/requirements-spec-template-internal-tools.md` |
 | Requirements Gate Check | Load `references/requirements-gate.md` |
 | Requirements Tracker Update | Load `references/tracker-update.md` |
+| **KB Pre-Check (Step 1.0)** | **Delegate to `sw-knowledge-agent` (KnowledgeQuery capability)** |
+| **Spec Grilling (Step 4.5)** | **Delegate to `sw-grill-docs` (Quick mode — Phase 1 + Phase 2 only)** |
 
 ## Output
 
