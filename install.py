@@ -331,7 +331,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" session-start",
+                        "command": "python3 \"${workspaceFolder}/hooks/session-start.py\"",
                         "async": False,
                     }
                 ],
@@ -343,7 +343,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" delegation-reminder",
+                        "command": "python3 \"${workspaceFolder}/hooks/delegation-reminder.py\"",
                         "async": True,
                         "timeout": 5000,
                     }
@@ -355,7 +355,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" rules-injector",
+                        "command": "python3 \"${workspaceFolder}/hooks/rules-injector.py\"",
                         "async": True,
                         "timeout": 10000,
                     }
@@ -367,7 +367,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" write-safety-guard-read",
+                        "command": "python3 \"${workspaceFolder}/hooks/write-safety-guard-read.py\"",
                         "async": True,
                         "timeout": 3000,
                     }
@@ -381,7 +381,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" write-safety-guard",
+                        "command": "python3 \"${workspaceFolder}/hooks/write-safety-guard.py\"",
                         "async": False,
                         "timeout": 5000,
                     }
@@ -407,7 +407,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "\"${workspaceFolder}/hooks/run-hook.cmd\" hook-cleanup",
+                        "command": "python3 \"${workspaceFolder}/hooks/hook-cleanup.py\"",
                         "async": True,
                         "timeout": 3000,
                     }

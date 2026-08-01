@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" session-start",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.py\"",
             "async": false
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" delegation-reminder",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/delegation-reminder.py\"",
             "async": true,
             "timeout": 5000
           }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" rules-injector",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/rules-injector.py\"",
             "async": true,
             "timeout": 10000
           }
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" write-safety-guard-read",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/write-safety-guard-read.py\"",
             "async": true,
             "timeout": 3000
           }
@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" write-safety-guard",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/write-safety-guard.py\"",
             "async": false,
             "timeout": 5000
           }
@@ -82,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" hook-cleanup",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/hook-cleanup.py\"",
             "async": true,
             "timeout": 3000
           }
