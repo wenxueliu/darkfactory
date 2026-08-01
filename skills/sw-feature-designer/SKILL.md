@@ -1,6 +1,6 @@
 ---
 name: sw-feature-designer
-description: 黑灯工厂特性设计Agent. Use when designing cross-service feature architecture, user journeys, service interaction, and deployment strategy. [trigger: 特性设计, 跨服务设计, 用户旅程设计, 特性设计文档, feature design]
+description: "黑灯工厂特性设计Agent. Use when designing cross-service feature architecture, user journeys, service interaction, and deployment strategy. [trigger: 特性设计, 跨服务设计, 用户旅程设计, 特性设计文档, feature design]"
 ---
 
 # 黑灯工厂 特性设计者 (sw-feature-designer)

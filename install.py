@@ -21,6 +21,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 SOURCE_SKILLS = SCRIPT_DIR / "skills"
 SOURCE_AGENTS = SCRIPT_DIR / "agents"
+SOURCE_HOOKS = SCRIPT_DIR / "hooks"
 
 MINIMAL_SKILLS = {
     "sw-controller",
@@ -232,7 +233,7 @@ def confirm_or_exit(
         cfg = PLATFORM_CONFIG[plat]
         label = cfg["label"]
         print(f"  [{label}] {skill_count} skills -> {root}/")
-        if agent_count:
+        if agent_count and plat == PLATFORM_CLAUDE:
             if args.user:
                 agents_root = cfg["user_agents"]
             else:
@@ -297,6 +298,8 @@ def install_agent_templates(
         return
 
     for plat, _skills_root in platform_roots.items():
+        if plat == PLATFORM_CODEX:
+            continue
         cfg = PLATFORM_CONFIG[plat]
         label = cfg["label"]
         if args.user:
@@ -332,7 +335,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                     {
                         "type": "command",
                         "command": "python3 \"${workspaceFolder}/hooks/session-start.py\"",
-                        "async": False,
+                        "additionalContextLimit": 5000,
                     }
                 ],
             }
@@ -344,8 +347,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                     {
                         "type": "command",
                         "command": "python3 \"${workspaceFolder}/hooks/delegation-reminder.py\"",
-                        "async": True,
-                        "timeout": 5000,
+                        "timeout": 5,
                     }
                 ],
                 "description": "Remind orchestrator agents to delegate work to specialized subagents",
@@ -356,8 +358,8 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                     {
                         "type": "command",
                         "command": "python3 \"${workspaceFolder}/hooks/rules-injector.py\"",
-                        "async": True,
-                        "timeout": 10000,
+                        "timeout": 10,
+                        "additionalContextLimit": 5000,
                     }
                 ],
                 "description": "Inject nearby project rules (AGENTS.md/CLAUDE.md) into tool output",
@@ -368,8 +370,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                     {
                         "type": "command",
                         "command": "python3 \"${workspaceFolder}/hooks/write-safety-guard-read.py\"",
-                        "async": True,
-                        "timeout": 3000,
+                        "timeout": 3,
                     }
                 ],
                 "description": "Track file reads for write-safety-guard",
@@ -377,25 +378,23 @@ HOOK_SETTINGS_TEMPLATE: dict = {
         ],
         "PreToolUse": [
             {
-                "matcher": "Write|Edit",
+                "matcher": "Write|Edit|apply_patch",
                 "hooks": [
                     {
                         "type": "command",
                         "command": "python3 \"${workspaceFolder}/hooks/write-safety-guard.py\"",
-                        "async": False,
-                        "timeout": 5000,
+                        "timeout": 5,
                     }
                 ],
                 "description": "Block writes to existing files that haven't been read this session",
             },
             {
-                "matcher": "Agent",
+                "matcher": "Agent|Write|Edit|apply_patch",
                 "hooks": [
                     {
                         "type": "command",
                         "command": "python3 \"${workspaceFolder}/hooks/ideation-gate.py\"",
-                        "async": False,
-                        "timeout": 5000,
+                        "timeout": 5,
                     }
                 ],
                 "description": "Block delegation to implementation agents before ideation phase is complete",
@@ -408,8 +407,7 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                     {
                         "type": "command",
                         "command": "python3 \"${workspaceFolder}/hooks/hook-cleanup.py\"",
-                        "async": True,
-                        "timeout": 3000,
+                        "timeout": 3,
                     }
                 ],
                 "description": "Clear per-session hook state before context compaction",
@@ -437,15 +435,36 @@ def install_hooks(
     platform_roots: dict[str, Path],
     dry_run: bool,
 ) -> None:
-    """Copy hooks/ directory and merge hook config into target .claude/settings.local.json."""
-    source_hooks = SCRIPT_DIR / "hooks"
-    if not source_hooks.is_dir():
+    """Install lifecycle hooks for each selected platform."""
+    if not SOURCE_HOOKS.is_dir():
         warn("hooks/ not found; skipping hook installation.")
         return
 
-    # Only Claude Code supports hook installation via settings.local.json
-    if not args.claude:
-        return
+    if args.claude:
+        install_claude_hooks(args, dry_run)
+    if args.codex:
+        install_codex_hooks(args, dry_run)
+
+
+def copy_hook_scripts(dest_hooks: Path) -> int:
+    """Copy Python hook entry points without tests or runtime state."""
+    dest_hooks.mkdir(parents=True, exist_ok=True)
+    for legacy_name in (
+        "session-start", "hook-cleanup", "delegation-reminder", "rules-injector",
+        "write-safety-guard", "write-safety-guard-read", "run-hook.cmd",
+    ):
+        legacy = dest_hooks / legacy_name
+        if legacy.is_file():
+            legacy.unlink()
+    count = 0
+    for source in sorted(SOURCE_HOOKS.glob("*.py")):
+        shutil.copy2(source, dest_hooks / source.name)
+        count += 1
+    return count
+
+
+def install_claude_hooks(args: argparse.Namespace, dry_run: bool) -> None:
+    """Install Claude Code hooks and merge settings.local.json."""
 
     if args.user:
         dest_hooks = Path.home() / ".claude" / "hooks"
@@ -460,11 +479,8 @@ def install_hooks(
         info(f"[Claude Code] merge hook config -> {settings_file}")
         return
 
-    # Copy hooks directory
-    if dest_hooks.exists():
-        shutil.rmtree(dest_hooks)
-    shutil.copytree(source_hooks, dest_hooks, symlinks=False)
-    info(f"[Claude Code] Installed hooks to {dest_hooks}")
+    count = copy_hook_scripts(dest_hooks)
+    info(f"[Claude Code] Installed {count} Python hooks to {dest_hooks}")
 
     # Merge hook settings into settings.local.json
     settings_file.parent.mkdir(parents=True, exist_ok=True)
@@ -483,6 +499,91 @@ def install_hooks(
         encoding="utf-8",
     )
     info(f"[Claude Code] Hook config merged into {settings_file}")
+
+
+def build_codex_hook_config(dest_hooks: Path) -> dict:
+    """Build standalone Codex hooks.json with absolute cross-platform commands."""
+    config = json.loads((SOURCE_HOOKS / "hooks.json").read_text(encoding="utf-8"))
+    for groups in config.get("hooks", {}).values():
+        for group in groups:
+            for handler in group.get("hooks", []):
+                command = handler.get("command", "")
+                script_name = Path(command.rsplit("/", 1)[-1].rstrip('"')).name
+                if not script_name.endswith(".py"):
+                    continue
+                script_path = dest_hooks / script_name
+                handler["command"] = f'python3 "{script_path}"'
+                handler["commandWindows"] = f'py -3 "{script_path}"'
+                handler.pop("async", None)
+    return config
+
+
+def merge_codex_hook_config(existing: dict, harness: dict, dest_hooks: Path) -> dict:
+    """Preserve unrelated hooks while replacing a previous Harness installation."""
+    merged = existing.copy() if isinstance(existing, dict) else {}
+    merged.setdefault("description", "Codex lifecycle hooks.")
+    merged_hooks = merged.setdefault("hooks", {})
+    if not isinstance(merged_hooks, dict):
+        merged_hooks = {}
+        merged["hooks"] = merged_hooks
+    harness_names = {path.name for path in SOURCE_HOOKS.glob("*.py")}
+    dest_text = str(dest_hooks)
+    for event, new_groups in harness.get("hooks", {}).items():
+        old_groups = merged_hooks.get(event, [])
+        if not isinstance(old_groups, list):
+            old_groups = []
+        retained = []
+        for group in old_groups:
+            handlers = group.get("hooks", []) if isinstance(group, dict) else []
+            commands = [
+                handler.get("command", "")
+                for handler in handlers
+                if isinstance(handler, dict)
+            ]
+            is_harness = any(
+                dest_text in command
+                or any(name in command for name in harness_names)
+                for command in commands
+            )
+            if not is_harness:
+                retained.append(group)
+        merged_hooks[event] = retained + new_groups
+    return merged
+
+
+def install_codex_hooks(args: argparse.Namespace, dry_run: bool) -> None:
+    """Install hooks into Codex's user or trusted-project config layer."""
+    if args.user:
+        codex_root = Path.home() / ".codex"
+    else:
+        assert args.target is not None
+        codex_root = args.target / ".codex"
+    dest_hooks = codex_root / "hooks"
+    config_file = codex_root / "hooks.json"
+
+    if dry_run:
+        info(f"[Codex] Python hooks -> {dest_hooks}/")
+        info(f"[Codex] hook config -> {config_file}")
+        return
+
+    count = copy_hook_scripts(dest_hooks)
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+    existing: dict = {}
+    if config_file.exists():
+        try:
+            existing = json.loads(config_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            warn(f"Could not parse {config_file}; replacing it with Harness hook config.")
+    harness_config = build_codex_hook_config(dest_hooks)
+    merged_config = merge_codex_hook_config(existing, harness_config, dest_hooks)
+    config_file.write_text(
+        json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    info(f"[Codex] Installed {count} Python hooks to {dest_hooks}")
+    info(f"[Codex] Hook config written to {config_file}")
+    if not args.user:
+        info("[Codex] Trust this project and review the hook definitions with /hooks.")
 
 
 # ---- summary ------------------------------------------------------------
@@ -507,7 +608,7 @@ def print_summary(
         cfg = PLATFORM_CONFIG[plat]
         label = cfg["label"]
         print(f"  {label:12}  {root}")
-        if SOURCE_AGENTS.is_dir():
+        if SOURCE_AGENTS.is_dir() and plat == PLATFORM_CLAUDE:
             if args.user:
                 agents_root = cfg["user_agents"]
             else:

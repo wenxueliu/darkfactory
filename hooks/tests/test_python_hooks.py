@@ -16,6 +16,8 @@ HOOKS_DIR = Path(__file__).resolve().parent.parent
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
 
+from hook_common import tool_file_paths
+
 
 def load_hook(filename: str, module_name: str):
     spec = importlib.util.spec_from_file_location(module_name, HOOKS_DIR / filename)
@@ -50,6 +52,7 @@ def test_session_start_emits_valid_claude_json(monkeypatch, capsys):
 
 def test_session_start_emits_sdk_json(monkeypatch, capsys):
     monkeypatch.delenv("CLAUDE_PLUGIN_ROOT", raising=False)
+    monkeypatch.setenv("COPILOT_CLI", "1")
     assert session_start.main() == 0
     output = json.loads(capsys.readouterr().out)
     assert "hookSpecificOutput" not in output
@@ -115,6 +118,73 @@ def test_write_guard_allows_new_file(tmp_path, monkeypatch, capsys):
         "session_id": "s",
         "cwd": str(project),
         "tool_input": {"file_path": "new.py"},
+    })
+    assert guard.main() == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_codex_apply_patch_extracts_multiple_targets():
+    payload = {
+        "tool_name": "apply_patch",
+        "tool_input": {
+            "command": """*** Begin Patch
+*** Update File: src/app.py
+*** Add File: tests/test_app.py
+*** Delete File: src/old.py
+*** End Patch"""
+        },
+    }
+    assert tool_file_paths(payload) == [
+        "src/app.py", "tests/test_app.py", "src/old.py"
+    ]
+
+
+def test_codex_apply_patch_guard_checks_every_existing_target(tmp_path, monkeypatch, capsys):
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".git").mkdir()
+    first = project / "first.py"
+    second = project / "second.py"
+    first.write_text("one\n", encoding="utf-8")
+    second.write_text("two\n", encoding="utf-8")
+    state_root = tmp_path / "state"
+    monkeypatch.setattr(guard_read, "STATE_ROOT", state_root)
+    monkeypatch.setattr(guard, "STATE_ROOT", state_root)
+    set_stdin(monkeypatch, {
+        "session_id": "patch-session", "cwd": str(project),
+        "tool_input": {"file_path": str(first)},
+    })
+    assert guard_read.main() == 0
+    payload = {
+        "session_id": "patch-session",
+        "cwd": str(project),
+        "tool_name": "apply_patch",
+        "tool_input": {"command": """*** Begin Patch
+*** Update File: first.py
+*** Update File: second.py
+*** End Patch"""},
+    }
+    set_stdin(monkeypatch, payload)
+    assert guard.main() == 2
+    denied = json.loads(capsys.readouterr().out)
+    assert "second.py" in denied["hookSpecificOutput"]["permissionDecisionReason"]
+
+
+def test_codex_contextual_patch_is_safe_without_read_event(tmp_path, monkeypatch, capsys):
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".git").mkdir()
+    (project / "app.py").write_text("old = True\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "STATE_ROOT", tmp_path / "state")
+    set_stdin(monkeypatch, {
+        "session_id": "codex-context", "cwd": str(project),
+        "tool_name": "apply_patch",
+        "tool_input": {"command": """*** Begin Patch
+*** Update File: app.py
+@@
+-old = True
++old = False
+*** End Patch"""},
     })
     assert guard.main() == 0
     assert capsys.readouterr().out == ""

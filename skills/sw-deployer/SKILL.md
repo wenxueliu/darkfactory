@@ -1,6 +1,6 @@
 ---
 name: sw-deployer
-description: 环境部署器 — 测试/生产环境统一部署入口，支持 direct/docker/k8s
+description: "环境部署器 — 测试/生产环境统一部署入口，支持 direct/docker/k8s"
 ---
 
 # sw-deployer — 环境部署器

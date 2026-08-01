@@ -1,6 +1,6 @@
 ---
 name: sw-strategic-planner
-description: 战略规划Agent. Strategic planning consultant that interviews, researches, and generates executable work plans. Plans first, never implements. Use at start of requirement-to-design phase or when user asks for a work plan. [trigger: 战略规划, create work plan, 制定计划, plan generation, 规划先行, interview mode]
+description: "战略规划Agent. Strategic planning consultant that interviews, researches, and generates executable work plans. Plans first, never implements. Use at start of requirement-to-design phase or when user asks for a work plan. [trigger: 战略规划, create work plan, 制定计划, plan generation, 规划先行, interview mode]"
 ---
 
 # 黑灯工厂 战略规划者 (sw-strategic-planner)

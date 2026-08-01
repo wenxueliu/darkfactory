@@ -1,6 +1,6 @@
 ---
 name: sw-writing-skills
-description: 元技能：编写Agent技能. Use when creating new skills, editing existing skills, or verifying skills work before deployment. TDD applied to process documentation — no skill without a failing test first. [trigger: 编写技能, 创建技能, 写skill, writing skills, create skill, new agent, skill authoring]
+description: "元技能：编写Agent技能. Use when creating new skills, editing existing skills, or verifying skills work before deployment. TDD applied to process documentation — no skill without a failing test first. [trigger: 编写技能, 创建技能, 写skill, writing skills, create skill, new agent, skill authoring]"
 ---
 
 # 黑灯工厂 技能编写 (sw-writing-skills)
@@ -133,7 +133,7 @@ Follow the Harness skill template:
 ```yaml
 ---
 name: sw-skill-name        # ≤100 characters, kebab-case, ASCII only, sw- prefix
-description: Use when [triggering conditions]. Include Chinese + English keywords for cross-platform discovery. [trigger: keyword1, 关键词2, keyword3]
+description: "Use when [triggering conditions]. Include Chinese + English keywords for cross-platform discovery. [trigger: keyword1, 关键词2, keyword3]"
 ---
 ```
 
@@ -145,13 +145,13 @@ The description should ONLY describe triggering conditions. Do NOT summarize the
 
 ```yaml
 # WRONG: Summarizes workflow
-description: TDD agent — write test first, watch it fail, write minimal code, refactor
+description: "TDD agent — write test first, watch it fail, write minimal code, refactor"
 
 # WRONG: Too much process detail
-description: Plan executor that dispatches subagents per task with code review between tasks
+description: "Plan executor that dispatches subagents per task with code review between tasks"
 
 # RIGHT: Just triggering conditions
-description: TDD execution agent. Use when implementing features or bugfixes, writing unit tests, or executing TDD cycles. [trigger: TDD, 单元测试, RED-GREEN-REFACTOR]
+description: "TDD execution agent. Use when implementing features or bugfixes, writing unit tests, or executing TDD cycles. [trigger: TDD, 单元测试, RED-GREEN-REFACTOR]"
 ```
 
 ### Skill Body

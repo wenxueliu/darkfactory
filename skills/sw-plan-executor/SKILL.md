@@ -1,6 +1,6 @@
 ---
 name: sw-plan-executor
-description: 计划执行协调Agent. Plan execution orchestrator that delegates tasks in parallel waves with 4-phase verification. Never writes code -- coordinates and verifies. Use with plan file path to execute all tasks. [trigger: plan execution, execute plan, 计划执行, start work, run plan, 开始执行]
+description: "计划执行协调Agent. Plan execution orchestrator that delegates tasks in parallel waves with 4-phase verification. Never writes code -- coordinates and verifies. Use with plan file path to execute all tasks. [trigger: plan execution, execute plan, 计划执行, start work, run plan, 开始执行]"
 ---
 
 # 黑灯工厂 计划执行者 (sw-plan-executor)

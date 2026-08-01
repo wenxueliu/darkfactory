@@ -1,6 +1,6 @@
 ---
 name: sw-reviewer-logic
-description: 黑灯工厂逻辑审核Agent. Use when reviewing code for correctness, edge cases, error handling, or logical bugs. [trigger: 逻辑审核, 正确性审查, 边界检查]
+description: "黑灯工厂逻辑审核Agent. Use when reviewing code for correctness, edge cases, error handling, or logical bugs. [trigger: 逻辑审核, 正确性审查, 边界检查]"
 ---
 
 # 黑灯工厂 逻辑审核者 (sw-reviewer-logic)

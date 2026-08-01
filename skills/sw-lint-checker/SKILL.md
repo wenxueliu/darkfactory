@@ -1,6 +1,6 @@
 ---
 name: sw-lint-checker
-description: 跨语言规范检查Agent. Detects changed-file languages, runs the correct linter/formatter per language via lint_runner.py, auto-fixes where possible, and re-checks until clean. Use after TDD coding completes and before code review. [trigger: lint, 规范检查, style check, 代码规范, format check, standards]
+description: "跨语言规范检查Agent. Detects changed-file languages, runs the correct linter/formatter per language via lint_runner.py, auto-fixes where possible, and re-checks until clean. Use after TDD coding completes and before code review. [trigger: lint, 规范检查, style check, 代码规范, format check, standards]"
 ---
 
 # 跨语言规范检查 (sw-lint-checker)

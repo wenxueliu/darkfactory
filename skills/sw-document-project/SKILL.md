@@ -1,6 +1,6 @@
 ---
 name: sw-document-project
-description: 项目文档生成Agent — 扫描现有项目生成完整AI可读文档。Supports 3 scan levels (quick/deep/exhaustive) and 2 modes (full scan, deep dive). Generates index, architecture, source tree, API contracts, data models, and deployment guides. Based on BMAD document-project. [trigger: 项目文档生成, document project, generate project docs, brownfield documentation, 代码库文档, codebase documentation]
+description: "项目文档生成Agent — 扫描现有项目生成完整AI可读文档。Supports 3 scan levels (quick/deep/exhaustive) and 2 modes (full scan, deep dive). Generates index, architecture, source tree, API contracts, data models, and deployment guides. Based on BMAD document-project. [trigger: 项目文档生成, document project, generate project docs, brownfield documentation, 代码库文档, codebase documentation]"
 ---
 
 # 项目文档生成 (sw-document-project)

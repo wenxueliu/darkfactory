@@ -1,6 +1,6 @@
 ---
 name: sw-e2e-designer
-description: 黑灯工厂E2E测试设计Agent. Use when designing end-to-end integration tests covering functional, non-functional, compatibility, and custom-extended test scenarios across services. [trigger: E2E设计, 端到端测试, 集成测试设计, 跨服务测试, e2e test design]
+description: "黑灯工厂E2E测试设计Agent. Use when designing end-to-end integration tests covering functional, non-functional, compatibility, and custom-extended test scenarios across services. [trigger: E2E设计, 端到端测试, 集成测试设计, 跨服务测试, e2e test design]"
 ---
 
 # 黑灯工厂 E2E 测试设计者 (sw-e2e-designer)

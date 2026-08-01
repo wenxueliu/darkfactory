@@ -1,6 +1,6 @@
 ---
 name: sw-finishing-branch
-description: 分支收尾Agent. Use when implementation is complete, all tests pass, and you need to decide how to integrate the work — guides completion of development by presenting structured options for merge, PR, or cleanup. [trigger: 完成开发, 分支收尾, 合并, merge, PR, 提交代码, finish branch, complete development, 收尾]
+description: "分支收尾Agent. Use when implementation is complete, all tests pass, and you need to decide how to integrate the work — guides completion of development by presenting structured options for merge, PR, or cleanup. [trigger: 完成开发, 分支收尾, 合并, merge, PR, 提交代码, finish branch, complete development, 收尾]"
 ---
 
 # 黑灯工厂 分支收尾 (sw-finishing-branch)

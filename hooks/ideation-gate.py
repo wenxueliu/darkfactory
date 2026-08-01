@@ -37,7 +37,14 @@ SOURCE_CODE_PATTERNS = [
 ]
 
 # Tools monitored for source code writes
-MONITORED_TOOLS = {"Agent", "Write", "Edit"}
+MONITORED_TOOLS = {"Agent", "Write", "Edit", "apply_patch"}
+
+
+def patch_file_paths(command: str) -> list[str]:
+    """Extract targets from Codex's apply_patch command payload."""
+    return re.findall(
+        r"^\*\*\* (?:Add|Update|Delete) File:\s*(.+?)\s*$", command, re.MULTILINE
+    )
 
 
 def detect_project_root(start_dir: str) -> str:
@@ -208,6 +215,11 @@ def is_source_code_file(file_path: str) -> bool:
 
 def is_write_to_source_code(tool_name: str, tool_input: dict) -> bool:
     """Check if the tool call would write/edit a source code file."""
+    if tool_name == "apply_patch":
+        command = tool_input.get("command", "")
+        return isinstance(command, str) and any(
+            is_source_code_file(path) for path in patch_file_paths(command)
+        )
     if tool_name not in ("Write", "Edit"):
         return False
     file_path = tool_input.get("file_path", "")
@@ -278,10 +290,14 @@ def main() -> None:
                 or tool_input.get("skill")
                 or "implementation-agent"
             )
-    elif tool_name in ("Write", "Edit"):
+    elif tool_name in ("Write", "Edit", "apply_patch"):
         if is_write_to_source_code(tool_name, tool_input):
             needs_ideation = True
-            target_desc = tool_input.get("file_path", "source-file")
+            if tool_name == "apply_patch":
+                targets = patch_file_paths(tool_input.get("command", ""))
+                target_desc = ", ".join(targets) or "source-file"
+            else:
+                target_desc = tool_input.get("file_path", "source-file")
 
     if not needs_ideation:
         sys.exit(0)

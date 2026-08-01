@@ -1,6 +1,6 @@
 ---
 name: using-harness
-description: Use when starting any conversation in the Harness project — establishes the multi-agent skill system, agent hierarchy, and requires Skill tool invocation before ANY response including clarifying questions. [trigger: bootstrap, initialization, 黑灯工厂, harness workflow]
+description: "Use when starting any conversation in the Harness project — establishes the multi-agent skill system, agent hierarchy, and requires Skill tool invocation before ANY response including clarifying questions. [trigger: bootstrap, initialization, 黑灯工厂, harness workflow]"
 ---
 
 <SUBAGENT-STOP>

@@ -1,6 +1,6 @@
 ---
 name: sw-systematic-debugging
-description: 系统化调试技能。Use when encountering any bug, test failure, unexpected behavior, or performance issue — before proposing any fixes. 4-phase root cause investigation with iron law: no fixes without root cause first. [trigger: 调试, debugging, 报错, error, bug, test failure, 排查, 根因分析, root cause]
+description: "系统化调试技能。Use when encountering any bug, test failure, unexpected behavior, or performance issue — before proposing any fixes. 4-phase root cause investigation with iron law: no fixes without root cause first. [trigger: 调试, debugging, 报错, error, bug, test failure, 排查, 根因分析, root cause]"
 ---
 
 # 系统化调试 (sw-systematic-debugging)

@@ -1,6 +1,6 @@
 ---
 name: sw-strategic-advisor
-description: 战略技术顾问Agent. Read-only deep reasoning consultant for complex architecture, security, and performance decisions. Use after 3+ failed fix attempts, for unfamiliar patterns, or when multi-system tradeoffs need analysis. [trigger: 架构咨询, deep reasoning, strategic advice, architecture decision, security analysis, 技术决策]
+description: "战略技术顾问Agent. Read-only deep reasoning consultant for complex architecture, security, and performance decisions. Use after 3+ failed fix attempts, for unfamiliar patterns, or when multi-system tradeoffs need analysis. [trigger: 架构咨询, deep reasoning, strategic advice, architecture decision, security analysis, 技术决策]"
 ---
 
 # 黑灯工厂 战略技术顾问 (sw-strategic-advisor)

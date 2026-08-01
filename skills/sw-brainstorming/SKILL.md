@@ -1,7 +1,6 @@
 ---
 name: sw-brainstorming
-description: 头脑风暴设计Agent. Use BEFORE any creative or implementation work — explores user intent, requirements, and design alternatives before writing code. HARD-GATE: no implementation until design is approved. [trigger: 头脑风暴, brainstorming, 设计讨论, 新功能讨论, 方案设计, idea exploration, 需求探索, feature brainstorming]
-status: active
+description: "头脑风暴设计Agent. Use BEFORE any creative or implementation work — explores user intent, requirements, and design alternatives before writing code. HARD-GATE: no implementation until design is approved. [trigger: 头脑风暴, brainstorming, 设计讨论, 新功能讨论, 方案设计, idea exploration, 需求探索, feature brainstorming]"
 ---
 
 # 黑灯工厂 头脑风暴 (sw-brainstorming)

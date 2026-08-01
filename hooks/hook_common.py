@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -26,11 +27,58 @@ def read_input() -> dict[str, Any]:
 
 
 def tool_file_path(payload: dict[str, Any]) -> str:
+    paths = tool_file_paths(payload)
+    return paths[0] if paths else ""
+
+
+def tool_file_paths(payload: dict[str, Any]) -> list[str]:
+    """Return file targets from Claude file tools or a Codex apply_patch call."""
     tool_input = payload.get("tool_input", {})
     if not isinstance(tool_input, dict):
-        return ""
-    value = tool_input.get("file_path", tool_input.get("filePath", ""))
-    return value if isinstance(value, str) else ""
+        return []
+    value = tool_input.get(
+        "file_path", tool_input.get("filePath", tool_input.get("path", ""))
+    )
+    if isinstance(value, str) and value:
+        return [value]
+    if payload.get("tool_name") != "apply_patch":
+        return []
+    command = tool_input.get("command", "")
+    if not isinstance(command, str):
+        return []
+    paths: list[str] = []
+    for match in re.finditer(
+        r"^\*\*\* (?:Add|Update|Delete) File:\s*(.+?)\s*$", command, re.MULTILINE
+    ):
+        path = match.group(1)
+        if path not in paths:
+            paths.append(path)
+    return paths
+
+
+def patch_has_context(payload: dict[str, Any], file_path: str) -> bool:
+    """Whether a Codex Update File section proves knowledge of existing content."""
+    if payload.get("tool_name") != "apply_patch":
+        return False
+    tool_input = payload.get("tool_input", {})
+    if not isinstance(tool_input, dict):
+        return False
+    command = tool_input.get("command", "")
+    if not isinstance(command, str):
+        return False
+    header = f"*** Update File: {file_path}"
+    start = command.find(header)
+    if start < 0:
+        return False
+    body_start = command.find("\n", start)
+    if body_start < 0:
+        return False
+    next_header = command.find("\n*** ", body_start + 1)
+    body = command[body_start + 1:next_header if next_header >= 0 else len(command)]
+    return any(
+        line.startswith(" ") or (line.startswith("-") and not line.startswith("---"))
+        for line in body.splitlines()
+    )
 
 
 def resolve_file_path(file_path: str, cwd: str) -> Path:
@@ -65,15 +113,15 @@ def save_state(path: Path, state: dict[str, Any]) -> None:
 
 def emit_context(event_name: str, context: str) -> None:
     """Emit the platform-specific additional-context envelope."""
-    if os.environ.get("CLAUDE_PLUGIN_ROOT") and not os.environ.get("COPILOT_CLI"):
+    if os.environ.get("COPILOT_CLI"):
+        output = {"additionalContext": context}
+    else:
         output = {
             "hookSpecificOutput": {
                 "hookEventName": event_name,
                 "additionalContext": context,
             }
         }
-    else:
-        output = {"additionalContext": context}
     print(json.dumps(output, ensure_ascii=False))
 
 

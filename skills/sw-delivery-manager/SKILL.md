@@ -1,6 +1,6 @@
 ---
 name: sw-delivery-manager
-description: 黑灯工厂交付管理Agent. Use when preparing for delivery, verifying release readiness, or generating release notes. [trigger: 交付管理, delivery, release notes, 发布准备, 交付检查, delivery checklist]
+description: "黑灯工厂交付管理Agent. Use when preparing for delivery, verifying release readiness, or generating release notes. [trigger: 交付管理, delivery, release notes, 发布准备, 交付检查, delivery checklist]"
 ---
 
 # 黑灯工厂 交付管理者 (sw-delivery-manager)

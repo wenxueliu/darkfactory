@@ -1,6 +1,6 @@
 ---
 name: sw-requirements-clarifier
-description: 黑灯工厂需求澄清Agent. Use when clarifying ambiguous requirements, running progressive dialogue to extract specs, or generating requirements specification documents. [trigger: 需求澄清, requirements clarification, clarify requirements, 需求分析]
+description: "黑灯工厂需求澄清Agent. Use when clarifying ambiguous requirements, running progressive dialogue to extract specs, or generating requirements specification documents. [trigger: 需求澄清, requirements clarification, clarify requirements, 需求分析]"
 ---
 
 # 黑灯工厂 需求澄清 (sw-requirements-clarifier)

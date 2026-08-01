@@ -1,6 +1,6 @@
 ---
 name: sw-reviewer-security
-description: 黑灯工厂安全审核Agent. Use when reviewing code for security vulnerabilities, authentication issues, or data handling problems. [trigger: 安全审核, 漏洞扫描, 安全审查]
+description: "黑灯工厂安全审核Agent. Use when reviewing code for security vulnerabilities, authentication issues, or data handling problems. [trigger: 安全审核, 漏洞扫描, 安全审查]"
 ---
 
 # 黑灯工厂 安全审核者 (sw-reviewer-security)

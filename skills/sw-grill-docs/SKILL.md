@@ -1,6 +1,6 @@
 ---
 name: sw-grill-docs
-description: 文档对照质询Agent. Grills design or plan against the existing domain model (CONTEXT.md) and documented decisions (ADRs), sharpens terminology, stress-tests with concrete scenarios, cross-references with code, and updates documentation inline as decisions crystallize. Use in design and planning phases to ensure consistency with the project's language and architectural decisions. [trigger: 文档对照, grill docs, 文档质询, 术语审查, 文档一致性检查, design doc review, context consistency]
+description: "文档对照质询Agent. Grills design or plan against the existing domain model (CONTEXT.md) and documented decisions (ADRs), sharpens terminology, stress-tests with concrete scenarios, cross-references with code, and updates documentation inline as decisions crystallize. Use in design and planning phases to ensure consistency with the project's language and architectural decisions. [trigger: 文档对照, grill docs, 文档质询, 术语审查, 文档一致性检查, design doc review, context consistency]"
 ---
 
 # 黑灯工厂 文档对照质询 (sw-grill-docs)

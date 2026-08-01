@@ -1,6 +1,6 @@
 ---
 name: sw-codebase-explorer
-description: 代码库内部搜索Agent. Internal codebase search specialist with intent analysis and structured results. Use for finding files, patterns, implementations across the codebase. [trigger: 代码搜索, codebase search, find in code, where is, locate implementation, 查找实现]
+description: "代码库内部搜索Agent. Internal codebase search specialist with intent analysis and structured results. Use for finding files, patterns, implementations across the codebase. [trigger: 代码搜索, codebase search, find in code, where is, locate implementation, 查找实现]"
 ---
 
 # 代码库探索者 (sw-codebase-explorer)

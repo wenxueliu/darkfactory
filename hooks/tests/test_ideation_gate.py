@@ -270,6 +270,24 @@ def test_is_source_code_file_javascript():
     assert ideation_gate.is_source_code_file("/foo/app.tsx") is True
 
 
+def test_codex_apply_patch_to_source_requires_ideation():
+    tool_input = {
+        "command": """*** Begin Patch
+*** Update File: src/app.py
+*** End Patch"""
+    }
+    assert ideation_gate.is_write_to_source_code("apply_patch", tool_input) is True
+
+
+def test_codex_apply_patch_to_test_is_exempt():
+    tool_input = {
+        "command": """*** Begin Patch
+*** Add File: tests/test_app.py
+*** End Patch"""
+    }
+    assert ideation_gate.is_write_to_source_code("apply_patch", tool_input) is False
+
+
 # --- is_implementation_agent tests ---
 
 def test_is_implementation_agent_tdd():

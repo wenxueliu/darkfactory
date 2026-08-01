@@ -1,6 +1,6 @@
 ---
 name: sw-plan-reviewer
-description: 计划审查Agent. Practical work plan reviewer -- blocker-finder, not perfectionist. Verifies plan references exist and tasks are executable. Use with plan file path. [trigger: plan review, executability check, 计划审查, 可执行性检查]
+description: "计划审查Agent. Practical work plan reviewer -- blocker-finder, not perfectionist. Verifies plan references exist and tasks are executable. Use with plan file path. [trigger: plan review, executability check, 计划审查, 可执行性检查]"
 ---
 
 # 黑灯工厂 计划审查者 (sw-plan-reviewer)

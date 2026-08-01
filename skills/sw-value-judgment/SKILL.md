@@ -1,6 +1,6 @@
 ---
 name: sw-value-judgment
-description: 黑灯工厂需求价值判断Agent. Use when evaluating if a requirement or feature is worth building, assessing ROI, priority, or strategic alignment. [trigger: 需求价值, ROI评估, 优先级判断, 值不值得做]
+description: "黑灯工厂需求价值判断Agent. Use when evaluating if a requirement or feature is worth building, assessing ROI, priority, or strategic alignment. [trigger: 需求价值, ROI评估, 优先级判断, 值不值得做]"
 ---
 
 # 黑灯工厂 需求价值判断者 (sw-value-judgment)

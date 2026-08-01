@@ -1,6 +1,6 @@
 ---
 name: sw-media-interpreter
-description: 媒体文件解读Agent. Interprets PDFs, images, diagrams that require analysis beyond raw text. Use for extracting information from documents, describing visual content. [trigger: PDF解读, 图片分析, diagram interpretation, media analysis, 图表解读]
+description: "媒体文件解读Agent. Interprets PDFs, images, diagrams that require analysis beyond raw text. Use for extracting information from documents, describing visual content. [trigger: PDF解读, 图片分析, diagram interpretation, media analysis, 图表解读]"
 ---
 
 # 黑灯工厂 媒体文件解读 (sw-media-interpreter)

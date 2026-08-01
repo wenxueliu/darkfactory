@@ -1,16 +1,6 @@
 ---
 name: sw-multi-agent-consultation
-description: |
-  Orchestrates a peer-PK multi-agent debate via kimi-webbridge. Three or more
-  AI agents (ChatGPT, DeepSeek, Gemini, ...) act as **peers**: each proposes,
-  then they critique each other across multiple rounds until convergence on a
-  final plan. **The agent (Claude) is the scheduler** — it drives the debate by
-  calling the CLI one step at a time, observing state, and deciding what to ask
-  next. Total AI round-trips are capped (default 30). Triggers:
-  "ask ChatGPT and DeepSeek", "compare 3 AIs", "multi-agent review",
-  "get third-party perspective", "convergence discussion", "三方评审", "多 AI 协作",
-  "multi-agent debate", "peer PK".
-type: workflow
+description: "Orchestrates a peer-PK debate among three or more AI agents via kimi-webbridge, with proposal, mutual critique, convergence, and a capped round-trip budget. Use for multi-agent reviews, third-party perspectives, convergence discussions, or requests such as ask ChatGPT and DeepSeek, compare 3 AIs, 三方评审, 多 AI 协作, multi-agent debate, or peer PK."
 ---
 
 # Multi-Agent Consultation: Peer-PK Debate

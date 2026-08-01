@@ -1,6 +1,6 @@
 ---
 name: sw-service-designer
-description: 黑灯工厂服务设计Agent. Use when designing per-service architecture, API contracts, UT test cases, and API test designs for backend, frontend, BFF, or data-pipeline services. [trigger: 服务设计, 详细设计, API设计, 测试用例设计, service design, per-service design]
+description: "黑灯工厂服务设计Agent. Use when designing per-service architecture, API contracts, UT test cases, and API test designs for backend, frontend, BFF, or data-pipeline services. [trigger: 服务设计, 详细设计, API设计, 测试用例设计, service design, per-service design]"
 ---
 
 # 黑灯工厂 服务设计者 (sw-service-designer)

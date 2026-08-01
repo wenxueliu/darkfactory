@@ -1,6 +1,6 @@
 ---
 name: sw-verification-before-completion
-description: 完成前验证。Use when about to claim work is complete, fixed, or passing — before committing, creating PRs, or marking tasks DONE. Requires running verification commands and confirming output before making any success claims. Evidence before assertions, always. [trigger: 验证, verification, 完成, complete, done, fixed, passing, 提交, commit, PR]
+description: "完成前验证。Use when about to claim work is complete, fixed, or passing — before committing, creating PRs, or marking tasks DONE. Requires running verification commands and confirming output before making any success claims. Evidence before assertions, always. [trigger: 验证, verification, 完成, complete, done, fixed, passing, 提交, commit, PR]"
 ---
 
 # 完成前验证 (sw-verification-before-completion)

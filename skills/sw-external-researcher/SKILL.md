@@ -1,6 +1,6 @@
 ---
 name: sw-external-researcher
-description: 外部文档/代码研究Agent. External documentation and open-source code research with GitHub permalink evidence. Use for finding official docs, library internals, best practices, or OSS usage examples. [trigger: 外部搜索, 文档查询, external search, library docs, how to use, GitHub search, 开源研究]
+description: "外部文档/代码研究Agent. External documentation and open-source code research with GitHub permalink evidence. Use for finding official docs, library internals, best practices, or OSS usage examples. [trigger: 外部搜索, 文档查询, external search, library docs, how to use, GitHub search, 开源研究]"
 ---
 
 # 黑灯工厂 外部研究员 (sw-external-researcher)

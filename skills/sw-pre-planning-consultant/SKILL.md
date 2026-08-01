@@ -1,6 +1,6 @@
 ---
 name: sw-pre-planning-consultant
-description: 预规划分析Agent. Pre-planning consultant that classifies intent, detects ambiguities, identifies AI-slop risks before plan generation. Called automatically by sw-strategic-planner before planning. [trigger: pre-planning, intent analysis, scope clarification, AI slop prevention, 预规划, 需求分析]
+description: "预规划分析Agent. Pre-planning consultant that classifies intent, detects ambiguities, identifies AI-slop risks before plan generation. Called automatically by sw-strategic-planner before planning. [trigger: pre-planning, intent analysis, scope clarification, AI slop prevention, 预规划, 需求分析]"
 ---
 
 # 黑灯工厂 预规划顾问 (sw-pre-planning-consultant)

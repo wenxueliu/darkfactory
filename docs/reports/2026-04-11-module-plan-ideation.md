@@ -652,6 +652,6 @@ updated: '2026-04-11'
 
 ---
 
-**Your plan is complete at `skills/reports/2026-04-11-module-plan-ideation.md`. The build roadmap suggests starting with **sw-controller** — shall I invoke **Build an Agent (BA)** now to start building it? I'll pass the plan document as context so the builder understands the bigger picture.**
+**Your plan is complete at `docs/reports/2026-04-11-module-plan-ideation.md`. The build roadmap suggests starting with **sw-controller** — shall I invoke **Build an Agent (BA)** now to start building it? I'll pass the plan document as context so the builder understands the bigger picture.**
 
 When all skills are built, return to **Create Module (CM)** to scaffold the module infrastructure.

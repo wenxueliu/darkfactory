@@ -1,6 +1,6 @@
 ---
 name: sw-reviewer-context
-description: 黑灯工厂上下文挖掘审核Agent. Use when mining context from git history, GitHub issues/PRs, communication channels, and codebase cross-references to find missed requirements or background knowledge. [trigger: 上下文挖掘, 背景搜索, context mining, 遗漏需求发现]
+description: "黑灯工厂上下文挖掘审核Agent. Use when mining context from git history, GitHub issues/PRs, communication channels, and codebase cross-references to find missed requirements or background knowledge. [trigger: 上下文挖掘, 背景搜索, context mining, 遗漏需求发现]"
 ---
 
 # 黑灯工厂 上下文挖掘者 (sw-reviewer-context)

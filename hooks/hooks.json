@@ -7,7 +7,9 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.py\"",
-            "async": false
+            "commandWindows": "py -3 \"%CLAUDE_PLUGIN_ROOT%\\hooks\\session-start.py\"",
+            "statusMessage": "Loading Harness context",
+            "additionalContextLimit": 5000
           }
         ]
       }
@@ -19,8 +21,8 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/delegation-reminder.py\"",
-            "async": true,
-            "timeout": 5000
+            "commandWindows": "py -3 \"%CLAUDE_PLUGIN_ROOT%\\hooks\\delegation-reminder.py\"",
+            "timeout": 5
           }
         ],
         "description": "Remind orchestrator agents to delegate work to specialized subagents"
@@ -31,8 +33,9 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/rules-injector.py\"",
-            "async": true,
-            "timeout": 10000
+            "commandWindows": "py -3 \"%CLAUDE_PLUGIN_ROOT%\\hooks\\rules-injector.py\"",
+            "timeout": 10,
+            "additionalContextLimit": 5000
           }
         ],
         "description": "Inject nearby project rules (AGENTS.md/CLAUDE.md) into tool output"
@@ -43,8 +46,8 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/write-safety-guard-read.py\"",
-            "async": true,
-            "timeout": 3000
+            "commandWindows": "py -3 \"%CLAUDE_PLUGIN_ROOT%\\hooks\\write-safety-guard-read.py\"",
+            "timeout": 3
           }
         ],
         "description": "Track file reads for write-safety-guard"
@@ -52,25 +55,27 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|apply_patch",
         "hooks": [
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/write-safety-guard.py\"",
-            "async": false,
-            "timeout": 5000
+            "commandWindows": "py -3 \"%CLAUDE_PLUGIN_ROOT%\\hooks\\write-safety-guard.py\"",
+            "timeout": 5,
+            "statusMessage": "Checking Harness write policy"
           }
         ],
         "description": "Block writes to existing files that haven't been read this session"
       },
       {
-        "matcher": "Agent|Write|Edit",
+        "matcher": "Agent|Write|Edit|apply_patch",
         "hooks": [
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/ideation-gate.py\"",
-            "async": false,
-            "timeout": 5000
+            "commandWindows": "py -3 \"%CLAUDE_PLUGIN_ROOT%\\hooks\\ideation-gate.py\"",
+            "timeout": 5,
+            "statusMessage": "Checking Harness ideation gate"
           }
         ],
         "description": "Block ANY code-writing (Agent delegation or direct Write/Edit) before ideation phase is complete"
@@ -83,8 +88,8 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/hook-cleanup.py\"",
-            "async": true,
-            "timeout": 3000
+            "commandWindows": "py -3 \"%CLAUDE_PLUGIN_ROOT%\\hooks\\hook-cleanup.py\"",
+            "timeout": 3
           }
         ],
         "description": "Clear per-session hook state before context compaction"
@@ -97,8 +102,9 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-clarifier.py\"",
-            "async": false,
-            "timeout": 3000
+            "commandWindows": "py -3 \"%CLAUDE_PLUGIN_ROOT%\\hooks\\user-prompt-clarifier.py\"",
+            "timeout": 3,
+            "additionalContextLimit": 3000
           }
         ],
         "description": "Soft-nudge user toward sw-requirements-clarifier when implementation intent is detected without an in-progress requirement"
@@ -111,8 +117,8 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session-end-check.py\"",
-            "async": false,
-            "timeout": 5000
+            "commandWindows": "py -3 \"%CLAUDE_PLUGIN_ROOT%\\hooks\\session-end-check.py\"",
+            "timeout": 3
           }
         ],
         "description": "Warn about leftover in-progress tasks and uncommitted worktrees at session end"

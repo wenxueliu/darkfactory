@@ -1,6 +1,6 @@
 ---
 name: sw-knowledge-agent
-description: 黑灯工厂知识库Agent. Use when querying project knowledge base, updating design decisions, or maintaining institutional memory. [trigger: 知识库, 知识查询, 设计决策记录]
+description: "黑灯工厂知识库Agent. Use when querying project knowledge base, updating design decisions, or maintaining institutional memory. [trigger: 知识库, 知识查询, 设计决策记录]"
 ---
 
 # 黑灯工厂 知识库Agent (sw-knowledge-agent)

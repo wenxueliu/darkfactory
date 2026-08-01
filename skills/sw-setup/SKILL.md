@@ -1,6 +1,6 @@
 ---
 name: sw-setup
-description: 黑灯工厂模块安装配置. Use when installing or updating the 黑灯工厂 module, configuring worktree directories, or initializing shared memory structure. [trigger: 安装黑灯工厂, 配置hw, 初始化]
+description: "黑灯工厂模块安装配置. Use when installing or updating the 黑灯工厂 module, configuring worktree directories, or initializing shared memory structure. [trigger: 安装黑灯工厂, 配置hw, 初始化]"
 ---
 
 # 黑灯工厂 模块安装 (sw-setup)

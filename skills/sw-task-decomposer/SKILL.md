@@ -1,6 +1,6 @@
 ---
 name: sw-task-decomposer
-description: 黑灯工厂任务拆分Agent. Use when decomposing designs into executable tasks, building dependency graphs, or generating tasks.yaml. [trigger: 任务拆分, task decomposition, 任务分解, 拆分任务, DAG, tasks.yaml]
+description: "黑灯工厂任务拆分Agent. Use when decomposing designs into executable tasks, building dependency graphs, or generating tasks.yaml. [trigger: 任务拆分, task decomposition, 任务分解, 拆分任务, DAG, tasks.yaml]"
 ---
 
 # 黑灯工厂 任务拆分者 (sw-task-decomposer)

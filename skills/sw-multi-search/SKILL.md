@@ -1,6 +1,6 @@
 ---
 name: sw-multi-search
-description: 多源搜索编排器. Multi-source search orchestrator that fans out user queries in parallel to sw-codebase-explorer (internal code), sw-external-researcher (docs/OSS), and sw-media-interpreter (PDF/image/diagram), then aggregates and ranks results. Use when a question needs cross-source evidence or the source of truth is unknown. [trigger: 多源搜索, multi-source, cross-reference, 跨源检索, 搜索全部, search all, comprehensive search]
+description: "多源搜索编排器. Multi-source search orchestrator that fans out user queries in parallel to sw-codebase-explorer (internal code), sw-external-researcher (docs/OSS), and sw-media-interpreter (PDF/image/diagram), then aggregates and ranks results. Use when a question needs cross-source evidence or the source of truth is unknown. [trigger: 多源搜索, multi-source, cross-reference, 跨源检索, 搜索全部, search all, comprehensive search]"
 ---
 
 # 多源搜索编排 (sw-multi-search)

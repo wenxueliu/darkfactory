@@ -1,6 +1,6 @@
 ---
 name: sw-receiving-review
-description: 代码审查反馈处理Agent. Use when receiving code review feedback before implementing suggestions — requires technical verification, not performative agreement or blind implementation. Especially when feedback seems unclear or technically questionable. [trigger: 接收审查, 代码审查反馈, 审查意见, review feedback, code review response, 处理review, receiving review]
+description: "代码审查反馈处理Agent. Use when receiving code review feedback before implementing suggestions — requires technical verification, not performative agreement or blind implementation. Especially when feedback seems unclear or technically questionable. [trigger: 接收审查, 代码审查反馈, 审查意见, review feedback, code review response, 处理review, receiving review]"
 ---
 
 # 黑灯工厂 审查反馈处理 (sw-receiving-review)

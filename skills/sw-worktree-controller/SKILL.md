@@ -1,6 +1,6 @@
 ---
 name: sw-worktree-controller
-description: 黑灯工厂Worktree协调Agent. Use when coordinating a single task's TDD execution, code review, or quality gates within an isolated worktree. [trigger: worktree执行, 任务开发, 单任务协调]
+description: "黑灯工厂Worktree协调Agent. Use when coordinating a single task's TDD execution, code review, or quality gates within an isolated worktree. [trigger: worktree执行, 任务开发, 单任务协调]"
 ---
 
 # 黑灯工厂 Worktree 控制器 (sw-worktree-controller)

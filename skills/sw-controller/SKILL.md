@@ -1,6 +1,6 @@
 ---
 name: sw-controller
-description: 黑灯工厂总控协调Agent. Use when coordinating enterprise development flow from requirements to delivery, managing parallel worktrees, or orchestrating multi-agent review. [trigger: 黑灯工厂, 协调, 总控, 启动开发流程]
+description: "黑灯工厂总控协调Agent. Use when coordinating enterprise development flow from requirements to delivery, managing parallel worktrees, or orchestrating multi-agent review. [trigger: 黑灯工厂, 协调, 总控, 启动开发流程]"
 ---
 
 # 黑灯工厂总控 (sw-controller)

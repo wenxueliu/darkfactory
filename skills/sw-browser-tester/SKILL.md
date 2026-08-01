@@ -1,6 +1,6 @@
 ---
 name: sw-browser-tester
-description: 黑灯工厂浏览器E2E测试Agent. Use when executing L3 browser-based end-to-end tests, verifying user journeys in real browsers, or running Playwright-driven E2E scenarios. [trigger: 浏览器测试, 浏览器E2E, browser test, e2e test execution, Playwright, 前端自动化测试]
+description: "黑灯工厂浏览器E2E测试Agent. Use when executing L3 browser-based end-to-end tests, verifying user journeys in real browsers, or running Playwright-driven E2E scenarios. [trigger: 浏览器测试, 浏览器E2E, browser test, e2e test execution, Playwright, 前端自动化测试]"
 ---
 
 # 黑灯工厂 浏览器测试者 (sw-browser-tester)
