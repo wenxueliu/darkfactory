@@ -1,0 +1,38 @@
+{
+  "skill_name": "works",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/works。请根据仓库根目录 requirement.md 修改这个多模块 Maven 项目。当前工作区有我未提交的改动，不要覆盖。",
+      "expected_output": "保留用户改动，建立六阶段 gated 计划，按 Req ID 纵向 TDD，并使用 Maven 模块依赖验证。",
+      "files": [],
+      "expectations": [
+        "记录修改前 git 工作区基线且不覆盖无关改动",
+        "每个需求切片都有有效 Red、Green 和局部回归证据",
+        "最终验证考虑多模块依赖而非只运行单模块 compile"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/works。原项目 mvn test 本来就有一个与本需求无关的失败，请实现 requirement.md，不要顺手修那个旧问题。",
+      "expected_output": "正确分类 baseline failure，在证据充分且可隔离时继续，最终明确披露未解决旧失败。",
+      "files": [],
+      "expectations": [
+        "没有把修改前已有失败归因于本次实现",
+        "没有未经授权修改无关生产代码或旧失败",
+        "最终报告披露 baseline failure 和隔离依据"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/works。requirement.md 有四个功能点，请全自动完成。中途测试第一次失败是测试 fixture 配错了。",
+      "expected_output": "不把 fixture 错误算作 Red，修正测试基础设施后逐切片推进，后半段仍完成测试和验收。",
+      "files": [],
+      "expectations": [
+        "fixture、编译或依赖错误被标为 invalid-red",
+        "四个 Req ID 均有独立追踪和验证证据",
+        "完成声明由完整验收和 planning gate 支撑"
+      ]
+    }
+  ]
+}

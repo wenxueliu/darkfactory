@@ -1,400 +1,142 @@
 ---
 name: works
 description: >
-  存量代码影响范围分析&修改点精准识别Skill。当用户输入 /works 时触发。
-
-  【输入】
-  - 代码仓：本地 Git 仓库目录（通过 pom.xml 识别为 Maven Java 项目）
-  - 需求文档：requirement.md（位于代码仓根目录）
-
-  【输出】
-  - 直接修改已有代码文件，在已有类的方法中实现需求指定的功能
-  - 所有功能测试通过
-  - 编译验证通过
-  - **测试文件已提交到代码仓**（强制交付物，不包括实现代码）
-
-  【触发条件】
-  - 用户输入 /works
-  - 需要对 Java Maven 项目进行功能增强
-  - 需要复用已有 Service API 实现功能
-
-  【注意事项】
-  - 执行过程完全无人值守，不得需要人工交互
-  - 使用 planning-with-files 管理任务进度
-  - **TDD 是强制流程**：每个功能必须完成 Red-Green 循环并产出测试文件
-  - **跳过 TDD 即任务未完成**：不得以"赶进度"为由跳过测试编写
-  - 存量保护优先：先对存量代码补充用例，再开始新功能 TDD
-  - 存量用例不通过，不得修改存量代码
-  - 新功能用例不通过，不得进入下一功能
-  - 跨平台兼容：路径用正斜杠 /，不得硬编码 Windows 路径
+  存量 Java/Maven 代码的需求落地与安全修改 skill。用户输入 /works，或要求依据
+  requirement.md 在既有 Maven 项目中增强功能、复用已有 Service API、分析影响范围并完成
+  测试验证时使用。以 planning-with-files 保存长任务状态，按可观察行为执行纵向 TDD 切片，
+  保护已有工作区改动，并以可复现的测试证据而不是口头声明作为完成条件。
 ---
 
-# 存量代码影响范围分析&修改点精准识别
-
-> **输入**：代码仓目录 + 需求文档 requirement.md
-> **输出**：直接修改已有文件实现 requirement.md 中指定的功能
-> **执行**：完全无人值守，自动完成
-> **质量门禁**：存量用例通过 + 新功能测试通过 + 编译通过
-
-## 核心原则（必须严格遵守）
-
-1. **需求驱动**：所有业务规则从 requirement.md 读取，技能本身不硬编码任何业务逻辑
-2. **planning 文件管理**：使用 task_plan.md、findings.md、progress.md 管理任务进度
-3. **存量保护优先**：
-   - 先分析需求修改点
-   - 先对存量代码补充测试用例
-   - 存量用例通过后，再开始新功能 TDD
-   - 存量用例不通过，不得修改存量代码（说明存量代码有问题，需先修复存量测试）
-4. **TDD 流程（强制）**：使用 `tdd` skill 实现 TDD 循环，每个功能必须完成 Red-Green 循环并产出测试文件
-5. **存量修改优先**：在已有类的方法中进行逻辑修改，而非仅新建类
-6. **复用优先**：直接调用已有 Service 方法，禁止复制已有 API 的实现代码
-7. **向后兼容**：修改已有方法时，原有调用方不受影响
-8. **无人值守**：所有步骤自动执行，不得需要人工交互
-
-## 工作流
-
-### 存量保护工作流
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Step 1: 分析修改点                                                  │
-│     - 解析 requirement.md                                            │
-│     - 识别需要修改的存量代码                                          │
-│     - 识别需要复用的已有 API                                          │
-├─────────────────────────────────────────────────────────────────────┤
-│  Step 2: 存量代码测试（门禁）                                         │
-│     - 对需要复用的存量代码补充测试用例                                │
-│     - 运行测试：mvn test -Dtest={测试类}                              │
-│     - 交付物：测试文件 + 测试运行日志                                 │
-│     ⚠️ 存量测试通过是进入新功能开发的前置条件                          │
-├─────────────────────────────────────────────────────────────────────┤
-│  Step 3: 新功能 TDD（强制，每功能必完成）                             │
-│     - Red: 写失败的测试，验证：mvn test → 失败                        │
-│     - Green: 实现功能，验证：mvn test → 通过                          │
-│     - 回归: mvn test 确保存量未破坏                                   │
-│     交付物：测试文件路径 + mvn test 输出日志                          │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-## 执行流程
-
-### Phase 1: 初始化规划文件
-
-**创建 task_plan.md**：
-
-```markdown
-# 任务计划
-
-## 目标
-基于 requirement.md 实现所有功能增强，存量用例通过，新功能测试通过
-
-## 阶段
-
-### Phase 1: 项目分析
-**Status:** pending
-**前置条件**: 无
-**产出**: task_plan.md, findings.md, progress.md
-
-### Phase 2: 修改点分析
-**Status:** pending
-**前置条件**: Phase 1 完成
-**产出**: findings.md（完整修改点分析）
-**门禁**: 必须识别所有需要修改和复用的存量代码
-
-### Phase 3: 存量用例补充（门禁）
-**Status:** pending
-**前置条件**: Phase 2 完成
-**产出**: 
-- 存量测试文件：src/test/java/.../*{存量类}Test.java
-- mvn test 输出日志证明存量测试通过
-**门禁**: 存量测试通过才可进入 Phase 4
-
-### Phase 4: 新功能 TDD（门禁）
-**Status:** pending
-**前置条件**: Phase 3 存量测试全部通过
-**产出**: 
-- 每个功能的测试文件：src/test/java/.../*{功能}Test.java
-- 每个功能的 Red-Green-回归 测试日志
-**门禁**: 每个功能完成 Red-Green 循环并测试通过才可进入 Phase 5
-
-### Phase 5: 集成测试验证
-**Status:** pending
-**前置条件**: Phase 4 所有功能 TDD 完成
-**产出**: mvn test 输出日志（所有测试通过）
-**门禁**: 所有测试通过才可进入 Phase 6
-
-### Phase 6: 编译验证
-**Status:** pending
-**前置条件**: Phase 5 集成测试通过
-**产出**: mvn compile 输出日志
-**门禁**: 编译成功才算任务完成
-
-## Next Step
-初始化 task_plan.md
-```
+# Works
 
-**创建 findings.md**：
-
-```markdown
-# 研究发现
+在存量仓库中完成 `requirement.md`，同时把误改范围和未验证声明降到最低。模型容易在长任务后段急于实现或省略验证，因此所有推进依据都写入磁盘，并由命令退出码和证据文件判定，而不是依赖对话记忆。
 
-## 项目结构
-- 项目根目录：
-- 模块结构：
-- Controller 位置：
-- Service 位置：
-- Model 位置：
+## Run contract
 
-## 修改点分析
-（根据 requirement.md 动态填充）
+- 自动执行需求明确且可逆的仓库内操作；不得覆盖、回滚或格式化用户的无关改动。
+- 不猜测业务规则。仅当关键预期无法从需求、公共接口、已有测试或调用方推导时才阻塞并报告。
+- 优先使用现有扩展点和 Service API，但不复制已有实现。新增独立职责、数据契约或适配边界时可以新增类型，并在 `findings.md` 记录理由。
+- 测试文件必须进入最终交付 diff。除非用户明确授权，不执行 `git commit`、push 或其他发布操作。
+- 只把实际运行且退出码符合预期的命令标记为通过；不得根据代码外观推断测试或编译成功。
+- `tdd` skill 可用时读取并遵循它。本 skill 的无人值守规则覆盖其中的 seam 人工确认要求：从需求和现有公共接口选择最窄 seam，并记录依据；不可推导时才询问用户。
 
-## 存量代码分析
-（需要复用和修改的存量代码）
+## 1. Preconditions and persistent plan
 
-## 新功能分析
-（需要实现的新功能）
-```
+1. 确认仓库、`requirement.md`、Git 状态和构建入口。优先 `./mvnw`，其次 `mvn`；读取 CI、README、父 POM、模块、profile、Surefire/Failsafe、Maven Enforcer、toolchains、`.java-version` 或 `.sdkmanrc`，不要擅自设置 `JAVA_HOME`。
+2. 记录 `git status --short` 作为修改前基线；已有改动属于用户，不得覆盖。
+3. 初始化隔离的 planning-with-files gated 会话；若当前环境不支持硬停止门禁，则保留相同文件协议并把 gate 视为 advisory：
 
-**创建 progress.md**：
+   ```bash
+   sh <planning-with-files>/scripts/init-session.sh --gated "works-<requirement-slug>"
+   ```
 
-```markdown
-# 进度日志
+4. 启用结构化注入：在计划目录 `.mode` 中保留 `autonomous gate` 并加入 `inject-smart`。计划确认后运行 `attest-plan.sh`。若计划发生有意变更，更新后重新 attestation。
+   - 记录并固定活动 `PLAN_ID`；执行目录可能漂移时同时设置 `PWF_PLAN_ROOT` 为项目根绝对路径。
+   - `task_plan.md` 的任何状态、Next Step 或决策修改都会使旧 attestation 失效；在阶段边界批量修改计划，随后立即重新运行 `attest-plan.sh`。切片内高频细节只写 `findings.md`、`progress.md` 和 ledger。
+5. 使用 [references/plan-contract.md](references/plan-contract.md) 填写唯一的六阶段计划。`task_plan.md` 只保存目标、状态、门禁和下一动作；分析写入 `findings.md`；命令摘要写入 `progress.md`；原始输出保存到计划目录下的 `logs/`。
 
-## 会话记录
-- 初始化完成
-```
+### Planning ownership
 
-**标记 Phase 1 完成**，更新 Next Step。
+- 主代理是 `task_plan.md`、`progress.md` 和需求追踪矩阵的唯一写入者。
+- 子代理优先承担边界清晰的只读探索、测试诊断或独立审查；也可实现单个纵向切片，但必须拥有互不重叠的文件范围和客观验收条件。每个子代理写自己的 ledger，完成时返回 [references/handoff.md](references/handoff.md) 格式的交接包。
+- 交接包引用文件和日志路径，不复制大段源码或输出。主代理验证后才把结论合并进计划。
+- 每完成一个阶段、每次失败和每次策略改变都立即落盘。连续两次搜索/浏览后，把关键发现写入 `findings.md`。
+- 上下文压缩或恢复后，先读取活动计划、`findings.md`、`progress.md` 和最新 handoff，再执行 `session-catchup.py`；通过“五问重启检查”后才继续。
 
-### Phase 2: 分析项目结构
+## 2. Baseline gate
 
-1. **定位项目根目录**：
-   - 扫描当前目录，查找包含 `pom.xml` 的目录
-   - 设置 `JAVA_HOME` 环境变量
+1. 运行项目原有的最小可信测试命令；若代价可接受，再运行完整基线。保存命令、退出码、测试数量和日志路径。
+2. 分类失败，禁止把所有失败都解释为生产代码缺陷：
 
-2. **分析模块结构**：
-   - 读取根目录 `pom.xml`，获取 `<module>` 列表
-   - 识别 Controller、Service、ServiceImpl、Model 所在模块
+   | 失败类型 | 处理 |
+   |---|---|
+   | 修改前已有测试失败 | 记录 baseline failure；若与需求无关，可隔离后继续，但最终明确披露；若相关则阻塞 |
+   | 新 characterization test 失败 | 先审查测试预期、fixture 和 seam；不能据此擅自修复生产代码 |
+   | 本次 diff 引入失败 | 回到当前 TDD 切片修复 |
+   | 环境、依赖或配置失败 | 诊断基础设施，不将其记为 Red，也不声称功能失败 |
 
-3. **识别测试目录**：
-   - 查找 `src/test` 目录结构
-   - 确认测试框架（如 JUnit、TestNG）
-   - 确认测试配置文件位置
+3. 本阶段只建立修改前原有测试基线；此时不要在尚未完成影响分析的 seam 上提前编写 characterization test。
 
-4. **记录发现到 findings.md**：
+## 3. Impact map
 
-```markdown
-## 项目结构
-- 项目根目录：{path}
-- 模块结构：{modules}
-- Controller 位置：{controllerModule}
-- Service 位置：{serviceModule}
-- Model 位置：{modelModule}
-- 测试目录：{testPath}
-- 测试框架：{framework}
-```
+解析每条 requirement，并在 `findings.md` 建立追踪矩阵：
 
-### Phase 3: 修改点分析
+| Req ID | 可观察行为 | 入口/seam | 候选符号 | 直接调用方 | 配置/数据影响 | 测试 | 风险 |
+|---|---|---|---|---|---|---|---|
 
-**读取 requirement.md**，解析所有功能点：
+通过符号搜索、调用方、实现类、配置、序列化、数据库迁移和已有测试交叉验证候选修改点。不要声称识别了不可证明的“全部影响”；记录已覆盖的直接依赖和无法静态确认的反射、SPI、动态配置等风险。
 
-对于每个功能点，提取到 findings.md：
+开始实现前检查：
 
-```markdown
-## 修改点分析
+- 每条 requirement 都有可观察行为和验收测试位置。
+- 候选修改符合现有架构；新增类型有明确的新职责。
+- 明确 IN/OUT scope、兼容性风险和回滚面。
+- 计划的下一动作精确到一个纵向切片，而不是“一次实现所有功能”。
 
-### 功能 {n}: {名称}
-- **业务描述**: {描述}
-- **需要修改的存量代码**:
-  - {文件1}:{方法1}
-  - {文件2}:{方法2}
-- **需要复用的已有 API**:
-  - {service}.{method}
-  - {service}.{method}
-- **需要新增的代码**:
-  - {新增内容}
-```
+影响图确定后、生产代码修改前，仅为“将被修改且缺少行为保护”的公共 seam 增加 characterization test，并确认它在修改前通过。仅被调用但行为不变的 API 不强制补测试。
 
-**识别存量修改点**：
+## 4. Vertical TDD loop
 
-1. **分析哪些存量方法会被修改**
-2. **分析哪些存量方法会被调用（复用）**
-3. **记录到 findings.md**：
+一次只处理一个最小行为切片：
 
-```markdown
-## 存量代码分析
+1. **Orient**：重读计划的 Goal、Current Phase、Next Step，以及矩阵中当前 Req ID。
+2. **Red**：通过公共 seam 写一个行为测试。运行最窄测试命令，确认失败来自预期断言且能因目标实现而转绿。编译、fixture、依赖或配置错误不是有效 Red。
+3. **Green**：只实现使当前测试通过的最小改动；复用现有 API，避免顺手重构和超出 scope 的修复。
+4. **Local regression**：运行当前测试、相关 characterization tests 和受影响模块测试。多模块 Maven 默认考虑 `-pl <module> -am`。
+5. **Evidence**：把 Red/Green/回归的命令、退出码、测试数和日志路径写入 `progress.md`；更新追踪矩阵。
+6. **Review**：检查 `git diff --check`、本次 diff 和用户原有改动边界。满足当前切片验收条件后才进入下一切片。
 
-### 存量修改点
-| 存量文件 | 存量方法 | 修改类型 | 影响分析 |
-|---------|---------|---------|---------|
-| XxxServiceImpl | add() | 修改逻辑 | 可能影响现有调用方 |
-| YyyServiceImpl | list() | 新增字段 | 向后兼容 |
+当运行环境支持子代理时，重要切片使用隔离验收：实现者写 handoff 后，由 fresh verifier 仅根据 requirement、diff 和磁盘证据返回 `PASS`、`CHANGES_REQUIRED` 或 `BLOCKED`。主代理仍需复跑关键测试；子代理的 DONE/PASS 不是完成证据。为避免共享上下文放大实现偏见，verifier 不继承实现过程，只读取最小 handoff 和引用制品。
 
-### 存量复用点
-| 存量文件 | 存量方法 | 复用目的 |
-|---------|---------|---------|
-| ZzzServiceImpl | calculate() | 获取计算结果 |
-```
+### Repair loop
 
-### Phase 4: 存量用例补充
+测试未通过时留在当前切片，执行最多三轮有差异的修复：
 
-**对所有需要复用和修改的存量代码补充测试用例**：
+1. 根据完整错误和最小复现定位根因，做定向修复。
+2. 同类失败再次出现时，必须改变诊断假设或工具，不重复相同操作。
+3. 第三次仍失败时，重新检查 requirement、seam、fixture、模块边界和计划；写 handoff 包进行独立审查（有子代理时优先隔离审查）。
 
-**Step 4.1: 识别存量测试覆盖**
+三轮后仍无进展，标记 blocked 并给出证据，不得通过删测试、弱化断言、跳过模块或伪造日志推进。连续两轮同类失败时优先换用 fresh worker 或 fresh verifier，避免 tunnel vision；出现新的可验证假设时可以开启下一轮，并在计划中记录为何值得继续。
 
-对于 Phase 3 中识别的每个存量方法：
-1. 检查是否已有测试用例
-2. 识别测试覆盖盲区
+## 5. Acceptance loop
 
-**Step 4.2: 补充存量测试用例**
+所有切片完成后按由窄到宽的顺序验证：
 
-为没有充分测试的存量代码补充用例：
+1. 新功能测试和 characterization tests。
+2. 受影响模块及其依赖模块测试。
+3. 项目规定的完整测试或 CI 等价命令。
+4. 必要时 integration/Failsafe、静态检查、格式检查和 package/compile；优先项目已有命令，不把单独 `mvn compile` 当成充分验收。
+5. 对照 requirement 逐行审计追踪矩阵和最终 diff。
 
-```markdown
-### 存量测试用例补充
+任一验收失败都重新打开对应阶段或切片，更新 `Current Phase` 与 `Next Step`，进入 Repair loop。只有所有必要命令通过、每条 requirement 有证据、工作区边界检查通过时，才把验证阶段标为 complete。planning-with-files 的停止门禁以磁盘状态为准；不得为了结束会话提前把阶段标记为 complete。
 
-#### 用例: {存量类}.{方法} 基础行为验证
-- **测试目标**: 验证 {方法} 的基础行为
-- **输入**: {测试输入}
-- **预期输出**: {预期结果}
-- **测试路径**: {testClass}.{methodName}
-```
+## 6. Delivery and handoff
 
-**Step 4.3: 运行存量测试**
+最终报告必须包含：
 
-```bash
-cd {项目根目录}
-mvn test -Dtest={存量测试类}
-```
+- requirement 完成情况及 Req ID；
+- 修改和新增文件，以及新增类型的理由；
+- 实际运行的验证命令、结果、测试数量和日志路径；
+- baseline 已有失败、未运行检查及原因；
+- 用户原有改动是否保持不变；
+- 未决风险和恢复执行所需的活动 plan ID。
 
-**Step 4.4: 处理测试失败**
+交付前运行 planning-with-files 的 `check-complete.sh`。它只验证计划状态，不会执行测试，也不能作为测试 oracle；完成必须同时满足“真实命令与追踪矩阵证据门”和“六阶段状态门”。若平台即将压缩、暂停或转交代理，先写 handoff 包并刷新单一 `Next Step`。
 
-- **如果存量测试失败**：说明存量代码行为与预期不符
-  - 记录失败原因到 findings.md
-  - 先修复存量代码再继续（存量代码本身有问题）
-  - 不得在新功能实现过程中"顺便修复"存量代码
+## Anti-shortcut checks
 
-- **如果存量测试通过**：进入下一阶段
+在每次阶段切换和最终交付前逐项确认：
 
-**更新 progress.md**：
+- 是否出现了实现代码先于有效 Red？若是，回退到可证明的 Red-Green 证据，不伪造历史。
+- 是否把“命令看起来正确”当成“测试已通过”？必须有真实退出码。
+- 是否为赶进度缩小了测试范围却没有披露？恢复必要验证或标明 blocked/incomplete。
+- 是否一次修改了多个未验证行为？拆回单一纵向切片。
+- 是否仍有 pending/in_progress 阶段、未覆盖 Req ID 或未读失败日志？不得完成。
+- 是否因上下文变长开始重复搜索或遗忘约束？写入磁盘、生成 handoff，并从计划重新定向。
 
-```markdown
-### {timestamp}
-- 存量测试: {通过/失败}
-- 覆盖的存量方法: {列表}
-- 失败处理: {如有}
-```
+## References
 
-### Phase 5: 新功能 TDD 实现（强制门禁）
-
-**每个功能必须完成完整的 Red-Green 循环，测试文件是必须产出的交付物：**
-
-**每个功能的 TDD 循环：**
-
-```markdown
-### 功能 {n}: {功能名称} TDD
-
-#### Step 5.N.1: Red - 写失败的测试
-- **测试文件**: src/test/java/{模块}/{Feature}Test.java
-- **测试方法**: {feature}_When{condition}_Then{result}
-- **验证命令**: mvn test -Dtest={Feature}Test#{testMethod}
-- **预期结果**: 测试失败（Red）
-- **交付物**: 测试文件路径 + 失败日志
-
-#### Step 5.N.2: Green - 实现功能
-- **实现代码**: 在已有类的方法中修改
-- **验证命令**: mvn test -Dtest={Feature}Test#{testMethod}
-- **预期结果**: 测试通过（Green）
-- **交付物**: 修改的源代码文件
-
-#### Step 5.N.3: 回归测试
-- **验证命令**: mvn test -Dtest={存量测试类1},{存量测试类2}
-- **预期结果**: 所有存量测试通过
-- **交付物**: 测试运行日志
-```
-
-**复用原则**：
-- ✅ 调用已有查询方法获取数据
-- ✅ 调用已有业务方法执行操作
-- ✅ 调用已有配置查询方法
-- ❌ 禁止复制已有方法实现
-- ❌ 禁止从零实现已有功能
-
-### Phase 6: 集成测试验证
-
-**运行所有测试**：
-
-```bash
-cd {项目根目录}
-mvn test -pl {涉及的模块}
-```
-
-**所有测试必须通过**：
-- 存量测试必须通过
-- 新功能测试必须通过
-- 不允许绕过测试完成
-
-**更新 progress.md**：
-
-```markdown
-### {timestamp}
-- 集成测试结果: {通过/失败}
-- 失败测试: {如有}
-- 修复操作: {如有}
-```
-
-### Phase 7: 编译验证
-
-```bash
-cd {项目根目录}
-mvn compile -pl {涉及的模块1},{涉及的模块2},...
-```
-
-**记录到 progress.md**：
-
-```markdown
-### {timestamp}
-- 编译结果: {成功/失败}
-- 错误信息: {如有}
-- 修复操作: {如有}
-```
-
-## 任务完成
-
-当所有阶段完成，更新 task_plan.md：
-
-```markdown
-### Phase 6: 编译验证
-**Status:** complete
-
-## Next Step
-任务完成
-```
-
-## 成功标准
-
-**输入验证**：
-- [x] 代码仓目录可访问（包含 pom.xml）
-- [x] 需求文档 requirement.md 存在
-
-**输出验证**：
-- [x] 存量测试全部通过（提供 mvn test 输出日志）
-- [x] 新功能测试全部通过（提供 mvn test 输出日志）
-- [x] **测试文件已提交到代码仓**（不仅仅是实现代码）
-- [x] `mvn compile` 编译通过
-- [x] 所有功能代码已按 requirement.md 实现
-- [x] 代码添加到已有类的方法中（而非新建类）
-- [x] planning 文件记录完整（包含每个功能的 Red/Green/回归测试日志路径）
-- [x] 原有接口向后兼容
-
-**阶段推进门禁**：
-- ❌ Phase 3（存量测试）未通过 = 不得进入 Phase 4（新功能 TDD）
-- ❌ Phase 4 新功能测试未通过 = 不得进入 Phase 5（集成测试）
-- ❌ Phase 5 集成测试未通过 = 不得进入 Phase 6（编译验证）
-- ❌ 编译失败 = 任务未完成
-
-**质量门禁**：
-- ❌ 存量测试失败 = 任务未完成（不得修改存量代码）
-- ❌ 新功能测试失败 = 任务未完成
-- ❌ 编译失败 = 任务未完成
-- ❌ 缺少测试文件 = 任务未完成（测试文件是强制交付物）
+- [Plan contract](references/plan-contract.md) — 六阶段 gated 计划和证据格式。
+- [Handoff protocol](references/handoff.md) — 子代理、压缩和跨会话恢复交接包。
+- [Evaluation loop](references/evaluation.md) — 真实仓库回归评测与 skill 迭代方法。
+- [MiniMax M2.7 field profile](references/minimax-m2.7.md) — 官方能力与实际公开反馈的差异及对应防护。
