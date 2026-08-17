@@ -9,6 +9,7 @@
 - Single writer: orchestrator
 - Completion requires two independent gates: plan state and acceptance evidence
 - Worker protocol: per-agent ledger + handoff; workers never edit `task_plan.md`
+- State authority: `works-state.json` + immutable TDD evidence; Phase 2–6 only advance through `works_plan_gate.py`
 
 ## Goal
 
@@ -32,6 +33,8 @@
 ### Phase 2: Baseline
 - [ ] 原有可信测试已运行并分类失败
 - [ ] 修改前已有失败与构建环境问题已记录
+- [ ] `tdd_slice.py init` 已保存当前 dirty-worktree TDD 基线
+- [ ] `tdd_slice.py probe` 已覆盖 POM/CLI skip 配置并证明现有目标 testcase 实际执行
 - **Status:** pending
 - **DependsOn:** Phase 1
 
@@ -44,12 +47,14 @@
 - **DependsOn:** Phase 2
 
 ### Phase 4: Vertical TDD
-- [ ] 每个 Req ID 均有有效 Red、Green 和局部回归证据
+- [ ] 每个 Req ID 均有脚本生成的 `red.json`、`green.json` 和局部回归证据
+- [ ] 每个切片的生产修改都发生在有效 Red gate 之后
 - [ ] 所有切片均通过 diff 边界检查
 - **Status:** pending
 - **DependsOn:** Phase 3
 
 ### Phase 5: Acceptance
+- [ ] `tdd_slice.py verify` 覆盖全部 Req ID 并通过
 - [ ] 相关模块、完整回归和项目规定的质量命令已验证
 - [ ] requirement 追踪矩阵无缺口
 - **Status:** pending
@@ -75,3 +80,22 @@ Red 的 Result 只有在失败为目标行为断言时才能记作 `valid-red`�
 后续验证推翻已完成阶段时，将受影响阶段恢复为 `in_progress`，后续阶段恢复为 `pending`，刷新 `Current Phase` 和单一 `Next Step`，重新 attestation 后继续。禁止保留虚假的 complete 状态。
 
 `check-complete.sh` 只统计阶段状态，不执行测试或 `AcceptanceCheck`。修改计划后立即重新运行 `attest-plan.sh`；不要把未重新 attestation 的计划留给无人值守循环。
+
+## Executable phase transition
+
+每个 TDD 命令成功后会自动同步计划。恢复会话或怀疑状态漂移时运行：
+
+```bash
+python3 <works>/scripts/works_plan_gate.py sync --state-dir <plan-dir>/tdd
+```
+
+Phase 2–6 禁止直接编辑状态或直接运行 `phase-status.sh`，统一使用：
+
+```bash
+python3 <works>/scripts/works_plan_gate.py complete-phase --state-dir <plan-dir>/tdd --phase 2
+python3 <works>/scripts/works_plan_gate.py complete-phase --state-dir <plan-dir>/tdd --phase 4 --req REQ-1 --req REQ-2
+python3 <works>/scripts/works_plan_gate.py check --state-dir <plan-dir>/tdd --name module-regression -- <真实命令>
+python3 <works>/scripts/works_plan_gate.py complete-phase --state-dir <plan-dir>/tdd --phase 5 --req REQ-1 --req REQ-2
+```
+
+门禁会重新执行最终 TDD verify，而不是信任旧 `tdd-verify.json`；Phase 5 还要求 `acceptance.json` 中至少有一个真实成功命令。每次转换都会更新 Next Step、ledger、`works-state.json` 并重新 attestation。

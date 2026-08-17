@@ -11,6 +11,19 @@ description: >
 
 自主发现项目目录和 `requirement.md`，在存量仓库中完成需求，同时把误改范围和未验证声明降到最低。模型容易在长任务后段急于实现、省略验证或绕过 Service 直接操作 Mapper，因此所有推进依据都写入磁盘，并由架构边界检查、命令退出码和证据文件判定，而不是依赖对话记忆。
 
+## Start here — TDD takes precedence over delivery speed
+
+这是本 skill 的最高优先级执行顺序，先于分析后的“快速实现”、最小改动和交付速度：
+
+1. 自主定位项目和 requirement。
+2. 初始化 planning 会话及 `tdd_slice.py init`。
+3. 运行 `tdd_slice.py probe`，证明 Maven 没有跳过测试。
+4. 只做影响分析和写当前 Req 的一个测试；不得修改生产代码。
+5. 运行 `tdd_slice.py red` 并取得有效 `red.json`。
+6. 只有此时才允许修改当前 Req 的生产代码，然后运行 Green。
+
+任何“先把功能快速写完，再补测试/证据”的路径都属于任务失败。时间压力、需求简单、修改很小、用户未强调测试、项目原来缺测试，以及 POM 中存在 `skipTest=true`、`skipTests=true` 或 `maven.test.skip=true`，都不是例外。Skip 配置只说明默认构建可能不执行测试，必须在测试命令中显式覆盖并用新鲜报告证明目标 testcase 实际运行。
+
 ## Run contract
 
 - 自动执行需求明确且可逆的仓库内操作；不得覆盖、回滚或格式化用户的无关改动。
@@ -19,7 +32,7 @@ description: >
 - 不复制已有实现。新增独立职责、数据契约或适配边界时可以新增类型，并在 `findings.md` 记录理由。
 - 测试文件必须进入最终交付 diff。除非用户明确授权，不执行 `git commit`、push 或其他发布操作。
 - 只把实际运行且退出码符合预期的命令标记为通过；不得根据代码外观推断测试或编译成功。
-- `tdd` skill 可用时读取并遵循它。本 skill 的无人值守规则覆盖其中所有人工确认要求：从需求、公共接口、调用方和已有测试选择最窄 seam，并把依据写入计划文件，不询问用户。
+- 必须读取并执行本 skill 的 [TDD evidence gate](references/tdd-evidence.md)；`tdd` skill 可用时同时读取其测试设计原则。本 skill 的无人值守规则覆盖其中所有人工确认要求：从需求、公共接口、调用方和已有测试选择最窄 seam，并把依据写入计划文件，不询问用户。
 
 ## 1. Preconditions and persistent plan
 
@@ -37,6 +50,7 @@ description: >
    - 记录并固定活动 `PLAN_ID`；执行目录可能漂移时同时设置 `PWF_PLAN_ROOT` 为项目根绝对路径。
    - `task_plan.md` 的任何状态、Next Step 或决策修改都会使旧 attestation 失效；在阶段边界批量修改计划，随后立即重新运行 `attest-plan.sh`。切片内高频细节只写 `findings.md`、`progress.md` 和 ledger。
 7. 使用 [references/plan-contract.md](references/plan-contract.md) 填写唯一的六阶段计划。`task_plan.md` 只保存目标、状态、门禁和下一动作；分析写入 `findings.md`；命令摘要写入 `progress.md`；原始输出保存到计划目录下的 `logs/`。
+8. `tdd_slice.py` 的 init/probe/red/green/verify 成功后会自动调用 `works_plan_gate.py sync`，更新 `works-state.json`、唯一 Next Step、ledger 和 attestation。不得手工伪造这些状态，也不得直接调用 `phase-status.sh` 完成 Phase 2–6；只能使用 `works_plan_gate.py complete-phase` 让磁盘证据决定能否推进。
 
 ### Planning ownership
 
@@ -44,7 +58,7 @@ description: >
 - 子代理优先承担边界清晰的只读探索、测试诊断或独立审查；也可实现单个纵向切片，但必须拥有互不重叠的文件范围和客观验收条件。每个子代理写自己的 ledger，完成时返回 [references/handoff.md](references/handoff.md) 格式的交接包。
 - 交接包引用文件和日志路径，不复制大段源码或输出。主代理验证后才把结论合并进计划。
 - 每完成一个阶段、每次失败和每次策略改变都立即落盘。连续两次搜索/浏览后，把关键发现写入 `findings.md`。
-- 上下文压缩或恢复后，先读取活动计划、`findings.md`、`progress.md` 和最新 handoff，再执行 `session-catchup.py`；通过“五问重启检查”后才继续。
+- 上下文压缩或恢复后，先运行 `works_plan_gate.py sync`，再读取 `works-state.json`、活动计划、`findings.md`、`progress.md` 和最新 handoff，随后执行 `session-catchup.py`；以 `works-state.json` 的状态和单一 Next Step 继续，不凭对话回忆重建进度。
 
 ## 2. Baseline gate
 
@@ -59,6 +73,8 @@ description: >
    | 环境、依赖或配置失败 | 诊断基础设施，不将其记为 Red，也不声称功能失败 |
 
 3. 本阶段只建立修改前原有测试基线；此时不要在尚未完成影响分析的 seam 上提前编写 characterization test。
+4. 基线确认后、任何新功能测试或生产代码修改前，运行 `scripts/tdd_slice.py init`，把当前含用户既有改动的工作区保存为 TDD 内容基线。初始化失败时不得进入实现阶段。
+5. 搜索父/子 POM、profiles、Surefire/Failsafe 和 CI 中的测试跳过配置。选择一个现有稳定通过的 testcase，运行 `tdd_slice.py probe`。所有测试命令至少包含 `-DskipTests=false -Dmaven.test.skip=false`，并覆盖脚本发现的自定义 `skip*test*` 属性；只有本次新建/变化的报告证明目标 testcase 执行并通过时 preflight 才完成。无法解除 skip 时标记 blocked，不能进入实现。
 
 ## 3. Impact map
 
@@ -95,11 +111,12 @@ description: >
 一次只处理一个最小行为切片：
 
 1. **Orient**：重读计划的 Goal、Current Phase、Next Step，以及矩阵中当前 Req ID。
-2. **Red**：通过公共 seam 写一个行为测试。运行最窄测试命令，确认失败来自预期断言且能因目标实现而转绿。编译、fixture、依赖或配置错误不是有效 Red。
-3. **Green**：只实现使当前测试通过的最小改动；先复用或扩展 Service API，再由 Service 使用 Mapper/Repository，避免入口层直达持久化、顺手重构和超出 scope 的修复。
-4. **Local regression**：运行当前测试、相关 characterization tests 和受影响模块测试。多模块 Maven 默认考虑 `-pl <module> -am`。
-5. **Evidence**：把 Red/Green/回归的命令、退出码、测试数和日志路径写入 `progress.md`；更新追踪矩阵。
-6. **Review**：检查 `git diff --check`、本次 diff 和用户原有改动边界。满足当前切片验收条件后才进入下一切片。
+2. **Red gate**：只写一个公共 seam 行为测试，不改生产代码；必须为目标测试方法提供稳定 testcase ID，通过 `tdd_slice.py red` 运行最窄测试命令并生成该 Req ID 的 `red.json`。只有目标 testcase 在本次新建/变化的 Surefire/Failsafe 报告中出现 assertion failure 才有效；无关失败、旧报告、编译、fixture、依赖、环境或 test error 不是有效 Red。
+3. **Production edit gate**：读取 `red.json`，确认 Req ID、测试文件哈希、命令和 assertion failure 均有效后，才允许首次修改当前切片的生产代码。没有 `red.json` 时禁止 Write/Edit/apply_patch 或 shell 写入任何生产路径。
+4. **Green gate**：只实现使当前测试通过的最小改动；先复用或扩展 Service API，再由 Service 使用 Mapper/Repository。必须通过 `tdd_slice.py green` 运行与 Red 完全相同的选择器并生成 `green.json`；Red 测试内容不得被弱化或改写。
+5. **Local regression**：运行当前测试、相关 characterization tests 和受影响模块测试。多模块 Maven 默认考虑 `-pl <module> -am`。
+6. **Evidence**：把 `red.json`、`green.json`、命令、退出码、测试数和日志路径写入 `progress.md`；更新追踪矩阵。
+7. **Review**：检查 `git diff --check`、本次 diff 和用户原有改动边界。满足当前切片验收条件后才进入下一切片。
 
 当运行环境支持子代理时，重要切片使用隔离验收：实现者写 handoff 后，由 fresh verifier 仅根据 requirement、diff 和磁盘证据返回 `PASS`、`CHANGES_REQUIRED` 或 `BLOCKED`。主代理仍需复跑关键测试；子代理的 DONE/PASS 不是完成证据。为避免共享上下文放大实现偏见，verifier 不继承实现过程，只读取最小 handoff 和引用制品。
 
@@ -117,12 +134,15 @@ description: >
 
 所有切片完成后按由窄到宽的顺序验证：
 
-1. 新功能测试和 characterization tests。
-2. 受影响模块及其依赖模块测试。
-3. 项目规定的完整测试或 CI 等价命令。
-4. 必要时 integration/Failsafe、静态检查、格式检查和 package/compile；优先项目已有命令，不把单独 `mvn compile` 当成充分验收。
-5. 对照 requirement 逐行审计追踪矩阵和最终 diff。
-6. 搜索本次变更新增的 Mapper/DAO/Repository 注入和调用；任何上层入口直调都必须有已记录且测试覆盖的架构例外，否则验收失败。项目已有 ArchUnit 或 Spring Modulith 时，运行并按现有风格补充层级/模块依赖测试，避免入口包依赖 mapper/repository 或模块 internal 包。
+1. 对所有 Req ID 运行 `tdd_slice.py verify`；它必须重跑每个保存的精确测试命令，确认目标 testcase 仍执行并通过，并确认当前生产指纹等于最后 Green checkpoint。缺少 Red→Green 链、证据被修改、测试被改写/禁用、选择器不一致或 Green 后追加生产修改时立即失败并重开 Phase 4。
+2. 新功能测试和 characterization tests。
+3. 受影响模块及其依赖模块测试。
+4. 项目规定的完整测试或 CI 等价命令。
+5. 必要时 integration/Failsafe、静态检查、格式检查和 package/compile；优先项目已有命令，不把单独 `mvn compile` 当成充分验收。
+6. 对照 requirement 逐行审计追踪矩阵和最终 diff。
+7. 搜索本次变更新增的 Mapper/DAO/Repository 注入和调用；任何上层入口直调都必须有已记录且测试覆盖的架构例外，否则验收失败。项目已有 ArchUnit 或 Spring Modulith 时，运行并按现有风格补充层级/模块依赖测试，避免入口包依赖 mapper/repository 或模块 internal 包。
+
+第 2–5 项的代表性真实命令必须通过 `works_plan_gate.py check --name <名称> -- <命令>` 运行，保存退出码、日志及哈希；Phase 5 没有成功的 `acceptance.json` 不能完成。
 
 任一验收失败都重新打开对应阶段或切片，更新 `Current Phase` 与 `Next Step`，进入 Repair loop。只有所有必要命令通过、每条 requirement 有证据、工作区边界检查通过时，才把验证阶段标为 complete。planning-with-files 的停止门禁以磁盘状态为准；不得为了结束会话提前把阶段标记为 complete。
 
@@ -144,6 +164,7 @@ description: >
 在每次阶段切换和最终交付前逐项确认：
 
 - 是否出现了实现代码先于有效 Red？若是，回退到可证明的 Red-Green 证据，不伪造历史。
+- 是否每个 Req ID 都有脚本生成且 `verify` 通过的 `red.json`/`green.json`？人工填写 progress 表不算 TDD 证据。
 - 是否把“命令看起来正确”当成“测试已通过”？必须有真实退出码。
 - 是否为赶进度缩小了测试范围却没有披露？恢复必要验证或标明 blocked/incomplete。
 - 是否一次修改了多个未验证行为？拆回单一纵向切片。
@@ -158,3 +179,4 @@ description: >
 - [Evaluation loop](references/evaluation.md) — 真实仓库回归评测与 skill 迭代方法。
 - [MiniMax M2.7 field profile](references/minimax-m2.7.md) — 官方能力与实际公开反馈的差异及对应防护。
 - [Service boundary](references/service-boundary.md) — Service 与 Mapper/Repository 的分层规则、例外和权威依据。
+- [TDD evidence gate](references/tdd-evidence.md) — 可执行的 dirty-baseline、Red、Green 和最终验证协议。

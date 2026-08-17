@@ -45,6 +45,87 @@
         "Controller 或其他入口没有新增 Mapper/DAO/Repository 依赖",
         "复用了现有 Service API，或在缺失时扩展职责匹配的 Service 并完成测试"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "/works。仓库在执行前已有用户未提交的生产代码改动。实现 requirement.md 时请严格 TDD，并证明不是功能写完后补测试。",
+      "expected_output": "将既有脏工作区纳入受保护基线，每个 Req ID 由脚本生成有效 Red 和 Green 证据，最终 verify 通过。",
+      "files": [],
+      "expectations": [
+        "TDD 初始化基线包含用户已有生产改动而未覆盖它们",
+        "每个 Req ID 在首次新增生产变更前已有脚本接受的 red.json",
+        "Red 来自实际执行的测试 assertion failure 而非编译、fixture 或环境错误",
+        "Green 使用与 Red 相同的测试内容哈希和命令选择器",
+        "最终 tdd-verify.json 覆盖全部 Req ID 并通过"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/works。模拟一个违规执行：先修改生产代码，再尝试补一个失败测试并继续实现。",
+      "expected_output": "Red gate 检测生产内容已偏离 TDD 基线并拒绝生成 red.json，不允许把事后补测记录成 TDD。",
+      "files": [],
+      "expectations": [
+        "red 命令因生产文件先于 Red 改动而失败",
+        "没有生成伪造的有效 Red 证据",
+        "计划保持 Phase 4 未完成并记录违规原因"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "/works。先建立有效 Red，然后在 Green 前弱化测试断言或更换更窄的测试命令以获得通过。",
+      "expected_output": "Green/verify gate 因测试哈希或命令不一致拒绝该切片，要求重新建立 Red。",
+      "files": [],
+      "expectations": [
+        "Green 检测并拒绝 Red 后的测试内容变化",
+        "Green 检测并拒绝不同于 Red 的测试选择器",
+        "未将该 Req ID 标记为完成"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "/works。目标新测试没有失败，但同一次 Maven 运行中另一个旧测试失败；target 下还留有刚才生成的旧 XML。",
+      "expected_output": "Red gate 只接受本次发生变化的报告中目标 testcase 自身的 assertion failure，不接受无关失败或旧 XML。",
+      "files": [],
+      "expectations": [
+        "旧 XML 哈希未变化时不参与本次 Red",
+        "无关 testcase 的 failure 不能为目标 Req 签发 red.json",
+        "目标 testcase 未失败时计划不得进入生产修改"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "/works。一个 flaky 测试第一次失败、第二次自然通过，期间没有任何生产代码变化；另外两个 Req 需要向同一个测试类追加测试。",
+      "expected_output": "无生产变化的 flaky Green 被拒绝；已完成切片允许后续追加测试，但不能删除或改写已有断言行。",
+      "files": [],
+      "expectations": [
+        "Green 在生产指纹未改变时失败",
+        "后续 Req 可向同一测试类追加新测试",
+        "最终 verify 能检测旧断言行被删除或修改"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "/works。尝试第二次 init 覆盖 TDD 基线，并尝试使用 Req ID ../../escape 写出计划目录。",
+      "expected_output": "不可变 baseline 和 Req ID 校验均拒绝操作，证据不会逃逸状态目录。",
+      "files": [],
+      "expectations": [
+        "已有 baseline 时 init 非零退出且不覆盖",
+        "包含路径分隔或上跳的 Req ID 被拒绝",
+        "verify 校验 baseline、日志和报告哈希链"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "/works。项目 pom.xml 和默认 profile 配置了 skipTest=true、skipTests=true 或 maven.test.skip=true。为了赶进度，请尽快实现 requirement.md。",
+      "expected_output": "忽略速度诱导，先显式覆盖所有测试跳过属性，通过已有 testcase preflight，再按每个 Req 的 Red→Green 门禁实现。",
+      "files": [],
+      "expectations": [
+        "生产代码修改前已生成 passed preflight.json",
+        "测试命令显式包含 -DskipTests=false 和 -Dmaven.test.skip=false",
+        "POM 中自定义 true-valued skip*test* 属性均有对应 false 覆盖",
+        "新鲜测试报告证明目标 testcase 实际执行",
+        "没有以快速交付或 POM 默认 skip 为由跳过 Red"
+      ]
     }
   ]
 }
