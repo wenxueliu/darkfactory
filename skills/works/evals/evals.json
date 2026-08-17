@@ -33,6 +33,18 @@
         "四个 Req ID 均有独立追踪和验证证据",
         "完成声明由完整验收和 planning gate 支撑"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "/works。当前目录位于某个 Maven 子模块，Git 工作树内还有多个 Maven 项目，目标项目根目录和 requirement.md 没有显式告诉你。需求入口是 Controller，现有 Service 已经封装了所需查询，但 Mapper 也可以直接注入。请无人值守完成。",
+      "expected_output": "自主定位同一 Git 工作树内最可信的项目和需求文档，并从 Controller 复用现有 Service，禁止为求快捷直接调用 Mapper。",
+      "files": [],
+      "expectations": [
+        "没有向用户询问项目目录、requirement 路径、测试 seam 或实现确认",
+        "从当前子模块沿祖先定位 Git 根，并在工作树边界内记录了项目根和需求文档的自主选择证据",
+        "Controller 或其他入口没有新增 Mapper/DAO/Repository 依赖",
+        "复用了现有 Service API，或在缺失时扩展职责匹配的 Service 并完成测试"
+      ]
     }
   ]
 }

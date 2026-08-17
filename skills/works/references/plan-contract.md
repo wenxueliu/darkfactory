@@ -25,7 +25,7 @@
 ## Phases
 
 ### Phase 1: Preconditions
-- [ ] requirement、仓库、构建入口和用户工作区基线已确认
+- [ ] 已自主发现并记录 requirement、项目根、构建入口和用户工作区基线，未请求用户确认
 - [ ] planning 会话、日志目录和追踪矩阵已初始化
 - **Status:** in_progress
 
@@ -36,9 +36,10 @@
 - **DependsOn:** Phase 1
 
 ### Phase 3: Impact analysis
-- [ ] 每个 Req ID 均映射到行为、seam、候选符号、风险和测试
+- [ ] 每个 Req ID 均映射到行为、seam、Service API、Mapper/Repository、风险和测试
 - [ ] IN/OUT scope 与动态依赖风险已记录
 - [ ] 必要的 characterization tests 已在生产代码修改前通过
+- [ ] 上层入口均复用/扩展 Service，或存在有证据的架构例外
 - **Status:** pending
 - **DependsOn:** Phase 2
 
