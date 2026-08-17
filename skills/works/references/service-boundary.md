@@ -42,6 +42,7 @@ Controller / Job / Listener / Command handler
 4. 对比计划 diff：如果入口新增 Mapper 依赖，而 Service 没有相应变化，视为高概率绕层。
 5. 为 Service 公共行为写测试；必要时另写 Mapper 集成测试，但不能只测 Mapper 就宣称业务功能完成。
 6. 项目使用 ArchUnit 或 Spring Modulith 时，运行现有架构测试；按项目惯例补充“入口包不得依赖 mapper/repository”“跨模块只能依赖 API/service 包”等规则。
+7. 即使项目没有 ArchUnit，也必须先运行 `scripts/service_boundary.py init` 保存 dirty baseline，随后用 `verify` 阻断新增入口→持久层依赖。它同时识别后缀、Spring `@Repository`、MyBatis `@Mapper`/`BaseMapper` 和常见直接数据访问客户端。
 
 ## Sources
 
@@ -53,3 +54,5 @@ Controller / Job / Listener / Command handler
 - Azure tactical DDD, application services: https://learn.microsoft.com/en-ca/azure/architecture/microservices/model/tactical-ddd
 - Spring Modulith, module verification: https://docs.spring.io/spring-modulith/reference/verification.html
 - Oracle Java EE, service/session facade patterns: https://docs.oracle.com/javaee/6/tutorial/doc/gipjg.html
+
+Spring 并未规定所有 Controller 在任何系统中都绝不能直接使用 Repository；这是本 skill 面向既有分层项目采用的保守架构契约。若仓库已有 CQRS/资源暴露例外，应以现有测试和架构证据识别，不能仅凭模型判断绕过门禁。

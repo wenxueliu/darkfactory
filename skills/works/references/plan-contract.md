@@ -40,6 +40,7 @@
 
 ### Phase 3: Impact analysis
 - [ ] 每个 Req ID 均映射到行为、seam、Service API、Mapper/Repository、风险和测试
+- [ ] 已通过 `set-reqs` 固化完整有序 Req 队列；后续切片自动续跑
 - [ ] IN/OUT scope 与动态依赖风险已记录
 - [ ] 必要的 characterization tests 已在生产代码修改前通过
 - [ ] 上层入口均复用/扩展 Service，或存在有证据的架构例外
@@ -50,6 +51,7 @@
 - [ ] 每个 Req ID 均有脚本生成的 `red.json`、`green.json` 和局部回归证据
 - [ ] 每个切片的生产修改都发生在有效 Red gate 之后
 - [ ] 所有切片均通过 diff 边界检查
+- [ ] `service_boundary.py verify` 未发现新增入口→Mapper/Repository/直接数据访问依赖
 - **Status:** pending
 - **DependsOn:** Phase 3
 
@@ -93,6 +95,7 @@ Phase 2–6 禁止直接编辑状态或直接运行 `phase-status.sh`，统一�
 
 ```bash
 python3 <works>/scripts/works_plan_gate.py complete-phase --state-dir <plan-dir>/tdd --phase 2
+python3 <works>/scripts/works_plan_gate.py set-reqs --state-dir <plan-dir>/tdd --req REQ-1 --req REQ-2
 python3 <works>/scripts/works_plan_gate.py complete-phase --state-dir <plan-dir>/tdd --phase 4 --req REQ-1 --req REQ-2
 python3 <works>/scripts/works_plan_gate.py check --state-dir <plan-dir>/tdd --name module-regression -- <真实命令>
 python3 <works>/scripts/works_plan_gate.py complete-phase --state-dir <plan-dir>/tdd --phase 5 --req REQ-1 --req REQ-2

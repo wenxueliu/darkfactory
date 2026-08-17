@@ -80,13 +80,20 @@ def slice_records(tdd: Path) -> list[dict]:
     return sorted(rows, key=lambda row: (row["sequence"], row["req"]))
 
 
-def derive(tdd: Path, requested_req: str | None = None) -> dict:
+def derive(tdd: Path, requested_req: str | None = None, req_queue: list[str] | None = None) -> dict:
     baseline = load(tdd / "baseline.json")
     preflight = load(tdd / "preflight.json")
     checkpoint = load(tdd / "checkpoint.json")
     verification = load(tdd / "tdd-verify.json")
     rows = slice_records(tdd)
     open_row = next((row for row in reversed(rows) if row["green"] is None), None)
+    completed = [row["req"] for row in rows if row["green"]]
+    remaining = [req for req in (req_queue or []) if req not in completed]
+    automatic_req = remaining[0] if remaining else None
+    expected_verify_reqs = req_queue or completed
+    verification_valid = bool(
+        verification.get("passed") and verification.get("reqs") == expected_verify_reqs
+    )
     if not baseline:
         state, next_step = "baseline_required", "Run tdd_slice.py init before any feature or production edit."
     elif not preflight.get("passed"):
@@ -94,10 +101,11 @@ def derive(tdd: Path, requested_req: str | None = None) -> dict:
     elif open_row:
         state = "implementation_allowed"
         next_step = f"Implement only {open_row['req']} minimally, then run tdd_slice.py green with {open_row['testcase']}."
-    elif requested_req:
+    elif requested_req or automatic_req:
+        requested_req = requested_req or automatic_req
         state = "red_required"
-        next_step = f"Write one behavior test for {requested_req}, then run tdd_slice.py red before production edits."
-    elif verification.get("passed"):
+        next_step = f"Continue automatically with {requested_req}: write one behavior test and establish its Red before production edits."
+    elif verification_valid:
         state, next_step = "acceptance_ready", "Run regression/CI-equivalent acceptance commands, then request Phase 5 completion."
     else:
         state, next_step = "next_slice_required", "Select the next uncovered Req ID and establish its Red; if all are Green, run tdd_slice.py verify."
@@ -106,14 +114,16 @@ def derive(tdd: Path, requested_req: str | None = None) -> dict:
         "next_step": next_step,
         "current_req": open_row["req"] if open_row else requested_req,
         "testcase": open_row["testcase"] if open_row else None,
-        "completed_reqs": [row["req"] for row in rows if row["green"]],
+        "completed_reqs": completed,
+        "remaining_reqs": remaining,
+        "auto_continue": True,
         "open_req": open_row["req"] if open_row else None,
         "baseline_sha256": digest(tdd / "baseline.json"),
         "preflight_sha256": digest(tdd / "preflight.json"),
         "checkpoint_sha256": digest(tdd / "checkpoint.json"),
         "verify_sha256": digest(tdd / "tdd-verify.json"),
         "checkpoint_sequence": checkpoint.get("sequence", 0),
-        "verification_passed": bool(verification.get("passed")),
+        "verification_passed": verification_valid,
         "updated_at": time.time(),
     }
 
@@ -140,6 +150,8 @@ def update_plan(plan_file: Path, state: dict) -> None:
             f"- **Target Testcase:** {state['testcase'] or 'none'}",
             f"- **Production Write Allowed:** {'true' if state['state'] == 'implementation_allowed' else 'false'}",
             f"- **Completed Reqs:** {', '.join(state['completed_reqs']) or 'none'}",
+            f"- **Remaining Reqs:** {', '.join(state['remaining_reqs']) or 'none'}",
+            "- **Auto Continue:** true (never ask whether to continue between Reqs)",
             f"- **Baseline SHA256:** {state['baseline_sha256']}",
             f"- **Preflight SHA256:** {state['preflight_sha256']}",
             f"- **Checkpoint SHA256:** {state['checkpoint_sha256']}",
@@ -213,7 +225,7 @@ def align_next_step(state: dict) -> None:
         5: "Run regression/CI-equivalent commands through works_plan_gate.py check.",
         6: "Audit the final diff, user-owned changes, risks, and delivery evidence.",
     }
-    if phase in fixed:
+    if phase in (2, 3) or (phase in (5, 6) and state["state"] == "acceptance_ready"):
         state["next_step"] = fixed[phase]
 
 
@@ -231,13 +243,24 @@ def validate_phase(phase: int, tdd: Path, plan: Path, project: Path, reqs: list[
         for required in ("Req ID", "Service API", "Mapper/Repository"):
             if required not in content:
                 raise SystemExit(f"Phase 3 gate failed: findings.md lacks {required}")
+        req_queue = load(plan / "requirements.json").get("reqs", [])
+        if not req_queue:
+            raise SystemExit("Phase 3 gate failed: persist the ordered Req queue with set-reqs")
     elif phase in (4, 5, 6):
         if not reqs:
             raise SystemExit(f"Phase {phase} gate requires every --req in execution order")
+        req_queue = load(plan / "requirements.json").get("reqs", [])
+        if req_queue != reqs:
+            raise SystemExit("Phase 4+ gate failed: --req order must exactly match persisted requirements.json")
         by_req = {row["req"]: row for row in rows}
         missing = [req for req in reqs if req not in by_req or by_req[req]["green"] is None]
         if missing:
             raise SystemExit("Phase 4+ gate failed: incomplete Red/Green evidence for " + ", ".join(missing))
+        subprocess.run(
+            [sys.executable, str(Path(__file__).with_name("service_boundary.py")), "verify", "--state-dir", str(tdd)],
+            cwd=project,
+            check=True,
+        )
         subprocess.run(
             [sys.executable, str(Path(__file__).with_name("tdd_slice.py")), "verify", "--state-dir", str(tdd),
              *[item for req in reqs for item in ("--req", req)]],
@@ -260,7 +283,8 @@ def validate_phase(phase: int, tdd: Path, plan: Path, project: Path, reqs: list[
 
 def cmd_sync(args: argparse.Namespace) -> int:
     tdd, plan, project = paths(args.state_dir)
-    state = derive(tdd, args.current_req)
+    req_queue = load(plan / "requirements.json").get("reqs", [])
+    state = derive(tdd, args.current_req, req_queue)
     state["current_phase"] = active_phase(plan / "task_plan.md")
     align_next_step(state)
     atomic_text(plan / "works-state.json", json.dumps(state, ensure_ascii=False, indent=2) + "\n")
@@ -285,7 +309,8 @@ def cmd_complete(args: argparse.Namespace) -> int:
     next_phase = args.phase + 1
     if next_phase <= 6 and phase_status(plan / "task_plan.md", next_phase) == "pending":
         run_script("phase-status.sh", [str(next_phase), "in_progress"], project, plan)
-    state = derive(tdd, args.current_req)
+    req_queue = load(plan / "requirements.json").get("reqs", [])
+    state = derive(tdd, args.current_req, req_queue)
     state["current_phase"] = active_phase(plan / "task_plan.md")
     align_next_step(state)
     atomic_text(plan / "works-state.json", json.dumps(state, ensure_ascii=False, indent=2) + "\n")
@@ -330,6 +355,16 @@ def cmd_check(args: argparse.Namespace) -> int:
     return proc.returncode
 
 
+def cmd_set_reqs(args: argparse.Namespace) -> int:
+    _, plan, project = paths(args.state_dir)
+    if not args.req or len(args.req) != len(set(args.req)):
+        raise SystemExit("provide a non-empty, ordered, duplicate-free Req list")
+    atomic_text(plan / "requirements.json", json.dumps({"reqs": args.req}, ensure_ascii=False, indent=2) + "\n")
+    append_ledger("progress", "persisted autonomous Req queue: " + ", ".join(args.req), "3", ["requirements.json"], project, plan)
+    attest(project, plan)
+    return cmd_sync(argparse.Namespace(state_dir=args.state_dir, current_req=None, event="req_queue_saved"))
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="action", required=True)
@@ -349,6 +384,10 @@ def parser() -> argparse.ArgumentParser:
     check.add_argument("--name", required=True)
     check.add_argument("command", nargs=argparse.REMAINDER)
     check.set_defaults(func=cmd_check)
+    reqs = sub.add_parser("set-reqs")
+    reqs.add_argument("--state-dir", required=True)
+    reqs.add_argument("--req", action="append", required=True)
+    reqs.set_defaults(func=cmd_set_reqs)
     return p
 
 

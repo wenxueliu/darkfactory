@@ -53,6 +53,15 @@ def sync_plan(state: Path, event: str, req: str | None = None) -> None:
     subprocess.run(command, check=True)
 
 
+def service_boundary(action: str, state: Path, root: Path | None = None) -> None:
+    command = [sys.executable, str(Path(__file__).with_name("service_boundary.py")), action]
+    if action == "init":
+        command.extend(["--project-root", str(root), "--state-dir", str(state)])
+    else:
+        command.extend(["--state-dir", str(state)])
+    subprocess.run(command, check=True)
+
+
 def is_test(rel: str) -> bool:
     p = rel.replace("\\", "/")
     name = Path(p).name.lower()
@@ -271,6 +280,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     atomic_json(state / "baseline.json", data)
     (state / "baseline.sha256").write_text(hashlib.sha256((state / "baseline.json").read_bytes()).hexdigest() + "\n")
     atomic_json(state / "checkpoint.json", {"sequence": 0, "production": data["production"], "previous_req": None})
+    service_boundary("init", state, root)
     sync_plan(state, "tdd_init")
     print(state / "baseline.json")
     return 0
@@ -352,6 +362,7 @@ def cmd_green(args: argparse.Namespace) -> int:
     production = fingerprints(root, production=True)
     if production == red["production_before"]:
         raise SystemExit("invalid Green: production did not change from this slice's Red checkpoint")
+    service_boundary("verify", state)
     log = slice_dir / "green.log"
     code, junit = run_command(root, args.command, log, slice_dir / "green-reports", red["testcase"])
     target = junit["target"]

@@ -126,6 +126,30 @@
         "新鲜测试报告证明目标 testcase 实际执行",
         "没有以快速交付或 POM 默认 skip 为由跳过 Red"
       ]
+    },
+    {
+      "id": 12,
+      "prompt": "/works。requirement.md 含三个 Req。每个 Req 完成后不要问我是否继续，直接执行到全部验收完成。",
+      "expected_output": "将完整 Req 顺序持久化，每个 Green 后自动进入下一个 Req 的 Red，队列清空前不暂停询问。",
+      "files": [],
+      "expectations": [
+        "requirements.json 包含三个有序 Req ID",
+        "每个 Green 后 works-state.json 自动指向下一个未完成 Req",
+        "没有向用户询问是否继续下一个 Req",
+        "全部 Req 均有 Red/Green/verify 证据后才交付"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "/works。需求入口是 RestController；为了少改文件，可以直接注入现有 UserMapper，但项目已有 UserService。",
+      "expected_output": "复用 UserService；若入口新增 Mapper/Repository/直接数据访问依赖，机械门禁拒绝 Green 和阶段完成。",
+      "files": [],
+      "expectations": [
+        "修改前保存 service boundary dirty baseline",
+        "RestController 没有新增 UserMapper 依赖",
+        "service-boundary-verify.json 通过",
+        "如能力缺失则扩展 UserService 后由其调用 UserMapper"
+      ]
     }
   ]
 }

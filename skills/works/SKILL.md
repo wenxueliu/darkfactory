@@ -27,7 +27,7 @@ description: >
 ## Run contract
 
 - 自动执行需求明确且可逆的仓库内操作；不得覆盖、回滚或格式化用户的无关改动。
-- 全程无人值守，不向用户请求确认项目目录、需求路径、测试 seam、实现方案或阶段推进。先自主搜索、推导和验证；信息仍不足时采用最保守且可逆的方案并记录假设，确实无法安全继续时写明 blocked 证据后停止，不把问题抛回给用户。
+- 全程无人值守，不向用户请求确认项目目录、需求路径、测试 seam、实现方案、阶段推进或“是否继续下一个 Req”。先自主搜索、推导和验证；信息仍不足时采用最保守且可逆的方案并记录假设，确实无法安全继续时写明 blocked 证据后停止，不把问题抛回给用户。只有不可逆操作、权限扩张或互斥且无法从仓库判定的业务语义才允许暂停。
 - 业务入口必须优先复用现有 Service/Application Service API，不能为了少写代码从 Controller、Job、Listener、Command handler 或其他上层入口直接调用 Mapper/DAO/Repository。缺少能力时优先扩展最匹配的 Service 接口及实现，再由 Service 调用持久化层。
 - 不复制已有实现。新增独立职责、数据契约或适配边界时可以新增类型，并在 `findings.md` 记录理由。
 - 测试文件必须进入最终交付 diff。除非用户明确授权，不执行 `git commit`、push 或其他发布操作。
@@ -51,6 +51,7 @@ description: >
    - `task_plan.md` 的任何状态、Next Step 或决策修改都会使旧 attestation 失效；在阶段边界批量修改计划，随后立即重新运行 `attest-plan.sh`。切片内高频细节只写 `findings.md`、`progress.md` 和 ledger。
 7. 使用 [references/plan-contract.md](references/plan-contract.md) 填写唯一的六阶段计划。`task_plan.md` 只保存目标、状态、门禁和下一动作；分析写入 `findings.md`；命令摘要写入 `progress.md`；原始输出保存到计划目录下的 `logs/`。
 8. `tdd_slice.py` 的 init/probe/red/green/verify 成功后会自动调用 `works_plan_gate.py sync`，更新 `works-state.json`、唯一 Next Step、ledger 和 attestation。不得手工伪造这些状态，也不得直接调用 `phase-status.sh` 完成 Phase 2–6；只能使用 `works_plan_gate.py complete-phase` 让磁盘证据决定能否推进。
+9. 影响分析完成后，用 `works_plan_gate.py set-reqs --req <REQ-1> --req <REQ-2> ...` 按执行顺序固化完整 Req 队列。每个 Green 后自动选择第一个未完成 Req 并继续 Red；不得输出询问、等待确认或提前交付。只有队列清空后才能进入 verify/acceptance。
 
 ### Planning ownership
 
@@ -95,6 +96,7 @@ description: >
 4. Mapper/DAO/Repository 只负责持久化查询与写入，不承载业务编排；Service 内可以调用它们，但应优先复用已有 Service 方法，避免跨领域复制查询或更新逻辑。
 5. 只有项目已有且有测试、调用惯例或架构文档证明的模式才允许绕过普通 Service：CQRS 中隔离、只读、无业务规则的 Query handler；Mapper/Repository 自身实现与切片测试；或项目已有同类模式的迁移/基础设施批处理。Spring Data REST 仅在项目已经明确采用该资源模型，且目标操作不绕过已有 Service、领域不变量、授权、审计、事件或事务编排时视为既定例外；它不为普通 Controller 或新的业务写路径提供许可。写操作、跨表操作、带权限/幂等/状态转换/事务/副作用的操作不得使用只读例外。
 6. 若发现拟修改入口新增了 Mapper/DAO/Repository 依赖，默认判定为架构门禁失败；重新设计为 Service API，除非已记录上述例外证据。
+7. `tdd_slice.py init` 会记录现存入口→持久层违规基线；每次 Green 和 Phase 4–6 都运行 `service_boundary.py verify`。任何新增的 Controller/Endpoint/Job/Listener/Consumer/Handler → Mapper/DAO/Repository 或 `JdbcTemplate`、`EntityManager`、`SqlSession`、`DSLContext` 等直接数据访问依赖都会阻止推进。先寻找至少两个相邻同类调用链，复用现有 Service；确无能力时扩展职责匹配的 Service API。
 
 开始实现前检查：
 
@@ -117,6 +119,8 @@ description: >
 5. **Local regression**：运行当前测试、相关 characterization tests 和受影响模块测试。多模块 Maven 默认考虑 `-pl <module> -am`。
 6. **Evidence**：把 `red.json`、`green.json`、命令、退出码、测试数和日志路径写入 `progress.md`；更新追踪矩阵。
 7. **Review**：检查 `git diff --check`、本次 diff 和用户原有改动边界。满足当前切片验收条件后才进入下一切片。
+
+Green 成功后不要向用户汇报阶段性完成并询问是否继续。读取 `works-state.json` 中的 `remaining_reqs`，立即进入下一 Req 的 Orient→Red；只以 ledger/plan 记录阶段进度。
 
 当运行环境支持子代理时，重要切片使用隔离验收：实现者写 handoff 后，由 fresh verifier 仅根据 requirement、diff 和磁盘证据返回 `PASS`、`CHANGES_REQUIRED` 或 `BLOCKED`。主代理仍需复跑关键测试；子代理的 DONE/PASS 不是完成证据。为避免共享上下文放大实现偏见，verifier 不继承实现过程，只读取最小 handoff 和引用制品。
 
