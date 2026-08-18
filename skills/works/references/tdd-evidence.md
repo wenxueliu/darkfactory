@@ -1,85 +1,51 @@
-# Executable TDD evidence gate
+# TDD evidence contract
 
-`scripts/tdd_slice.py` makes Red-before-Green independently checkable. It records the existing dirty worktree as the initial baseline, advances an immutable-by-protocol production checkpoint after each successful Green, runs the named tests itself, parses fresh Surefire/Failsafe XML, and hashes the Red test and logs.
+`tdd_slice.py` 是底层证据引擎，只处理文件指纹、Maven/JUnit 和 Red→Green 链；它不修改 `state.json`、不推进阶段、不调用其他控制模块。应用层通过 `works.py` 编排它。
 
-## Initialize once
+## Baseline and preflight
 
-After the baseline phase and before writing any new feature test or production code:
+`tdd-init` 在 `<plan>/evidence/` 保存当前 dirty worktree 的生产、测试和 Git 状态。用户已有修改因此成为受保护起点。baseline 不可覆盖。
 
-```bash
-python <works>/scripts/tdd_slice.py init \
-  --project-root "$PROJECT_ROOT" \
-  --state-dir "$PLAN_DIR/tdd"
-```
-
-The snapshot includes existing tracked, staged, unstaged and untracked production files by content hash. Those user changes are therefore the protected starting point, not mistaken for feature implementation.
-
-## Prove Maven really executes tests
-
-Before feature Red, choose one existing stable passing testcase and run:
+`probe` 必须用一个已有稳定 testcase 证明 Maven 真正执行测试：
 
 ```bash
-python <works>/scripts/tdd_slice.py probe \
-  --state-dir "$PLAN_DIR/tdd" \
-  --testcase ExistingTest#knownBehavior \
-  -- ./mvnw -pl module -am \
-     -DskipTests=false -Dmaven.test.skip=false \
-     -Dtest=ExistingTest#knownBehavior test
+python3 <works>/scripts/works.py --project <project> probe -- \
+  --testcase ExistingTest#behavior -- ./mvnw \
+  -DskipTests=false -Dmaven.test.skip=false \
+  -Dtest=ExistingTest#behavior test
 ```
 
-The script scans project POMs for true-valued `skip*test*` properties and requires explicit `-D<property>=false` overrides in addition to the two standard flags. Probe passes only when a new or changed report proves the selected testcase executed successfully. A POM skip flag is a build default to override, never evidence that tests are unimportant.
+POM 中每个 true-valued `skip*test*` 属性都必须对应 `-D<name>=false`。只有新鲜 Surefire/Failsafe XML 证明目标 testcase 执行并通过，preflight 才有效。
 
-## Establish Red
+## Red
 
-Write one behavior test, then let the script run the narrow command:
+有效 Red 同时要求：
 
-```bash
-python <works>/scripts/tdd_slice.py red \
-  --state-dir "$PLAN_DIR/tdd" \
-  --req REQ-1 \
-  --test-file module/src/test/java/example/FeatureTest.java \
-  --testcase FeatureTest#behavior \
-  -- ./mvnw -pl module -am -DskipTests=false -Dmaven.test.skip=false \
-     -Dtest=FeatureTest#behavior test
-```
+- 当前生产指纹等于 baseline 或上一 Green checkpoint；
+- 目标测试文件相对 baseline 已变化；
+- 命令非零退出；
+- 新鲜 XML 中目标 testcase 自身有 assertion failure；
+- 目标 testcase 没有 test error；
+- 编译、fixture、依赖和环境错误不算 Red。
 
-Valid Red requires all of the following:
+Red 保存 testcase、测试哈希、完整命令、日志、JUnit 报告和当前 checkpoint 哈希。
 
-- no production file differs from the latest successful Green checkpoint（第一个切片使用 initialized dirty-worktree baseline）；
-- the named test file changed after initialization;
-- the command exits non-zero;
-- a fresh Surefire/Failsafe report contains at least one executed test and assertion failure;
-- the named `--testcase` itself executed and contains the assertion failure; an unrelated failing test cannot establish Red;
-- the report contains no test error. Compilation, fixture, dependency and environment failures are invalid Red.
+## Green
 
-The script compares report hashes before and after the command and copies only new or changed XML into the slice evidence directory, so a stale report cannot establish Red.
+Green 必须使用与 Red 完全相同的命令。Red 测试哈希不能变化，生产指纹必须变化，目标 testcase 必须真实执行并通过。应用层在签发 Green 前执行 Service boundary 检查。
 
-## Establish Green
+成功 Green 保存生产指纹并推进 checkpoint。下一 Req 的 Red 必须基于该 checkpoint。
 
-After the minimum production change, run the exact same selector:
+## Verify
 
-```bash
-python <works>/scripts/tdd_slice.py green \
-  --state-dir "$PLAN_DIR/tdd" \
-  --req REQ-1 \
-  -- ./mvnw -pl module -am -DskipTests=false -Dmaven.test.skip=false \
-     -Dtest=FeatureTest#behavior test
-```
+最终 verify 按固定 Req 顺序：
 
-The Red test content hash must be unchanged through Green, the selector must be identical, and production content must differ from this slice's Red checkpoint. A successful Green advances `checkpoint.json`, so the next Req can establish Red on top of already completed slices. If the test expectation was wrong, discard the slice evidence, correct the test, restore production to that slice's checkpoint, and establish a new Red. Do not weaken a test between Red and Green.
+- 校验 baseline、Red、Green、日志和报告哈希；
+- 校验 checkpoint 前驱链；
+- 校验每个已建立 testcase 的方法正文未变化；
+- 重跑每个精确测试命令并要求目标 testcase 通过；
+- 确认当前生产指纹等于最后 Green。
 
-## Verify before phase completion
+任何缺链、旧报告、测试弱化、选择器变化、Green 后生产修改或禁用测试都会失败。
 
-```bash
-python <works>/scripts/tdd_slice.py verify \
-  --state-dir "$PLAN_DIR/tdd" \
-  --req REQ-1 --req REQ-2
-```
-
-`verify` fails when a requirement lacks a complete Red→Green chain, the per-slice production checkpoint chain breaks, current production differs from the final Green checkpoint, baseline/evidence/log/report hashes fail, Green has no production change, or selectors differ. After Green, later slices may append methods to the same Java/Kotlin/Groovy-style test class, but the brace-balanced body of every established target testcase must remain byte-for-byte identical. Verify also reruns every saved exact command against fresh reports and requires the target testcase to execute and pass, so `@Disabled`, class-level disabling and build exclusions cannot satisfy the gate. Save `tdd-verify.json` in acceptance evidence.
-
-`init` refuses to overwrite an existing baseline. Req IDs are restricted to safe filename characters, preventing evidence paths from escaping the state directory. Record `baseline.sha256` in `progress.md` and the attested plan so an unexpected reinitialization or baseline change is visible during recovery.
-
-## Skill-only enforcement boundary
-
-This skill intentionally does not install or modify host hooks. The evidence gate detects implementation-first work because production diverges from the current checkpoint, and final verification refuses completion without a valid chain. It cannot physically intercept a write when the model ignores the skill entirely. Therefore keep the Start here sequence at the top of `SKILL.md`, make init/probe/Red explicit planning gates, and never describe planning-with-files' Stop gate as a production-write barrier.
+Evidence 是不可变事实，但不能单独表示流程完成；`state.json` 根据完整证据和 acceptance 最新结果推导 `COMPLETE`。

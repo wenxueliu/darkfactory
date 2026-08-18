@@ -44,15 +44,15 @@ Sources:
 
 | Observed risk | Works control |
 |---|---|
-| 长计划后段漏项或急于完成 | 六阶段短状态机；每次只加载当前 slice；磁盘 Next Step；双完成门 |
+| 长计划后段漏项或急于完成 | `works.py status` 每轮只返回当前状态、允许动作和禁止动作；磁盘 Next Step；双完成门 |
 | 为实现迎合测试 | expectation 先来自 requirement/characterization；有效 Red 必须是目标断言失败 |
 | 跳过或缩小测试 | 每切片命名验证命令并记录 exit/log；最终独立验收矩阵 |
 | tunnel vision | 同类失败两次后 fresh worker/verifier + handoff |
 | 误改无关文件 | slice 前后 git status/scoped diff；保护修改前基线 |
-| tool call 被当文本或 malformed | 视为 harness/infrastructure failure；不声称命令已执行；换通道一次后 handoff/blocked |
-| 上下文越长越不稳定 | task_plan/findings/progress/log 分层；smart injection；压缩前 handoff |
+| tool call 被当文本或 malformed | 所有子命令由单一 driver 委派并返回稳定错误码；未取得真实退出码时视为 infrastructure failure |
+| 上下文越长越不稳定 | 单一 state.json 只暴露当前动作；原始输出留在 logs/evidence；压缩前 handoff |
 | Green 后停下询问是否继续 | 完整 Req 队列持久化；Green 自动选择下一未完成 Req；禁止阶段性确认 |
-| 忽略项目分层、走最短 Mapper 路径 | dirty-baseline 架构扫描；Green/Phase 4 机械拒绝新增入口→持久层依赖；要求先找相邻 Service 模式 |
+| 忽略项目分层、走最短 Mapper 路径 | dirty-baseline 架构扫描；Green/verify 机械拒绝新增入口→持久层依赖；要求先找相邻 Service 模式 |
 
 公开资料没有证明“直接调用 Mapper”是 M2.7 的普遍 Spring 特定缺陷；这是本项目的实际运行观察。它与公开反馈中的约束漂移、浅层最短路径和后段失稳相符，因此采用可执行 harness 门禁，而不是继续增加软提示词。
 

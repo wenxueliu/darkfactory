@@ -34,34 +34,6 @@ def atomic_json(path: Path, value: dict) -> None:
     os.replace(tmp, path)
 
 
-def sync_plan(state: Path, event: str, req: str | None = None) -> None:
-    """Make the durable plan reflect every successful TDD transition."""
-    plan = state.resolve().parent
-    if not (plan / "task_plan.md").is_file():
-        return
-    command = [
-        sys.executable,
-        str(Path(__file__).with_name("works_plan_gate.py")),
-        "sync",
-        "--state-dir",
-        str(state),
-        "--event",
-        event,
-    ]
-    if req:
-        command.extend(["--current-req", req])
-    subprocess.run(command, check=True)
-
-
-def service_boundary(action: str, state: Path, root: Path | None = None) -> None:
-    command = [sys.executable, str(Path(__file__).with_name("service_boundary.py")), action]
-    if action == "init":
-        command.extend(["--project-root", str(root), "--state-dir", str(state)])
-    else:
-        command.extend(["--state-dir", str(state)])
-    subprocess.run(command, check=True)
-
-
 def is_test(rel: str) -> bool:
     p = rel.replace("\\", "/")
     name = Path(p).name.lower()
@@ -280,8 +252,6 @@ def cmd_init(args: argparse.Namespace) -> int:
     atomic_json(state / "baseline.json", data)
     (state / "baseline.sha256").write_text(hashlib.sha256((state / "baseline.json").read_bytes()).hexdigest() + "\n")
     atomic_json(state / "checkpoint.json", {"sequence": 0, "production": data["production"], "previous_req": None})
-    service_boundary("init", state, root)
-    sync_plan(state, "tdd_init")
     print(state / "baseline.json")
     return 0
 
@@ -338,7 +308,6 @@ def cmd_red(args: argparse.Namespace) -> int:
         "recorded_at": time.time(),
     }
     atomic_json(slice_dir / "red.json", evidence)
-    sync_plan(state, "red_pass", req)
     print(slice_dir / "red.json")
     return 0
 
@@ -362,7 +331,6 @@ def cmd_green(args: argparse.Namespace) -> int:
     production = fingerprints(root, production=True)
     if production == red["production_before"]:
         raise SystemExit("invalid Green: production did not change from this slice's Red checkpoint")
-    service_boundary("verify", state)
     log = slice_dir / "green.log"
     code, junit = run_command(root, args.command, log, slice_dir / "green-reports", red["testcase"])
     target = junit["target"]
@@ -396,7 +364,6 @@ def cmd_green(args: argparse.Namespace) -> int:
         state / "checkpoint.json",
         {"sequence": red["checkpoint_sequence"] + 1, "production": production, "previous_req": req},
     )
-    sync_plan(state, "green_pass")
     print(slice_dir / "green.json")
     return 0
 
@@ -500,7 +467,6 @@ def cmd_verify(args: argparse.Namespace) -> int:
     if failures:
         print("\n".join(failures), file=sys.stderr)
         return 1
-    sync_plan(state, "tdd_verify_pass")
     print(state / "tdd-verify.json")
     return 0
 
@@ -530,7 +496,6 @@ def cmd_probe(args: argparse.Namespace) -> int:
             f"test preflight failed: exit={code}, executed={target['executed']}, "
             f"failures={target['failures']}, errors={target['errors']}"
         )
-    sync_plan(state, "test_preflight_pass")
     print(state / "preflight.json")
     return 0
 

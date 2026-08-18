@@ -42,7 +42,9 @@ Controller / Job / Listener / Command handler
 4. 对比计划 diff：如果入口新增 Mapper 依赖，而 Service 没有相应变化，视为高概率绕层。
 5. 为 Service 公共行为写测试；必要时另写 Mapper 集成测试，但不能只测 Mapper 就宣称业务功能完成。
 6. 项目使用 ArchUnit 或 Spring Modulith 时，运行现有架构测试；按项目惯例补充“入口包不得依赖 mapper/repository”“跨模块只能依赖 API/service 包”等规则。
-7. 即使项目没有 ArchUnit，也必须先运行 `scripts/service_boundary.py init` 保存 dirty baseline，随后用 `verify` 阻断新增入口→持久层依赖。它同时识别后缀、Spring `@Repository`、MyBatis `@Mapper`/`BaseMapper` 和常见直接数据访问客户端。
+7. 即使项目没有 ArchUnit，也必须先运行 `scripts/service_boundary.py init` 保存 dirty baseline，随后用 `verify` 阻断新增入口→持久层依赖。扫描器先移除注释和字符串，只把 import、字段、参数等依赖声明形成的高置信匹配作为硬门禁；孤立名称引用只写入 `warnings`，需要人工结合 diff 判断。
+
+优先级是：项目已有 ArchUnit/Spring Modulith 规则 > 编译和测试证据 > `service_boundary.py` 高置信扫描 > 低置信 warning。扫描器不能代替项目架构测试，也不应因注释或文档里的 `Mapper` 名称阻断交付。
 
 ## Sources
 

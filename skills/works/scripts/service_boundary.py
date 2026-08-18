@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject newly introduced entry-layer dependencies on persistence types."""
+"""Reject high-confidence entry-layer dependencies on persistence types."""
 
 from __future__ import annotations
 
@@ -45,6 +45,15 @@ def java_files(root: Path):
             yield path
 
 
+def code_only(source: str) -> str:
+    """Remove comments and literals so documentation cannot create violations."""
+    source = re.sub(r"/\*.*?\*/", " ", source, flags=re.DOTALL)
+    source = re.sub(r"//[^\n]*", " ", source)
+    source = re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
+    source = re.sub(r"'(?:\\.|[^'\\])*'", "''", source)
+    return source
+
+
 def is_entry(path: Path, source: str) -> bool:
     annotations = set(ANNOTATION.findall(source))
     declared = TYPE_DECL.search(source)
@@ -55,7 +64,7 @@ def is_entry(path: Path, source: str) -> bool:
 def persistence_types(root: Path) -> set[str]:
     found = set(DIRECT_DATA_ACCESS)
     for path in java_files(root):
-        source = path.read_text(errors="replace")
+        source = code_only(path.read_text(errors="replace"))
         declared = TYPE_DECL.search(source)
         if not declared:
             continue
@@ -70,20 +79,32 @@ def persistence_types(root: Path) -> set[str]:
     return found
 
 
-def violations(root: Path) -> dict[str, dict]:
+def violations(root: Path) -> tuple[dict[str, dict], list[dict]]:
     found: dict[str, dict] = {}
+    warnings: list[dict] = []
     known_persistence = persistence_types(root)
     for path in java_files(root):
-        source = path.read_text(errors="replace")
+        source = code_only(path.read_text(errors="replace"))
         if not is_entry(path, source):
             continue
         rel = path.relative_to(root).as_posix()
-        used = set(PERSISTENCE_TYPE.findall(source))
-        used.update(name for name in known_persistence if re.search(rf"\b{re.escape(name)}\b", source))
+        imports = set(re.findall(r"^import\s+(?:static\s+)?[\w.]+\.([A-Z][\w$]*);", source, re.MULTILINE))
+        declared_dependencies = set(re.findall(
+            r"\b([A-Z][\w$]*(?:Mapper|Dao|DAO|Repository))\s+[a-z_$][\w$]*\s*(?:[;,)=])",
+            source,
+        ))
+        used = declared_dependencies | (imports & known_persistence)
+        direct = {name for name in DIRECT_DATA_ACCESS if re.search(rf"\b{re.escape(name)}\s+[a-z_$]", source)}
+        used.update(direct)
         for persistence_type in sorted(used):
             key = f"{rel}|{persistence_type}"
-            found[key] = {"file": rel, "persistence_type": persistence_type}
-    return found
+            found[key] = {"file": rel, "persistence_type": persistence_type, "confidence": "high"}
+        referenced = set(PERSISTENCE_TYPE.findall(source)) - used
+        warnings.extend(
+            {"file": rel, "persistence_type": name, "confidence": "low", "reason": "reference_without_dependency_declaration"}
+            for name in sorted(referenced)
+        )
+    return found, warnings
 
 
 def load(path: Path) -> dict:
@@ -99,8 +120,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     baseline = state / "service-boundary-baseline.json"
     if baseline.exists():
         raise SystemExit("service boundary baseline already exists")
-    current = violations(root)
-    atomic_json(baseline, {"project_root": str(root), "violations": current})
+    current, warnings = violations(root)
+    atomic_json(baseline, {"project_root": str(root), "violations": current, "warnings": warnings})
     print(baseline)
     return 0
 
@@ -114,11 +135,13 @@ def cmd_verify(args: argparse.Namespace) -> int:
     root = Path(baseline["project_root"])
     if args.project_root and Path(args.project_root).resolve() != root.resolve():
         raise SystemExit("--project-root does not match the immutable service boundary baseline")
-    before, current = baseline.get("violations", {}), violations(root)
+    before = baseline.get("violations", {})
+    current, warnings = violations(root)
     introduced = [current[key] for key in sorted(current.keys() - before.keys())]
     result = {
         "passed": not introduced,
         "introduced": introduced,
+        "warnings": warnings,
         "baseline_count": len(before),
         "current_count": len(current),
         "baseline_sha256": hashlib.sha256(baseline_file.read_bytes()).hexdigest(),

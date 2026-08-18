@@ -1,6 +1,6 @@
 # Eval fixture contract
 
-这些 eval 描述的是必须在外部固定 Maven 仓库集上运行的场景，不能在空目录直接执行。`files` 暂为空是因为真实存量仓库通常不能随 skill 分发，并不表示无需输入。
+这些 eval 描述的是固定 Maven 仓库场景，不能在空目录直接执行。先用 `fixtures/build_fixtures.py` 生成四个可重置仓库；需要私有真实仓库的场景仍可通过外部 fixture 扩展。
 
 运行评测前，harness 必须为每个 eval 提供并记录：
 

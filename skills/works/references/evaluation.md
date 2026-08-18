@@ -33,4 +33,4 @@
 5. 只保留跨案例有效的规则；把重复机械工作移入脚本或模板。
 6. 候选版本在 held-out 仓库上不退化后，才替换稳定版本。
 
-建议首次迭代使用 3 个短任务和 2 个长任务，长任务至少包含三个可独立验收的需求切片。
+先运行 `evals/fixtures/build_fixtures.py` 生成 Service 边界、dirty worktree、invalid Red 和 skip-tests 四个确定性仓库。比较无 skill、稳定版本、候选版本三组；每组除通过率外还记录无关 diff、错误完成声明、tool-call 数、token、耗时和任务后半段失败率。真实长任务另选至少两个包含三个独立 Req 的固定 commit 仓库。
