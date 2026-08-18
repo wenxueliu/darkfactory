@@ -109,13 +109,26 @@ ${toolMapping}
     //   1. Token bloat from system messages repeated every turn
     //   2. Multiple system messages breaking Qwen and other models
     'experimental.chat.messages.transform': async (_input, output) => {
-      const bootstrap = getBootstrapContent();
-      if (!bootstrap || !output.messages.length) return;
+      if (!output.messages.length) return;
       const firstUser = output.messages.find(m => m.info.role === 'user');
       if (!firstUser || !firstUser.parts.length) return;
       // Only inject once
       if (firstUser.parts.some(p => p.type === 'text' && p.text.includes('EXTREMELY_IMPORTANT'))) return;
       const ref = firstUser.parts[0];
+      const userText = firstUser.parts.filter(p => p.type === 'text').map(p => p.text || '').join('\n');
+      if (/(?:^|\s)\/works\b|requirement\.md/i.test(userText)) {
+        firstUser.parts.unshift({
+          ...ref,
+          type: 'text',
+          text: `<EXTREMELY_IMPORTANT>
+Load the native OpenCode skill named "works" and keep it as the sole workflow authority until its state is COMPLETE.
+Works may load supporting skills according to its own routing table. Do not call a subagent or ask for human confirmation.
+</EXTREMELY_IMPORTANT>`
+        });
+        return;
+      }
+      const bootstrap = getBootstrapContent();
+      if (!bootstrap) return;
       firstUser.parts.unshift({ ...ref, type: 'text', text: bootstrap });
     }
   };

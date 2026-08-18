@@ -1,43 +1,42 @@
 # Works state contract
 
-## Authority
-
-`.planning/works-*/state.json` 是唯一流程状态。不得从 Markdown、对话记忆或单个日志推导阶段并手工覆盖它。
-
-```text
-state.json                 mutable, atomic, authoritative workflow state
-impact-map.json            validated analysis artifact
-logs/                      raw acceptance logs
-evidence/baseline.json     immutable initial worktree evidence
-evidence/checkpoint.json   latest successful Green production fingerprint
-evidence/preflight.json    Maven test-execution proof
-evidence/slices/<REQ>/      immutable Red/Green/JUnit/log evidence
-evidence/tdd-verify.json    final replay result
-```
-
-## State transitions
+`.planning/works-*/state.json` 是唯一流程进度。OpenCode 每完成一个 `next_action` 后重新读取它，不从聊天摘要推导阶段。
 
 ```text
 SETUP_REQUIRED
-  └─ baseline + passed preflight
-       → IMPACT_REQUIRED
-          └─ ordered Req list + validated impact map
-               → READY_FOR_RED
-                  └─ valid Red
-                       → READY_FOR_IMPLEMENTATION
-                          └─ valid Green
-                               ├─ next uncovered Req → READY_FOR_RED
-                               └─ all Green → READY_FOR_ACCEPTANCE
-                                    └─ verify + latest named checks pass → COMPLETE
+  -> baseline + passed probe
+CONTRACT_REQUIRED
+  -> validated requirement-contract.json
+IMPACT_REQUIRED
+  -> validated impact-map.json
+READY_FOR_RED
+  -> current Req target assertion fails
+READY_FOR_IMPLEMENTATION
+  -> same target passes after implementation
+READY_FOR_ACCEPTANCE
+  -> finalize replays every Req and every contract acceptance command
+  -> failure: append a repair Req for the affected behavior and establish a new Red/Green
+COMPLETE
 ```
 
-`BLOCKED` 只用于保留无法安全推进的证据，不是绕过失败的完成状态。
+`next_action` 始终只有一个。复合动作如 `establish-red-for-current-requirement` 表示模型先新增或复用当前行为测试，再立刻调用对应 CLI 门禁，不在两步之间重新规划或停止。
 
-## Invariants
+关键文件：
 
-- CLI 是唯一流程写入者；底层 evidence、impact 和 boundary 模块不修改 `state.json`。
-- 状态只从已存在的证据文件和显式配置推导。
-- `state.json` 使用临时文件和原子替换写入。
-- requirements 顺序固定后决定 checkpoint 链和最终 verify 顺序。
-- 人类可读报告只能由状态和证据单向生成，不能反向推进状态。
-- 失败的 acceptance 会覆盖同名检查的最新结果；必须同名重跑成功才能完成。
+```text
+state.json                         workflow state, attempts and next_action
+requirement-contract.json          Req + acceptance contract
+impact-map.json                    repository-grounded implementation map
+activity.jsonl                     action and failure journal
+findings.jsonl                     reusable repository facts
+decisions.jsonl                    implementation choices
+summaries/                         small phase recovery summaries
+evidence/baseline.json             initial worktree snapshot
+evidence/preflight.json            test execution proof
+evidence/slices/<REQ>/red.json      failing behavior evidence
+evidence/slices/<REQ>/green.json    passing implementation evidence
+evidence/tdd-verify.json            replay of every Req test
+evidence/final-verification.json    all contract commands and exits
+```
+
+状态只能由 works CLI 推进。命令失败保持当前阶段并增加 attempt；相同失败不能在相同工作区原样重放。`recover` 只读取和汇总状态，不推进阶段。

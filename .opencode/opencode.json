@@ -1,5 +1,5 @@
 {
-  "model": "anthropic/claude-sonnet-4-6",
+  "model": "opencode-go/minimax-m2.7",
   "default_agent": "build",
   "plugin": ["./plugins"],
   "instructions": [
@@ -31,14 +31,10 @@
       "tools": ["read"]
     }
   },
-  "permissions": {
-    "allow": [
-      "read(*/services/multiagents/**)",
-      "write(*/services/multiagents/**)",
-      "bash(git:*)",
-      "bash(python:*)",
-      "bash(npm:*)",
-      "bash(pytest:*)"
-    ]
+  "permission": {
+    "skill": "allow",
+    "read": "allow",
+    "edit": "allow",
+    "bash": "allow"
   }
 }
