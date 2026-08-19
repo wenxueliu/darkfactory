@@ -6,10 +6,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
-import tempfile
+
+from works_core.common import IGNORED_DIRS as IGNORED, atomic_json
 
 
 ENTRY_ANNOTATIONS = {"Controller", "RestController", "WebServlet", "ControllerAdvice"}
@@ -21,22 +21,6 @@ DIRECT_DATA_ACCESS = {
 }
 TYPE_DECL = re.compile(r"\b(?:class|interface|record|enum)\s+([A-Za-z_$][\w$]*)")
 ANNOTATION = re.compile(r"@([A-Za-z_$][\w$]*)")
-IGNORED = {".git", ".planning", "target", "build", ".gradle", "node_modules"}
-
-
-def atomic_json(path: Path, value: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            json.dump(value, stream, ensure_ascii=False, indent=2)
-            stream.write("\n")
-        os.replace(tmp, path)
-    finally:
-        try:
-            os.unlink(tmp)
-        except FileNotFoundError:
-            pass
 
 
 def java_files(root: Path):

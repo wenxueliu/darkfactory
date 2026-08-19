@@ -5,7 +5,7 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实
 
 # Works
 
-从明确的 `requirement.md` 一直执行到代码和全部验收通过。不要询问用户，不在中间停下请求确认。按 [Skill routing](references/skill-routing.md) 调用其他 Skill 或 subagent；调用完成后立即返回 works 状态机。
+从明确的 `requirement.md` 一直执行到代码和全部验收通过。不要询问用户，不在中间停下请求确认。按 [Skill routing](references/skill-routing.md) 加载 `impl-validator`（审查门）或读内置 reference；完成后立即返回 works 状态机。
 
 ## OpenCode 执行契约
 
@@ -17,7 +17,7 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实
 <python> <skill-dir>/scripts/works.py --project <project> status
 ```
 
-只完成返回的结构化 `next_action.id`。它同时给出当前 Req、可用 Skill 和成功证据。动作包含“编辑并运行门禁”时，把两者视为一个不可分割步骤；完成后立即再次运行 `status`。持续执行，直到 `state` 为 `COMPLETE`。命令失败时读取输出、记录发现、改变工作区或策略后重试；CLI 会拒绝完全相同的失败重放。
+只完成返回的结构化 `next_action.id`。它同时给出当前 Req、应加载的 Skill（仅审查门）或应读的 reference、以及成功证据。动作包含“编辑并运行门禁”时，把两者视为一个不可分割步骤；完成后立即再次运行 `status`。持续执行，直到 `state` 为 `COMPLETE`。命令失败时读取输出、记录发现、改变工作区或策略后重试；CLI 会拒绝完全相同的失败重放。
 
 会话中断或上下文压缩后先运行 `recover`。探索得到可复用事实或关键选择时，用 `note` 写入轻量磁盘记忆；不要建立第二套 task plan。细节见 [Persistent memory](references/persistent-memory.md)。
 

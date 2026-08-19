@@ -1,32 +1,17 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 import re
-import tempfile
 import time
+
+from .common import append_jsonl, atomic_json
 
 
 STATES = {
     "SETUP_REQUIRED", "CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED", "IMPACT_REQUIRED", "READY_FOR_RED",
     "READY_FOR_IMPLEMENTATION", "READY_FOR_ACCEPTANCE", "IMPLEMENTATION_REVIEW_REQUIRED", "COMPLETE", "BLOCKED",
 }
-
-
-def atomic_json(path: Path, value: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            json.dump(value, stream, ensure_ascii=False, indent=2)
-            stream.write("\n")
-        os.replace(temporary, path)
-    finally:
-        try:
-            os.unlink(temporary)
-        except FileNotFoundError:
-            pass
 
 
 def slug(value: str) -> str:
@@ -78,12 +63,6 @@ def save(plan: Path, state: dict) -> None:
     atomic_json(plan / "state.json", state)
 
 
-def append_jsonl(path: Path, value: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as stream:
-        stream.write(json.dumps(value, ensure_ascii=False) + "\n")
-
-
 def activity(plan: Path, state: dict, action: str, result: str, **details: object) -> None:
     append_jsonl(plan / "activity.jsonl", {
         "time": time.time(), "state": state.get("state"), "req": state.get("current_req"),
@@ -99,7 +78,7 @@ def summarize(plan: Path, state: dict, action: str, **details: object) -> None:
     })
 
 
-def refresh(plan: Path, state: dict) -> dict:
+def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
     evidence = Path(state["evidence_dir"])
     baseline = evidence / "baseline.json"
     preflight = evidence / "preflight.json"
@@ -133,59 +112,30 @@ def refresh(plan: Path, state: dict) -> dict:
             else:
                 stage = "READY_FOR_ACCEPTANCE"
     state["state"] = stage
-    state["allowed_actions"], state["forbidden_actions"] = actions(stage)
-    if stage == "SETUP_REQUIRED":
-        state["allowed_actions"] = ["tdd-init"] if not baseline.exists() else ["probe"]
-    elif stage == "CONTRACT_REQUIRED":
-        contract = plan / "requirement-contract.json"
-        state["allowed_actions"] = ["contract-init"] if not contract.exists() else ["complete-contract-and-check"]
-    elif stage == "CONTRACT_REVIEW_REQUIRED":
-        review = plan / "contract-review.json"
-        result = review_result(review)
-        if not review.exists():
-            state["allowed_actions"] = ["contract-review-init"]
-        elif result and result != "PASS":
-            state["allowed_actions"] = ["revise-contract-and-rerun-review"]
-        else:
-            state["allowed_actions"] = ["run-fresh-contract-verifier-and-check"]
-    elif stage == "IMPACT_REQUIRED":
-        impact = plan / "impact-map.json"
-        if not impact.exists():
-            state["allowed_actions"] = ["impact-init"]
-        else:
-            state["allowed_actions"] = ["complete-impact-map-and-check"]
-    elif stage == "READY_FOR_ACCEPTANCE":
-        final = evidence / "final-verification.json"
-        failed = final.exists() and not json.loads(final.read_text()).get("passed")
-        state["allowed_actions"] = ["diagnose-and-reopen-failing-requirement"] if failed else ["finalize"]
-    elif stage == "IMPLEMENTATION_REVIEW_REQUIRED":
-        review = plan / "implementation-review.json"
-        result = review_result(review)
-        if not review.exists():
-            state["allowed_actions"] = ["implementation-review-init"]
-        elif result and result != "PASS":
-            state["allowed_actions"] = ["diagnose-review-and-reopen-requirement"]
-        else:
-            state["allowed_actions"] = ["run-fresh-implementation-verifier-and-check"]
-    action_id = state["allowed_actions"][0]
+    action_id = _next_action_id(stage, plan, evidence)
+    state["allowed_actions"] = [NEXT_ACTION_OP[action_id]]
+    state["forbidden_actions"] = [] if stage == "READY_FOR_IMPLEMENTATION" else ["edit_production"]
     state["next_action_id"] = action_id
     state["next_action"] = next_action(action_id, state)
-    save(plan, state)
+    if persist:
+        save(plan, state)
     return state
 
 
 def next_action(action_id: str, state: dict) -> dict:
     skills = {
-        "complete-contract-and-check": "sw-codebase-explorer",
         "run-fresh-contract-verifier-and-check": "impl-validator",
         "revise-contract-and-rerun-review": "impl-validator",
-        "complete-impact-map-and-check": "sw-codebase-explorer",
-        "establish-red-for-current-requirement": "tdd",
-        "implement-current-requirement-and-run-green": "tdd",
-        "diagnose-and-reopen-failing-requirement": "sw-systematic-debugging",
-        "finalize": "sw-verification-before-completion",
         "run-fresh-implementation-verifier-and-check": "impl-validator",
         "diagnose-review-and-reopen-requirement": "impl-validator",
+    }
+    references = {
+        "complete-contract-and-check": "references/exploration.md",
+        "complete-impact-map-and-check": "references/exploration.md",
+        "establish-red-for-current-requirement": "references/tdd-seams.md",
+        "implement-current-requirement-and-run-green": "references/tdd-seams.md",
+        "diagnose-and-reopen-failing-requirement": "references/diagnosis.md",
+        "finalize": "references/verification.md",
     }
     evidence = {
         "complete-contract-and-check": "requirement-contract.json",
@@ -198,25 +148,66 @@ def next_action(action_id: str, state: dict) -> dict:
     }
     return {
         "id": action_id, "state": state.get("state"), "req": state.get("current_req"),
-        "skill": skills.get(action_id), "success_evidence": evidence.get(action_id),
+        "skill": skills.get(action_id), "reference": references.get(action_id),
+        "success_evidence": evidence.get(action_id),
     }
 
 
-def actions(stage: str) -> tuple[list[str], list[str]]:
-    mapping = {
-        "SETUP_REQUIRED": ["tdd-init", "probe"],
-        "CONTRACT_REQUIRED": ["contract-init", "contract-check"],
-        "CONTRACT_REVIEW_REQUIRED": ["contract-review-init", "contract-review-check", "contract-check"],
-        "IMPACT_REQUIRED": ["impact-init", "impact-check"],
-        "READY_FOR_RED": ["establish-red-for-current-requirement"],
-        "READY_FOR_IMPLEMENTATION": ["implement-current-requirement-and-run-green"],
-        "READY_FOR_ACCEPTANCE": ["finalize", "reopen"],
-        "IMPLEMENTATION_REVIEW_REQUIRED": ["implementation-review-init", "implementation-review-check", "reopen"],
-        "COMPLETE": ["report"],
-        "BLOCKED": ["inspect_evidence"],
-    }
-    forbidden = [] if stage == "READY_FOR_IMPLEMENTATION" else ["edit_production"]
-    return mapping[stage], forbidden
+# logical next-action id -> the single CLI operation that completes it
+NEXT_ACTION_OP = {
+    "tdd-init": "tdd-init",
+    "probe": "probe",
+    "contract-init": "contract-init",
+    "complete-contract-and-check": "contract-check",
+    "contract-review-init": "contract-review-init",
+    "run-fresh-contract-verifier-and-check": "contract-review-check",
+    "revise-contract-and-rerun-review": "contract-check",
+    "impact-init": "impact-init",
+    "complete-impact-map-and-check": "impact-check",
+    "establish-red-for-current-requirement": "red",
+    "implement-current-requirement-and-run-green": "green",
+    "finalize": "finalize",
+    "diagnose-and-reopen-failing-requirement": "reopen",
+    "implementation-review-init": "implementation-review-init",
+    "run-fresh-implementation-verifier-and-check": "implementation-review-check",
+    "diagnose-review-and-reopen-requirement": "reopen",
+    "report": "report",
+    "inspect_evidence": "inspect_evidence",
+}
+
+
+def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
+    if stage == "SETUP_REQUIRED":
+        return "tdd-init" if not (evidence / "baseline.json").exists() else "probe"
+    if stage == "CONTRACT_REQUIRED":
+        return "contract-init" if not (plan / "requirement-contract.json").exists() else "complete-contract-and-check"
+    if stage == "CONTRACT_REVIEW_REQUIRED":
+        review = plan / "contract-review.json"
+        result = review_result(review)
+        if not review.exists():
+            return "contract-review-init"
+        if result and result != "PASS":
+            return "revise-contract-and-rerun-review"
+        return "run-fresh-contract-verifier-and-check"
+    if stage == "IMPACT_REQUIRED":
+        return "impact-init" if not (plan / "impact-map.json").exists() else "complete-impact-map-and-check"
+    if stage == "READY_FOR_RED":
+        return "establish-red-for-current-requirement"
+    if stage == "READY_FOR_IMPLEMENTATION":
+        return "implement-current-requirement-and-run-green"
+    if stage == "READY_FOR_ACCEPTANCE":
+        final = evidence / "final-verification.json"
+        failed = final.exists() and not json.loads(final.read_text()).get("passed")
+        return "diagnose-and-reopen-failing-requirement" if failed else "finalize"
+    if stage == "IMPLEMENTATION_REVIEW_REQUIRED":
+        review = plan / "implementation-review.json"
+        result = review_result(review)
+        if not review.exists():
+            return "implementation-review-init"
+        if result and result != "PASS":
+            return "diagnose-review-and-reopen-requirement"
+        return "run-fresh-implementation-verifier-and-check"
+    return "report" if stage == "COMPLETE" else "inspect_evidence"
 
 
 def review_result(path: Path) -> str:

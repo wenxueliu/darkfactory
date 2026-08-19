@@ -1,20 +1,25 @@
 # Skill routing
 
-Works 是唯一 orchestrator。可以通过 OpenCode 原生 `skill` 工具加载下列 Skill，但辅助 Skill 不得修改 works 流程状态、替代 CLI 证据或结束任务。
+Works 是唯一 orchestrator。审查门需要一个辅助 Skill（`impl-validator`，全新只读 subagent）；其余阶段的方法论由内置 references 提供，不加载外部 Skill。
 
-| Works 阶段 | 可加载 Skill | 用途 | 返回 works 的条件 |
-|---|---|---|---|
-| `CONTRACT_REQUIRED` / `IMPACT_REQUIRED` | `sw-codebase-explorer` | 定位入口、调用链、Service API、持久层和测试 seam | 找到填写契约或影响图所需的文件证据后立即返回 |
-| `CONTRACT_REVIEW_REQUIRED` | `impl-validator` + fresh read-only subagent | 独立检查需求拆分的完整性与可验收性 | 填写 review JSON 后由 works CLI 判定 |
-| `READY_FOR_RED` / `READY_FOR_IMPLEMENTATION` | `tdd` | 选择公共行为 seam、检查测试质量、坚持单个纵向 Red→Green | 方法确定后由 works CLI 运行 `red`/`green` |
-| 任意失败重试 | `sw-systematic-debugging` | 从真实命令输出定位根因并改变修复策略 | 得到一个可执行假设后返回并重试当前 `next_action` |
-| `READY_FOR_ACCEPTANCE` | `sw-verification-before-completion` | 检查完成声明必须由新鲜完整证据支持 | 识别验证命令后仍由 `finalize` 执行契约命令 |
-| `IMPLEMENTATION_REVIEW_REQUIRED` | `impl-validator` + fresh read-only subagent | 独立逐 Req 对照实现、diff 和测试证据 | 填写 review JSON 后由 works CLI 判定 |
+`status.next_action` 给出两个提示字段：
 
-## 覆盖规则
+- `skill`：仅审查门非空，值为 `impl-validator`，用 OpenCode 原生 `skill` 工具加载。
+- `reference`：其余阶段非空，值为内置 reference 路径，直接读取该文件后照做。
 
-- Works 的 requirement contract 和 impact map 已经完成 seam 选择；辅助 `tdd` Skill 若要求用户再次确认 seam，视为已有契约确认，不询问用户。
-- 辅助 Skill 若要求 commit、发布、等待批准或向用户提问，跳过该步骤并返回 works。开发 subagent 可用，但不能控制状态；审查 subagent 必须全新且只读。
-- 辅助 Skill 的文字结论不是证据；只有 works CLI 记录的退出码、JUnit 和 final verification 能推进状态。
-- 每次最多加载一个与当前 `next_action` 直接相关的 Skill。完成其方法性工作后重新运行 `works status`。
-- 找不到某个辅助 Skill 时直接使用 works 内置 references 和脚本继续，不得停止。
+| Works 阶段 | `skill` / `reference` | 用途 |
+|---|---|---|
+| `CONTRACT_REQUIRED` / `IMPACT_REQUIRED` | `references/exploration.md` | 定位入口、调用链、Service API、持久层、测试 seam |
+| `CONTRACT_REVIEW_REQUIRED` | `impl-validator` + fresh read-only subagent | 独立检查需求拆分，填 review JSON |
+| `READY_FOR_RED` / `READY_FOR_IMPLEMENTATION` | `references/tdd-seams.md` | 选 seam、查测试质量、单纵向 Red→Green |
+| 任意失败重试 | `references/diagnosis.md` | 从真实命令输出定位根因、改策略重试 |
+| `READY_FOR_ACCEPTANCE` | `references/verification.md` | 完成声明必须有新鲜完整证据 |
+| `IMPLEMENTATION_REVIEW_REQUIRED` | `impl-validator` + fresh read-only subagent | 独立对照实现、diff 和测试证据，填 review JSON |
+
+## 规则
+
+- `skill` 非空 → 加载 `impl-validator`，行为见 [Independent reviews](reviews.md)；只填 review JSON，不改代码/契约/状态。
+- `reference` 非空 → 读该内置文件，按其方法论完成当前 `next_action`，然后立即重新运行 `works status`。
+- 全程无人：不向用户提问、不请求确认、不 commit、不发布、不等批准。
+- 辅助方法的文字结论不是证据；只有 works CLI 记录的退出码、JUnit 和 final verification 能推进状态。
+- 每次只关注一个 `next_action`；完成后回到 works 状态机，不建立第二套计划。

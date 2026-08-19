@@ -64,11 +64,11 @@
     },
     {
       "id": 7,
-      "prompt": "/works。可以使用其他 Skill 和 subagent 辅助探索、TDD、调试和验证，但不要询问我。",
+      "prompt": "/works。探索、TDD、调试和验证使用内置 reference，审查使用 impl-validator subagent，但不要询问我。",
       "assertions": [
-        "辅助 Skill 只按当前阶段加载，works state 仍是唯一流程状态",
-        "辅助 Skill 要求人工确认时由现有 requirement contract 和 impact map 自动回答",
-        "辅助 Skill 的结论不能替代 red、green 或 finalize 证据",
+        "内置 reference 或 impl-validator 只按当前阶段使用，works state 仍是唯一流程状态",
+        "内置 reference 不要求人工确认，全程无用户提问",
+        "reference 的结论不能替代 red、green 或 finalize 证据",
         "开发 subagent 不控制状态，两个审查使用全新只读 subagent"
       ]
     },
@@ -76,7 +76,7 @@
       "id": 8,
       "prompt": "/works。任务很长，可能发生上下文压缩；失败时不要重复无效动作。",
       "assertions": [
-        "status 返回包含 id、req、skill 和 success_evidence 的结构化 next_action",
+        "status 返回包含 id、req、skill、reference 和 success_evidence 的结构化 next_action",
         "失败动作写入 activity.jsonl 和 state attempts",
         "相同命令与工作区的失败重放被 E901 阻止",
         "recover 返回最后活动、最后失败和当前 next_action",

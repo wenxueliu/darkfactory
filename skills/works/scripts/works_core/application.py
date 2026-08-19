@@ -9,6 +9,7 @@ import time
 
 from . import discovery
 from . import state as store
+from .common import windows_command
 
 
 class WorksError(RuntimeError):
@@ -48,11 +49,11 @@ class Application:
 
     def status(self, project: Path) -> dict:
         plan, current = self.context(project)
-        return {"ok": True, **store.refresh(plan, current)}
+        return {"ok": True, **store.refresh(plan, current, persist=False)}
 
     def recover(self, project: Path) -> dict:
         plan, current = self.context(project)
-        current = store.refresh(plan, current)
+        current = store.refresh(plan, current, persist=False)
         activity_file = plan / "activity.jsonl"
         rows = []
         if activity_file.exists():
@@ -80,37 +81,9 @@ class Application:
         evidence = Path(current["evidence_dir"])
         if operation == "note":
             return self._note(plan, current, raw)
-        allowed_states = {
-            "tdd-init": {"SETUP_REQUIRED"}, "probe": {"SETUP_REQUIRED"},
-            "contract-init": {"CONTRACT_REQUIRED"},
-            "contract-check": {"CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED"},
-            "contract-review-init": {"CONTRACT_REVIEW_REQUIRED"},
-            "contract-review-check": {"CONTRACT_REVIEW_REQUIRED"},
-            "impact-init": {"IMPACT_REQUIRED"}, "impact-check": {"IMPACT_REQUIRED"},
-            "red": {"READY_FOR_RED"}, "green": {"READY_FOR_IMPLEMENTATION"},
-            "finalize": {"READY_FOR_ACCEPTANCE"},
-            "implementation-review-init": {"IMPLEMENTATION_REVIEW_REQUIRED"},
-            "implementation-review-check": {"IMPLEMENTATION_REVIEW_REQUIRED"},
-            "reopen": {"READY_FOR_ACCEPTANCE", "IMPLEMENTATION_REVIEW_REQUIRED"},
-        }
-        if current["state"] not in allowed_states[operation]:
-            raise WorksError("E202_INVALID_STATE", f"{operation} is forbidden in {current['state']}")
-        logical_actions = {
-            "contract-check": "complete-contract-and-check",
-            "contract-review-check": "run-fresh-contract-verifier-and-check",
-            "impact-check": "complete-impact-map-and-check",
-            "red": "establish-red-for-current-requirement",
-            "green": "implement-current-requirement-and-run-green",
-            "reopen": "diagnose-and-reopen-failing-requirement",
-            "implementation-review-check": "run-fresh-implementation-verifier-and-check",
-        }
-        if operation == "contract-check" and current["state"] == "CONTRACT_REVIEW_REQUIRED":
-            logical_actions[operation] = "revise-contract-and-rerun-review"
-        if operation == "reopen" and current["state"] == "IMPLEMENTATION_REVIEW_REQUIRED":
-            logical_actions[operation] = "diagnose-review-and-reopen-requirement"
-        if operation not in current["allowed_actions"] and logical_actions.get(operation) not in current["allowed_actions"]:
+        if operation not in current["allowed_actions"]:
             raise WorksError("E202_INVALID_STATE",
-                             f"{operation} is not the next action; expected {current['allowed_actions'][0]}")
+                             f"{operation} is not the next action; expected {current['next_action']['id']}")
         if operation == "tdd-init" and (evidence / "baseline.json").exists():
             boundary = evidence / "service-boundary-baseline.json"
             if not boundary.exists():
@@ -235,7 +208,7 @@ class Application:
         logs = plan / "logs"
         logs.mkdir(parents=True, exist_ok=True)
         for row in contract["acceptance_commands"]:
-            proc = subprocess.run(row["command"], cwd=Path(current["project_root"]), text=True,
+            proc = subprocess.run(windows_command(row["command"]), cwd=Path(current["project_root"]), text=True,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             log = logs / f"acceptance-{row['id']}.log"
             log.write_text(proc.stdout)

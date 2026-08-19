@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import shutil
@@ -15,23 +14,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 
-
-IGNORED_PARTS = {".git", ".planning", "target", "build", ".gradle", "node_modules"}
-
-
-def sha(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def atomic_json(path: Path, value: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
-    os.replace(tmp, path)
+from works_core.common import IGNORED_DIRS as IGNORED_PARTS, atomic_json, sha, windows_command
 
 
 def is_test(rel: str) -> bool:
@@ -122,7 +105,7 @@ def run_command(root: Path, command: list[str], log: Path, report_dir: Path, tes
     if not command:
         raise SystemExit("missing command after --")
     before = report_snapshot(root)
-    proc = subprocess.run(command, cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    proc = subprocess.run(windows_command(command), cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     log.parent.mkdir(parents=True, exist_ok=True)
     log.write_text(proc.stdout)
     after = report_snapshot(root)
