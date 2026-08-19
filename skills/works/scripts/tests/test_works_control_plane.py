@@ -533,6 +533,11 @@ class ServiceBoundaryTest(unittest.TestCase):
 
 
 class ModulePlanTest(unittest.TestCase):
+    def test_result_filename_is_cross_platform_safe(self):
+        name = module_plan.result_filename("REQ-1:user")
+        self.assertNotIn(":", name)
+        self.assertRegex(name, r"^REQ-1-user-[0-9a-f]{8}\.json$")
+
     def test_validates_parallel_module_dag(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -575,8 +580,10 @@ class ModulePlanTest(unittest.TestCase):
             results.mkdir()
             command = ["mvn", "-pl", "user", "-Dtest=UserServiceWorksTest#works",
                        "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
-            (results / "REQ-1:user.json").write_text(json.dumps({
-                "task": "REQ-1:user", "status": "PASS", "commit": "abc",
+            (results / module_plan.result_filename("REQ-1:user")).write_text(json.dumps({
+                "task": "REQ-1:user", "status": "PASS", "base_commit": "base",
+                "source_commit": "source", "merged_commit": "merged",
+                "branch": "works/REQ-1-user", "worktree": str(root / ".worktree/REQ-1-user"),
                 "changed_files": ["user/src/main/java/UserService.java"],
                 "covered_files": ["user/src/main/java/UserService.java"],
                 "test_file": "user/src/test/java/UserServiceWorksTest.java",
@@ -590,16 +597,41 @@ class ModulePlanTest(unittest.TestCase):
                 log.write_text("passed\n")
                 return 0, junit
             commit_files = "user/src/main/java/UserService.java\nuser/src/test/java/UserServiceWorksTest.java\n"
-            git_result = mock.Mock(returncode=0, stdout=commit_files)
+            def git_run(command, **_kwargs):
+                if command[-3:] == ["worktree", "list", "--porcelain"]:
+                    return mock.Mock(returncode=0, stdout=(
+                        f"worktree {root / '.worktree/REQ-1-user'}\n"
+                        "HEAD source\nbranch refs/heads/works/REQ-1-user\n\n"))
+                if command[-1] == "source^":
+                    return mock.Mock(returncode=0, stdout="base\n")
+                if command[-2:] == ["status", "--porcelain"]:
+                    return mock.Mock(returncode=0, stdout="")
+                if "diff-tree" in command:
+                    return mock.Mock(returncode=0, stdout=commit_files)
+                if "diff" in command:
+                    return mock.Mock(returncode=0, stdout=b"patch")
+                if command[-1] == "merged^":
+                    return mock.Mock(returncode=0, stdout="base\n")
+                if command[-1] == "HEAD":
+                    return mock.Mock(returncode=0, stdout="merged\n")
+                return mock.Mock(returncode=0, stdout="")
             with (mock.patch.object(module_plan, "run_command", side_effect=replay),
-                  mock.patch.object(module_plan.subprocess, "run", return_value=git_result)):
+                  mock.patch.object(module_plan.subprocess, "run", side_effect=git_run)):
                 self.assertEqual(module_plan.verify_wave(plan, root, results, 1, {"tests": {}}), [])
             test.write_text("@SpringBootTest class UserServiceWorksTest {}\n")
             with (mock.patch.object(module_plan, "run_command", side_effect=replay),
-                  mock.patch.object(module_plan.subprocess, "run", return_value=git_result)):
+                  mock.patch.object(module_plan.subprocess, "run", side_effect=git_run)):
                 errors = module_plan.verify_wave(plan, root, results, 1, {"tests": {}})
             self.assertTrue(any("Mockito" in error for error in errors))
             self.assertTrue(any("real framework" in error for error in errors))
+
+    def test_wave_rejects_non_maven_test_runner(self):
+        command = ["python3", "fake.py", "-pl", "user", "-Dtest=X#works",
+                   "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+        runner = Path(command[0]).name.lower()
+        goals = [token for token in command if token in {"test", "verify", "package", "install"}]
+        self.assertNotIn(runner, {"mvn", "mvnw", "mvnw.cmd"})
+        self.assertEqual(goals, ["test"])
 
 
 class DiscoveryTest(unittest.TestCase):
