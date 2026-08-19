@@ -8,12 +8,11 @@
 
 `probe` 必须用一个已有稳定 testcase 证明 Maven 真正执行测试：
 
-```bash
-python3 <works>/scripts/works.py --project <project> probe -- \
-  --testcase ExistingTest#behavior -- ./mvnw \
-  -DskipTests=false -Dmaven.test.skip=false \
-  -Dtest=ExistingTest#behavior test
+```text
+<python> <works>/scripts/works.py --project <project> probe -- --testcase ExistingTest#behavior -- <maven-command> -DskipTests=false -Dmaven.test.skip=false -Dtest=ExistingTest#behavior test
 ```
+
+`<python>` 在 Windows 为 `py -3`、在 Linux 为 `python3`；`<maven-command>` 在 Windows 优先为 `mvnw.cmd`、在 Linux 优先为 `./mvnw`，没有 wrapper 时为 `mvn`。
 
 POM 中每个 true-valued `skip*test*` 属性都必须对应 `-D<name>=false`。只有新鲜 Surefire/Failsafe XML 证明目标 testcase 执行并通过，preflight 才有效。
 

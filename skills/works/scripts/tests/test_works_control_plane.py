@@ -16,7 +16,7 @@ import requirement_contract
 import review_evidence
 import service_boundary
 from works_core.application import Application, WorksError
-from works_core.discovery import discover
+from works_core.discovery import discover, discover_maven_command
 from works_core import state as store
 
 
@@ -292,6 +292,19 @@ class DiscoveryTest(unittest.TestCase):
             result = discover(root)
             self.assertEqual(Path(result["project"]), root)
             self.assertEqual(Path(result["requirement"]), root / "requirement.md")
+
+    def test_prefers_windows_maven_wrapper_on_windows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "mvnw").write_text("#!/bin/sh\n")
+            (root / "mvnw.cmd").write_text("@echo off\r\n")
+            self.assertEqual(discover_maven_command(root, "nt"), str(root / "mvnw.cmd"))
+
+    def test_windows_ignores_unix_wrapper_and_falls_back_to_maven(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "mvnw").write_text("#!/bin/sh\n")
+            self.assertEqual(discover_maven_command(root, "nt"), "mvn")
 
 
 if __name__ == "__main__":

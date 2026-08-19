@@ -11,8 +11,10 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实
 
 先读取 [OpenCode profile](references/opencode.md)，然后使用 OpenCode 原生 Skill、文件和终端工具。每轮运行：
 
-```bash
-python3 <skill-dir>/scripts/works.py --project <project> status
+先选择当前平台的 Python 入口：Windows 使用 `py -3`，Linux 使用 `python3`；若对应命令不存在则使用 `python`。后续命令中的 `<python>` 始终表示这个入口。
+
+```text
+<python> <skill-dir>/scripts/works.py --project <project> status
 ```
 
 只完成返回的结构化 `next_action.id`。它同时给出当前 Req、可用 Skill 和成功证据。动作包含“编辑并运行门禁”时，把两者视为一个不可分割步骤；完成后立即再次运行 `status`。持续执行，直到 `state` 为 `COMPLETE`。命令失败时读取输出、记录发现、改变工作区或策略后重试；CLI 会拒绝完全相同的失败重放。
@@ -35,28 +37,28 @@ python3 <skill-dir>/scripts/works.py --project <project> status
 
 ## 核心命令
 
-```bash
-python3 <skill-dir>/scripts/works.py --project . doctor
-python3 <skill-dir>/scripts/works.py --project . init
-python3 <skill-dir>/scripts/works.py --project <project> recover
-python3 <skill-dir>/scripts/works.py --project <project> note -- --kind finding --text "<fact>" [--req <REQ>]
-python3 <skill-dir>/scripts/works.py --project <project> note -- --kind decision --text "<choice>" [--req <REQ>]
-python3 <skill-dir>/scripts/works.py --project <project> tdd-init
-python3 <skill-dir>/scripts/works.py --project <project> probe -- --testcase ExistingTest#behavior -- <maven-command>
-python3 <skill-dir>/scripts/works.py --project <project> contract-init
-python3 <skill-dir>/scripts/works.py --project <project> contract-check
-python3 <skill-dir>/scripts/works.py --project <project> contract-review-init
-python3 <skill-dir>/scripts/works.py --project <project> contract-review-check
-python3 <skill-dir>/scripts/works.py --project <project> impact-init
-python3 <skill-dir>/scripts/works.py --project <project> impact-check
-python3 <skill-dir>/scripts/works.py --project <project> red -- --req <REQ> --test-file <file> --testcase <case> -- <maven-command>
-python3 <skill-dir>/scripts/works.py --project <project> green -- --req <REQ> -- <same-maven-command>
-python3 <skill-dir>/scripts/works.py --project <project> finalize
-python3 <skill-dir>/scripts/works.py --project <project> implementation-review-init
-python3 <skill-dir>/scripts/works.py --project <project> implementation-review-check
-python3 <skill-dir>/scripts/works.py --project <project> reopen -- --req <REQ>
+```text
+<python> <skill-dir>/scripts/works.py --project . doctor
+<python> <skill-dir>/scripts/works.py --project . init
+<python> <skill-dir>/scripts/works.py --project <project> recover
+<python> <skill-dir>/scripts/works.py --project <project> note -- --kind finding --text "<fact>" [--req <REQ>]
+<python> <skill-dir>/scripts/works.py --project <project> note -- --kind decision --text "<choice>" [--req <REQ>]
+<python> <skill-dir>/scripts/works.py --project <project> tdd-init
+<python> <skill-dir>/scripts/works.py --project <project> probe -- --testcase ExistingTest#behavior -- <maven-command>
+<python> <skill-dir>/scripts/works.py --project <project> contract-init
+<python> <skill-dir>/scripts/works.py --project <project> contract-check
+<python> <skill-dir>/scripts/works.py --project <project> contract-review-init
+<python> <skill-dir>/scripts/works.py --project <project> contract-review-check
+<python> <skill-dir>/scripts/works.py --project <project> impact-init
+<python> <skill-dir>/scripts/works.py --project <project> impact-check
+<python> <skill-dir>/scripts/works.py --project <project> red -- --req <REQ> --test-file <file> --testcase <case> -- <maven-command>
+<python> <skill-dir>/scripts/works.py --project <project> green -- --req <REQ> -- <same-maven-command>
+<python> <skill-dir>/scripts/works.py --project <project> finalize
+<python> <skill-dir>/scripts/works.py --project <project> implementation-review-init
+<python> <skill-dir>/scripts/works.py --project <project> implementation-review-check
+<python> <skill-dir>/scripts/works.py --project <project> reopen -- --req <REQ>
 ```
 
-Maven 测试命令必须包含 `-DskipTests=false` 和 `-Dmaven.test.skip=false`，并覆盖 POM 中其他值为 true 的 `skip*test*` 属性。
+优先使用 discovery 返回的 Maven 入口：Windows 为 `mvnw.cmd`，Linux 为 `./mvnw`，没有 wrapper 时为 `mvn`。Maven 测试命令必须包含 `-DskipTests=false` 和 `-Dmaven.test.skip=false`，并覆盖 POM 中其他值为 true 的 `skip*test*` 属性。
 
 填写需求契约时读取 [Requirement contract](references/requirement-contract.md)；处理 TDD 证据时读取 [TDD evidence](references/tdd-evidence.md)；分析分层时读取 [Service boundary](references/service-boundary.md)。

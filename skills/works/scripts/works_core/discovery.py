@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import subprocess
 
 
@@ -10,6 +11,17 @@ def git_root(start: Path) -> Path | None:
         text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
     )
     return Path(proc.stdout.strip()).resolve() if proc.returncode == 0 else None
+
+
+def discover_maven_command(project: Path, platform: str | None = None) -> str:
+    """Return the platform-native Maven wrapper, falling back to system Maven."""
+    platform = platform or os.name
+    candidates = ("mvnw.cmd",) if platform == "nt" else ("mvnw",)
+    for name in candidates:
+        wrapper = project / name
+        if wrapper.is_file():
+            return str(wrapper)
+    return "mvn"
 
 
 def discover(start: Path) -> dict:
@@ -45,6 +57,6 @@ def discover(start: Path) -> dict:
     pom = next((candidate for candidate in poms if candidate.parent == project), poms[0])
     return {
         "root": str(root), "project": str(project), "requirement": str(requirement),
-        "pom": str(pom), "build": str(project / "mvnw") if (project / "mvnw").exists() else "mvn",
+        "pom": str(pom), "build": discover_maven_command(project),
         "candidates": {"requirements": len(requirements), "poms": len(poms)},
     }

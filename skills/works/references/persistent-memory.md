@@ -13,17 +13,17 @@ evidence/        测试和验收事实
 
 ## 恢复
 
-```bash
-python3 <skill-dir>/scripts/works.py --project <project> recover
+```text
+<python> <skill-dir>/scripts/works.py --project <project> recover
 ```
 
 返回当前状态、唯一 next action、最后活动、最后失败和记忆文件路径。恢复后直接执行 next action，不重新规划全部任务。
 
 ## 记录
 
-```bash
-python3 <skill-dir>/scripts/works.py --project <project> note -- --kind finding --text "UserController delegates to UserService"
-python3 <skill-dir>/scripts/works.py --project <project> note -- --kind decision --text "Extend UserService instead of injecting UserMapper" --req REQ-1
+```text
+<python> <skill-dir>/scripts/works.py --project <project> note -- --kind finding --text "UserController delegates to UserService"
+<python> <skill-dir>/scripts/works.py --project <project> note -- --kind decision --text "Extend UserService instead of injecting UserMapper" --req REQ-1
 ```
 
 只记录会影响后续执行的事实和选择。普通工具输出留在日志中，不复制成长篇笔记。
