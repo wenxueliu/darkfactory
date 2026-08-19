@@ -5,7 +5,9 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
+from collections.abc import Iterable
 
 IGNORED_DIRS = {".git", ".planning", "target", "build", ".gradle", "node_modules"}
 
@@ -44,3 +46,29 @@ def windows_command(command: list[str]) -> list[str]:
     if os.name == "nt" and command and command[0].lower().endswith((".cmd", ".bat")):
         return ["cmd", "/c", *command]
     return command
+
+
+def branch_token(task_id: str) -> str:
+    """Windows-safe filesystem token for a task id.
+
+    Task ids are validated against ``[A-Za-z0-9][A-Za-z0-9._:-]{0,127}``, so in
+    practice only ``:`` is ever replaced. Kept ASCII-only so the result is
+    portable across OSes and case-insensitive filesystems.
+    """
+    return re.sub(r"[^A-Za-z0-9._-]", "-", task_id)
+
+
+def result_filename(task_id: str) -> str:
+    """Cross-platform evidence filename for a task id (token + short sha256)."""
+    digest = hashlib.sha256(task_id.encode()).hexdigest()[:8]
+    return f"{branch_token(task_id)}-{digest}.json"
+
+
+def ordered_task_ids(task_ids: Iterable[str]) -> list[str]:
+    """Stable apply/merge order for a wave's task ids.
+
+    The controller applies Subagent patches and records merge commits in this
+    exact order, so ``verify_wave`` must use the same order. Python's ``sorted``
+    over ASCII task ids is codepoint order and therefore identical on every OS.
+    """
+    return sorted(task_ids)

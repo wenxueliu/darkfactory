@@ -10,7 +10,7 @@ from pathlib import Path, PureWindowsPath
 import re
 import subprocess
 
-from works_core.common import atomic_json
+from works_core.common import atomic_json, branch_token, ordered_task_ids, result_filename
 from tdd_slice import require_test_flags, run_command
 
 ERROR = "E305_INVALID_MODULE_PLAN"
@@ -83,16 +83,6 @@ def required_modules(impact: dict, project: Path, reqs: list[str]) -> dict[str, 
         required[row["id"]].update(module for value in values
                                    if (module := maven_module(project, value)) is not None)
     return required
-
-
-def branch_token(task_id: str) -> str:
-    return re.sub(r"[^A-Za-z0-9._-]", "-", task_id)
-
-
-def result_filename(task_id: str) -> str:
-    token = branch_token(task_id)
-    digest = hashlib.sha256(task_id.encode()).hexdigest()[:8]
-    return f"{token}-{digest}.json"
 
 
 def patch_paths(content: bytes) -> set[str]:
@@ -469,7 +459,7 @@ def verify_wave(plan: dict, project: Path, results: Path, wave_number: int,
         errors.append(f"wave {wave_number}: all Subagent patches must use one shared base_commit")
     elif len(merged_by_task) == len(ids):
         expected_parent = next(iter(wave_bases))
-        for task_id in sorted(ids):
+        for task_id in ordered_task_ids(ids):
             merged = merged_by_task[task_id]
             parent = subprocess.run(
                 ["git", "-C", str(project), "rev-parse", f"{merged}^"], text=True,

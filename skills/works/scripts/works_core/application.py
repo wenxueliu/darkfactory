@@ -10,6 +10,7 @@ import time
 
 from . import discovery
 from . import state as store
+from .common import ordered_task_ids, result_filename
 from tdd_slice import run_command
 
 
@@ -170,24 +171,32 @@ class Application:
             expected_tasks = set(current["waves"][wave - 1]["tasks"])
             candidate_hashes = {}
             candidate_projections = {}
-            for task_id in sorted(expected_tasks):
-                path = result_dir / self._result_filename(task_id)
-                value = json.loads(path.read_text())
+            for task_id in ordered_task_ids(expected_tasks):
+                path = result_dir / result_filename(task_id)
+                try:
+                    value = json.loads(path.read_text())
+                except (OSError, json.JSONDecodeError) as exc:
+                    raise WorksError("E305_INVALID_MODULE_PLAN", f"{task_id}: unreadable candidate result", exc)
+                if not isinstance(value, dict) or value.get("task") != task_id:
+                    raise WorksError("E305_INVALID_MODULE_PLAN", f"{task_id}: result task mismatch")
+                patch_file = value.get("patch_file")
+                if not isinstance(patch_file, str):
+                    raise WorksError("E305_INVALID_MODULE_PLAN", f"{task_id}: missing patch_file")
                 projection = {key: value.get(key) for key in immutable_keys}
                 encoded = json.dumps(projection, sort_keys=True, separators=(",", ":")).encode()
-                candidate_projections[value["task"]] = {
+                candidate_projections[task_id] = {
                     "file": str(path.relative_to(evidence)),
                     "sha256": hashlib.sha256(encoded).hexdigest(),
                 }
-                patch = (result_dir / value["patch_file"]).resolve()
+                patch = (result_dir / patch_file).resolve()
                 if not patch.is_relative_to(result_dir.resolve()):
-                    raise WorksError("E305_INVALID_MODULE_PLAN", "patch escapes task-results", value["patch_file"])
+                    raise WorksError("E305_INVALID_MODULE_PLAN", "patch escapes task-results", patch_file)
                 candidate_hashes[str(patch.relative_to(evidence))] = hashlib.sha256(patch.read_bytes()).hexdigest()
             if set(candidate_projections) != expected_tasks:
                 raise WorksError("E305_INVALID_MODULE_PLAN",
                                  "patch candidates must exactly match current wave tasks",
-                                 {"expected": sorted(expected_tasks),
-                                  "actual": sorted(candidate_projections)})
+                                 {"expected": ordered_task_ids(expected_tasks),
+                                  "actual": ordered_task_ids(candidate_projections)})
             store.atomic_json(evidence / f"patch-set-{wave}.json", {
                 "passed": True, "wave": wave, "recorded_at": time.time(),
                 "candidate_hashes": candidate_hashes, "candidate_projections": candidate_projections,
@@ -281,7 +290,7 @@ class Application:
         contract = json.loads((plan / "requirement-contract.json").read_text())
         mapping_errors = []
         for task in current.get("module_tasks", []):
-            result_path = evidence / "task-results" / self._result_filename(task["id"])
+            result_path = evidence / "task-results" / result_filename(task["id"])
             try:
                 task_result = json.loads(result_path.read_text())
             except (OSError, json.JSONDecodeError) as exc:
@@ -294,8 +303,12 @@ class Application:
                     f"{task['id']}: test_command is not declared for {task.get('req')} in requirement contract")
         acceptance = []
         for row in contract["acceptance_commands"] if not mapping_errors else []:
-            selector = next(part.removeprefix("-Dtest=") for part in row["command"]
-                            if part.startswith("-Dtest="))
+            selectors = [part.removeprefix("-Dtest=") for part in row["command"]
+                         if part.startswith("-Dtest=")]
+            if len(selectors) != 1:
+                mapping_errors.append(f"{row.get('id')}: acceptance command must target one -Dtest selector")
+                continue
+            selector = selectors[0]
             target = evidence / "acceptance" / row["id"]
             code, junit = run_command(Path(current["project_root"]), row["command"],
                                       target / "test.log", target / "reports", selector)
@@ -415,12 +428,6 @@ class Application:
         payload = (json.dumps(command, ensure_ascii=False, default=os.fspath)
                    + "\n" + status + "\n" + diff + "\n".join(inputs))
         return hashlib.sha256(payload.encode()).hexdigest()
-
-    @staticmethod
-    def _result_filename(task_id: str) -> str:
-        token = "".join(char if char.isalnum() or char in "._-" else "-" for char in task_id)
-        digest = hashlib.sha256(task_id.encode()).hexdigest()[:8]
-        return f"{token}-{digest}.json"
 
     def _checked(self, command: list[str], operation: str) -> None:
         proc = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
