@@ -102,7 +102,7 @@ class Application:
                            attempt=previous.get("count", 1))
             raise WorksError("E901_REPEAT_FAILURE", "identical failed action requires a workspace or strategy change",
                              previous)
-        if operation == "green":
+        if operation == "test":
             try:
                 self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
                                "--state-dir", str(evidence)], operation)
@@ -112,7 +112,7 @@ class Application:
         elif operation == "finalize":
             try:
                 self._checked(
-                    [sys.executable, str(self.scripts / "tdd_slice.py"), "verify",
+                    [sys.executable, str(self.scripts / "code_first.py"), "verify",
                      "--state-dir", str(evidence),
                      *[item for req in current["requirements"] for item in ("--req", req)]],
                     operation,
@@ -121,7 +121,7 @@ class Application:
                                "--state-dir", str(evidence)], operation)
             except WorksError as exc:
                 store.atomic_json(evidence / "final-verification.json", {
-                    "passed": False, "phase": "tdd-or-boundary", "error": exc.code,
+                    "passed": False, "phase": "code-first-or-boundary", "error": exc.code,
                     "evidence": exc.evidence, "recorded_at": time.time(),
                 })
                 self._record_failure(plan, current, attempt_key, signature, operation, exc.code, exc.evidence)
@@ -157,14 +157,15 @@ class Application:
         current.setdefault("attempts", {}).pop(attempt_key, None)
         store.save(plan, current)
         store.activity(plan, current, operation, "passed", command=command)
-        summary_name = f"{operation}-{current.get('current_req')}" if operation == "green" else operation
+        summary_name = (f"{operation}-{current.get('current_req')}"
+                        if operation in {"implement", "test"} else operation)
         store.summarize(plan, current, summary_name, result="passed")
         return {"ok": True, "operation": operation, "output": proc.stdout, **store.refresh(plan, current)}
 
     def _command(self, plan: Path, current: dict, operation: str, raw: list[str]) -> list[str]:
         evidence = current["evidence_dir"]
-        if operation in {"red", "green"}:
-            expected = "READY_FOR_RED" if operation == "red" else "READY_FOR_IMPLEMENTATION"
+        if operation in {"implement", "test"}:
+            expected = "READY_FOR_IMPLEMENTATION" if operation == "implement" else "READY_FOR_TEST"
             if current["state"] != expected:
                 raise WorksError("E202_INVALID_STATE", f"{operation} is forbidden in {current['state']}")
         if operation == "contract-init":
@@ -195,7 +196,8 @@ class Application:
         if operation == "finalize":
             return []
         action = "init" if operation == "tdd-init" else operation
-        command = [sys.executable, str(self.scripts / "tdd_slice.py"), action]
+        runner = "code_first.py" if operation in {"implement", "test"} else "tdd_slice.py"
+        command = [sys.executable, str(self.scripts / runner), action]
         if operation == "tdd-init":
             command.extend(["--project-root", current["project_root"]])
         command.extend(["--state-dir", evidence, *raw])
@@ -248,7 +250,7 @@ class Application:
         repair_req = f"{req[:64 - len(suffix)]}{suffix}"
         current["requirements"].append(repair_req)
         repairs.append({"id": repair_req, "of": req, "created_at": time.time()})
-        for name in ("tdd-verify.json", "final-verification.json"):
+        for name in ("code-first-verify.json", "final-verification.json"):
             try:
                 (evidence / name).unlink()
             except FileNotFoundError:
@@ -321,7 +323,7 @@ class Application:
             return "E312_PRODUCTION_BEFORE_RED"
         if "persistence dependency" in lowered:
             return "E510_BOUNDARY_VIOLATION"
-        return {"red": "E311_INVALID_RED", "green": "E313_INVALID_GREEN",
+        return {"implement": "E314_INVALID_IMPLEMENTATION", "test": "E315_INVALID_TEST",
                 "contract-check": "E302_INVALID_REQUIREMENT_CONTRACT",
                 "contract-review-check": "E303_CONTRACT_REVIEW_FAILED",
                 "implementation-review-check": "E402_IMPLEMENTATION_REVIEW_FAILED",

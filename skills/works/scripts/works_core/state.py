@@ -9,8 +9,9 @@ from .common import append_jsonl, atomic_json
 
 
 STATES = {
-    "SETUP_REQUIRED", "CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED", "IMPACT_REQUIRED", "READY_FOR_RED",
-    "READY_FOR_IMPLEMENTATION", "READY_FOR_ACCEPTANCE", "IMPLEMENTATION_REVIEW_REQUIRED", "COMPLETE", "BLOCKED",
+    "SETUP_REQUIRED", "CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED", "IMPACT_REQUIRED",
+    "READY_FOR_IMPLEMENTATION", "READY_FOR_TEST", "READY_FOR_ACCEPTANCE",
+    "IMPLEMENTATION_REVIEW_REQUIRED", "COMPLETE", "BLOCKED",
 }
 
 
@@ -92,18 +93,18 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
         stage = "IMPACT_REQUIRED"
     else:
         current = None
-        open_red = False
+        implementation_checkpointed = False
         for req in state["requirements"]:
             slice_dir = evidence / "slices" / req
-            if not (slice_dir / "green.json").exists():
+            if not (slice_dir / "test.json").exists():
                 current = req
-                open_red = (slice_dir / "red.json").exists()
+                implementation_checkpointed = (slice_dir / "implementation.json").exists()
                 break
         state["current_req"] = current
         if current:
-            stage = "READY_FOR_IMPLEMENTATION" if open_red else "READY_FOR_RED"
+            stage = "READY_FOR_TEST" if implementation_checkpointed else "READY_FOR_IMPLEMENTATION"
         else:
-            verification = evidence / "tdd-verify.json"
+            verification = evidence / "code-first-verify.json"
             verified = verification.exists() and json.loads(verification.read_text()).get("passed")
             final = evidence / "final-verification.json"
             finalized = final.exists() and json.loads(final.read_text()).get("passed")
@@ -132,8 +133,8 @@ def next_action(action_id: str, state: dict) -> dict:
     references = {
         "complete-contract-and-check": "references/exploration.md",
         "complete-impact-map-and-check": "references/exploration.md",
-        "establish-red-for-current-requirement": "references/tdd-seams.md",
-        "implement-current-requirement-and-run-green": "references/tdd-seams.md",
+        "checkpoint-current-implementation": "references/code-first.md",
+        "test-current-implementation": "references/code-first.md",
         "diagnose-and-reopen-failing-requirement": "references/diagnosis.md",
         "finalize": "references/verification.md",
     }
@@ -141,8 +142,8 @@ def next_action(action_id: str, state: dict) -> dict:
         "complete-contract-and-check": "requirement-contract.json",
         "run-fresh-contract-verifier-and-check": "contract-review.json",
         "complete-impact-map-and-check": "impact-map.json",
-        "establish-red-for-current-requirement": f"evidence/slices/{state.get('current_req')}/red.json",
-        "implement-current-requirement-and-run-green": f"evidence/slices/{state.get('current_req')}/green.json",
+        "checkpoint-current-implementation": f"evidence/slices/{state.get('current_req')}/implementation.json",
+        "test-current-implementation": f"evidence/slices/{state.get('current_req')}/test.json",
         "finalize": "evidence/final-verification.json",
         "run-fresh-implementation-verifier-and-check": "implementation-review.json",
     }
@@ -164,8 +165,8 @@ NEXT_ACTION_OP = {
     "revise-contract-and-rerun-review": "contract-check",
     "impact-init": "impact-init",
     "complete-impact-map-and-check": "impact-check",
-    "establish-red-for-current-requirement": "red",
-    "implement-current-requirement-and-run-green": "green",
+    "checkpoint-current-implementation": "implement",
+    "test-current-implementation": "test",
     "finalize": "finalize",
     "diagnose-and-reopen-failing-requirement": "reopen",
     "implementation-review-init": "implementation-review-init",
@@ -191,10 +192,10 @@ def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
         return "run-fresh-contract-verifier-and-check"
     if stage == "IMPACT_REQUIRED":
         return "impact-init" if not (plan / "impact-map.json").exists() else "complete-impact-map-and-check"
-    if stage == "READY_FOR_RED":
-        return "establish-red-for-current-requirement"
     if stage == "READY_FOR_IMPLEMENTATION":
-        return "implement-current-requirement-and-run-green"
+        return "checkpoint-current-implementation"
+    if stage == "READY_FOR_TEST":
+        return "test-current-implementation"
     if stage == "READY_FOR_ACCEPTANCE":
         final = evidence / "final-verification.json"
         failed = final.exists() and not json.loads(final.read_text()).get("passed")

@@ -13,6 +13,7 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
 import impact_map
+import code_first
 import requirement_contract
 import review_evidence
 import service_boundary
@@ -217,14 +218,14 @@ class StateMachineTest(unittest.TestCase):
             current.update({"contract_valid": True, "contract_review_valid": True, "impact_valid": True,
                             "requirements": ["REQ-1"]})
             (evidence / "slices" / "REQ-1").mkdir(parents=True)
-            (evidence / "slices" / "REQ-1" / "green.json").write_text("{}")
+            (evidence / "slices" / "REQ-1" / "test.json").write_text("{}")
             (evidence / "final-verification.json").write_text('{"passed": false}')
             store.save(plan, current)
             updated = app.status(root)
             self.assertEqual(updated["state"], "READY_FOR_ACCEPTANCE")
             self.assertEqual(updated["next_action"]["id"], "diagnose-and-reopen-failing-requirement")
             repaired = app.run(root, "reopen", ["--req", "REQ-1"])
-            self.assertEqual(repaired["state"], "READY_FOR_RED")
+            self.assertEqual(repaired["state"], "READY_FOR_IMPLEMENTATION")
             self.assertEqual(repaired["current_req"], "REQ-1.repair-1")
             self.assertEqual(repaired["requirements"], ["REQ-1", "REQ-1.repair-1"])
 
@@ -239,10 +240,10 @@ class StateMachineTest(unittest.TestCase):
             evidence = Path(current["evidence_dir"])
             (evidence / "slices" / "REQ-1").mkdir(parents=True)
             for name, value in (("baseline.json", {}), ("preflight.json", {"passed": True}),
-                                ("tdd-verify.json", {"passed": True}),
+                                ("code-first-verify.json", {"passed": True}),
                                 ("final-verification.json", {"passed": True})):
                 (evidence / name).write_text(json.dumps(value))
-            (evidence / "slices" / "REQ-1" / "green.json").write_text("{}")
+            (evidence / "slices" / "REQ-1" / "test.json").write_text("{}")
             (plan / "requirement-contract.json").write_text(json.dumps({"requirements": [{"id": "REQ-1"}]}))
             current.update({"contract_valid": True, "contract_review_valid": True, "impact_valid": True,
                             "implementation_review_valid": False, "requirements": ["REQ-1"]})
@@ -493,6 +494,56 @@ class ServiceBoundaryTest(unittest.TestCase):
             self.assertEqual(service_boundary.violations(root)[0], {})
             controller.write_text("class UserController { private UserMapper mapper; }")
             self.assertIn("UserController.java|UserMapper", service_boundary.violations(root)[0])
+
+
+class CodeFirstEvidenceTest(unittest.TestCase):
+    def test_requires_implementation_before_recording_test(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state = root / ".planning" / "evidence"
+            state.mkdir(parents=True)
+            (state / "baseline.json").write_text(json.dumps({
+                "project_root": str(root), "production": {}, "tests": {},
+            }))
+            args = type("Args", (), {
+                "state_dir": str(state), "req": "REQ-1", "test_file": "src/test/java/ATest.java",
+                "testcase": "ATest#works", "command": ["mvn", "-DskipTests=false",
+                                                         "-Dmaven.test.skip=false", "test"],
+            })()
+            with self.assertRaisesRegex(SystemExit, "missing evidence"):
+                code_first.cmd_test(args)
+
+    def test_records_implementation_then_passing_maven_test(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state = root / ".planning" / "evidence"
+            state.mkdir(parents=True)
+            source = root / "src/main/java/A.java"
+            source.parent.mkdir(parents=True)
+            source.write_text("class A {}\n")
+            test = root / "src/test/java/ATest.java"
+            test.parent.mkdir(parents=True)
+            test.write_text("class ATest { void works() {} }\n")
+            (state / "baseline.json").write_text(json.dumps({
+                "project_root": str(root), "production": {}, "tests": {},
+            }))
+            (state / "checkpoint.json").write_text(json.dumps({
+                "sequence": 0, "production": {}, "previous_req": None,
+            }))
+            implement = type("Args", (), {"state_dir": str(state), "req": "REQ-1"})()
+            self.assertEqual(code_first.cmd_implement(implement), 0)
+            command = ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+            test_args = type("Args", (), {"state_dir": str(state), "req": "REQ-1",
+                                           "test_file": "src/test/java/ATest.java",
+                                           "testcase": "ATest#works", "command": command})()
+            junit = {"target": {"executed": 1, "failures": 0, "errors": 0}, "files": []}
+            def passing_run(_root, _command, log, _reports, _testcase):
+                log.write_text("passed\n")
+                return 0, junit
+            with mock.patch.object(code_first, "run_command", side_effect=passing_run):
+                self.assertEqual(code_first.cmd_test(test_args), 0)
+            self.assertTrue((state / "slices" / "REQ-1" / "implementation.json").is_file())
+            self.assertTrue((state / "slices" / "REQ-1" / "test.json").is_file())
 
 
 class DiscoveryTest(unittest.TestCase):
