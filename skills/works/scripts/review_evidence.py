@@ -22,7 +22,54 @@ def template(kind: str, reqs: list[str]) -> dict:
     return value
 
 
-def validate(data: object, kind: str, reqs: list[str]) -> list[str]:
+def _validate_locations(value: object, field: str, req: str, project_root: Path | None) -> list[str]:
+    if not isinstance(value, list) or not value:
+        return [f"{req}: {field} evidence is required"]
+    if project_root is None:
+        return [f"{req}: project root is required to validate {field} evidence"]
+
+    errors: list[str] = []
+    root = project_root.resolve()
+    for index, item in enumerate(value):
+        label = f"{req}: {field}[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{label} must be an object with path, line, symbol, and reason")
+            continue
+        path_value = item.get("path")
+        line = item.get("line")
+        for key in ("symbol", "reason"):
+            if not isinstance(item.get(key), str) or not item[key].strip():
+                errors.append(f"{label}.{key} must be a non-empty string")
+        if not isinstance(path_value, str) or not path_value.strip():
+            errors.append(f"{label}.path must be a non-empty project-relative path")
+            continue
+        relative = Path(path_value)
+        if relative.is_absolute():
+            errors.append(f"{label}.path must be project-relative")
+            continue
+        candidate = (root / relative).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            errors.append(f"{label}.path escapes the project root")
+            continue
+        if not candidate.is_file():
+            errors.append(f"{label}.path does not exist as a file: {path_value}")
+            continue
+        if isinstance(line, bool) or not isinstance(line, int) or line < 1:
+            errors.append(f"{label}.line must be a positive integer")
+            continue
+        try:
+            line_count = sum(1 for _ in candidate.open(encoding="utf-8", errors="replace"))
+        except OSError as exc:
+            errors.append(f"{label}.path cannot be read: {exc}")
+            continue
+        if line > line_count:
+            errors.append(f"{label}.line {line} exceeds file length {line_count}")
+    return errors
+
+
+def validate(data: object, kind: str, reqs: list[str], project_root: Path | None = None) -> list[str]:
     errors: list[str] = []
     if not isinstance(data, dict):
         return ["review must be a JSON object"]
@@ -38,10 +85,9 @@ def validate(data: object, kind: str, reqs: list[str]) -> list[str]:
         if row.get("status") != "PASS":
             errors.append(f"{row.get('id', '?')}: status must be PASS")
         if kind == "implementation":
-            if not row.get("implementation"):
-                errors.append(f"{row.get('id', '?')}: implementation evidence is required")
-            if not row.get("tests"):
-                errors.append(f"{row.get('id', '?')}: test evidence is required")
+            req = row.get("id", "?")
+            errors.extend(_validate_locations(row.get("implementation"), "implementation", req, project_root))
+            errors.extend(_validate_locations(row.get("tests"), "test", req, project_root))
     fields = ["extra"] if kind == "implementation" else ["missing", "extra", "ambiguous", "invalid_acceptance"]
     for field in fields:
         if data.get(field):
@@ -56,6 +102,7 @@ def main() -> int:
     parser.add_argument("--file", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--contract", type=Path, required=True)
+    parser.add_argument("--project-root", type=Path)
     args = parser.parse_args()
     target = args.output if args.action == "init" else args.file
     if target is None:
@@ -71,7 +118,7 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as exc:
         print(f"invalid review file: {exc}")
         return 1
-    errors = validate(data, args.type, requirement_ids(args.contract))
+    errors = validate(data, args.type, requirement_ids(args.contract), args.project_root)
     if errors:
         print("\n".join(errors))
         return 1

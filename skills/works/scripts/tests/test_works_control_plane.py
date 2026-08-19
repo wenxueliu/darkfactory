@@ -130,10 +130,17 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(updated["state"], "IMPLEMENTATION_REVIEW_REQUIRED")
             app.run(root, "implementation-review-init", [])
             review = plan / "implementation-review.json"
+            (root / "A.java").write_text("class A {}\n")
+            (root / "ATest.java").write_text("class ATest {}\n")
             value = json.loads(review.read_text())
             value.update({"result": "PASS"})
-            value["requirements"][0].update({"status": "PASS", "implementation": ["A.java:1"],
-                                               "tests": ["ATest.java:1"]})
+            value["requirements"][0].update({
+                "status": "PASS",
+                "implementation": [{"path": "A.java", "line": 1, "symbol": "A",
+                                    "reason": "implements REQ-1"}],
+                "tests": [{"path": "ATest.java", "line": 1, "symbol": "ATest",
+                           "reason": "tests REQ-1"}],
+            })
             review.write_text(json.dumps(value))
             updated = app.run(root, "implementation-review-check", [])
             self.assertEqual(updated["state"], "COMPLETE")
@@ -261,6 +268,49 @@ class ReviewEvidenceTest(unittest.TestCase):
         errors = review_evidence.validate(data, "implementation", ["REQ-1"])
         self.assertTrue(any("implementation evidence" in error for error in errors))
         self.assertTrue(any("test evidence" in error for error in errors))
+
+    def test_implementation_review_validates_structured_locations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "A.java").write_text("class A {}\n")
+            (root / "ATest.java").write_text("class ATest {}\n")
+            data = review_evidence.template("implementation", ["REQ-1"])
+            data["result"] = "PASS"
+            data["requirements"][0].update({
+                "status": "PASS",
+                "implementation": [{"path": "A.java", "line": 1, "symbol": "A",
+                                    "reason": "implements REQ-1"}],
+                "tests": [{"path": "ATest.java", "line": 1, "symbol": "ATest",
+                           "reason": "tests REQ-1"}],
+            })
+            self.assertEqual(review_evidence.validate(data, "implementation", ["REQ-1"], root), [])
+
+    def test_implementation_review_rejects_fake_or_escaping_locations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "A.java").write_text("class A {}\n")
+            data = review_evidence.template("implementation", ["REQ-1"])
+            data["result"] = "PASS"
+            data["requirements"][0].update({
+                "status": "PASS",
+                "implementation": [{"path": "A.java", "line": 99, "symbol": "A",
+                                    "reason": "fake line"}],
+                "tests": [{"path": "../outside.java", "line": 1, "symbol": "Outside",
+                           "reason": "outside project"}],
+            })
+            errors = review_evidence.validate(data, "implementation", ["REQ-1"], root)
+            self.assertTrue(any("exceeds file length" in error for error in errors))
+            self.assertTrue(any("escapes the project root" in error for error in errors))
+
+    def test_implementation_review_rejects_legacy_string_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = review_evidence.template("implementation", ["REQ-1"])
+            data["result"] = "PASS"
+            data["requirements"][0].update({"status": "PASS", "implementation": ["A.java:1"],
+                                               "tests": ["ATest.java:1"]})
+            errors = review_evidence.validate(data, "implementation", ["REQ-1"], root)
+            self.assertEqual(sum("must be an object" in error for error in errors), 2)
 
     def test_contract_review_rejects_missing_requirement(self):
         data = review_evidence.template("contract", ["REQ-1"])

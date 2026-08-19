@@ -10,6 +10,6 @@
 
 ## Implementation review
 
-只提供 `requirement.md`、`requirement-contract.json`、`impact-map.json`、最终 git diff、Red/Green/replay 和 `final-verification.json`。逐 Req 判断行为是否实现且有测试证据，在 `implementation` 和 `tests` 中写入具体文件或证据路径。发现额外行为写入 `extra`。
+只提供 `requirement.md`、`requirement-contract.json`、`impact-map.json`、最终 git diff、Red/Green/replay 和 `final-verification.json`。逐 Req 判断行为是否实现且有测试证据，在 `implementation` 和 `tests` 中写入结构化位置证据：项目相对 `path`、有效 `line`、非空 `symbol` 和解释 Req 关联的 `reason`。CLI 会验证路径边界、文件存在性和行号。发现额外行为写入 `extra`。
 
 若失败，works 对失败 Req 执行 `reopen`，完成新的 Red→Green 和 finalize 后，再启动新的 verifier。只有该审查通过，状态才能进入 `COMPLETE`。

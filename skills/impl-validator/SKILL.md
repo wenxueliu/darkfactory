@@ -55,14 +55,21 @@ description: "实现校验器。Independent read-only reviewer that validates a 
   "version": 1,
   "type": "implementation",
   "result": "",
-  "requirements": [{"id": "REQ-1", "status": "", "finding": "", "implementation": [], "tests": []}],
+  "requirements": [{
+    "id": "REQ-1",
+    "status": "",
+    "finding": "",
+    "implementation": [{"path": "src/main/java/UserService.java", "line": 12, "symbol": "createUser", "reason": "实现 REQ-1 的用户创建行为"}],
+    "tests": [{"path": "src/test/java/UserServiceTest.java", "line": 30, "symbol": "createsUser", "reason": "验证 REQ-1 的可观察结果"}]
+  }],
   "extra": []
 }
 ```
 
 逐 Req 检查：
-- **implementation**：写入实现该行为的具体文件/位置证据（如 `UserService.java:12`），非空才算有实现证据。
-- **tests**：写入覆盖该行为的测试文件/位置证据（如 `UserServiceTest.java:30`），非空才算有测试证据。
+- **implementation**：每条证据必须包含项目相对 `path`、有效的正整数 `line`、非空 `symbol` 和说明关联关系的 `reason`。
+- **tests**：使用相同结构写入覆盖该行为的测试位置；不能只写路径字符串或概括性描述。
+- CLI 会验证路径位于项目内、文件真实存在且行号没有超过文件长度；虚构位置不能通过审查门。
 - 发现 requirement 之外的多余行为 → 写进顶层 `extra`。
 - 该 Req 全部通过 → `status` 填 `"PASS"`；否则填 `"FAIL"` 并在 `finding` 说明。
 

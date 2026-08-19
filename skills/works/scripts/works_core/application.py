@@ -182,7 +182,8 @@ class Application:
             option = "--output" if action == "init" else "--file"
             return [sys.executable, str(self.scripts / "review_evidence.py"), action,
                     "--type", kind, option, str(plan / f"{kind}-review.json"),
-                    "--contract", str(plan / "requirement-contract.json")]
+                    "--contract", str(plan / "requirement-contract.json"),
+                    "--project-root", current["project_root"]]
         if operation == "impact-init":
             return [sys.executable, str(self.scripts / "impact_map.py"), "init",
                     "--output", str(plan / "impact-map.json"),
