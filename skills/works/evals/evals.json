@@ -39,6 +39,7 @@
       "assertions": [
         "impact-map 记录入口、Service API、持久层和测试 seam",
         "Controller 复用或扩展 Service API",
+        "Service 实现先复用本类已有等价方法，不为相同能力重复调用 Mapper",
         "Service boundary verify 通过",
         "行为验收命令通过"
       ]
