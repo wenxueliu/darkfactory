@@ -13,7 +13,7 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
 import impact_map
-import code_first
+import module_plan
 import requirement_contract
 import review_evidence
 import service_boundary
@@ -149,6 +149,35 @@ class ProductionFingerprintTest(unittest.TestCase):
 
 
 class StateMachineTest(unittest.TestCase):
+    def test_module_plan_exposes_parallel_wave_tasks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            app = Application(SCRIPTS)
+            initialized = app.init(root)
+            plan = Path(initialized["plan_dir"])
+            current = store.load(plan)
+            evidence = Path(current["evidence_dir"])
+            evidence.mkdir()
+            (evidence / "baseline.json").write_text("{}")
+            (evidence / "preflight.json").write_text('{"passed": true}')
+            current.update({"contract_valid": True, "contract_review_valid": True, "impact_valid": True,
+                            "requirements": ["REQ-1"]})
+            store.save(plan, current)
+            updated = app.status(root)
+            self.assertEqual(updated["state"], "MODULE_PLAN_REQUIRED")
+            self.assertEqual(updated["next_action"]["id"], "module-plan-init")
+            current.update({"module_plan_valid": True,
+                            "module_tasks": [{"id": "REQ-1:user", "module": "user"},
+                                             {"id": "REQ-1:order", "module": "order"}],
+                            "waves": [{"tasks": ["REQ-1:user", "REQ-1:order"]}]})
+            store.save(plan, current)
+            updated = app.status(root)
+            self.assertEqual(updated["state"], "WAVE_EXECUTION_REQUIRED")
+            self.assertTrue(updated["next_action"]["parallel"])
+            self.assertEqual([task["id"] for task in updated["next_action"]["tasks"]],
+                             ["REQ-1:user", "REQ-1:order"])
+
     def test_single_state_file_drives_setup_and_impact(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -175,7 +204,8 @@ class StateMachineTest(unittest.TestCase):
                 "requirements": [{"id": "REQ-1", "statement": "behavior",
                                   "acceptance_criteria": ["observable result"]}],
                 "acceptance_commands": [{"id": "module-tests", "covers": ["REQ-1"],
-                                         "command": ["mvn", "-DskipTests=false",
+                                         "command": ["mvn", "-pl", "module",
+                                                     "-Dtest=WorksTest#behavior", "-DskipTests=false",
                                                      "-Dmaven.test.skip=false", "test"]}],
             }))
             updated = app.run(root, "contract-check", [])
@@ -216,17 +246,18 @@ class StateMachineTest(unittest.TestCase):
             (evidence / "baseline.json").write_text("{}")
             (evidence / "preflight.json").write_text('{"passed": true}')
             current.update({"contract_valid": True, "contract_review_valid": True, "impact_valid": True,
-                            "requirements": ["REQ-1"]})
-            (evidence / "slices" / "REQ-1").mkdir(parents=True)
-            (evidence / "slices" / "REQ-1" / "test.json").write_text("{}")
+                            "module_plan_valid": True, "requirements": ["REQ-1"],
+                            "waves": [{"tasks": ["REQ-1:module"]}],
+                            "module_tasks": [{"id": "REQ-1:module"}]})
+            (evidence / "wave-1.json").write_text('{"passed": true}')
             (evidence / "final-verification.json").write_text('{"passed": false}')
             store.save(plan, current)
             updated = app.status(root)
             self.assertEqual(updated["state"], "READY_FOR_ACCEPTANCE")
             self.assertEqual(updated["next_action"]["id"], "diagnose-and-reopen-failing-requirement")
             repaired = app.run(root, "reopen", ["--req", "REQ-1"])
-            self.assertEqual(repaired["state"], "READY_FOR_IMPLEMENTATION")
-            self.assertEqual(repaired["current_req"], "REQ-1.repair-1")
+            self.assertEqual(repaired["state"], "MODULE_PLAN_REQUIRED")
+            self.assertIsNone(repaired["current_req"])
             self.assertEqual(repaired["requirements"], ["REQ-1", "REQ-1.repair-1"])
 
     def test_complete_requires_passing_implementation_review(self):
@@ -246,7 +277,10 @@ class StateMachineTest(unittest.TestCase):
             (evidence / "slices" / "REQ-1" / "test.json").write_text("{}")
             (plan / "requirement-contract.json").write_text(json.dumps({"requirements": [{"id": "REQ-1"}]}))
             current.update({"contract_valid": True, "contract_review_valid": True, "impact_valid": True,
-                            "implementation_review_valid": False, "requirements": ["REQ-1"]})
+                            "module_plan_valid": True, "implementation_review_valid": False,
+                            "requirements": ["REQ-1"], "waves": [{"tasks": ["REQ-1:module"]}],
+                            "module_tasks": [{"id": "REQ-1:module"}]})
+            (evidence / "wave-1.json").write_text('{"passed": true}')
             store.save(plan, current)
             updated = app.status(root)
             self.assertEqual(updated["state"], "IMPLEMENTATION_REVIEW_REQUIRED")
@@ -283,7 +317,8 @@ class StateMachineTest(unittest.TestCase):
                         "requirements": [{"id": "REQ-1", "statement": "behavior",
                                           "acceptance_criteria": ["result"]}],
                         "acceptance_commands": [{"id": "tests", "covers": ["REQ-1"],
-                                                 "command": ["mvn", "-DskipTests=false",
+                                                 "command": ["mvn", "-pl", "module",
+                                                             "-Dtest=WorksTest#behavior", "-DskipTests=false",
                                                              "-Dmaven.test.skip=false", "test"]}]}
             (plan / "requirement-contract.json").write_text(json.dumps(contract))
             app.run(root, "contract-check", [])
@@ -405,7 +440,8 @@ class RequirementContractTest(unittest.TestCase):
                                      "acceptance_criteria": ["result"]}]
             self.assertTrue(requirement_contract.validate(data, requirement))
             data["acceptance_commands"] = [{"id": "tests", "covers": ["REQ-1"],
-                                            "command": ["mvn", "-DskipTests=false",
+                                            "command": ["mvn", "-pl", "module",
+                                                        "-Dtest=WorksTest#behavior", "-DskipTests=false",
                                                         "-Dmaven.test.skip=false", "test"]}]
             self.assertEqual(requirement_contract.validate(data, requirement), [])
 
@@ -496,54 +532,74 @@ class ServiceBoundaryTest(unittest.TestCase):
             self.assertIn("UserController.java|UserMapper", service_boundary.violations(root)[0])
 
 
-class CodeFirstEvidenceTest(unittest.TestCase):
-    def test_requires_implementation_before_recording_test(self):
+class ModulePlanTest(unittest.TestCase):
+    def test_validates_parallel_module_dag(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            state = root / ".planning" / "evidence"
-            state.mkdir(parents=True)
-            (state / "baseline.json").write_text(json.dumps({
-                "project_root": str(root), "production": {}, "tests": {},
-            }))
-            args = type("Args", (), {
-                "state_dir": str(state), "req": "REQ-1", "test_file": "src/test/java/ATest.java",
-                "testcase": "ATest#works", "command": ["mvn", "-DskipTests=false",
-                                                         "-Dmaven.test.skip=false", "test"],
-            })()
-            with self.assertRaisesRegex(SystemExit, "missing evidence"):
-                code_first.cmd_test(args)
+            for module in ("api", "user", "order"):
+                target = root / module
+                target.mkdir()
+                (target / "pom.xml").write_text("<project/>")
+            data = {"version": 1, "max_parallel": 2, "requirements": ["REQ-1"], "tasks": [
+                {"id": "REQ-1:api", "req": "REQ-1", "module": "api", "depends_on": [],
+                 "write_scope": ["api/src"], "changed_behaviors": ["contract"],
+                 "database_dependencies": []},
+                {"id": "REQ-1:user", "req": "REQ-1", "module": "user", "depends_on": ["REQ-1:api"],
+                 "write_scope": ["user/src"], "changed_behaviors": ["user"],
+                 "database_dependencies": ["UserRepository"]},
+                {"id": "REQ-1:order", "req": "REQ-1", "module": "order", "depends_on": ["REQ-1:api"],
+                 "write_scope": ["order/src"], "changed_behaviors": ["order"],
+                 "database_dependencies": ["OrderMapper"]},
+            ], "waves": [{"tasks": ["REQ-1:api"]}, {"tasks": ["REQ-1:user", "REQ-1:order"]}]}
+            self.assertEqual(module_plan.validate(data, root, ["REQ-1"]), [])
+            data["waves"] = [{"tasks": ["REQ-1:api", "REQ-1:user"]}, {"tasks": ["REQ-1:order"]}]
+            self.assertTrue(any("later wave" in error for error in module_plan.validate(data, root, ["REQ-1"])))
 
-    def test_records_implementation_then_passing_maven_test(self):
+    def test_wave_requires_new_mockito_focused_test(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            state = root / ".planning" / "evidence"
-            state.mkdir(parents=True)
-            source = root / "src/main/java/A.java"
-            source.parent.mkdir(parents=True)
-            source.write_text("class A {}\n")
-            test = root / "src/test/java/ATest.java"
+            module = root / "user"
+            module.mkdir()
+            (module / "pom.xml").write_text("<project/>")
+            production = module / "src/main/java/UserService.java"
+            production.parent.mkdir(parents=True)
+            production.write_text("class UserService {}\n")
+            test = module / "src/test/java/UserServiceWorksTest.java"
             test.parent.mkdir(parents=True)
-            test.write_text("class ATest { void works() {} }\n")
-            (state / "baseline.json").write_text(json.dumps({
-                "project_root": str(root), "production": {}, "tests": {},
+            test.write_text("""import org.mockito.Mock;\nclass UserServiceWorksTest { @Mock UserRepository repo; }\n""")
+            plan = {"tasks": [{"id": "REQ-1:user", "req": "REQ-1", "module": "user",
+                               "write_scope": ["user/src"],
+                               "database_dependencies": ["UserRepository"]}],
+                    "waves": [{"tasks": ["REQ-1:user"]}]}
+            results = root / "results"
+            results.mkdir()
+            command = ["mvn", "-pl", "user", "-Dtest=UserServiceWorksTest#works",
+                       "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+            (results / "REQ-1:user.json").write_text(json.dumps({
+                "task": "REQ-1:user", "status": "PASS", "commit": "abc",
+                "changed_files": ["user/src/main/java/UserService.java"],
+                "covered_files": ["user/src/main/java/UserService.java"],
+                "test_file": "user/src/test/java/UserServiceWorksTest.java",
+                "testcase": "UserServiceWorksTest#works", "database_mocks": ["UserRepository"],
+                "test_command": command,
+                "test_evidence": {"exit": 0, "executed": 1, "failures": 0, "errors": 0},
             }))
-            (state / "checkpoint.json").write_text(json.dumps({
-                "sequence": 0, "production": {}, "previous_req": None,
-            }))
-            implement = type("Args", (), {"state_dir": str(state), "req": "REQ-1"})()
-            self.assertEqual(code_first.cmd_implement(implement), 0)
-            command = ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
-            test_args = type("Args", (), {"state_dir": str(state), "req": "REQ-1",
-                                           "test_file": "src/test/java/ATest.java",
-                                           "testcase": "ATest#works", "command": command})()
             junit = {"target": {"executed": 1, "failures": 0, "errors": 0}, "files": []}
-            def passing_run(_root, _command, log, _reports, _testcase):
+            def replay(_root, _command, log, _reports, _selector):
+                log.parent.mkdir(parents=True, exist_ok=True)
                 log.write_text("passed\n")
                 return 0, junit
-            with mock.patch.object(code_first, "run_command", side_effect=passing_run):
-                self.assertEqual(code_first.cmd_test(test_args), 0)
-            self.assertTrue((state / "slices" / "REQ-1" / "implementation.json").is_file())
-            self.assertTrue((state / "slices" / "REQ-1" / "test.json").is_file())
+            commit_files = "user/src/main/java/UserService.java\nuser/src/test/java/UserServiceWorksTest.java\n"
+            git_result = mock.Mock(returncode=0, stdout=commit_files)
+            with (mock.patch.object(module_plan, "run_command", side_effect=replay),
+                  mock.patch.object(module_plan.subprocess, "run", return_value=git_result)):
+                self.assertEqual(module_plan.verify_wave(plan, root, results, 1, {"tests": {}}), [])
+            test.write_text("@SpringBootTest class UserServiceWorksTest {}\n")
+            with (mock.patch.object(module_plan, "run_command", side_effect=replay),
+                  mock.patch.object(module_plan.subprocess, "run", return_value=git_result)):
+                errors = module_plan.verify_wave(plan, root, results, 1, {"tests": {}})
+            self.assertTrue(any("Mockito" in error for error in errors))
+            self.assertTrue(any("real framework" in error for error in errors))
 
 
 class DiscoveryTest(unittest.TestCase):

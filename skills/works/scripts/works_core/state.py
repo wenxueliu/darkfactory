@@ -10,7 +10,7 @@ from .common import append_jsonl, atomic_json
 
 STATES = {
     "SETUP_REQUIRED", "CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED", "IMPACT_REQUIRED",
-    "READY_FOR_IMPLEMENTATION", "READY_FOR_TEST", "READY_FOR_ACCEPTANCE",
+    "MODULE_PLAN_REQUIRED", "WAVE_EXECUTION_REQUIRED", "READY_FOR_ACCEPTANCE",
     "IMPLEMENTATION_REVIEW_REQUIRED", "COMPLETE", "BLOCKED",
 }
 
@@ -32,7 +32,8 @@ def create(project: Path, requirement: Path, discovery: dict) -> tuple[Path, dic
         "version": 2, "state": "SETUP_REQUIRED", "project_root": str(project),
         "requirement": str(requirement), "plan_dir": str(plan), "evidence_dir": str(plan / "evidence"),
         "requirements": [], "current_req": None, "contract_valid": False, "contract_review_valid": False,
-        "impact_valid": False, "implementation_review_valid": False,
+        "impact_valid": False, "module_plan_valid": False, "current_wave": None,
+        "implementation_review_valid": False,
         "discovery": discovery, "created_at": time.time(), "updated_at": time.time(),
     }
     save(plan, state)
@@ -91,31 +92,27 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
         stage = "CONTRACT_REVIEW_REQUIRED"
     elif not state.get("impact_valid"):
         stage = "IMPACT_REQUIRED"
+    elif not state.get("module_plan_valid"):
+        stage = "MODULE_PLAN_REQUIRED"
     else:
-        current = None
-        implementation_checkpointed = False
-        for req in state["requirements"]:
-            slice_dir = evidence / "slices" / req
-            if not (slice_dir / "test.json").exists():
-                current = req
-                implementation_checkpointed = (slice_dir / "implementation.json").exists()
-                break
-        state["current_req"] = current
-        if current:
-            stage = "READY_FOR_TEST" if implementation_checkpointed else "READY_FOR_IMPLEMENTATION"
+        waves = state.get("waves", [])
+        current_wave = next((index for index in range(1, len(waves) + 1)
+                             if not (evidence / f"wave-{index}.json").exists()), None)
+        state["current_wave"] = current_wave
+        state["current_req"] = None
+        if current_wave:
+            stage = "WAVE_EXECUTION_REQUIRED"
         else:
-            verification = evidence / "code-first-verify.json"
-            verified = verification.exists() and json.loads(verification.read_text()).get("passed")
             final = evidence / "final-verification.json"
             finalized = final.exists() and json.loads(final.read_text()).get("passed")
-            if verified and finalized:
+            if finalized:
                 stage = "COMPLETE" if state.get("implementation_review_valid") else "IMPLEMENTATION_REVIEW_REQUIRED"
             else:
                 stage = "READY_FOR_ACCEPTANCE"
     state["state"] = stage
     action_id = _next_action_id(stage, plan, evidence)
     state["allowed_actions"] = [NEXT_ACTION_OP[action_id]]
-    state["forbidden_actions"] = [] if stage == "READY_FOR_IMPLEMENTATION" else ["edit_production"]
+    state["forbidden_actions"] = [] if stage == "WAVE_EXECUTION_REQUIRED" else ["edit_production"]
     state["next_action_id"] = action_id
     state["next_action"] = next_action(action_id, state)
     if persist:
@@ -133,8 +130,8 @@ def next_action(action_id: str, state: dict) -> dict:
     references = {
         "complete-contract-and-check": "references/exploration.md",
         "complete-impact-map-and-check": "references/exploration.md",
-        "checkpoint-current-implementation": "references/code-first.md",
-        "test-current-implementation": "references/code-first.md",
+        "complete-module-plan-and-check": "references/module-parallel.md",
+        "dispatch-subagents-and-verify-wave": "references/module-parallel.md",
         "diagnose-and-reopen-failing-requirement": "references/diagnosis.md",
         "finalize": "references/verification.md",
     }
@@ -142,21 +139,28 @@ def next_action(action_id: str, state: dict) -> dict:
         "complete-contract-and-check": "requirement-contract.json",
         "run-fresh-contract-verifier-and-check": "contract-review.json",
         "complete-impact-map-and-check": "impact-map.json",
-        "checkpoint-current-implementation": f"evidence/slices/{state.get('current_req')}/implementation.json",
-        "test-current-implementation": f"evidence/slices/{state.get('current_req')}/test.json",
+        "complete-module-plan-and-check": "module-plan.json",
+        "dispatch-subagents-and-verify-wave": f"evidence/wave-{state.get('current_wave')}.json",
         "finalize": "evidence/final-verification.json",
         "run-fresh-implementation-verifier-and-check": "implementation-review.json",
     }
-    return {
+    result = {
         "id": action_id, "state": state.get("state"), "req": state.get("current_req"),
         "skill": skills.get(action_id), "reference": references.get(action_id),
         "success_evidence": evidence.get(action_id),
     }
+    if action_id == "dispatch-subagents-and-verify-wave":
+        wave = state["current_wave"]
+        task_ids = state["waves"][wave - 1]["tasks"]
+        task_map = {task["id"]: task for task in state["module_tasks"]}
+        result.update({"wave": wave, "parallel": True,
+                       "tasks": [task_map[task_id] for task_id in task_ids]})
+    return result
 
 
 # logical next-action id -> the single CLI operation that completes it
 NEXT_ACTION_OP = {
-    "tdd-init": "tdd-init",
+    "baseline-init": "baseline-init",
     "probe": "probe",
     "contract-init": "contract-init",
     "complete-contract-and-check": "contract-check",
@@ -165,8 +169,9 @@ NEXT_ACTION_OP = {
     "revise-contract-and-rerun-review": "contract-check",
     "impact-init": "impact-init",
     "complete-impact-map-and-check": "impact-check",
-    "checkpoint-current-implementation": "implement",
-    "test-current-implementation": "test",
+    "module-plan-init": "module-plan-init",
+    "complete-module-plan-and-check": "module-plan-check",
+    "dispatch-subagents-and-verify-wave": "wave-check",
     "finalize": "finalize",
     "diagnose-and-reopen-failing-requirement": "reopen",
     "implementation-review-init": "implementation-review-init",
@@ -179,7 +184,7 @@ NEXT_ACTION_OP = {
 
 def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
     if stage == "SETUP_REQUIRED":
-        return "tdd-init" if not (evidence / "baseline.json").exists() else "probe"
+        return "baseline-init" if not (evidence / "baseline.json").exists() else "probe"
     if stage == "CONTRACT_REQUIRED":
         return "contract-init" if not (plan / "requirement-contract.json").exists() else "complete-contract-and-check"
     if stage == "CONTRACT_REVIEW_REQUIRED":
@@ -192,10 +197,10 @@ def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
         return "run-fresh-contract-verifier-and-check"
     if stage == "IMPACT_REQUIRED":
         return "impact-init" if not (plan / "impact-map.json").exists() else "complete-impact-map-and-check"
-    if stage == "READY_FOR_IMPLEMENTATION":
-        return "checkpoint-current-implementation"
-    if stage == "READY_FOR_TEST":
-        return "test-current-implementation"
+    if stage == "MODULE_PLAN_REQUIRED":
+        return "module-plan-init" if not (plan / "module-plan.json").exists() else "complete-module-plan-and-check"
+    if stage == "WAVE_EXECUTION_REQUIRED":
+        return "dispatch-subagents-and-verify-wave"
     if stage == "READY_FOR_ACCEPTANCE":
         final = evidence / "final-verification.json"
         failed = final.exists() and not json.loads(final.read_text()).get("passed")

@@ -84,7 +84,7 @@ class Application:
         if operation not in current["allowed_actions"]:
             raise WorksError("E202_INVALID_STATE",
                              f"{operation} is not the next action; expected {current['next_action']['id']}")
-        if operation == "tdd-init" and (evidence / "baseline.json").exists():
+        if operation == "baseline-init" and (evidence / "baseline.json").exists():
             boundary = evidence / "service-boundary-baseline.json"
             if not boundary.exists():
                 self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
@@ -102,7 +102,7 @@ class Application:
                            attempt=previous.get("count", 1))
             raise WorksError("E901_REPEAT_FAILURE", "identical failed action requires a workspace or strategy change",
                              previous)
-        if operation == "test":
+        if operation == "wave-check":
             try:
                 self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
                                "--state-dir", str(evidence)], operation)
@@ -111,17 +111,11 @@ class Application:
                 raise
         elif operation == "finalize":
             try:
-                self._checked(
-                    [sys.executable, str(self.scripts / "code_first.py"), "verify",
-                     "--state-dir", str(evidence),
-                     *[item for req in current["requirements"] for item in ("--req", req)]],
-                    operation,
-                )
                 self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
                                "--state-dir", str(evidence)], operation)
             except WorksError as exc:
                 store.atomic_json(evidence / "final-verification.json", {
-                    "passed": False, "phase": "code-first-or-boundary", "error": exc.code,
+                    "passed": False, "phase": "module-wave-or-boundary", "error": exc.code,
                     "evidence": exc.evidence, "recorded_at": time.time(),
                 })
                 self._record_failure(plan, current, attempt_key, signature, operation, exc.code, exc.evidence)
@@ -134,7 +128,7 @@ class Application:
             details = {"exit": proc.returncode, "output": proc.stdout[-4000:]}
             self._record_failure(plan, current, attempt_key, signature, operation, code, details)
             raise WorksError(code, f"{operation} failed", details)
-        if operation == "tdd-init":
+        if operation == "baseline-init":
             self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
                            "--project-root", current["project_root"], "--state-dir", str(evidence)], operation)
         elif operation == "contract-check":
@@ -143,12 +137,27 @@ class Application:
             current["contract_valid"] = True
             current["contract_review_valid"] = False
             current["impact_valid"] = False
+            current["module_plan_valid"] = False
+            (plan / "module-plan.json").unlink(missing_ok=True)
             (plan / "contract-review.json").unlink(missing_ok=True)
             current.setdefault("attempts", {}).pop("contract-review-check:-", None)
         elif operation == "contract-review-check":
             current["contract_review_valid"] = True
         elif operation == "impact-check":
             current["impact_valid"] = True
+            current["module_plan_valid"] = False
+        elif operation == "module-plan-check":
+            module_plan = json.loads((plan / "module-plan.json").read_text())
+            current["module_tasks"] = module_plan["tasks"]
+            current["waves"] = module_plan["waves"]
+            current["module_plan_valid"] = True
+        elif operation == "wave-check":
+            wave = current["current_wave"]
+            store.atomic_json(evidence / f"wave-{wave}.json", {
+                "passed": True, "wave": wave,
+                "tasks": current["waves"][wave - 1]["tasks"], "recorded_at": time.time(),
+                "coverage_scope": "changed-code-only",
+            })
         elif operation == "implementation-review-check":
             current["implementation_review_valid"] = True
         elif operation in {"contract-review-init", "implementation-review-init"}:
@@ -157,17 +166,14 @@ class Application:
         current.setdefault("attempts", {}).pop(attempt_key, None)
         store.save(plan, current)
         store.activity(plan, current, operation, "passed", command=command)
-        summary_name = (f"{operation}-{current.get('current_req')}"
-                        if operation in {"implement", "test"} else operation)
+        summary_name = f"wave-{current.get('current_wave')}" if operation == "wave-check" else operation
         store.summarize(plan, current, summary_name, result="passed")
         return {"ok": True, "operation": operation, "output": proc.stdout, **store.refresh(plan, current)}
 
     def _command(self, plan: Path, current: dict, operation: str, raw: list[str]) -> list[str]:
-        evidence = current["evidence_dir"]
-        if operation in {"implement", "test"}:
-            expected = "READY_FOR_IMPLEMENTATION" if operation == "implement" else "READY_FOR_TEST"
-            if current["state"] != expected:
-                raise WorksError("E202_INVALID_STATE", f"{operation} is forbidden in {current['state']}")
+        evidence = Path(current["evidence_dir"])
+        if operation == "wave-check" and current["state"] != "WAVE_EXECUTION_REQUIRED":
+            raise WorksError("E202_INVALID_STATE", f"wave-check is forbidden in {current['state']}")
         if operation == "contract-init":
             return [sys.executable, str(self.scripts / "requirement_contract.py"), "init",
                     "--output", str(plan / "requirement-contract.json"),
@@ -193,49 +199,55 @@ class Application:
             return [sys.executable, str(self.scripts / "impact_map.py"), "validate",
                     "--file", str(plan / "impact-map.json"), "--project-root", current["project_root"],
                     *[item for req in current["requirements"] for item in ("--req", req)]]
+        if operation == "module-plan-init":
+            return [sys.executable, str(self.scripts / "module_plan.py"), "init",
+                    "--output", str(plan / "module-plan.json"),
+                    *[item for req in current["requirements"] for item in ("--req", req)]]
+        if operation == "module-plan-check":
+            return [sys.executable, str(self.scripts / "module_plan.py"), "validate",
+                    "--file", str(plan / "module-plan.json"),
+                    "--project-root", current["project_root"],
+                    *[item for req in current["requirements"] for item in ("--req", req)]]
+        if operation == "wave-check":
+            return [sys.executable, str(self.scripts / "module_plan.py"), "verify-wave",
+                    "--file", str(plan / "module-plan.json"),
+                    "--project-root", current["project_root"],
+                    "--results-dir", str(evidence / "task-results"),
+                    "--baseline", str(evidence / "baseline.json"),
+                    "--wave", str(current["current_wave"])]
         if operation == "finalize":
             return []
-        action = "init" if operation == "tdd-init" else operation
-        runner = "code_first.py" if operation in {"implement", "test"} else "tdd_slice.py"
-        command = [sys.executable, str(self.scripts / runner), action]
-        if operation == "tdd-init":
+        action = "init" if operation == "baseline-init" else operation
+        command = [sys.executable, str(self.scripts / "tdd_slice.py"), action]
+        if operation == "baseline-init":
             command.extend(["--project-root", current["project_root"]])
         command.extend(["--state-dir", evidence, *raw])
         return command
 
     def _finalize(self, plan: Path, current: dict) -> dict:
         evidence = Path(current["evidence_dir"])
-        contract = json.loads((plan / "requirement-contract.json").read_text())
-        results = []
-        passed = True
-        logs = plan / "logs"
-        logs.mkdir(parents=True, exist_ok=True)
-        for row in contract["acceptance_commands"]:
-            proc = subprocess.run(windows_command(row["command"]), cwd=Path(current["project_root"]), text=True,
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            log = logs / f"acceptance-{row['id']}.log"
-            log.write_text(proc.stdout)
-            results.append({"id": row["id"], "covers": row["covers"], "command": row["command"],
-                            "exit": proc.returncode, "log": str(log)})
-            passed = passed and proc.returncode == 0
+        results = [json.loads((evidence / f"wave-{index}.json").read_text())
+                   for index in range(1, len(current["waves"]) + 1)]
+        passed = all(row.get("passed") for row in results)
         store.atomic_json(evidence / "final-verification.json", {
             "passed": passed, "requirements": current["requirements"],
-            "acceptance": results, "recorded_at": time.time(),
+            "waves": results, "coverage_scope": "changed-code-only",
+            "full_regression_tests_executed": False, "recorded_at": time.time(),
         })
         if not passed:
             signature = self._signature(Path(current["project_root"]), [])
             self._record_failure(plan, current, "finalize:-", signature, "finalize",
                                  "E401_ACCEPTANCE_FAILED", results)
-            raise WorksError("E401_ACCEPTANCE_FAILED", "one or more contract acceptance commands failed", results)
+            raise WorksError("E401_ACCEPTANCE_FAILED", "one or more focused module waves failed", results)
         current["implementation_review_valid"] = False
         (plan / "implementation-review.json").unlink(missing_ok=True)
         current.setdefault("attempts", {}).pop("implementation-review-check:-", None)
         store.save(plan, current)
         current.setdefault("attempts", {}).pop("finalize:-", None)
         store.save(plan, current)
-        store.activity(plan, current, "finalize", "passed", acceptance=results)
-        store.summarize(plan, current, "finalize", result="passed", acceptance=results)
-        return {"ok": True, "operation": "finalize", "acceptance": results,
+        store.activity(plan, current, "finalize", "passed", waves=results)
+        store.summarize(plan, current, "finalize", result="passed", waves=results)
+        return {"ok": True, "operation": "finalize", "waves": results,
                 **store.refresh(plan, current)}
 
     def _reopen(self, plan: Path, current: dict, raw: list[str]) -> dict:
@@ -250,7 +262,11 @@ class Application:
         repair_req = f"{req[:64 - len(suffix)]}{suffix}"
         current["requirements"].append(repair_req)
         repairs.append({"id": repair_req, "of": req, "created_at": time.time()})
-        for name in ("code-first-verify.json", "final-verification.json"):
+        current["module_plan_valid"] = False
+        (plan / "module-plan.json").unlink(missing_ok=True)
+        for wave_file in evidence.glob("wave-*.json"):
+            wave_file.unlink()
+        for name in ("final-verification.json",):
             try:
                 (evidence / name).unlink()
             except FileNotFoundError:
@@ -323,7 +339,7 @@ class Application:
             return "E312_PRODUCTION_BEFORE_RED"
         if "persistence dependency" in lowered:
             return "E510_BOUNDARY_VIOLATION"
-        return {"implement": "E314_INVALID_IMPLEMENTATION", "test": "E315_INVALID_TEST",
+        return {"module-plan-check": "E305_INVALID_MODULE_PLAN", "wave-check": "E306_INVALID_WAVE",
                 "contract-check": "E302_INVALID_REQUIREMENT_CONTRACT",
                 "contract-review-check": "E303_CONTRACT_REVIEW_FAILED",
                 "implementation-review-check": "E402_IMPLEMENTATION_REVIEW_FAILED",

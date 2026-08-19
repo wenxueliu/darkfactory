@@ -91,6 +91,10 @@ def validate(data: object, requirement: Path) -> list[str]:
             if executable in {"mvn", "mvnw", "mvnw.cmd"} and lifecycle:
                 if "-DskipTests=false" not in command or "-Dmaven.test.skip=false" not in command:
                     errors.append(f"{prefix}.command must explicitly enable Maven tests")
+                elif ("test" not in command or {"verify", "package"} & set(command)
+                      or "-pl" not in command or command.index("-pl") + 1 >= len(command)
+                      or not any(part.startswith("-Dtest=") and "#" in part for part in command)):
+                    errors.append(f"{prefix}.command must target one module and exact testcase")
                 else:
                     maven_covered.update(req for req in coverage if req in ids)
     if len(command_ids) != len(set(command_ids)):
