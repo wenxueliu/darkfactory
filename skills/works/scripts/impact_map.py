@@ -94,8 +94,12 @@ def validate(data: dict, project: Path, expected_reqs: list[str]) -> list[str]:
             continue
         prefix = f"requirements[{index}]"
         for field in REQUIRED:
-            if field not in row or row[field] in (None, "", []):
+            if field not in row or row[field] in (None, "") or (field != "risks" and row[field] == []):
                 errors.append(f"{prefix}.{field} is required")
+        risks = row.get("risks")
+        if not isinstance(risks, list) or any(
+                not isinstance(risk, str) or not risk.strip() for risk in risks):
+            errors.append(f"{prefix}.risks must be an array of non-empty strings")
         for field in ("entrypoints", "service_apis", "persistence", "callers"):
             values = row.get(field, [])
             if not isinstance(values, list):

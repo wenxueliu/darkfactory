@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
 import tempfile
@@ -20,6 +20,7 @@ import service_boundary
 import tdd_slice
 from works_core.application import Application, WorksError
 from works_core.discovery import discover, discover_maven_command
+from works_core import application as works_application
 from works_core import state as store
 
 
@@ -27,6 +28,27 @@ def project_fixture(root: Path) -> None:
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     (root / "pom.xml").write_text("<project/>")
     (root / "requirement.md").write_text("# Requirement")
+
+
+def bind_module_plan_state(plan: Path, current: dict) -> None:
+    """Create the immutable plan/input artifacts required by a validated state."""
+    module_plan_file = plan / "module-plan.json"
+    module_plan_file.write_text(json.dumps({
+        "version": 1, "requirements": current.get("requirements", []),
+        "tasks": current.get("module_tasks", []), "waves": current.get("waves", []),
+    }))
+    impact_file = plan / "impact-map.json"
+    if not impact_file.exists():
+        impact_file.write_text(json.dumps({"version": 1, "requirements": []}))
+    contract_file = plan / "requirement-contract.json"
+    if not contract_file.exists():
+        contract_file.write_text(json.dumps({"version": 1, "requirements": []}))
+    current["module_plan_sha256"] = module_plan.hashlib.sha256(
+        module_plan_file.read_bytes()).hexdigest()
+    current["module_plan_inputs"] = {
+        name: module_plan.hashlib.sha256((plan / name).read_bytes()).hexdigest()
+        for name in ("impact-map.json", "requirement-contract.json")
+    }
 
 
 class BaselineProbeTest(unittest.TestCase):
@@ -149,6 +171,178 @@ class ProductionFingerprintTest(unittest.TestCase):
 
 
 class StateMachineTest(unittest.TestCase):
+    def _ready_for_finalize(self, root: Path, command: list[str],
+                            task_command: list[str] | None = None) -> tuple[Application, Path, Path]:
+        app = Application(SCRIPTS)
+        initialized = app.init(root)
+        plan = Path(initialized["plan_dir"])
+        current = store.load(plan)
+        evidence = Path(current["evidence_dir"])
+        results = evidence / "task-results"
+        results.mkdir(parents=True)
+        contract = {
+            "version": 1,
+            "requirement": str((root / "requirement.md").resolve()),
+            "requirements": [{"id": "REQ-1", "statement": "behavior",
+                              "acceptance_criteria": ["observable result"]}],
+            "acceptance_commands": [{"id": "acceptance", "covers": ["REQ-1"],
+                                     "command": command}],
+        }
+        (plan / "requirement-contract.json").write_text(json.dumps(contract))
+        (evidence / "baseline.json").write_text("{}")
+        (evidence / "preflight.json").write_text('{"passed": true}')
+        (evidence / "wave-1.json").write_text('{"passed": true}')
+        task_id = "REQ-1:module"
+        (results / module_plan.result_filename(task_id)).write_text(json.dumps({
+            "task": task_id,
+            "status": "PASS",
+            "test_command": task_command if task_command is not None else command,
+        }))
+        current.update({
+            "contract_valid": True,
+            "contract_review_valid": True,
+            "impact_valid": True,
+            "module_plan_valid": True,
+            "requirements": ["REQ-1"],
+            "module_tasks": [{"id": task_id, "req": "REQ-1", "module": "module"}],
+            "waves": [{"tasks": [task_id]}],
+            "current_wave": 1,
+        })
+        bind_module_plan_state(plan, current)
+        store.save(plan, current)
+        return app, plan, evidence
+
+    def test_finalize_replays_acceptance_commands(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            command = ["mvn", "-pl", "module", "-Dtest=WorksTest#behavior",
+                       "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+            app, plan, evidence = self._ready_for_finalize(root, command)
+
+            junit = {"target": {"executed": 1, "failures": 0, "errors": 0}}
+            with mock.patch.object(works_application, "run_command",
+                                   return_value=(0, junit)) as replay:
+                updated = app._finalize(plan, store.load(plan))
+
+            self.assertEqual(replay.call_args.args[1], command)
+            self.assertTrue(updated["ok"])
+            verification = json.loads((evidence / "final-verification.json").read_text())
+            self.assertTrue(verification["passed"])
+
+    def test_finalize_blocks_when_acceptance_command_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            command = ["mvn", "-pl", "module", "-Dtest=WorksTest#behavior",
+                       "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+            app, plan, evidence = self._ready_for_finalize(root, command)
+            junit = {"target": {"executed": 1, "failures": 1, "errors": 0}}
+
+            with mock.patch.object(works_application, "run_command", return_value=(1, junit)):
+                with self.assertRaises(WorksError) as caught:
+                    app._finalize(plan, store.load(plan))
+
+            self.assertEqual(caught.exception.code, "E401_ACCEPTANCE_FAILED")
+            self.assertFalse(json.loads((evidence / "final-verification.json").read_text())["passed"])
+
+    def test_finalize_rejects_wave_test_not_mapped_to_contract_coverage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            acceptance = ["mvn", "-pl", "module", "-Dtest=WorksTest#behavior",
+                          "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+            unrelated = ["mvn", "-pl", "module", "-Dtest=OtherTest#other",
+                         "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+            app, plan, _evidence = self._ready_for_finalize(root, acceptance, unrelated)
+
+            junit = {"target": {"executed": 1, "failures": 0, "errors": 0}}
+            with mock.patch.object(works_application, "run_command",
+                                   return_value=(0, junit)) as replay:
+                with self.assertRaises(WorksError) as caught:
+                    app._finalize(plan, store.load(plan))
+
+            self.assertEqual(caught.exception.code, "E401_ACCEPTANCE_FAILED")
+            replay.assert_not_called()
+
+    def test_second_wave_patch_check_ignores_first_wave_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            app = Application(SCRIPTS)
+            initialized = app.init(root)
+            plan = Path(initialized["plan_dir"])
+            current = store.load(plan)
+            evidence = Path(current["evidence_dir"])
+            results = evidence / "task-results"
+            results.mkdir(parents=True)
+            (evidence / "baseline.json").write_text("{}")
+            (evidence / "preflight.json").write_text('{"passed": true}')
+            (evidence / "wave-1.json").write_text('{"passed": true}')
+            tasks = [{"id": "REQ-1:first", "module": "first"},
+                     {"id": "REQ-1:second", "module": "second"}]
+            current.update({"contract_valid": True, "contract_review_valid": True,
+                            "impact_valid": True, "module_plan_valid": True,
+                            "requirements": ["REQ-1"], "module_tasks": tasks,
+                            "waves": [{"tasks": ["REQ-1:first"]},
+                                      {"tasks": ["REQ-1:second"]}]})
+            bind_module_plan_state(plan, current)
+            store.save(plan, current)
+            immutable = {"base_commit": "base", "patch_file": "patches/task.patch",
+                         "patch_sha256": "digest", "changed_files": ["A.java"],
+                         "covered_files": ["A.java"], "test_file": "ATest.java"}
+            for task_id in ("REQ-1:first", "REQ-1:second"):
+                token = module_plan.branch_token(task_id)
+                patch_file = results / "patches" / f"{token}.patch"
+                patch_file.parent.mkdir(exist_ok=True)
+                patch_file.write_text(task_id)
+                (results / module_plan.result_filename(task_id)).write_text(json.dumps({
+                    **immutable, "task": task_id, "status": "PATCH_READY",
+                    "patch_file": f"patches/{token}.patch",
+                }))
+
+            with mock.patch.object(Application, "_signature", return_value="signature"), \
+                    mock.patch.object(works_application.subprocess, "run",
+                                      return_value=mock.Mock(returncode=0, stdout="")):
+                updated = app.run(root, "patch-check", [])
+
+            marker = json.loads((evidence / "patch-set-2.json").read_text())
+            self.assertEqual(set(marker["candidate_projections"]), {"REQ-1:second"})
+            self.assertEqual(set(marker["candidate_hashes"]), {
+                "task-results/patches/REQ-1-second.patch",
+            })
+            self.assertEqual(updated["next_action"]["id"], "apply-patches-and-verify-wave")
+
+    def test_patch_check_signature_changes_when_candidate_is_corrected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            plan = root / ".planning"
+            results = plan / "evidence" / "task-results"
+            results.mkdir(parents=True)
+            candidate = results / module_plan.result_filename("REQ-1:user")
+            candidate.write_text('{"task":"REQ-1:user","patch_sha256":"bad"}')
+            command = [sys.executable, str(SCRIPTS / "module_plan.py"), "verify-patches",
+                       "--file", str(plan / "module-plan.json"),
+                       "--results-dir", str(results), "--wave", "1"]
+
+            first = Application._signature(root, command)
+            candidate.write_text('{"task":"REQ-1:user","patch_sha256":"fixed"}')
+            second = Application._signature(root, command)
+
+            self.assertNotEqual(first, second)
+
+    def test_signature_serializes_windows_path_arguments(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            command = [PureWindowsPath(r"C:\tools\python.exe"),
+                       PureWindowsPath(r"C:\work\module_plan.py"), "validate"]
+
+            signature = Application._signature(root, command)
+
+            self.assertRegex(signature, r"^[0-9a-f]{64}$")
+
     def test_module_plan_exposes_parallel_wave_tasks(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -171,6 +365,7 @@ class StateMachineTest(unittest.TestCase):
                             "module_tasks": [{"id": "REQ-1:user", "module": "user"},
                                              {"id": "REQ-1:order", "module": "order"}],
                             "waves": [{"tasks": ["REQ-1:user", "REQ-1:order"]}]})
+            bind_module_plan_state(plan, current)
             store.save(plan, current)
             updated = app.status(root)
             self.assertEqual(updated["state"], "WAVE_EXECUTION_REQUIRED")
@@ -291,6 +486,7 @@ class StateMachineTest(unittest.TestCase):
                             "module_plan_valid": True, "requirements": ["REQ-1"],
                             "waves": [{"tasks": ["REQ-1:module"]}],
                             "module_tasks": [{"id": "REQ-1:module"}]})
+            bind_module_plan_state(plan, current)
             (evidence / "wave-1.json").write_text('{"passed": true}')
             (evidence / "final-verification.json").write_text('{"passed": false}')
             store.save(plan, current)
@@ -322,6 +518,7 @@ class StateMachineTest(unittest.TestCase):
                             "module_plan_valid": True, "implementation_review_valid": False,
                             "requirements": ["REQ-1"], "waves": [{"tasks": ["REQ-1:module"]}],
                             "module_tasks": [{"id": "REQ-1:module"}]})
+            bind_module_plan_state(plan, current)
             (evidence / "wave-1.json").write_text('{"passed": true}')
             store.save(plan, current)
             updated = app.status(root)
@@ -419,6 +616,26 @@ class StateMachineTest(unittest.TestCase):
 
 
 class ImpactMapTest(unittest.TestCase):
+    def test_allows_no_identified_risks_but_rejects_invalid_risk_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / "Controller.java").write_text("class Controller {}\n")
+            data = impact_map.template(["REQ-1"])
+            row = data["requirements"][0]
+            row.update({"behavior": "download", "entrypoints": ["Controller.java:1"],
+                        "service_apis": ["Controller.java:1"],
+                        "persistence": ["Controller.java:1"],
+                        "test_seams": [{"boundary": "Controller.java:1",
+                                        "planned_test": "src/test/java/ControllerTest.java"}],
+                        "risks": []})
+
+            self.assertEqual(impact_map.validate(data, project, ["REQ-1"]), [])
+            for invalid in ([""], [None], [42]):
+                with self.subTest(risks=invalid):
+                    row["risks"] = invalid
+                    errors = impact_map.validate(data, project, ["REQ-1"])
+                    self.assertTrue(any("risks must be" in error for error in errors), errors)
+
     def test_requires_real_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory)
@@ -473,6 +690,17 @@ class ImpactMapTest(unittest.TestCase):
 
 
 class RequirementContractTest(unittest.TestCase):
+    @staticmethod
+    def _contract(requirement: Path, command: list[str], ids: list[str] | None = None) -> dict:
+        ids = ids or ["REQ-1"]
+        return {
+            "version": 1,
+            "requirement": str(requirement.resolve()),
+            "requirements": [{"id": req, "statement": f"behavior {req}",
+                              "acceptance_criteria": [f"result {req}"]} for req in ids],
+            "acceptance_commands": [{"id": "tests", "covers": ids, "command": command}],
+        }
+
     def test_requires_full_command_coverage(self):
         with tempfile.TemporaryDirectory() as directory:
             requirement = Path(directory) / "requirement.md"
@@ -498,6 +726,41 @@ class RequirementContractTest(unittest.TestCase):
                                             "command": ["true"]}]
             errors = requirement_contract.validate(data, requirement)
             self.assertTrue(any("Maven" in error for error in errors))
+
+    def test_rejects_non_exact_maven_acceptance_commands(self):
+        valid = ["mvn", "-pl", "module", "-Dtest=WorksTest#behavior",
+                 "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+        invalid = {
+            "multiple modules": ["mvn", "-pl", "a,b", *valid[3:]],
+            "trailing argument": [*valid, "unexpected"],
+            "multiple selectors": [*valid[:-1], "-Dtest=OtherTest#other", "test"],
+            "empty module": ["mvn", "-pl", "", *valid[3:]],
+            "empty selector": ["mvn", "-pl", "module", "-Dtest=", *valid[4:]],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            requirement = Path(directory) / "requirement.md"
+            requirement.write_text("# Requirement")
+            for label, command in invalid.items():
+                with self.subTest(label=label):
+                    errors = requirement_contract.validate(
+                        self._contract(requirement, command), requirement)
+                    self.assertTrue(
+                        any("target one Maven module and exact testcase" in error for error in errors),
+                        errors,
+                    )
+
+    def test_requirement_ids_must_be_in_natural_order(self):
+        command = ["mvn", "-pl", "module", "-Dtest=WorksTest#behavior",
+                   "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+        with tempfile.TemporaryDirectory() as directory:
+            requirement = Path(directory) / "requirement.md"
+            requirement.write_text("# Requirement")
+            ordered = self._contract(requirement, command, ["REQ-2", "REQ-10"])
+            reversed_ids = self._contract(requirement, command, ["REQ-10", "REQ-2"])
+
+            self.assertEqual(requirement_contract.validate(ordered, requirement), [])
+            errors = requirement_contract.validate(reversed_ids, requirement)
+            self.assertTrue(any("ordered" in error for error in errors), errors)
 
 
 class ReviewEvidenceTest(unittest.TestCase):
@@ -575,10 +838,235 @@ class ServiceBoundaryTest(unittest.TestCase):
 
 
 class ModulePlanTest(unittest.TestCase):
+    @staticmethod
+    def _task(task_id: str = "REQ-1:user", req: str = "REQ-1",
+              module: str = "user") -> dict:
+        prefix = "" if module == "." else f"{module}/"
+        return {
+            "id": task_id, "req": req, "module": module, "depends_on": [],
+            "write_scope": [f"{prefix}src/main"],
+            "changed_behaviors": ["observable behavior"],
+            "database_dependencies": [],
+        }
+
+    @classmethod
+    def _plan(cls, tasks: list[dict], requirements: list[str] | None = None,
+              max_parallel: object = 4) -> dict:
+        return {
+            "version": 1, "max_parallel": max_parallel,
+            "requirements": requirements or ["REQ-1"], "tasks": tasks,
+            "waves": [{"tasks": [task["id"] for task in tasks]}],
+        }
+
+    def test_module_must_be_safe_project_relative_path_but_root_dot_is_allowed(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as external_directory:
+            root = Path(directory)
+            (root / "pom.xml").write_text("<project/>")
+            (root / "user").mkdir()
+            (root / "user/pom.xml").write_text("<project/>")
+            external = Path(external_directory)
+            (external / "pom.xml").write_text("<project/>")
+
+            root_plan = self._plan([self._task("REQ-1:root", module=".")])
+            self.assertEqual(module_plan.validate(root_plan, root, ["REQ-1"]), [])
+
+            invalid_modules = (str(external.resolve()), "../" + external.name, "")
+            for invalid in invalid_modules:
+                with self.subTest(module=invalid):
+                    plan = self._plan([self._task(module=invalid)])
+                    errors = module_plan.validate(plan, root, ["REQ-1"])
+                    self.assertTrue(any("module" in error for error in errors), errors)
+
+    def test_rejects_duplicate_req_module_pair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "user").mkdir()
+            (root / "user/pom.xml").write_text("<project/>")
+            first = self._task("REQ-1:user-a")
+            second = self._task("REQ-1:user-b")
+            second["write_scope"] = ["user/src/generated"]
+            plan = self._plan([first, second])
+
+            errors = module_plan.validate(plan, root, ["REQ-1"])
+            self.assertTrue(any("Req" in error and "module" in error for error in errors), errors)
+
+    def test_rejects_stale_requirements_invalid_elements_duplicates_and_bool_parallelism(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "user").mkdir()
+            (root / "user/pom.xml").write_text("<project/>")
+            mutations = {
+                "stale requirements": lambda plan: plan.update(requirements=["STALE"]),
+                "changed behavior type": lambda plan: plan["tasks"][0].update(
+                    changed_behaviors=[None]),
+                "changed behavior duplicate": lambda plan: plan["tasks"][0].update(
+                    changed_behaviors=["same", "same"]),
+                "database dependency type": lambda plan: plan["tasks"][0].update(
+                    database_dependencies=[None]),
+                "database dependency duplicate": lambda plan: plan["tasks"][0].update(
+                    database_dependencies=["Repo", "Repo"]),
+                "dependency type": lambda plan: plan["tasks"][0].update(depends_on=[None]),
+                "dependency duplicate": lambda plan: plan["tasks"][0].update(
+                    depends_on=["missing", "missing"]),
+                "write scope type": lambda plan: plan["tasks"][0].update(write_scope=[None]),
+                "write scope duplicate": lambda plan: plan["tasks"][0].update(
+                    write_scope=["user/src/main", "user/src/main"]),
+                "boolean parallelism": lambda plan: plan.update(max_parallel=True),
+            }
+            for label, mutate in mutations.items():
+                with self.subTest(label=label):
+                    plan = self._plan([self._task()])
+                    mutate(plan)
+                    self.assertTrue(module_plan.validate(plan, root, ["REQ-1"]), plan)
+
+    def test_module_plan_cli_binds_impact_modules_and_contract_modules(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for module in ("user", "order"):
+                (root / module / "src/main/java").mkdir(parents=True)
+                (root / module / "pom.xml").write_text("<project/>")
+                (root / module / "src/main/java/Service.java").write_text("class Service {}\n")
+            plan = self._plan([self._task()])
+            plan_file = root / "module-plan.json"
+            plan_file.write_text(json.dumps(plan))
+            impact = {
+                "version": 1, "requirements": [{
+                    "id": "REQ-1", "behavior": "change",
+                    "entrypoints": ["user/src/main/java/Service.java:1"],
+                    "service_apis": ["order/src/main/java/Service.java:1"],
+                    "persistence": ["order/src/main/java/Service.java:1"],
+                    "callers": [], "config_data_impact": [], "test_seams": [], "risks": [],
+                    "architecture_exception": None,
+                }],
+            }
+            impact_file = root / "impact-map.json"
+            impact_file.write_text(json.dumps(impact))
+            contract = {
+                "version": 1, "requirements": [{"id": "REQ-1"}],
+                "acceptance_commands": [{
+                    "id": "acceptance", "covers": ["REQ-1"],
+                    "command": ["mvn", "-pl", "order", "-Dtest=WorksTest#works",
+                                "-DskipTests=false", "-Dmaven.test.skip=false", "test"],
+                }],
+            }
+            contract_file = root / "requirement-contract.json"
+            contract_file.write_text(json.dumps(contract))
+            command = [sys.executable, str(SCRIPTS / "module_plan.py"), "validate",
+                       "--file", str(plan_file), "--project-root", str(root),
+                       "--impact-map", str(impact_file), "--contract", str(contract_file),
+                       "--req", "REQ-1"]
+
+            proc = subprocess.run(command, text=True, stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("order", proc.stdout)
+
+    def test_modified_module_plan_invalidates_validated_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            initialized = Application(SCRIPTS).init(root)
+            plan_dir = Path(initialized["plan_dir"])
+            current = store.load(plan_dir)
+            evidence = Path(current["evidence_dir"])
+            evidence.mkdir()
+            (evidence / "baseline.json").write_text("{}")
+            (evidence / "preflight.json").write_text('{"passed": true}')
+            plan_file = plan_dir / "module-plan.json"
+            plan_file.write_text(json.dumps(self._plan([self._task(module=".")])))
+            current.update({
+                "requirements": ["REQ-1"], "contract_valid": True,
+                "contract_review_valid": True, "impact_valid": True,
+                "module_plan_valid": True,
+                "module_tasks": [self._task(module=".")],
+                "waves": [{"tasks": ["REQ-1:user"]}],
+            })
+            bind_module_plan_state(plan_dir, current)
+            store.save(plan_dir, current)
+
+            plan_file.write_text(json.dumps(self._plan([self._task(module=".")]), indent=2))
+            refreshed = store.refresh(plan_dir, store.load(plan_dir))
+            self.assertFalse(refreshed["module_plan_valid"])
+            self.assertEqual(refreshed["state"], "MODULE_PLAN_REQUIRED")
+
     def test_result_filename_is_cross_platform_safe(self):
         name = module_plan.result_filename("REQ-1:user")
         self.assertNotIn(":", name)
         self.assertRegex(name, r"^REQ-1-user-[0-9a-f]{8}\.json$")
+
+    def test_wave_replay_log_path_is_cross_platform_safe(self):
+        task_id = "REQ-1:user"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            module = root / "user"
+            test = module / "src/test/java/UserWorksTest.java"
+            test.parent.mkdir(parents=True)
+            test.write_text("import org.mockito.Mock; class UserWorksTest { @Mock Repo repo; }")
+            results = root / "results"
+            (results / "patches").mkdir(parents=True)
+            patch = (b"diff --git a/user/src/main/java/User.java b/user/src/main/java/User.java\n"
+                     b"diff --git a/user/src/test/java/UserWorksTest.java b/user/src/test/java/UserWorksTest.java\n")
+            (results / "patches/task.patch").write_bytes(patch)
+            (results / module_plan.result_filename(task_id)).write_text(json.dumps({
+                "task": task_id, "status": "PASS", "base_commit": "base",
+                "patch_file": "patches/task.patch",
+                "patch_sha256": module_plan.hashlib.sha256(patch).hexdigest(),
+                "commit": "merged", "changed_files": ["user/src/main/java/User.java"],
+                "covered_files": ["user/src/main/java/User.java"],
+                "test_file": "user/src/test/java/UserWorksTest.java",
+                "testcase": "UserWorksTest#works", "database_mocks": ["Repo"],
+                "test_command": ["mvn", "-pl", "user", "-Dtest=UserWorksTest#works",
+                                 "-DskipTests=false", "-Dmaven.test.skip=false", "test"],
+                "test_evidence": {"exit": 0, "executed": 1},
+            }))
+            plan = {"tasks": [{"id": task_id, "module": "user",
+                                "write_scope": ["user/src/main"],
+                                "database_dependencies": ["Repo"]}],
+                    "waves": [{"tasks": [task_id]}]}
+            junit = {"target": {"executed": 1, "failures": 0, "errors": 0}}
+            with mock.patch.object(module_plan, "run_command", return_value=(0, junit)) as replay, \
+                    mock.patch.object(module_plan.subprocess, "run",
+                                      return_value=mock.Mock(returncode=1, stdout="")):
+                module_plan.verify_wave(plan, root, results, 1, {"tests": {}})
+
+            log_path = replay.call_args.args[2]
+            self.assertNotIn(":", log_path.name)
+            self.assertEqual(log_path.parent.name,
+                             Path(module_plan.result_filename(task_id)).stem)
+
+    def test_root_module_accepts_src_test_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "pom.xml").write_text("<project/>")
+            results = root / "results"
+            (results / "patches").mkdir(parents=True)
+            patch = (b"diff --git a/src/main/java/App.java b/src/main/java/App.java\n"
+                     b"diff --git a/src/test/java/AppWorksTest.java b/src/test/java/AppWorksTest.java\n")
+            (results / "patches/task.patch").write_bytes(patch)
+            task_id = "REQ-1:root"
+            (results / module_plan.result_filename(task_id)).write_text(json.dumps({
+                "task": task_id, "status": "PATCH_READY", "base_commit": "base",
+                "patch_file": "patches/task.patch",
+                "patch_sha256": module_plan.hashlib.sha256(patch).hexdigest(),
+                "changed_files": ["src/main/java/App.java"],
+                "covered_files": ["src/main/java/App.java"],
+                "test_file": "src/test/java/AppWorksTest.java",
+            }))
+            plan = {"tasks": [{"id": task_id, "module": ".",
+                                "write_scope": ["src/main"]}],
+                    "waves": [{"tasks": [task_id]}]}
+
+            def git_run(command, **_kwargs):
+                if command[-2:] == ["patch-id", "--stable"]:
+                    return mock.Mock(returncode=0, stdout=b"patch-id base\n")
+                if command[-1] == "HEAD":
+                    return mock.Mock(returncode=0, stdout="base\n")
+                return mock.Mock(returncode=0, stdout="")
+
+            with mock.patch.object(module_plan.subprocess, "run", side_effect=git_run):
+                errors = module_plan.verify_patches(plan, root, results, 1)
+            self.assertEqual(errors, [])
 
     def test_validates_parallel_module_dag(self):
         with tempfile.TemporaryDirectory() as directory:

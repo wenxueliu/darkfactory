@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 import subprocess
 
@@ -23,12 +23,66 @@ def template(reqs: list[str]) -> dict:
 
 
 def inside_module(project: Path, module: str, relative: str) -> bool:
+    if not valid_module_name(module):
+        return False
+    if not isinstance(relative, str) or not relative or "\\" in relative:
+        return False
     try:
+        module_path = Path(module)
+        relative_path = Path(relative)
+        if module_path.is_absolute() or relative_path.is_absolute():
+            return False
         path = (project / relative).resolve()
         root = (project / module).resolve()
-        return path.is_relative_to(root)
+        return root.is_relative_to(project.resolve()) and path.is_relative_to(root)
     except (OSError, ValueError):
         return False
+
+
+def valid_module_name(module: object) -> bool:
+    if not isinstance(module, str) or not module or "\\" in module or ":" in module:
+        return False
+    path = Path(module)
+    return (not path.is_absolute() and not PureWindowsPath(module).is_absolute()
+            and (module == "." or all(part not in {"", ".", ".."} for part in path.parts)))
+
+
+def module_path(module: str, relative: str) -> str:
+    """Return a Git-style path for a file inside a Maven module."""
+    normalized = module.rstrip("/")
+    if normalized in {"", "."}:
+        return relative
+    return f"{normalized}/{relative}"
+
+
+def maven_module(project: Path, relative: str) -> str | None:
+    path_value = relative.rsplit(":", 1)[0] if re.search(r":\d+$", relative) else relative
+    if "\\" in path_value or Path(path_value).is_absolute() or PureWindowsPath(path_value).is_absolute():
+        return None
+    candidate = (project / path_value).resolve()
+    if not candidate.is_relative_to(project.resolve()):
+        return None
+    roots = [pom.parent.resolve() for pom in project.rglob("pom.xml")]
+    matches = [root for root in roots if candidate.is_relative_to(root)]
+    if not matches:
+        return None
+    root = max(matches, key=lambda value: len(value.parts))
+    relative_root = root.relative_to(project.resolve()).as_posix()
+    return relative_root or "."
+
+
+def required_modules(impact: dict, project: Path, reqs: list[str]) -> dict[str, set[str]]:
+    required = {req: set() for req in reqs}
+    for row in impact.get("requirements", []):
+        if not isinstance(row, dict) or row.get("id") not in required:
+            continue
+        values = [value for field in ("entrypoints", "service_apis", "persistence")
+                  for value in row.get(field, []) if isinstance(value, str)]
+        values.extend(seam.get("planned_test") for seam in row.get("test_seams", [])
+                      if isinstance(seam, dict) and isinstance(seam.get("planned_test"), str))
+        required[row["id"]].update(module for value in values
+                                   if (module := maven_module(project, value)) is not None)
+    return required
 
 
 def branch_token(task_id: str) -> str:
@@ -105,7 +159,7 @@ def verify_patches(plan: dict, project: Path, results: Path, wave_number: int) -
             if applicable.returncode != 0:
                 raise ValueError("patch does not apply cleanly to shared base")
             expected_paths = set(changed) | {test_file}
-            test_prefix = f"{task['module'].rstrip('/')}/src/test/"
+            test_prefix = module_path(task["module"], "src/test/")
             if not isinstance(test_file, str) or not test_file.startswith(test_prefix):
                 raise ValueError("focused test_file must be under module/src/test")
             if test_file in set(changed):
@@ -137,10 +191,13 @@ def verify_patches(plan: dict, project: Path, results: Path, wave_number: int) -
     return errors
 
 
-def validate(data: object, project: Path, reqs: list[str]) -> list[str]:
+def validate(data: object, project: Path, reqs: list[str], impact: dict | None = None,
+             contract: dict | None = None) -> list[str]:
     if not isinstance(data, dict):
         return ["module plan must be an object"]
     errors: list[str] = []
+    if data.get("requirements") != reqs:
+        errors.append("top-level requirements must exactly match the requirement contract")
     tasks = data.get("tasks")
     waves = data.get("waves")
     if data.get("version") != 1 or not isinstance(tasks, list) or not tasks:
@@ -149,6 +206,7 @@ def validate(data: object, project: Path, reqs: list[str]) -> list[str]:
         errors.append("waves must be a non-empty array")
         waves = []
     by_id: dict[str, dict] = {}
+    by_req_module: dict[tuple[str, str], str] = {}
     covered: set[str] = set()
     scopes: list[tuple[str, str]] = []
     for index, task in enumerate(tasks):
@@ -165,33 +223,56 @@ def validate(data: object, project: Path, reqs: list[str]) -> list[str]:
             errors.append(f"{prefix}.req is unknown")
         else:
             covered.add(req)
-        if not isinstance(module, str) or not (project / module / "pom.xml").is_file():
+        valid_module = (valid_module_name(module)
+                        and inside_module(project, module, module_path(module, "pom.xml"))
+                        and (project / module / "pom.xml").is_file())
+        if not valid_module:
             errors.append(f"{prefix}.module must identify a Maven module with pom.xml")
+        elif req in reqs:
+            key = (req, "." if module.rstrip("/") in {"", "."} else module.rstrip("/"))
+            if key in by_req_module:
+                errors.append(f"{prefix} duplicates Req × module task {by_req_module[key]}")
+            else:
+                by_req_module[key] = task_id
         write_scope = task.get("write_scope")
         if not isinstance(write_scope, list) or not write_scope:
             errors.append(f"{prefix}.write_scope must be non-empty")
         else:
+            if len(write_scope) != len(set(scope for scope in write_scope if isinstance(scope, str))):
+                errors.append(f"{prefix}.write_scope must not contain duplicates")
             for scope in write_scope:
                 if not isinstance(scope, str) or not inside_module(project, module, scope):
                     errors.append(f"{prefix}.write_scope escapes module: {scope!r}")
                 else:
                     scopes.append((task_id, scope.rstrip("/")))
-        if not isinstance(task.get("depends_on"), list):
+        dependencies = task.get("depends_on")
+        if (not isinstance(dependencies, list)
+                or any(not isinstance(value, str) for value in dependencies)):
             errors.append(f"{prefix}.depends_on must be an array")
-        if not isinstance(task.get("changed_behaviors"), list) or not task["changed_behaviors"]:
+        elif len(dependencies) != len(set(dependencies)):
+            errors.append(f"{prefix}.depends_on must not contain duplicates")
+        behaviors = task.get("changed_behaviors")
+        if (not isinstance(behaviors, list) or not behaviors
+                or any(not isinstance(value, str) or not value.strip() for value in behaviors)):
             errors.append(f"{prefix}.changed_behaviors must be non-empty")
-        if not isinstance(task.get("database_dependencies"), list):
+        elif len(behaviors) != len(set(behaviors)):
+            errors.append(f"{prefix}.changed_behaviors must not contain duplicates")
+        database_dependencies = task.get("database_dependencies")
+        if (not isinstance(database_dependencies, list)
+                or any(not isinstance(value, str) or not value.strip() for value in database_dependencies)):
             errors.append(f"{prefix}.database_dependencies must be an array")
+        elif len(database_dependencies) != len(set(database_dependencies)):
+            errors.append(f"{prefix}.database_dependencies must not contain duplicates")
     missing = [req for req in reqs if req not in covered]
     if missing:
         errors.append(f"requirements missing module tasks: {missing!r}")
     for task_id, task in by_id.items():
-        for dependency in task.get("depends_on", []):
+        for dependency in task.get("depends_on", []) if isinstance(task.get("depends_on"), list) else []:
             if dependency not in by_id or dependency == task_id:
                 errors.append(f"{task_id} has invalid dependency {dependency!r}")
     wave_of: dict[str, int] = {}
     max_parallel = data.get("max_parallel", 4)
-    if not isinstance(max_parallel, int) or max_parallel < 1:
+    if isinstance(max_parallel, bool) or not isinstance(max_parallel, int) or max_parallel < 1:
         errors.append("max_parallel must be a positive integer")
         max_parallel = 1
     for number, wave in enumerate(waves, 1):
@@ -212,17 +293,38 @@ def validate(data: object, project: Path, reqs: list[str]) -> list[str]:
             if left_id != right_id and overlap and wave_of.get(left_id) == wave_of.get(right_id):
                 errors.append(f"parallel write scopes overlap: {left_id}:{left} and {right_id}:{right}")
     for task_id, task in by_id.items():
-        for dependency in task.get("depends_on", []):
+        for dependency in task.get("depends_on", []) if isinstance(task.get("depends_on"), list) else []:
             if dependency in wave_of and task_id in wave_of and wave_of[dependency] >= wave_of[task_id]:
                 errors.append(f"{task_id} must be in a later wave than {dependency}")
     names = [result_filename(task_id) for task_id in by_id]
     if len(names) != len(set(names)):
         errors.append("task ids produce colliding cross-platform evidence filenames")
+    planned_modules = {req: {module for task_req, module in by_req_module if task_req == req}
+                       for req in reqs}
+    if impact is not None:
+        for req, modules in required_modules(impact, project, reqs).items():
+            missing_modules = sorted(modules - planned_modules[req])
+            if missing_modules:
+                errors.append(f"{req} missing impacted Maven module tasks: {missing_modules!r}")
+    if contract is not None:
+        contract_modules = {req: set() for req in reqs}
+        for row in contract.get("acceptance_commands", []):
+            command = row.get("command", []) if isinstance(row, dict) else []
+            if "-pl" not in command or command.index("-pl") + 1 >= len(command):
+                continue
+            module = command[command.index("-pl") + 1]
+            for req in row.get("covers", []):
+                if req in contract_modules:
+                    contract_modules[req].add(module)
+        for req, modules in contract_modules.items():
+            missing_modules = sorted(modules - planned_modules[req])
+            if missing_modules:
+                errors.append(f"{req} missing contract Maven module tasks: {missing_modules!r}")
     return errors
 
 
 def verify_wave(plan: dict, project: Path, results: Path, wave_number: int,
-                baseline: dict) -> list[str]:
+                baseline: dict, contract: dict | None = None) -> list[str]:
     errors: list[str] = []
     task_map = {task["id"]: task for task in plan["tasks"]}
     ids = plan["waves"][wave_number - 1]["tasks"]
@@ -328,6 +430,12 @@ def verify_wave(plan: dict, project: Path, results: Path, wave_number: int,
                 errors.append(f"{task_id}: database dependency {symbol} is not mocked in test source")
         command = result.get("test_command")
         selector = result.get("testcase")
+        req = task.get("req")
+        if contract is not None:
+            accepted = [row.get("command") for row in contract.get("acceptance_commands", [])
+                        if req in row.get("covers", [])]
+            if command not in accepted:
+                errors.append(f"{task_id}: test_command is not declared for {req} in requirement contract")
         module = task["module"]
         runner = Path(command[0]).name.lower() if isinstance(command, list) and command else ""
         goals = [token for token in command if token in {"test", "verify", "package", "install"}] if isinstance(command, list) else []
@@ -350,7 +458,8 @@ def verify_wave(plan: dict, project: Path, results: Path, wave_number: int,
         if not isinstance(evidence, dict) or evidence.get("exit") != 0 or evidence.get("executed", 0) < 1:
             errors.append(f"{task_id}: focused test evidence must prove execution and success")
         if command_valid:
-            log_dir = results / "wave-verification" / f"wave-{wave_number}" / task_id
+            safe_task = result_filename(task_id).removesuffix(".json")
+            log_dir = results / "wave-verification" / f"wave-{wave_number}" / safe_task
             code, junit = run_command(project, command, log_dir / "test.log",
                                       log_dir / "reports", selector)
             target = junit["target"]
@@ -388,11 +497,14 @@ def main() -> int:
     check.add_argument("--file", required=True)
     check.add_argument("--project-root", required=True)
     check.add_argument("--req", action="append", required=True)
+    check.add_argument("--impact-map", required=True)
+    check.add_argument("--contract", required=True)
     wave = sub.add_parser("verify-wave")
     wave.add_argument("--file", required=True)
     wave.add_argument("--project-root", required=True)
     wave.add_argument("--results-dir", required=True)
     wave.add_argument("--baseline", required=True)
+    wave.add_argument("--contract", required=True)
     wave.add_argument("--wave", required=True, type=int)
     patches = sub.add_parser("verify-patches")
     patches.add_argument("--file", required=True)
@@ -409,10 +521,14 @@ def main() -> int:
         return 0
     data = json.loads(path.read_text())
     if args.action == "validate":
-        errors = validate(data, Path(args.project_root).resolve(), args.req)
+        impact = json.loads(Path(args.impact_map).read_text())
+        contract = json.loads(Path(args.contract).read_text())
+        errors = validate(data, Path(args.project_root).resolve(), args.req, impact, contract)
     elif args.action == "verify-wave":
         baseline = json.loads(Path(args.baseline).read_text())
-        errors = verify_wave(data, Path(args.project_root).resolve(), Path(args.results_dir), args.wave, baseline)
+        contract = json.loads(Path(args.contract).read_text())
+        errors = verify_wave(data, Path(args.project_root).resolve(), Path(args.results_dir), args.wave,
+                             baseline, contract)
     else:
         errors = verify_patches(data, Path(args.project_root).resolve(), Path(args.results_dir), args.wave)
     if errors:

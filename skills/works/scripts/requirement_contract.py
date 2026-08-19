@@ -5,12 +5,41 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 
 
 ERROR = "E302_INVALID_REQUIREMENT_CONTRACT"
 REQ_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+TEST_SELECTOR = re.compile(r"[^#\s,]+#[^#\s,]+")
+
+
+def executable_name(value: str) -> str:
+    return (PureWindowsPath(value).name if "\\" in value else Path(value).name).lower()
+
+
+def natural_id_key(value: str) -> tuple[tuple[int, object], ...]:
+    return tuple((0, int(part)) if part.isdigit() else (1, part.lower())
+                 for part in re.split(r"(\d+)", value) if part)
+
+
+def focused_maven_command(command: list[str]) -> bool:
+    if not command or executable_name(command[0]) not in {"mvn", "mvnw", "mvnw.cmd"}:
+        return False
+    if command[-1] != "test" or command.count("test") != 1:
+        return False
+    if any(goal in command for goal in ("verify", "package", "install")):
+        return False
+    if command.count("-pl") != 1:
+        return False
+    module_index = command.index("-pl") + 1
+    if module_index >= len(command):
+        return False
+    module = command[module_index]
+    if not module or module.startswith("-") or "," in module:
+        return False
+    selectors = [part.removeprefix("-Dtest=") for part in command if part.startswith("-Dtest=")]
+    return len(selectors) == 1 and TEST_SELECTOR.fullmatch(selectors[0]) is not None
 
 
 def template(requirement: Path) -> dict:
@@ -54,6 +83,8 @@ def validate(data: object, requirement: Path) -> list[str]:
             errors.append(f"{prefix}.acceptance_criteria must contain executable behaviors")
     if len(ids) != len(set(ids)):
         errors.append("requirement IDs must be unique and ordered")
+    elif ids != sorted(ids, key=natural_id_key):
+        errors.append("requirement IDs must be ordered in natural order")
 
     commands = data.get("acceptance_commands")
     if not isinstance(commands, list) or not commands:
@@ -86,17 +117,12 @@ def validate(data: object, requirement: Path) -> list[str]:
             if unknown:
                 errors.append(f"{prefix}.covers contains unknown IDs: {unknown!r}")
             covered.update(req for req in coverage if req in ids)
-            executable = Path(command[0]).name.lower() if command else ""
-            lifecycle = {"test", "verify", "package"} & set(command)
-            if executable in {"mvn", "mvnw", "mvnw.cmd"} and lifecycle:
-                if "-DskipTests=false" not in command or "-Dmaven.test.skip=false" not in command:
-                    errors.append(f"{prefix}.command must explicitly enable Maven tests")
-                elif ("test" not in command or {"verify", "package"} & set(command)
-                      or "-pl" not in command or command.index("-pl") + 1 >= len(command)
-                      or not any(part.startswith("-Dtest=") and "#" in part for part in command)):
-                    errors.append(f"{prefix}.command must target one module and exact testcase")
-                else:
-                    maven_covered.update(req for req in coverage if req in ids)
+            if not focused_maven_command(command):
+                errors.append(f"{prefix}.command must target one Maven module and exact testcase")
+            elif "-DskipTests=false" not in command or "-Dmaven.test.skip=false" not in command:
+                errors.append(f"{prefix}.command must explicitly enable Maven tests")
+            else:
+                maven_covered.update(req for req in coverage if req in ids)
     if len(command_ids) != len(set(command_ids)):
         errors.append("acceptance command IDs must be unique")
     missing = [req for req in ids if req not in covered]

@@ -1,6 +1,8 @@
 # Module-parallel execution
 
-在 `impact-check` 后把每个 Req 按 Maven module 拆成 `module-plan.json`。任务粒度固定为 `Req × module`，每项包含 `id`、`req`、`module`、`depends_on`、`write_scope`、`changed_behaviors` 和 `database_dependencies`。
+在 `impact-check` 后把每个 Req 按 Maven module 拆成 `module-plan.json`。任务粒度固定为唯一的 `Req × module`，每项包含 `id`、`req`、`module`、`depends_on`、`write_scope`、`changed_behaviors` 和 `database_dependencies`。`module` 必须是项目内含 `pom.xml` 的相对路径，根模块统一写 `.`；禁止绝对路径、反斜杠和 `..`。
+
+`module-plan-check` 会把计划同时绑定到 `impact-map.json` 和 `requirement-contract.json`：每个 Req 必须覆盖 impact 证据、planned test 以及契约 `-pl` 所属的全部 Maven module。通过后控制面记录三份输入的 SHA-256；计划、impact 或契约任一文件变化都会自动退回 `MODULE_PLAN_REQUIRED`，必须重新检查。
 
 对 DAG 做拓扑分 Wave。同一 Wave 的任务必须写入范围互不重叠，并受 `max_parallel` 限制。公共模块、父 POM、共享生成物或 migration 冲突必须建成前置独占任务，不能放入并行 Wave。
 
@@ -36,6 +38,6 @@ Subagent 返回后，先把候选结果写到 `evidence/task-results/<normalized
 }
 ```
 
-结果齐备并完成提交后运行 `wave-check`。CLI 会用稳定 `patch-id` 证明主提交与 Subagent 补丁语义一致，静态检查范围和 Mockito 策略，并由主控制面重新执行每个精确 testcase。只有整个 Wave 通过才能进入下一 Wave。
+结果齐备并完成提交后运行 `wave-check`。CLI 会用稳定 `patch-id` 证明主提交与 Subagent 补丁语义一致，静态检查范围和 Mockito 策略，确认任务 `test_command` 已在 `requirement-contract.json` 中覆盖对应 Req，并由主控制面重新执行每个精确 testcase。只有整个 Wave 通过才能进入下一 Wave。
 
 最终 `coverage_scope` 明确记录为 `changed-code-only`；不得声称执行了完整回归、数据库集成或跨模块 E2E 测试。

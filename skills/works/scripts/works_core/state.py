@@ -93,7 +93,8 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
         stage = "CONTRACT_REVIEW_REQUIRED"
     elif not state.get("impact_valid"):
         stage = "IMPACT_REQUIRED"
-    elif not state.get("module_plan_valid"):
+    elif not module_plan_is_current(plan, state):
+        state["module_plan_valid"] = False
         stage = "MODULE_PLAN_REQUIRED"
     else:
         waves = state.get("waves", [])
@@ -121,6 +122,22 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
     if persist:
         save(plan, state)
     return state
+
+
+def module_plan_is_current(plan: Path, state: dict) -> bool:
+    if not state.get("module_plan_valid"):
+        return False
+    expected = state.get("module_plan_sha256")
+    try:
+        inputs = state.get("module_plan_inputs")
+        return (isinstance(expected, str) and len(expected) == 64
+                and hashlib.sha256((plan / "module-plan.json").read_bytes()).hexdigest() == expected
+                and isinstance(inputs, dict)
+                and all(hashlib.sha256((plan / name).read_bytes()).hexdigest() == digest
+                        for name, digest in inputs.items())
+                and set(inputs) == {"impact-map.json", "requirement-contract.json"})
+    except OSError:
+        return False
 
 
 def next_action(action_id: str, state: dict) -> dict:

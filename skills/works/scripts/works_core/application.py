@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -9,7 +10,7 @@ import time
 
 from . import discovery
 from . import state as store
-from .common import windows_command
+from tdd_slice import run_command
 
 
 class WorksError(RuntimeError):
@@ -138,6 +139,8 @@ class Application:
             current["contract_review_valid"] = False
             current["impact_valid"] = False
             current["module_plan_valid"] = False
+            current.pop("module_plan_sha256", None)
+            current.pop("module_plan_inputs", None)
             (plan / "module-plan.json").unlink(missing_ok=True)
             (plan / "contract-review.json").unlink(missing_ok=True)
             current.setdefault("attempts", {}).pop("contract-review-check:-", None)
@@ -146,22 +149,29 @@ class Application:
         elif operation == "impact-check":
             current["impact_valid"] = True
             current["module_plan_valid"] = False
+            current.pop("module_plan_sha256", None)
+            current.pop("module_plan_inputs", None)
         elif operation == "module-plan-check":
-            module_plan = json.loads((plan / "module-plan.json").read_text())
+            module_plan_path = plan / "module-plan.json"
+            module_plan = json.loads(module_plan_path.read_text())
             current["module_tasks"] = module_plan["tasks"]
             current["waves"] = module_plan["waves"]
+            current["module_plan_sha256"] = hashlib.sha256(module_plan_path.read_bytes()).hexdigest()
+            current["module_plan_inputs"] = {
+                name: hashlib.sha256((plan / name).read_bytes()).hexdigest()
+                for name in ("impact-map.json", "requirement-contract.json")
+            }
             current["module_plan_valid"] = True
         elif operation == "patch-check":
             wave = current["current_wave"]
             result_dir = evidence / "task-results"
             immutable_keys = ("task", "base_commit", "patch_file", "patch_sha256",
                               "changed_files", "covered_files", "test_file")
-            candidate_hashes = {
-                str(path.relative_to(evidence)): hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in sorted((result_dir / "patches").glob("*.patch"))
-            }
+            expected_tasks = set(current["waves"][wave - 1]["tasks"])
+            candidate_hashes = {}
             candidate_projections = {}
-            for path in sorted(result_dir.glob("*.json")):
+            for task_id in sorted(expected_tasks):
+                path = result_dir / self._result_filename(task_id)
                 value = json.loads(path.read_text())
                 projection = {key: value.get(key) for key in immutable_keys}
                 encoded = json.dumps(projection, sort_keys=True, separators=(",", ":")).encode()
@@ -169,7 +179,10 @@ class Application:
                     "file": str(path.relative_to(evidence)),
                     "sha256": hashlib.sha256(encoded).hexdigest(),
                 }
-            expected_tasks = set(current["waves"][wave - 1]["tasks"])
+                patch = (result_dir / value["patch_file"]).resolve()
+                if not patch.is_relative_to(result_dir.resolve()):
+                    raise WorksError("E305_INVALID_MODULE_PLAN", "patch escapes task-results", value["patch_file"])
+                candidate_hashes[str(patch.relative_to(evidence))] = hashlib.sha256(patch.read_bytes()).hexdigest()
             if set(candidate_projections) != expected_tasks:
                 raise WorksError("E305_INVALID_MODULE_PLAN",
                                  "patch candidates must exactly match current wave tasks",
@@ -235,6 +248,8 @@ class Application:
             return [sys.executable, str(self.scripts / "module_plan.py"), "validate",
                     "--file", str(plan / "module-plan.json"),
                     "--project-root", current["project_root"],
+                    "--impact-map", str(plan / "impact-map.json"),
+                    "--contract", str(plan / "requirement-contract.json"),
                     *[item for req in current["requirements"] for item in ("--req", req)]]
         if operation == "wave-check":
             return [sys.executable, str(self.scripts / "module_plan.py"), "verify-wave",
@@ -242,6 +257,7 @@ class Application:
                     "--project-root", current["project_root"],
                     "--results-dir", str(evidence / "task-results"),
                     "--baseline", str(evidence / "baseline.json"),
+                    "--contract", str(plan / "requirement-contract.json"),
                     "--wave", str(current["current_wave"])]
         if operation == "patch-check":
             return [sys.executable, str(self.scripts / "module_plan.py"), "verify-patches",
@@ -260,28 +276,57 @@ class Application:
 
     def _finalize(self, plan: Path, current: dict) -> dict:
         evidence = Path(current["evidence_dir"])
-        results = [json.loads((evidence / f"wave-{index}.json").read_text())
-                   for index in range(1, len(current["waves"]) + 1)]
-        passed = all(row.get("passed") for row in results)
+        waves = [json.loads((evidence / f"wave-{index}.json").read_text())
+                 for index in range(1, len(current["waves"]) + 1)]
+        contract = json.loads((plan / "requirement-contract.json").read_text())
+        mapping_errors = []
+        for task in current.get("module_tasks", []):
+            result_path = evidence / "task-results" / self._result_filename(task["id"])
+            try:
+                task_result = json.loads(result_path.read_text())
+            except (OSError, json.JSONDecodeError) as exc:
+                mapping_errors.append(f"{task['id']}: missing task result ({exc})")
+                continue
+            accepted = [row["command"] for row in contract["acceptance_commands"]
+                        if task.get("req") in row["covers"]]
+            if task_result.get("test_command") not in accepted:
+                mapping_errors.append(
+                    f"{task['id']}: test_command is not declared for {task.get('req')} in requirement contract")
+        acceptance = []
+        for row in contract["acceptance_commands"] if not mapping_errors else []:
+            selector = next(part.removeprefix("-Dtest=") for part in row["command"]
+                            if part.startswith("-Dtest="))
+            target = evidence / "acceptance" / row["id"]
+            code, junit = run_command(Path(current["project_root"]), row["command"],
+                                      target / "test.log", target / "reports", selector)
+            result = {"id": row["id"], "covers": row["covers"], "command": row["command"],
+                      "exit": code, "test_evidence": junit["target"]}
+            acceptance.append(result)
+        passed = (not mapping_errors and all(row.get("passed") for row in waves)
+                  and all(row["exit"] == 0 and row["test_evidence"]["executed"] >= 1
+                          and not row["test_evidence"]["failures"]
+                          and not row["test_evidence"]["errors"] for row in acceptance))
         store.atomic_json(evidence / "final-verification.json", {
             "passed": passed, "requirements": current["requirements"],
-            "waves": results, "coverage_scope": "changed-code-only",
+            "waves": waves, "acceptance": acceptance, "mapping_errors": mapping_errors,
+            "coverage_scope": "changed-code-only",
             "full_regression_tests_executed": False, "recorded_at": time.time(),
         })
         if not passed:
             signature = self._signature(Path(current["project_root"]), [])
             self._record_failure(plan, current, "finalize:-", signature, "finalize",
-                                 "E401_ACCEPTANCE_FAILED", results)
-            raise WorksError("E401_ACCEPTANCE_FAILED", "one or more focused module waves failed", results)
+                                 "E401_ACCEPTANCE_FAILED", mapping_errors or acceptance)
+            raise WorksError("E401_ACCEPTANCE_FAILED", "focused acceptance verification failed",
+                             mapping_errors or acceptance)
         current["implementation_review_valid"] = False
         (plan / "implementation-review.json").unlink(missing_ok=True)
         current.setdefault("attempts", {}).pop("implementation-review-check:-", None)
         store.save(plan, current)
         current.setdefault("attempts", {}).pop("finalize:-", None)
         store.save(plan, current)
-        store.activity(plan, current, "finalize", "passed", waves=results)
-        store.summarize(plan, current, "finalize", result="passed", waves=results)
-        return {"ok": True, "operation": "finalize", "waves": results,
+        store.activity(plan, current, "finalize", "passed", waves=waves, acceptance=acceptance)
+        store.summarize(plan, current, "finalize", result="passed", waves=waves, acceptance=acceptance)
+        return {"ok": True, "operation": "finalize", "waves": waves, "acceptance": acceptance,
                 **store.refresh(plan, current)}
 
     def _reopen(self, plan: Path, current: dict, raw: list[str]) -> dict:
@@ -297,6 +342,8 @@ class Application:
         current["requirements"].append(repair_req)
         repairs.append({"id": repair_req, "of": req, "created_at": time.time()})
         current["module_plan_valid"] = False
+        current.pop("module_plan_sha256", None)
+        current.pop("module_plan_inputs", None)
         (plan / "module-plan.json").unlink(missing_ok=True)
         for wave_file in evidence.glob("wave-*.json"):
             wave_file.unlink()
@@ -350,15 +397,30 @@ class Application:
                                ":(exclude).planning/**"], text=True,
                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout
         inputs = []
-        for option in ("--file", "--contract"):
+        for option in ("--file", "--contract", "--impact-map"):
             if option in command and command.index(option) + 1 < len(command):
                 path = Path(command[command.index(option) + 1])
                 try:
                     inputs.append(path.read_text())
                 except OSError:
                     inputs.append("<missing>")
-        payload = json.dumps(command, ensure_ascii=False) + "\n" + status + "\n" + diff + "\n".join(inputs)
+        if "--results-dir" in command and command.index("--results-dir") + 1 < len(command):
+            results = Path(command[command.index("--results-dir") + 1])
+            try:
+                for path in sorted(item for item in results.rglob("*") if item.is_file()):
+                    inputs.append(str(path.relative_to(results)))
+                    inputs.append(hashlib.sha256(path.read_bytes()).hexdigest())
+            except OSError:
+                inputs.append("<invalid-results-dir>")
+        payload = (json.dumps(command, ensure_ascii=False, default=os.fspath)
+                   + "\n" + status + "\n" + diff + "\n".join(inputs))
         return hashlib.sha256(payload.encode()).hexdigest()
+
+    @staticmethod
+    def _result_filename(task_id: str) -> str:
+        token = "".join(char if char.isalnum() or char in "._-" else "-" for char in task_id)
+        digest = hashlib.sha256(task_id.encode()).hexdigest()[:8]
+        return f"{token}-{digest}.json"
 
     def _checked(self, command: list[str], operation: str) -> None:
         proc = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
