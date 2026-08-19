@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -15,6 +16,7 @@ import impact_map
 import requirement_contract
 import review_evidence
 import service_boundary
+import tdd_slice
 from works_core.application import Application, WorksError
 from works_core.discovery import discover, discover_maven_command
 from works_core import state as store
@@ -24,6 +26,37 @@ def project_fixture(root: Path) -> None:
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     (root / "pom.xml").write_text("<project/>")
     (root / "requirement.md").write_text("# Requirement")
+
+
+class BaselineProbeTest(unittest.TestCase):
+    def test_probe_only_loads_locked_baseline_without_running_tests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            baseline = {"version": 1, "project_root": directory, "production": {}, "tests": {}}
+            baseline_file = state / "baseline.json"
+            baseline_file.write_text(json.dumps(baseline))
+            (state / "baseline.sha256").write_text(tdd_slice.sha(baseline_file) + "\n")
+
+            with mock.patch.object(tdd_slice.subprocess, "run") as run:
+                result = tdd_slice.cmd_probe(type("Args", (), {"state_dir": str(state)})())
+
+            self.assertEqual(result, 0)
+            run.assert_not_called()
+            preflight = json.loads((state / "preflight.json").read_text())
+            self.assertTrue(preflight["passed"])
+            self.assertEqual(preflight["source"], "baseline")
+            self.assertEqual(preflight["baseline_sha256"], tdd_slice.sha(baseline_file))
+
+    def test_probe_rejects_a_modified_baseline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            (state / "baseline.json").write_text(json.dumps({
+                "version": 1, "project_root": directory, "production": {}, "tests": {},
+            }))
+            (state / "baseline.sha256").write_text("stale\n")
+
+            with self.assertRaisesRegex(SystemExit, "baseline hash lock mismatch"):
+                tdd_slice.cmd_probe(type("Args", (), {"state_dir": str(state)})())
 
 
 class StateMachineTest(unittest.TestCase):

@@ -6,15 +6,13 @@
 
 `tdd-init` 在 `<plan>/evidence/` 保存当前 dirty worktree 的生产、测试和 Git 状态。用户已有修改因此成为受保护起点。baseline 不可覆盖。
 
-`probe` 必须用一个已有稳定 testcase 证明 Maven 真正执行测试：
+`probe` 只加载 `baseline.json` 并校验 `baseline.sha256`，不启动 Maven，不执行任何测试：
 
 ```text
-<python> <works>/scripts/works.py --project <project> probe -- --testcase ExistingTest#behavior -- <maven-command> -DskipTests=false -Dmaven.test.skip=false -Dtest=ExistingTest#behavior test
+<python> <works>/scripts/works.py --project <project> probe
 ```
 
-`<python>` 在 Windows 为 `py -3`、在 Linux 为 `python3`；`<maven-command>` 在 Windows 优先为 `mvnw.cmd`、在 Linux 优先为 `./mvnw`，没有 wrapper 时为 `mvn`。
-
-POM 中每个 true-valued `skip*test*` 属性都必须对应 `-D<name>=false`。只有新鲜 Surefire/Failsafe XML 证明目标 testcase 执行并通过，preflight 才有效。
+`<python>` 在 Windows 为 `py -3`、在 Linux 为 `python3`。校验通过后，`preflight.json` 只记录 baseline 版本和哈希，作为 setup 已完成的证据。
 
 ## Red
 

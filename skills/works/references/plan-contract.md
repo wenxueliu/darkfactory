@@ -4,7 +4,7 @@
 
 ```text
 SETUP_REQUIRED
-  -> baseline + passed probe
+  -> baseline + successful baseline-only probe
 CONTRACT_REQUIRED
   -> validated requirement-contract.json
 CONTRACT_REVIEW_REQUIRED
@@ -38,7 +38,7 @@ findings.jsonl                     reusable repository facts
 decisions.jsonl                    implementation choices
 summaries/                         small phase recovery summaries
 evidence/baseline.json             initial worktree snapshot
-evidence/preflight.json            test execution proof
+evidence/preflight.json            baseline load/hash proof (no tests run)
 evidence/slices/<REQ>/red.json      failing behavior evidence
 evidence/slices/<REQ>/green.json    passing implementation evidence
 evidence/tdd-verify.json            replay of every Req test

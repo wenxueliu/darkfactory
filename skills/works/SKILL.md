@@ -24,7 +24,7 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实
 ## 自主流程
 
 1. `doctor`、`init`、`tdd-init`。
-2. 选择一个稳定旧测试运行 `probe`，测试命令显式开启测试。
+2. 运行 `probe` 加载并校验 baseline；此阶段不执行任何测试。
 3. `contract-init` 后读取完整 requirement 和仓库，把所有独立行为写入 `requirement-contract.json`；为每个 Req 写可观察验收标准，并给出覆盖全部 Req 的真实验收命令；运行 `contract-check`。
 4. 运行 `contract-review-init`，启动一个全新上下文、只读的校验 subagent，并加载 `impl-validator`。它只读取 requirement 和 requirement contract，填写 `contract-review.json`；运行 `contract-review-check`。失败则修订契约并重新审查。
 5. `impact-init` 后从仓库填写 `impact-map.json`，运行 `impact-check`。
@@ -44,7 +44,7 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实
 <python> <skill-dir>/scripts/works.py --project <project> note -- --kind finding --text "<fact>" [--req <REQ>]
 <python> <skill-dir>/scripts/works.py --project <project> note -- --kind decision --text "<choice>" [--req <REQ>]
 <python> <skill-dir>/scripts/works.py --project <project> tdd-init
-<python> <skill-dir>/scripts/works.py --project <project> probe -- --testcase ExistingTest#behavior -- <maven-command>
+<python> <skill-dir>/scripts/works.py --project <project> probe
 <python> <skill-dir>/scripts/works.py --project <project> contract-init
 <python> <skill-dir>/scripts/works.py --project <project> contract-check
 <python> <skill-dir>/scripts/works.py --project <project> contract-review-init
