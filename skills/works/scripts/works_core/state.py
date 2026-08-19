@@ -9,8 +9,8 @@ import time
 
 
 STATES = {
-    "SETUP_REQUIRED", "CONTRACT_REQUIRED", "IMPACT_REQUIRED", "READY_FOR_RED", "READY_FOR_IMPLEMENTATION",
-    "READY_FOR_ACCEPTANCE", "COMPLETE", "BLOCKED",
+    "SETUP_REQUIRED", "CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED", "IMPACT_REQUIRED", "READY_FOR_RED",
+    "READY_FOR_IMPLEMENTATION", "READY_FOR_ACCEPTANCE", "IMPLEMENTATION_REVIEW_REQUIRED", "COMPLETE", "BLOCKED",
 }
 
 
@@ -45,7 +45,8 @@ def create(project: Path, requirement: Path, discovery: dict) -> tuple[Path, dic
     state = {
         "version": 2, "state": "SETUP_REQUIRED", "project_root": str(project),
         "requirement": str(requirement), "plan_dir": str(plan), "evidence_dir": str(plan / "evidence"),
-        "requirements": [], "current_req": None, "contract_valid": False, "impact_valid": False,
+        "requirements": [], "current_req": None, "contract_valid": False, "contract_review_valid": False,
+        "impact_valid": False, "implementation_review_valid": False,
         "discovery": discovery, "created_at": time.time(), "updated_at": time.time(),
     }
     save(plan, state)
@@ -106,6 +107,8 @@ def refresh(plan: Path, state: dict) -> dict:
         stage = "SETUP_REQUIRED"
     elif not state.get("contract_valid") or not state["requirements"]:
         stage = "CONTRACT_REQUIRED"
+    elif not state.get("contract_review_valid"):
+        stage = "CONTRACT_REVIEW_REQUIRED"
     elif not state.get("impact_valid"):
         stage = "IMPACT_REQUIRED"
     else:
@@ -126,7 +129,7 @@ def refresh(plan: Path, state: dict) -> dict:
             final = evidence / "final-verification.json"
             finalized = final.exists() and json.loads(final.read_text()).get("passed")
             if verified and finalized:
-                stage = "COMPLETE"
+                stage = "COMPLETE" if state.get("implementation_review_valid") else "IMPLEMENTATION_REVIEW_REQUIRED"
             else:
                 stage = "READY_FOR_ACCEPTANCE"
     state["state"] = stage
@@ -136,6 +139,15 @@ def refresh(plan: Path, state: dict) -> dict:
     elif stage == "CONTRACT_REQUIRED":
         contract = plan / "requirement-contract.json"
         state["allowed_actions"] = ["contract-init"] if not contract.exists() else ["complete-contract-and-check"]
+    elif stage == "CONTRACT_REVIEW_REQUIRED":
+        review = plan / "contract-review.json"
+        result = review_result(review)
+        if not review.exists():
+            state["allowed_actions"] = ["contract-review-init"]
+        elif result and result != "PASS":
+            state["allowed_actions"] = ["revise-contract-and-rerun-review"]
+        else:
+            state["allowed_actions"] = ["run-fresh-contract-verifier-and-check"]
     elif stage == "IMPACT_REQUIRED":
         impact = plan / "impact-map.json"
         if not impact.exists():
@@ -146,6 +158,15 @@ def refresh(plan: Path, state: dict) -> dict:
         final = evidence / "final-verification.json"
         failed = final.exists() and not json.loads(final.read_text()).get("passed")
         state["allowed_actions"] = ["diagnose-and-reopen-failing-requirement"] if failed else ["finalize"]
+    elif stage == "IMPLEMENTATION_REVIEW_REQUIRED":
+        review = plan / "implementation-review.json"
+        result = review_result(review)
+        if not review.exists():
+            state["allowed_actions"] = ["implementation-review-init"]
+        elif result and result != "PASS":
+            state["allowed_actions"] = ["diagnose-review-and-reopen-requirement"]
+        else:
+            state["allowed_actions"] = ["run-fresh-implementation-verifier-and-check"]
     action_id = state["allowed_actions"][0]
     state["next_action_id"] = action_id
     state["next_action"] = next_action(action_id, state)
@@ -156,18 +177,24 @@ def refresh(plan: Path, state: dict) -> dict:
 def next_action(action_id: str, state: dict) -> dict:
     skills = {
         "complete-contract-and-check": "sw-codebase-explorer",
+        "run-fresh-contract-verifier-and-check": "impl-validator",
+        "revise-contract-and-rerun-review": "impl-validator",
         "complete-impact-map-and-check": "sw-codebase-explorer",
         "establish-red-for-current-requirement": "tdd",
         "implement-current-requirement-and-run-green": "tdd",
         "diagnose-and-reopen-failing-requirement": "sw-systematic-debugging",
         "finalize": "sw-verification-before-completion",
+        "run-fresh-implementation-verifier-and-check": "impl-validator",
+        "diagnose-review-and-reopen-requirement": "impl-validator",
     }
     evidence = {
         "complete-contract-and-check": "requirement-contract.json",
+        "run-fresh-contract-verifier-and-check": "contract-review.json",
         "complete-impact-map-and-check": "impact-map.json",
         "establish-red-for-current-requirement": f"evidence/slices/{state.get('current_req')}/red.json",
         "implement-current-requirement-and-run-green": f"evidence/slices/{state.get('current_req')}/green.json",
         "finalize": "evidence/final-verification.json",
+        "run-fresh-implementation-verifier-and-check": "implementation-review.json",
     }
     return {
         "id": action_id, "state": state.get("state"), "req": state.get("current_req"),
@@ -179,12 +206,22 @@ def actions(stage: str) -> tuple[list[str], list[str]]:
     mapping = {
         "SETUP_REQUIRED": ["tdd-init", "probe"],
         "CONTRACT_REQUIRED": ["contract-init", "contract-check"],
+        "CONTRACT_REVIEW_REQUIRED": ["contract-review-init", "contract-review-check", "contract-check"],
         "IMPACT_REQUIRED": ["impact-init", "impact-check"],
         "READY_FOR_RED": ["establish-red-for-current-requirement"],
         "READY_FOR_IMPLEMENTATION": ["implement-current-requirement-and-run-green"],
         "READY_FOR_ACCEPTANCE": ["finalize", "reopen"],
+        "IMPLEMENTATION_REVIEW_REQUIRED": ["implementation-review-init", "implementation-review-check", "reopen"],
         "COMPLETE": ["report"],
         "BLOCKED": ["inspect_evidence"],
     }
     forbidden = [] if stage == "READY_FOR_IMPLEMENTATION" else ["edit_production"]
     return mapping[stage], forbidden
+
+
+def review_result(path: Path) -> str:
+    try:
+        data = json.loads(path.read_text())
+        return str(data.get("result", "")) if isinstance(data, dict) else ""
+    except (OSError, json.JSONDecodeError):
+        return ""

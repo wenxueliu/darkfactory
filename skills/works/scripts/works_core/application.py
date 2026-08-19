@@ -82,20 +82,32 @@ class Application:
             return self._note(plan, current, raw)
         allowed_states = {
             "tdd-init": {"SETUP_REQUIRED"}, "probe": {"SETUP_REQUIRED"},
-            "contract-init": {"CONTRACT_REQUIRED"}, "contract-check": {"CONTRACT_REQUIRED"},
+            "contract-init": {"CONTRACT_REQUIRED"},
+            "contract-check": {"CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED"},
+            "contract-review-init": {"CONTRACT_REVIEW_REQUIRED"},
+            "contract-review-check": {"CONTRACT_REVIEW_REQUIRED"},
             "impact-init": {"IMPACT_REQUIRED"}, "impact-check": {"IMPACT_REQUIRED"},
             "red": {"READY_FOR_RED"}, "green": {"READY_FOR_IMPLEMENTATION"},
-            "finalize": {"READY_FOR_ACCEPTANCE"}, "reopen": {"READY_FOR_ACCEPTANCE"},
+            "finalize": {"READY_FOR_ACCEPTANCE"},
+            "implementation-review-init": {"IMPLEMENTATION_REVIEW_REQUIRED"},
+            "implementation-review-check": {"IMPLEMENTATION_REVIEW_REQUIRED"},
+            "reopen": {"READY_FOR_ACCEPTANCE", "IMPLEMENTATION_REVIEW_REQUIRED"},
         }
         if current["state"] not in allowed_states[operation]:
             raise WorksError("E202_INVALID_STATE", f"{operation} is forbidden in {current['state']}")
         logical_actions = {
             "contract-check": "complete-contract-and-check",
+            "contract-review-check": "run-fresh-contract-verifier-and-check",
             "impact-check": "complete-impact-map-and-check",
             "red": "establish-red-for-current-requirement",
             "green": "implement-current-requirement-and-run-green",
             "reopen": "diagnose-and-reopen-failing-requirement",
+            "implementation-review-check": "run-fresh-implementation-verifier-and-check",
         }
+        if operation == "contract-check" and current["state"] == "CONTRACT_REVIEW_REQUIRED":
+            logical_actions[operation] = "revise-contract-and-rerun-review"
+        if operation == "reopen" and current["state"] == "IMPLEMENTATION_REVIEW_REQUIRED":
+            logical_actions[operation] = "diagnose-review-and-reopen-requirement"
         if operation not in current["allowed_actions"] and logical_actions.get(operation) not in current["allowed_actions"]:
             raise WorksError("E202_INVALID_STATE",
                              f"{operation} is not the next action; expected {current['allowed_actions'][0]}")
@@ -156,9 +168,18 @@ class Application:
             contract = json.loads((plan / "requirement-contract.json").read_text())
             current["requirements"] = [row["id"] for row in contract["requirements"]]
             current["contract_valid"] = True
+            current["contract_review_valid"] = False
             current["impact_valid"] = False
+            (plan / "contract-review.json").unlink(missing_ok=True)
+            current.setdefault("attempts", {}).pop("contract-review-check:-", None)
+        elif operation == "contract-review-check":
+            current["contract_review_valid"] = True
         elif operation == "impact-check":
             current["impact_valid"] = True
+        elif operation == "implementation-review-check":
+            current["implementation_review_valid"] = True
+        elif operation in {"contract-review-init", "implementation-review-init"}:
+            current.setdefault("attempts", {}).pop(f"{operation.removesuffix('-init')}-check:-", None)
         store.save(plan, current)
         current.setdefault("attempts", {}).pop(attempt_key, None)
         store.save(plan, current)
@@ -181,6 +202,14 @@ class Application:
             return [sys.executable, str(self.scripts / "requirement_contract.py"), "validate",
                     "--file", str(plan / "requirement-contract.json"),
                     "--requirement", current["requirement"]]
+        if operation in {"contract-review-init", "contract-review-check",
+                         "implementation-review-init", "implementation-review-check"}:
+            kind = "contract" if operation.startswith("contract-") else "implementation"
+            action = "init" if operation.endswith("-init") else "validate"
+            option = "--output" if action == "init" else "--file"
+            return [sys.executable, str(self.scripts / "review_evidence.py"), action,
+                    "--type", kind, option, str(plan / f"{kind}-review.json"),
+                    "--contract", str(plan / "requirement-contract.json")]
         if operation == "impact-init":
             return [sys.executable, str(self.scripts / "impact_map.py"), "init",
                     "--output", str(plan / "impact-map.json"),
@@ -222,6 +251,9 @@ class Application:
             self._record_failure(plan, current, "finalize:-", signature, "finalize",
                                  "E401_ACCEPTANCE_FAILED", results)
             raise WorksError("E401_ACCEPTANCE_FAILED", "one or more contract acceptance commands failed", results)
+        current["implementation_review_valid"] = False
+        (plan / "implementation-review.json").unlink(missing_ok=True)
+        current.setdefault("attempts", {}).pop("implementation-review-check:-", None)
         store.save(plan, current)
         current.setdefault("attempts", {}).pop("finalize:-", None)
         store.save(plan, current)
@@ -247,6 +279,9 @@ class Application:
                 (evidence / name).unlink()
             except FileNotFoundError:
                 pass
+        current["implementation_review_valid"] = False
+        (plan / "implementation-review.json").unlink(missing_ok=True)
+        current.setdefault("attempts", {}).pop("implementation-review-check:-", None)
         store.save(plan, current)
         store.activity(plan, current, "reopen", "passed", repair_req=repair_req, repair_of=req)
         store.summarize(plan, current, f"reopen-{repair_req}", result="passed", repair_of=req)
@@ -286,7 +321,15 @@ class Application:
         diff = subprocess.run(["git", "-C", str(project), "diff", "--binary", "HEAD", "--", ".",
                                ":(exclude).planning/**"], text=True,
                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout
-        payload = json.dumps(command, ensure_ascii=False) + "\n" + status + "\n" + diff
+        inputs = []
+        for option in ("--file", "--contract"):
+            if option in command and command.index(option) + 1 < len(command):
+                path = Path(command[command.index(option) + 1])
+                try:
+                    inputs.append(path.read_text())
+                except OSError:
+                    inputs.append("<missing>")
+        payload = json.dumps(command, ensure_ascii=False) + "\n" + status + "\n" + diff + "\n".join(inputs)
         return hashlib.sha256(payload.encode()).hexdigest()
 
     def _checked(self, command: list[str], operation: str) -> None:
@@ -306,4 +349,6 @@ class Application:
             return "E510_BOUNDARY_VIOLATION"
         return {"red": "E311_INVALID_RED", "green": "E313_INVALID_GREEN",
                 "contract-check": "E302_INVALID_REQUIREMENT_CONTRACT",
+                "contract-review-check": "E303_CONTRACT_REVIEW_FAILED",
+                "implementation-review-check": "E402_IMPLEMENTATION_REVIEW_FAILED",
                 "impact-check": "E301_INVALID_IMPACT_MAP"}.get(operation, "E900_COMMAND_FAILED")

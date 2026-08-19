@@ -13,6 +13,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 import impact_map
 import requirement_contract
+import review_evidence
 import service_boundary
 from works_core.application import Application, WorksError
 from works_core.discovery import discover
@@ -56,8 +57,17 @@ class StateMachineTest(unittest.TestCase):
                                                      "-Dmaven.test.skip=false", "test"]}],
             }))
             updated = app.run(root, "contract-check", [])
-            self.assertEqual(updated["state"], "IMPACT_REQUIRED")
+            self.assertEqual(updated["state"], "CONTRACT_REVIEW_REQUIRED")
             self.assertEqual(updated["requirements"], ["REQ-1"])
+            self.assertEqual(updated["next_action"]["id"], "contract-review-init")
+            app.run(root, "contract-review-init", [])
+            review = plan / "contract-review.json"
+            value = json.loads(review.read_text())
+            value.update({"result": "PASS"})
+            value["requirements"][0]["status"] = "PASS"
+            review.write_text(json.dumps(value))
+            updated = app.run(root, "contract-review-check", [])
+            self.assertEqual(updated["state"], "IMPACT_REQUIRED")
             self.assertEqual(updated["next_action"]["id"], "impact-init")
             self.assertTrue((plan / "summaries" / "contract-check.json").is_file())
 
@@ -83,7 +93,7 @@ class StateMachineTest(unittest.TestCase):
             evidence.mkdir()
             (evidence / "baseline.json").write_text("{}")
             (evidence / "preflight.json").write_text('{"passed": true}')
-            current.update({"contract_valid": True, "impact_valid": True,
+            current.update({"contract_valid": True, "contract_review_valid": True, "impact_valid": True,
                             "requirements": ["REQ-1"]})
             (evidence / "slices" / "REQ-1").mkdir(parents=True)
             (evidence / "slices" / "REQ-1" / "green.json").write_text("{}")
@@ -96,6 +106,75 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(repaired["state"], "READY_FOR_RED")
             self.assertEqual(repaired["current_req"], "REQ-1.repair-1")
             self.assertEqual(repaired["requirements"], ["REQ-1", "REQ-1.repair-1"])
+
+    def test_complete_requires_passing_implementation_review(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            app = Application(SCRIPTS)
+            initialized = app.init(root)
+            plan = Path(initialized["plan_dir"])
+            current = store.load(plan)
+            evidence = Path(current["evidence_dir"])
+            (evidence / "slices" / "REQ-1").mkdir(parents=True)
+            for name, value in (("baseline.json", {}), ("preflight.json", {"passed": True}),
+                                ("tdd-verify.json", {"passed": True}),
+                                ("final-verification.json", {"passed": True})):
+                (evidence / name).write_text(json.dumps(value))
+            (evidence / "slices" / "REQ-1" / "green.json").write_text("{}")
+            (plan / "requirement-contract.json").write_text(json.dumps({"requirements": [{"id": "REQ-1"}]}))
+            current.update({"contract_valid": True, "contract_review_valid": True, "impact_valid": True,
+                            "implementation_review_valid": False, "requirements": ["REQ-1"]})
+            store.save(plan, current)
+            updated = app.status(root)
+            self.assertEqual(updated["state"], "IMPLEMENTATION_REVIEW_REQUIRED")
+            app.run(root, "implementation-review-init", [])
+            review = plan / "implementation-review.json"
+            value = json.loads(review.read_text())
+            value.update({"result": "PASS"})
+            value["requirements"][0].update({"status": "PASS", "implementation": ["A.java:1"],
+                                               "tests": ["ATest.java:1"]})
+            review.write_text(json.dumps(value))
+            updated = app.run(root, "implementation-review-check", [])
+            self.assertEqual(updated["state"], "COMPLETE")
+
+    def test_failed_contract_review_can_be_revised_and_passed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            app = Application(SCRIPTS)
+            initialized = app.init(root)
+            plan = Path(initialized["plan_dir"])
+            current = store.load(plan)
+            evidence = Path(current["evidence_dir"])
+            evidence.mkdir()
+            (evidence / "baseline.json").write_text("{}")
+            (evidence / "preflight.json").write_text('{"passed": true}')
+            contract = {"version": 1, "requirement": str((root / "requirement.md").resolve()),
+                        "requirements": [{"id": "REQ-1", "statement": "behavior",
+                                          "acceptance_criteria": ["result"]}],
+                        "acceptance_commands": [{"id": "tests", "covers": ["REQ-1"],
+                                                 "command": ["mvn", "-DskipTests=false",
+                                                             "-Dmaven.test.skip=false", "test"]}]}
+            (plan / "requirement-contract.json").write_text(json.dumps(contract))
+            app.run(root, "contract-check", [])
+            app.run(root, "contract-review-init", [])
+            review = plan / "contract-review.json"
+            failed = json.loads(review.read_text())
+            failed.update({"result": "CHANGES_REQUIRED", "missing": ["behavior"]})
+            review.write_text(json.dumps(failed))
+            with self.assertRaises(WorksError):
+                app.run(root, "contract-review-check", [])
+            contract["requirements"][0]["statement"] = "revised behavior"
+            (plan / "requirement-contract.json").write_text(json.dumps(contract))
+            app.run(root, "contract-check", [])
+            app.run(root, "contract-review-init", [])
+            passed = json.loads(review.read_text())
+            passed["result"] = "PASS"
+            passed["requirements"][0]["status"] = "PASS"
+            review.write_text(json.dumps(passed))
+            updated = app.run(root, "contract-review-check", [])
+            self.assertEqual(updated["state"], "IMPACT_REQUIRED")
 
     def test_records_notes_and_recovers_last_activity(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -172,6 +251,25 @@ class RequirementContractTest(unittest.TestCase):
                                             "command": ["true"]}]
             errors = requirement_contract.validate(data, requirement)
             self.assertTrue(any("Maven" in error for error in errors))
+
+
+class ReviewEvidenceTest(unittest.TestCase):
+    def test_implementation_review_requires_code_and_test_evidence(self):
+        data = review_evidence.template("implementation", ["REQ-1"])
+        data["result"] = "PASS"
+        data["requirements"][0]["status"] = "PASS"
+        errors = review_evidence.validate(data, "implementation", ["REQ-1"])
+        self.assertTrue(any("implementation evidence" in error for error in errors))
+        self.assertTrue(any("test evidence" in error for error in errors))
+
+    def test_contract_review_rejects_missing_requirement(self):
+        data = review_evidence.template("contract", ["REQ-1"])
+        data.update({"result": "PASS", "requirements": []})
+        self.assertTrue(review_evidence.validate(data, "contract", ["REQ-1"]))
+
+    def test_review_rejects_non_object_json(self):
+        self.assertEqual(review_evidence.validate([], "contract", ["REQ-1"]),
+                         ["review must be a JSON object"])
 
 
 class ServiceBoundaryTest(unittest.TestCase):

@@ -17,7 +17,9 @@ def parser() -> argparse.ArgumentParser:
     sub = root.add_subparsers(dest="action", required=True)
     for name in ("doctor", "init", "status", "recover"):
         sub.add_parser(name)
-    for name in ("tdd-init", "probe", "contract-init", "contract-check", "impact-init", "impact-check", "red", "green", "finalize", "reopen", "note"):
+    for name in ("tdd-init", "probe", "contract-init", "contract-check", "contract-review-init",
+                 "contract-review-check", "impact-init", "impact-check", "red", "green", "finalize",
+                 "implementation-review-init", "implementation-review-check", "reopen", "note"):
         command = sub.add_parser(name)
         command.add_argument("arguments", nargs=argparse.REMAINDER)
     return root

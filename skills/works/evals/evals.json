@@ -7,10 +7,10 @@
       "id": 1,
       "prompt": "/works。根据根目录 requirement.md 全自动完成，不要询问我。",
       "assertions": [
-        "works 保持唯一流程控制，可调用路由表中的辅助 Skill，但不调用 subagent",
+        "works 保持唯一流程控制；审查使用全新只读 subagent",
         "requirement-contract 覆盖文档中的全部独立行为",
         "每个 Req 都有 Red、Green 和 replay",
-        "所有契约验收命令通过后才进入 COMPLETE"
+        "契约验收和独立实现审查都通过后才进入 COMPLETE"
       ]
     },
     {
@@ -64,12 +64,12 @@
     },
     {
       "id": 7,
-      "prompt": "/works。可以使用其他 Skill 辅助探索、TDD、调试和验证，但不要询问我或转交 Agent。",
+      "prompt": "/works。可以使用其他 Skill 和 subagent 辅助探索、TDD、调试和验证，但不要询问我。",
       "assertions": [
         "辅助 Skill 只按当前阶段加载，works state 仍是唯一流程状态",
         "辅助 Skill 要求人工确认时由现有 requirement contract 和 impact map 自动回答",
         "辅助 Skill 的结论不能替代 red、green 或 finalize 证据",
-        "不调用 Agent、subagent 或外部 tracker"
+        "开发 subagent 不控制状态，两个审查使用全新只读 subagent"
       ]
     },
     {
@@ -82,6 +82,17 @@
         "recover 返回最后活动、最后失败和当前 next_action",
         "关键发现与决策可写入独立 JSONL，且不成为第二套流程状态",
         "关键阶段生成简短 summaries"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "/works。需求拆分和最终实现都必须由独立上下文复核，失败时自动修复。",
+      "assertions": [
+        "contract-check 后进入 CONTRACT_REVIEW_REQUIRED",
+        "契约审查失败时修订契约并启动新的 verifier",
+        "finalize 后进入 IMPLEMENTATION_REVIEW_REQUIRED",
+        "实现审查失败时 reopen 对应 Req 并重新完成 Red/Green/finalize",
+        "只有独立实现审查 PASS 才进入 COMPLETE"
       ]
     }
   ]

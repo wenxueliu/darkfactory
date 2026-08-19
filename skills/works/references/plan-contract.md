@@ -7,6 +7,8 @@ SETUP_REQUIRED
   -> baseline + passed probe
 CONTRACT_REQUIRED
   -> validated requirement-contract.json
+CONTRACT_REVIEW_REQUIRED
+  -> fresh verifier confirms contract matches requirement.md
 IMPACT_REQUIRED
   -> validated impact-map.json
 READY_FOR_RED
@@ -16,6 +18,9 @@ READY_FOR_IMPLEMENTATION
 READY_FOR_ACCEPTANCE
   -> finalize replays every Req and every contract acceptance command
   -> failure: append a repair Req for the affected behavior and establish a new Red/Green
+IMPLEMENTATION_REVIEW_REQUIRED
+  -> fresh verifier confirms each Req has matching implementation and tests
+  -> failure: append a repair Req and repeat Red/Green/finalize/review
 COMPLETE
 ```
 
@@ -26,6 +31,7 @@ COMPLETE
 ```text
 state.json                         workflow state, attempts and next_action
 requirement-contract.json          Req + acceptance contract
+contract-review.json               independent requirement/contract review
 impact-map.json                    repository-grounded implementation map
 activity.jsonl                     action and failure journal
 findings.jsonl                     reusable repository facts
@@ -37,6 +43,7 @@ evidence/slices/<REQ>/red.json      failing behavior evidence
 evidence/slices/<REQ>/green.json    passing implementation evidence
 evidence/tdd-verify.json            replay of every Req test
 evidence/final-verification.json    all contract commands and exits
+implementation-review.json         independent requirement/implementation review
 ```
 
 状态只能由 works CLI 推进。命令失败保持当前阶段并增加 attempt；相同失败不能在相同工作区原样重放。`recover` 只读取和汇总状态，不推进阶段。

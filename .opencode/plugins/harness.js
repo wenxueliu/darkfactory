@@ -122,7 +122,7 @@ ${toolMapping}
           type: 'text',
           text: `<EXTREMELY_IMPORTANT>
 Load the native OpenCode skill named "works" and keep it as the sole workflow authority until its state is COMPLETE.
-Works may load supporting skills according to its own routing table. Do not call a subagent or ask for human confirmation.
+Works may load supporting skills and subagents according to its own routing table. Never ask for human confirmation.
 </EXTREMELY_IMPORTANT>`
         });
         return;
