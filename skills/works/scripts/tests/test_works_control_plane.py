@@ -114,6 +114,39 @@ class BaselineProbeTest(unittest.TestCase):
                 tdd_slice.cmd_probe(type("Args", (), {"state_dir": str(state)})())
 
 
+class ProductionFingerprintTest(unittest.TestCase):
+    def test_ignores_ide_metadata_including_classpath_file_and_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Main.java").write_text("class Main {}\n")
+            (root / ".classpath").write_text("<classpath/>\n")
+            for relative in (".idea/workspace.xml", ".vscode/settings.json", ".settings/prefs",
+                             "module/.classpath/generated.xml"):
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("generated\n")
+            (root / "module.iml").write_text("generated\n")
+
+            production = tdd_slice.fingerprints(root, production=True)
+
+            self.assertEqual(set(production), {"Main.java"})
+
+    def test_normalizes_transient_entries_from_an_existing_baseline(self):
+        values = {
+            "Main.java": "source",
+            ".classpath": "old",
+            "module/.classpath/generated.xml": "old",
+            ".idea/workspace.xml": "old",
+        }
+        self.assertEqual(tdd_slice.normalized_production(values), {"Main.java": "source"})
+
+    def test_keeps_real_production_changes(self):
+        self.assertEqual(
+            tdd_slice.normalized_production({"src/main/java/Main.java": "changed"}),
+            {"src/main/java/Main.java": "changed"},
+        )
+
+
 class StateMachineTest(unittest.TestCase):
     def test_single_state_file_drives_setup_and_impact(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -317,8 +350,48 @@ class ImpactMapTest(unittest.TestCase):
             row = data["requirements"][0]
             row.update({"behavior": "download", "entrypoints": ["Controller.java:1"],
                         "service_apis": ["Controller.java:1"], "persistence": ["Controller.java:1"],
-                        "test_seams": ["Controller.java:1"], "risks": ["compatibility"]})
+                        "test_seams": [{
+                            "boundary": "Controller.java:1",
+                            "planned_test": "src/test/java/ControllerTest.java",
+                        }], "risks": ["compatibility"]})
             self.assertEqual(impact_map.validate(data, project, ["REQ-1"]), [])
+
+    def test_allows_planned_test_file_to_not_exist(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / "Service.java").write_text("class Service {}\n")
+            self.assertTrue(impact_map.boundary_evidence(project, "Service.java:1"))
+            self.assertTrue(impact_map.planned_test_path(
+                project, "module/src/test/java/example/ServiceTest.java"))
+
+    def test_rejects_missing_or_invalid_boundary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / "Service.java").write_text("class Service {}\n")
+            self.assertFalse(impact_map.boundary_evidence(project, "Missing.java:1"))
+            self.assertFalse(impact_map.boundary_evidence(project, "Service.java:2"))
+            self.assertFalse(impact_map.boundary_evidence(project, "Service.java"))
+
+    def test_rejects_unsafe_or_non_test_planned_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            self.assertFalse(impact_map.planned_test_path(project, "../ServiceTest.java"))
+            self.assertFalse(impact_map.planned_test_path(project, "src/main/java/ServiceTest.java"))
+            self.assertFalse(impact_map.planned_test_path(project, "src/test/java/Service.java"))
+
+    def test_rejects_legacy_string_test_seam(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / "Controller.java").write_text("class Controller {}\n")
+            data = impact_map.template(["REQ-1"])
+            data["requirements"][0].update({
+                "behavior": "download", "entrypoints": ["Controller.java:1"],
+                "service_apis": ["Controller.java:1"], "persistence": ["Controller.java:1"],
+                "test_seams": ["Controller.java:1"], "risks": ["compatibility"],
+            })
+            errors = impact_map.validate(data, project, ["REQ-1"])
+            self.assertTrue(any("must contain exactly boundary and planned_test" in error
+                                for error in errors))
 
 
 class RequirementContractTest(unittest.TestCase):

@@ -6,6 +6,8 @@
 
 Works discovery 允许从没有 Git 管理的项目开始。`tdd-init` 在 `<plan>/evidence/` 保存当前生产、测试和 Git 状态。用户已有修改因此成为受保护起点。项目没有 Git 时也允许生成 baseline，baseline 不可覆盖。
 
+生产指纹忽略 IDE/Maven 工作区元数据：`.idea/`、`.vscode/`、`.settings/`、`.metadata/`、`.externalToolBuilders/`、`.classpath`（文件或目录）、`.project`、`.factorypath` 和 `*.iml`。这些路径在 Red、Green 和 verify 比较时统一归一化，因此旧 baseline 中已记录的元数据也不会造成状态不一致；baseline 文件和哈希锁本身不会被修改。
+
 `probe` 加载 `baseline.json` 并校验 `baseline.sha256`。若项目尚未由 Git 管理，先执行 `git init`、`git add .`和 `git commit -m "init commit"`；提交使用 Works 的临时身份，不依赖全局 Git 用户配置。此动作不启动 Maven，不执行任何测试：
 
 ```text

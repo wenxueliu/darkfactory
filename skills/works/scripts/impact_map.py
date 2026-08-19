@@ -42,6 +42,44 @@ def evidence_path(project: Path, value: str) -> bool:
         return False
 
 
+def boundary_evidence(project: Path, value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    match = re.fullmatch(r"(.+):([1-9]\d*)", value)
+    if not match:
+        return False
+    relative = Path(match.group(1))
+    if relative.is_absolute():
+        return False
+    try:
+        candidate = (project / relative).resolve()
+        if not candidate.is_relative_to(project) or not candidate.is_file():
+            return False
+        line = int(match.group(2))
+        with candidate.open(encoding="utf-8", errors="replace") as stream:
+            return line <= sum(1 for _ in stream)
+    except (OSError, ValueError):
+        return False
+
+
+def planned_test_path(project: Path, value: object) -> bool:
+    if not isinstance(value, str) or not value or "\\" in value or re.search(r":\d+$", value):
+        return False
+    relative = Path(value)
+    if relative.is_absolute():
+        return False
+    try:
+        candidate = (project / relative).resolve()
+        if not candidate.is_relative_to(project) or (candidate.exists() and not candidate.is_file()):
+            return False
+    except (OSError, ValueError):
+        return False
+    parts = relative.parts
+    in_maven_tests = any(parts[index:index + 3] == ("src", "test", "java")
+                         for index in range(max(0, len(parts) - 2)))
+    return in_maven_tests and relative.name.endswith(("Test.java", "Tests.java", "IT.java"))
+
+
 def validate(data: dict, project: Path, expected_reqs: list[str]) -> list[str]:
     errors: list[str] = []
     rows = data.get("requirements")
@@ -58,7 +96,7 @@ def validate(data: dict, project: Path, expected_reqs: list[str]) -> list[str]:
         for field in REQUIRED:
             if field not in row or row[field] in (None, "", []):
                 errors.append(f"{prefix}.{field} is required")
-        for field in ("entrypoints", "service_apis", "persistence", "callers", "test_seams"):
+        for field in ("entrypoints", "service_apis", "persistence", "callers"):
             values = row.get(field, [])
             if not isinstance(values, list):
                 errors.append(f"{prefix}.{field} must be an array")
@@ -66,6 +104,19 @@ def validate(data: dict, project: Path, expected_reqs: list[str]) -> list[str]:
             for value in values:
                 if not isinstance(value, str) or not evidence_path(project, value):
                     errors.append(f"{prefix}.{field} has missing evidence path: {value!r}")
+        seams = row.get("test_seams", [])
+        if isinstance(seams, list):
+            for seam_index, seam in enumerate(seams):
+                label = f"{prefix}.test_seams[{seam_index}]"
+                if not isinstance(seam, dict) or set(seam) != {"boundary", "planned_test"}:
+                    errors.append(f"{label} must contain exactly boundary and planned_test")
+                    continue
+                if not boundary_evidence(project, seam["boundary"]):
+                    errors.append(f"{label}.boundary must be an existing project file with a valid line")
+                if not planned_test_path(project, seam["planned_test"]):
+                    errors.append(f"{label}.planned_test must be a project-relative Maven test source path")
+        else:
+            errors.append(f"{prefix}.test_seams must be an array")
         if not row.get("service_apis"):
             exception = row.get("architecture_exception")
             if not isinstance(exception, dict) or not all(exception.get(key) for key in ("type", "evidence", "reason")):

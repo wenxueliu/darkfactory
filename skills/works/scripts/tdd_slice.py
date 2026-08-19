@@ -16,6 +16,23 @@ import xml.etree.ElementTree as ET
 
 from works_core.common import IGNORED_DIRS as IGNORED_PARTS, atomic_json, sha, windows_command
 
+TRANSIENT_DIR_PARTS = {".idea", ".vscode", ".settings", ".metadata", ".externaltoolbuilders", ".classpath"}
+TRANSIENT_FILE_NAMES = {".classpath", ".project", ".factorypath"}
+TRANSIENT_SUFFIXES = (".iml",)
+
+
+def is_transient_path(rel: str) -> bool:
+    parts = tuple(part.lower() for part in Path(rel.replace("\\", "/")).parts)
+    if not parts:
+        return False
+    return (any(part in TRANSIENT_DIR_PARTS for part in parts[:-1])
+            or parts[-1] in TRANSIENT_FILE_NAMES
+            or parts[-1].endswith(TRANSIENT_SUFFIXES))
+
+
+def normalized_production(values: dict[str, str]) -> dict[str, str]:
+    return {path: digest for path, digest in values.items() if not is_transient_path(path)}
+
 
 def is_test(rel: str) -> bool:
     p = rel.replace("\\", "/")
@@ -35,6 +52,8 @@ def fingerprints(root: Path, production: bool) -> dict[str, str]:
             continue
         rel = path.relative_to(root).as_posix()
         if any(part in IGNORED_PARTS for part in path.relative_to(root).parts):
+            continue
+        if is_transient_path(rel):
             continue
         if is_test(rel) == production:
             continue
@@ -254,7 +273,7 @@ def cmd_red(args: argparse.Namespace) -> int:
     checkpoint_file = state / "checkpoint.json"
     checkpoint = load(checkpoint_file)
     prod_now = fingerprints(root, production=True)
-    prod_changes = changed(checkpoint["production"], prod_now)
+    prod_changes = changed(normalized_production(checkpoint["production"]), prod_now)
     if prod_changes:
         raise SystemExit("invalid Red: production differs from latest Green checkpoint: " + ", ".join(prod_changes[:20]))
     test_rel = test.relative_to(root).as_posix()
@@ -314,7 +333,7 @@ def cmd_green(args: argparse.Namespace) -> int:
     if sha(checkpoint_file) != red["checkpoint_sha256"]:
         raise SystemExit("invalid Green: slice checkpoint changed after Red")
     production = fingerprints(root, production=True)
-    if production == red["production_before"]:
+    if production == normalized_production(red["production_before"]):
         raise SystemExit("invalid Green: production did not change from this slice's Red checkpoint")
     log = slice_dir / "green.log"
     code, junit = run_command(root, args.command, log, slice_dir / "green-reports", red["testcase"])
@@ -363,7 +382,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
         failures.append("baseline: hash lock mismatch")
     if not preflight.get("passed"):
         failures.append("preflight: Maven tests were not proven executable")
-    expected_production = baseline["production"]
+    expected_production = normalized_production(baseline["production"])
     previous_req = None
     verification_runs = []
     for sequence, raw_req in enumerate(args.req):
@@ -389,7 +408,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
                 failures.append(f"{req}: checkpoint evidence hash mismatch")
             else:
                 checkpoint_data = load(checkpoint_copy)
-                if checkpoint_data["production"] != red["production_before"]:
+                if normalized_production(checkpoint_data["production"]) != normalized_production(red["production_before"]):
                     failures.append(f"{req}: checkpoint evidence production mismatch")
             if red["exit"] == 0 or red["junit"]["target"]["failures"] < 1 or red["junit"]["target"]["errors"] != 0:
                 failures.append(f"{req}: invalid Red fields")
@@ -406,9 +425,11 @@ def cmd_verify(args: argparse.Namespace) -> int:
                 failures.append(f"{req}: evidence order is not Red before Green")
             if red["checkpoint_sequence"] != sequence or red["previous_req"] != previous_req:
                 failures.append(f"{req}: checkpoint sequence/predecessor mismatch")
-            if red["production_before"] != expected_production:
+            red_production = normalized_production(red["production_before"])
+            green_production = normalized_production(green["production"])
+            if red_production != expected_production:
                 failures.append(f"{req}: Red production checkpoint does not follow previous Green")
-            if green["production"] == red["production_before"]:
+            if green_production == red_production:
                 failures.append(f"{req}: Green has no production change")
             verify_log = slice_dir / "verify.log"
             code, junit = run_command(
@@ -432,12 +453,13 @@ def cmd_verify(args: argparse.Namespace) -> int:
             )
             if code != 0 or target["executed"] < 1 or target["failures"] != 0 or target["errors"] != 0:
                 failures.append(f"{req}: final target testcase did not execute and pass")
-            expected_production = green["production"]
+            expected_production = green_production
             previous_req = req
         except (SystemExit, KeyError, json.JSONDecodeError) as exc:
             failures.append(f"{req}: incomplete evidence ({exc})")
     checkpoint = load(state / "checkpoint.json")
-    if checkpoint["production"] != expected_production or checkpoint["previous_req"] != previous_req:
+    if (normalized_production(checkpoint["production"]) != expected_production
+            or checkpoint["previous_req"] != previous_req):
         failures.append("checkpoint: final production/predecessor mismatch")
     if fingerprints(root, production=True) != expected_production:
         failures.append("worktree: production changed after the final Green checkpoint")

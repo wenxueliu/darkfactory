@@ -4,7 +4,7 @@
 
 ## Seam 已由契约确定
 
-Seam（测试所在的公共边界）**已由 `requirement-contract.json` 和 `impact-map.json` 的 `test_seams` 决定**，不再向用户确认。若 impact-map 缺 test_seams，按 [exploration](exploration.md) 补全后继续。
+Seam（测试所在的公共边界）**已由 `requirement-contract.json` 和 `impact-map.json` 的 `test_seams` 决定**，不再向用户确认。每项的 `boundary` 是已存在的公共行为边界，`planned_test` 是 Red 阶段要新建或复用的 Maven 测试文件。若 impact-map 缺 test_seams，按 [exploration](exploration.md) 补全后继续。
 
 ## 好测试
 
@@ -12,6 +12,7 @@ Seam（测试所在的公共边界）**已由 `requirement-contract.json` 和 `i
 - 期望值来自**独立真值**（已知字面量、手工算例、规格），不是用被测代码同款逻辑重算。
 - 测试触及数据库、消息队列、对象存储、第三方 API 等外部依赖时，直接在边界处 mock；不连接真实外部服务，不要求本地或 CI 预先启动基础设施。
 - 一个 Req 一次 Red→Green，**纵向切片**：一次一个 test → 一次一个最小实现，不批量写全部测试。
+- 在 `planned_test` 指定的路径创建或复用测试类，通过 `boundary` 指定的公共边界驱动行为；不要因为 `planned_test` 在 impact-check 时尚不存在而更换 seam。
 
 ## 反模式（拒绝）
 
