@@ -212,22 +212,24 @@ def cmd_init(args: argparse.Namespace) -> int:
     state = Path(args.state_dir).resolve()
     if (state / "baseline.json").exists():
         raise SystemExit("TDD baseline already exists; init is immutable for this plan")
-    if not (root / ".git").exists() and subprocess.run(
+    git_managed = subprocess.run(
         ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-    ).returncode:
-        raise SystemExit("project root is not inside a Git worktree")
-    status = subprocess.run(
-        ["git", "-C", str(root), "status", "--porcelain=v2", "--untracked-files=all"],
-        check=True,
-        text=True,
-        stdout=subprocess.PIPE,
-    ).stdout
+    ).returncode == 0
+    status = ""
+    if git_managed:
+        status = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain=v2", "--untracked-files=all"],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+        ).stdout
     data = {
             "version": 1,
             "project_root": str(root),
             "created_at": time.time(),
+            "git_managed": git_managed,
             "git_status": status.splitlines(),
             "production": fingerprints(root, production=True),
             "tests": fingerprints(root, production=False),
@@ -455,17 +457,36 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
 
 def cmd_probe(args: argparse.Namespace) -> int:
-    state, _, baseline = state_paths(args)
+    state, root, baseline = state_paths(args)
     baseline_file = state / "baseline.json"
     baseline_lock = state / "baseline.sha256"
     digest = sha(baseline_file)
     if not baseline_lock.exists() or baseline_lock.read_text().strip() != digest:
         raise SystemExit("baseline hash lock mismatch")
+    git_initialized = False
+    managed = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).returncode == 0
+    if not managed:
+        commands = [
+            ["git", "-C", str(root), "init"],
+            ["git", "-C", str(root), "add", "."],
+            ["git", "-C", str(root), "-c", "user.name=works", "-c",
+             "user.email=works@example.invalid", "commit", "-m", "init commit"],
+        ]
+        for command in commands:
+            proc = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            if proc.returncode:
+                raise SystemExit(f"Git initialization failed: {' '.join(command)}\n{proc.stdout}")
+        git_initialized = True
     result = {
         "passed": True,
         "source": "baseline",
         "baseline_version": baseline.get("version"),
         "baseline_sha256": digest,
+        "git_initialized": git_initialized,
         "recorded_at": time.time(),
     }
     atomic_json(state / "preflight.json", result)

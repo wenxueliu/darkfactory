@@ -7,7 +7,7 @@
       "id": 1,
       "prompt": "/works。根据根目录 requirement.md 全自动完成，不要询问我。",
       "assertions": [
-        "works 保持唯一流程控制；审查使用全新只读 subagent",
+        "works 保持唯一流程控制；审查使用全新只读 subagent，subagent 返回 payload 而 Works 负责落盘",
         "requirement-contract 覆盖文档中的全部独立行为",
         "每个 Req 都有 Red、Green 和 replay",
         "契约验收和独立实现审查都通过后才进入 COMPLETE"
@@ -69,7 +69,7 @@
         "内置 reference 或 impl-validator 只按当前阶段使用，works state 仍是唯一流程状态",
         "内置 reference 不要求人工确认，全程无用户提问",
         "reference 的结论不能替代 red、green 或 finalize 证据",
-        "开发 subagent 不控制状态，两个审查使用全新只读 subagent"
+        "开发 subagent 不控制状态，两个审查使用全新只读 subagent，审查 JSON 由 Works 主 agent 写入"
       ]
     },
     {

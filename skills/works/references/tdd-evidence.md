@@ -4,15 +4,15 @@
 
 ## Baseline and preflight
 
-`tdd-init` 在 `<plan>/evidence/` 保存当前 dirty worktree 的生产、测试和 Git 状态。用户已有修改因此成为受保护起点。baseline 不可覆盖。
+Works discovery 允许从没有 Git 管理的项目开始。`tdd-init` 在 `<plan>/evidence/` 保存当前生产、测试和 Git 状态。用户已有修改因此成为受保护起点。项目没有 Git 时也允许生成 baseline，baseline 不可覆盖。
 
-`probe` 只加载 `baseline.json` 并校验 `baseline.sha256`，不启动 Maven，不执行任何测试：
+`probe` 加载 `baseline.json` 并校验 `baseline.sha256`。若项目尚未由 Git 管理，先执行 `git init`、`git add .`和 `git commit -m "init commit"`；提交使用 Works 的临时身份，不依赖全局 Git 用户配置。此动作不启动 Maven，不执行任何测试：
 
 ```text
 <python> <works>/scripts/works.py --project <project> probe
 ```
 
-`<python>` 在 Windows 为 `py -3`、在 Linux 为 `python3`。校验通过后，`preflight.json` 只记录 baseline 版本和哈希，作为 setup 已完成的证据。
+`<python>` 在 Windows 为 `py -3`、在 Linux 为 `python3`。校验通过后，`preflight.json` 记录 baseline 版本、哈希和是否完成 Git 初始化，作为 setup 已完成的证据。
 
 ## Red
 

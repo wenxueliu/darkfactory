@@ -29,6 +29,33 @@ def project_fixture(root: Path) -> None:
 
 
 class BaselineProbeTest(unittest.TestCase):
+    def test_application_can_initialize_a_project_without_git(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "pom.xml").write_text("<project/>")
+            (root / "requirement.md").write_text("# Requirement")
+
+            initialized = Application(SCRIPTS).init(root)
+
+            self.assertEqual(initialized["state"], "SETUP_REQUIRED")
+            self.assertFalse(initialized["discovery"]["git_managed"])
+            self.assertTrue(Path(initialized["plan_dir"]).is_dir())
+
+    def test_baseline_init_allows_a_project_without_git(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state = root / ".planning" / "evidence"
+            with mock.patch.object(tdd_slice.subprocess, "run") as run:
+                run.return_value.returncode = 128
+                result = tdd_slice.cmd_init(type("Args", (), {
+                    "project_root": str(root), "state_dir": str(state),
+                })())
+
+            self.assertEqual(result, 0)
+            baseline = json.loads((state / "baseline.json").read_text())
+            self.assertFalse(baseline["git_managed"])
+            self.assertEqual(baseline["git_status"], [])
+
     def test_probe_only_loads_locked_baseline_without_running_tests(self):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
@@ -38,14 +65,42 @@ class BaselineProbeTest(unittest.TestCase):
             (state / "baseline.sha256").write_text(tdd_slice.sha(baseline_file) + "\n")
 
             with mock.patch.object(tdd_slice.subprocess, "run") as run:
+                run.return_value.returncode = 0
                 result = tdd_slice.cmd_probe(type("Args", (), {"state_dir": str(state)})())
 
             self.assertEqual(result, 0)
-            run.assert_not_called()
+            run.assert_called_once_with(
+                ["git", "-C", directory, "rev-parse", "--is-inside-work-tree"],
+                stdout=tdd_slice.subprocess.DEVNULL,
+                stderr=tdd_slice.subprocess.DEVNULL,
+            )
             preflight = json.loads((state / "preflight.json").read_text())
             self.assertTrue(preflight["passed"])
             self.assertEqual(preflight["source"], "baseline")
             self.assertEqual(preflight["baseline_sha256"], tdd_slice.sha(baseline_file))
+            self.assertFalse(preflight["git_initialized"])
+
+    def test_probe_initializes_and_commits_an_unmanaged_project(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            baseline_file = state / "baseline.json"
+            baseline_file.write_text(json.dumps({
+                "version": 1, "project_root": directory, "production": {}, "tests": {},
+            }))
+            (state / "baseline.sha256").write_text(tdd_slice.sha(baseline_file) + "\n")
+            results = [mock.Mock(returncode=128), mock.Mock(returncode=0, stdout=""),
+                       mock.Mock(returncode=0, stdout=""), mock.Mock(returncode=0, stdout="")]
+
+            with mock.patch.object(tdd_slice.subprocess, "run", side_effect=results) as run:
+                result = tdd_slice.cmd_probe(type("Args", (), {"state_dir": str(state)})())
+
+            self.assertEqual(result, 0)
+            self.assertEqual(run.call_args_list[1].args[0], ["git", "-C", directory, "init"])
+            self.assertEqual(run.call_args_list[2].args[0], ["git", "-C", directory, "add", "."])
+            self.assertEqual(run.call_args_list[3].args[0][-4:], [
+                "user.email=works@example.invalid", "commit", "-m", "init commit",
+            ])
+            self.assertTrue(json.loads((state / "preflight.json").read_text())["git_initialized"])
 
     def test_probe_rejects_a_modified_baseline(self):
         with tempfile.TemporaryDirectory() as directory:

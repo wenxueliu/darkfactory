@@ -4,7 +4,7 @@
 
 ```text
 SETUP_REQUIRED
-  -> baseline + successful baseline-only probe
+  -> baseline + successful probe (initialize Git when absent; run no tests)
 CONTRACT_REQUIRED
   -> validated requirement-contract.json
 CONTRACT_REVIEW_REQUIRED

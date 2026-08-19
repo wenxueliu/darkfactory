@@ -26,9 +26,8 @@ def discover_maven_command(project: Path, platform: str | None = None) -> str:
 
 def discover(start: Path) -> dict:
     start = start.resolve()
-    root = git_root(start)
-    if not root:
-        return {"error": "E101_NO_GIT_ROOT", "searched_from": str(start)}
+    discovered_git_root = git_root(start)
+    root = discovered_git_root or start
     requirements = sorted(
         (path for path in root.rglob("*.md") if "requirement" in path.name.lower()),
         key=lambda path: (len(path.relative_to(root).parts), str(path)),
@@ -58,5 +57,6 @@ def discover(start: Path) -> dict:
     return {
         "root": str(root), "project": str(project), "requirement": str(requirement),
         "pom": str(pom), "build": discover_maven_command(project),
+        "git_managed": discovered_git_root is not None,
         "candidates": {"requirements": len(requirements), "poms": len(poms)},
     }
