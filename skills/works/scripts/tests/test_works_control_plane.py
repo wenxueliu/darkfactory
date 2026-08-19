@@ -174,9 +174,51 @@ class StateMachineTest(unittest.TestCase):
             store.save(plan, current)
             updated = app.status(root)
             self.assertEqual(updated["state"], "WAVE_EXECUTION_REQUIRED")
+            self.assertEqual(updated["next_action"]["id"], "dispatch-subagents-and-check-patches")
             self.assertTrue(updated["next_action"]["parallel"])
             self.assertEqual([task["id"] for task in updated["next_action"]["tasks"]],
                              ["REQ-1:user", "REQ-1:order"])
+            candidate = evidence / "task-results" / "patches" / "candidate.patch"
+            candidate.parent.mkdir(parents=True)
+            candidate.write_text("patch")
+            digest = module_plan.hashlib.sha256(candidate.read_bytes()).hexdigest()
+            result = evidence / "task-results" / "candidate.json"
+            immutable = {"task": "REQ-1:user", "base_commit": "base",
+                         "patch_file": "patches/candidate.patch", "patch_sha256": digest,
+                         "changed_files": ["user/A.java"], "covered_files": ["user/A.java"],
+                         "test_file": "user/src/test/UserWorksTest.java"}
+            result.write_text(json.dumps({**immutable, "status": "PATCH_READY"}))
+            projection = json.dumps(immutable, sort_keys=True, separators=(",", ":")).encode()
+            order_result = evidence / "task-results" / "order.json"
+            order_immutable = {**immutable, "task": "REQ-1:order"}
+            order_result.write_text(json.dumps({**order_immutable, "status": "PATCH_READY"}))
+            order_projection = json.dumps(order_immutable, sort_keys=True, separators=(",", ":")).encode()
+            (evidence / "patch-set-1.json").write_text(json.dumps({
+                "passed": True, "wave": 1,
+                "candidate_hashes": {"task-results/patches/candidate.patch": digest},
+                "candidate_projections": {"REQ-1:user": {
+                    "file": "task-results/candidate.json",
+                    "sha256": module_plan.hashlib.sha256(projection).hexdigest(),
+                }, "REQ-1:order": {
+                    "file": "task-results/order.json",
+                    "sha256": module_plan.hashlib.sha256(order_projection).hexdigest(),
+                }},
+            }))
+            updated = app.status(root)
+            self.assertEqual(updated["next_action"]["id"], "apply-patches-and-verify-wave")
+            self.assertFalse(updated["next_action"]["parallel"])
+            result.write_text(json.dumps({**immutable, "status": "PASS", "commit": "abc"}))
+            updated = app.status(root)
+            self.assertEqual(updated["next_action"]["id"], "apply-patches-and-verify-wave")
+            immutable["patch_file"] = "patches/evil.patch"
+            result.write_text(json.dumps({**immutable, "status": "PASS", "commit": "abc"}))
+            updated = app.status(root)
+            self.assertEqual(updated["next_action"]["id"], "dispatch-subagents-and-check-patches")
+            immutable["patch_file"] = "patches/candidate.patch"
+            result.write_text(json.dumps({**immutable, "status": "PASS", "commit": "abc"}))
+            candidate.write_text("tampered")
+            updated = app.status(root)
+            self.assertEqual(updated["next_action"]["id"], "dispatch-subagents-and-check-patches")
 
     def test_single_state_file_drives_setup_and_impact(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -570,27 +612,46 @@ class ModulePlanTest(unittest.TestCase):
             production.parent.mkdir(parents=True)
             production.write_text("class UserService {}\n")
             test = module / "src/test/java/UserServiceWorksTest.java"
-            test.parent.mkdir(parents=True)
-            test.write_text("""import org.mockito.Mock;\nclass UserServiceWorksTest { @Mock UserRepository repo; }\n""")
             plan = {"tasks": [{"id": "REQ-1:user", "req": "REQ-1", "module": "user",
                                "write_scope": ["user/src"],
                                "database_dependencies": ["UserRepository"]}],
                     "waves": [{"tasks": ["REQ-1:user"]}]}
             results = root / "results"
             results.mkdir()
+            patch = (b"diff --git a/user/src/main/java/UserService.java b/user/src/main/java/UserService.java\n"
+                     b"diff --git a/user/src/test/java/UserServiceWorksTest.java b/user/src/test/java/UserServiceWorksTest.java\n")
+            patches = results / "patches"
+            patches.mkdir()
+            (patches / "task.patch").write_bytes(patch)
             command = ["mvn", "-pl", "user", "-Dtest=UserServiceWorksTest#works",
                        "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
-            (results / module_plan.result_filename("REQ-1:user")).write_text(json.dumps({
-                "task": "REQ-1:user", "status": "PASS", "base_commit": "base",
-                "source_commit": "source", "merged_commit": "merged",
-                "branch": "works/REQ-1-user", "worktree": str(root / ".worktree/REQ-1-user"),
+            result_file = results / module_plan.result_filename("REQ-1:user")
+            candidate = {
+                "task": "REQ-1:user", "status": "PATCH_READY", "base_commit": "base",
+                "patch_file": "patches/task.patch",
+                "patch_sha256": module_plan.hashlib.sha256(patch).hexdigest(),
                 "changed_files": ["user/src/main/java/UserService.java"],
                 "covered_files": ["user/src/main/java/UserService.java"],
                 "test_file": "user/src/test/java/UserServiceWorksTest.java",
+            }
+            result_file.write_text(json.dumps(candidate))
+            def patch_check_git(command, **_kwargs):
+                if command[-2:] == ["patch-id", "--stable"]:
+                    return mock.Mock(returncode=0, stdout=b"candidate-id 0000000\n")
+                if command[-3:] == ["status", "--porcelain", "--untracked-files=no"]:
+                    return mock.Mock(returncode=0, stdout="")
+                return mock.Mock(returncode=0, stdout="base\n")
+            with mock.patch.object(module_plan.subprocess, "run", side_effect=patch_check_git):
+                self.assertEqual(module_plan.verify_patches(plan, root, results, 1), [])
+            test.parent.mkdir(parents=True)
+            test.write_text("""import org.mockito.Mock;\nclass UserServiceWorksTest { @Mock UserRepository repo; }\n""")
+            candidate.update({
+                "status": "PASS", "commit": "merged",
                 "testcase": "UserServiceWorksTest#works", "database_mocks": ["UserRepository"],
                 "test_command": command,
                 "test_evidence": {"exit": 0, "executed": 1, "failures": 0, "errors": 0},
-            }))
+            })
+            result_file.write_text(json.dumps(candidate))
             junit = {"target": {"executed": 1, "failures": 0, "errors": 0}, "files": []}
             def replay(_root, _command, log, _reports, _selector):
                 log.parent.mkdir(parents=True, exist_ok=True)
@@ -598,18 +659,12 @@ class ModulePlanTest(unittest.TestCase):
                 return 0, junit
             commit_files = "user/src/main/java/UserService.java\nuser/src/test/java/UserServiceWorksTest.java\n"
             def git_run(command, **_kwargs):
-                if command[-3:] == ["worktree", "list", "--porcelain"]:
-                    return mock.Mock(returncode=0, stdout=(
-                        f"worktree {root / '.worktree/REQ-1-user'}\n"
-                        "HEAD source\nbranch refs/heads/works/REQ-1-user\n\n"))
-                if command[-1] == "source^":
-                    return mock.Mock(returncode=0, stdout="base\n")
-                if command[-2:] == ["status", "--porcelain"]:
-                    return mock.Mock(returncode=0, stdout="")
+                if command[-2:] == ["patch-id", "--stable"]:
+                    return mock.Mock(returncode=0, stdout=b"same-patch-id 0000000\n")
                 if "diff-tree" in command:
                     return mock.Mock(returncode=0, stdout=commit_files)
                 if "diff" in command:
-                    return mock.Mock(returncode=0, stdout=b"patch")
+                    return mock.Mock(returncode=0, stdout=patch)
                 if command[-1] == "merged^":
                     return mock.Mock(returncode=0, stdout="base\n")
                 if command[-1] == "HEAD":

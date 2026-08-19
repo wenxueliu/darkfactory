@@ -29,7 +29,7 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量多模块 Java/
 4. 运行 `contract-review-init`，启动一个全新上下文、只读的校验 subagent，并加载 `impl-validator`。它只读取 requirement 和 requirement contract，返回带 `review_payload` 的审查报告；Works 主 agent 仅将该 payload 写入已初始化的 `contract-review.json`，再运行 `contract-review-check`。失败则修订契约并重新审查。
 5. `impact-init` 后从仓库填写 `impact-map.json`，运行 `impact-check`。
 6. `module-plan-init` 后按 `Req × Maven module` 填写 DAG 和 Wave，运行 `module-plan-check`。
-7. 锁定 Wave 的共同 base commit，对全部任务从该基线创建独立分支和 worktree，并在对应 worktree 同时启动 Subagent；主 Agent 验证每个单一 source commit 后按稳定顺序 cherry-pick，记录 merged commit，再运行 `wave-check`。细节见 [Module-parallel execution](references/module-parallel.md)。
+7. 锁定 Wave 的共同 base commit，同时启动只读 Subagent 生成互不重叠的补丁；主 Agent 按 task id 稳定排序校验、应用并逐项提交，再运行 `wave-check`。禁止 Subagent 写共享工作区，不创建 worktree。细节见 [Module-parallel execution](references/module-parallel.md)。
 8. 所有 Wave 通过后运行 `finalize`。只接受已经由主控制面重放的修改代码定向测试，不运行其他模块或未修改代码测试。
 9. 若 Wave 或 finalize 失败，诊断受影响模块任务；修订 DAG 或重新派发该任务，不推进依赖 Wave。
 10. finalize 通过后运行 `implementation-review-init`，由另一个全新上下文、只读的 `impl-validator` subagent 对照 requirement、契约、diff 和测试证据返回 `review_payload`；Works 主 agent 将 payload 写入 `implementation-review.json`，再运行 `implementation-review-check`。失败则对受影响 Req 执行 `reopen` 并修复。
@@ -53,6 +53,7 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量多模块 Java/
 <python> <skill-dir>/scripts/works.py --project <project> impact-check
 <python> <skill-dir>/scripts/works.py --project <project> module-plan-init
 <python> <skill-dir>/scripts/works.py --project <project> module-plan-check
+<python> <skill-dir>/scripts/works.py --project <project> patch-check
 <python> <skill-dir>/scripts/works.py --project <project> wave-check
 <python> <skill-dir>/scripts/works.py --project <project> finalize
 <python> <skill-dir>/scripts/works.py --project <project> implementation-review-init

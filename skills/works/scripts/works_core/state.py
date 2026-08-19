@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 import re
 import time
@@ -110,7 +111,9 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
             else:
                 stage = "READY_FOR_ACCEPTANCE"
     state["state"] = stage
-    action_id = _next_action_id(stage, plan, evidence)
+    current_wave = state.get("current_wave")
+    wave_tasks = set(state.get("waves", [])[current_wave - 1]["tasks"]) if current_wave else set()
+    action_id = _next_action_id(stage, plan, evidence, current_wave, wave_tasks)
     state["allowed_actions"] = [NEXT_ACTION_OP[action_id]]
     state["forbidden_actions"] = [] if stage == "WAVE_EXECUTION_REQUIRED" else ["edit_production"]
     state["next_action_id"] = action_id
@@ -131,7 +134,8 @@ def next_action(action_id: str, state: dict) -> dict:
         "complete-contract-and-check": "references/exploration.md",
         "complete-impact-map-and-check": "references/exploration.md",
         "complete-module-plan-and-check": "references/module-parallel.md",
-        "dispatch-subagents-and-verify-wave": "references/module-parallel.md",
+        "apply-patches-and-verify-wave": "references/module-parallel.md",
+        "dispatch-subagents-and-check-patches": "references/module-parallel.md",
         "diagnose-and-reopen-failing-requirement": "references/diagnosis.md",
         "finalize": "references/verification.md",
     }
@@ -140,7 +144,8 @@ def next_action(action_id: str, state: dict) -> dict:
         "run-fresh-contract-verifier-and-check": "contract-review.json",
         "complete-impact-map-and-check": "impact-map.json",
         "complete-module-plan-and-check": "module-plan.json",
-        "dispatch-subagents-and-verify-wave": f"evidence/wave-{state.get('current_wave')}.json",
+        "apply-patches-and-verify-wave": f"evidence/wave-{state.get('current_wave')}.json",
+        "dispatch-subagents-and-check-patches": f"evidence/patch-set-{state.get('current_wave')}.json",
         "finalize": "evidence/final-verification.json",
         "run-fresh-implementation-verifier-and-check": "implementation-review.json",
     }
@@ -149,13 +154,44 @@ def next_action(action_id: str, state: dict) -> dict:
         "skill": skills.get(action_id), "reference": references.get(action_id),
         "success_evidence": evidence.get(action_id),
     }
-    if action_id == "dispatch-subagents-and-verify-wave":
+    if action_id in {"dispatch-subagents-and-check-patches", "apply-patches-and-verify-wave"}:
         wave = state["current_wave"]
         task_ids = state["waves"][wave - 1]["tasks"]
         task_map = {task["id"]: task for task in state["module_tasks"]}
-        result.update({"wave": wave, "parallel": True,
+        result.update({"wave": wave, "parallel": action_id == "dispatch-subagents-and-check-patches",
                        "tasks": [task_map[task_id] for task_id in task_ids]})
     return result
+
+
+def patch_marker_valid(evidence: Path, wave: int | None, expected_tasks: set[str]) -> bool:
+    try:
+        marker = json.loads((evidence / f"patch-set-{wave}.json").read_text())
+        hashes = marker["candidate_hashes"]
+        projections = marker["candidate_projections"]
+        if (marker.get("passed") is not True or marker.get("wave") != wave
+                or not isinstance(hashes, dict) or not hashes
+                or not isinstance(projections, dict) or set(projections) != expected_tasks):
+            return False
+        for relative, expected in hashes.items():
+            path = (evidence / relative).resolve()
+            if not path.is_relative_to(evidence.resolve()) or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+                return False
+        immutable_keys = ("task", "base_commit", "patch_file", "patch_sha256",
+                          "changed_files", "covered_files", "test_file")
+        for task, record in projections.items():
+            path = (evidence / record["file"]).resolve()
+            if not path.is_relative_to(evidence.resolve()):
+                return False
+            value = json.loads(path.read_text())
+            if value.get("task") != task:
+                return False
+            projection = {key: value.get(key) for key in immutable_keys}
+            encoded = json.dumps(projection, sort_keys=True, separators=(",", ":")).encode()
+            if hashlib.sha256(encoded).hexdigest() != record["sha256"]:
+                return False
+        return True
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return False
 
 
 # logical next-action id -> the single CLI operation that completes it
@@ -171,7 +207,8 @@ NEXT_ACTION_OP = {
     "complete-impact-map-and-check": "impact-check",
     "module-plan-init": "module-plan-init",
     "complete-module-plan-and-check": "module-plan-check",
-    "dispatch-subagents-and-verify-wave": "wave-check",
+    "apply-patches-and-verify-wave": "wave-check",
+    "dispatch-subagents-and-check-patches": "patch-check",
     "finalize": "finalize",
     "diagnose-and-reopen-failing-requirement": "reopen",
     "implementation-review-init": "implementation-review-init",
@@ -182,7 +219,8 @@ NEXT_ACTION_OP = {
 }
 
 
-def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
+def _next_action_id(stage: str, plan: Path, evidence: Path, current_wave: int | None = None,
+                    wave_tasks: set[str] | None = None) -> str:
     if stage == "SETUP_REQUIRED":
         return "baseline-init" if not (evidence / "baseline.json").exists() else "probe"
     if stage == "CONTRACT_REQUIRED":
@@ -200,7 +238,9 @@ def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
     if stage == "MODULE_PLAN_REQUIRED":
         return "module-plan-init" if not (plan / "module-plan.json").exists() else "complete-module-plan-and-check"
     if stage == "WAVE_EXECUTION_REQUIRED":
-        return "dispatch-subagents-and-verify-wave"
+        return ("apply-patches-and-verify-wave" if patch_marker_valid(
+                    evidence, current_wave, wave_tasks or set())
+                else "dispatch-subagents-and-check-patches")
     if stage == "READY_FOR_ACCEPTANCE":
         final = evidence / "final-verification.json"
         failed = final.exists() and not json.loads(final.read_text()).get("passed")

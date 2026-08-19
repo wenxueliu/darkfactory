@@ -6,27 +6,26 @@
 
 ## Wave 执行
 
-读取 `status.next_action.tasks` 后，主 Agent 先锁定当前 `HEAD` 为该 Wave 唯一的 `base_commit`。在同一轮为每项创建独立任务分支和 Git worktree，再从对应 worktree 启动一个全新 Subagent；禁止 Subagent 在主工作区或其他任务的 worktree 中写入。分支名必须包含规范化 task id（把 Git ref 禁止的字符替换为 `-`，例如 `REQ-1:user-service` 使用 `works/REQ-1-user-service`），所有分支都直接从同一个 `base_commit` 创建，不得从同 Wave 的其他任务提交派生。不要顺序等待。每个 Subagent只可：
+读取 `status.next_action.tasks` 后，主 Agent 先锁定当前 `HEAD` 为该 Wave 唯一的 `base_commit`，然后在同一轮启动全新、只读 Subagent。所有 Subagent读取同一基线，不创建 worktree、分支或 commit，也不得写主工作区；它们只返回 unified Git patch 和结构化结果。不要顺序等待。每个 Subagent只可：
 
-1. 修改任务 `write_scope` 内的生产文件。
-2. 新建一个测试文件，不读取、修改或模仿 baseline 中已有测试。
-3. 使用 Mockito 隔离 `database_dependencies`；禁止 Spring test context、真实 DataSource、ORM/MyBatis context、Testcontainers、H2 或数据库 URL。
-4. 只运行 `mvn -pl <module> -Dtest=<Class#method> -DskipTests=false -Dmaven.test.skip=false test`。`-am` 只允许编译依赖，禁止无 selector、`verify`、`package` 或全量测试。
-5. 提交且只提交一个 `source_commit`，其唯一父提交必须是 `base_commit`，返回结构化 task result。
+1. 基于只读源码设计任务 `write_scope` 内的生产修改。
+2. 为修改行为设计一个全新的 Mockito 测试文件，不读取、修改或模仿 baseline 中已有测试。
+3. 在测试补丁中用 Mockito 隔离 `database_dependencies`；禁止 Spring test context、真实 DataSource、ORM/MyBatis context、Testcontainers、H2 或数据库 URL。
+4. 返回只包含任务生产文件和一个新测试文件的 patch，以及主 Agent应执行的精确 testcase；不声称已经编译或测试。
+5. 不执行写文件、Maven、`git apply`、commit 或 merge。
 
-主 Works Agent 等整个 Wave 的 Subagent 全部结束后，先验证各 worktree 的分支、基线和单一提交，再按 task id 稳定排序逐个 `git cherry-pick` 到主分支，并记录每次 cherry-pick 产生的 `merged_commit`。不得让 Subagent自行合并。发生越权修改、合并冲突或失败测试时，不得覆盖解决或推进 Wave；中止本 Wave，修订任务/DAG 后从新的共同基线重新派发。worktree 和任务分支至少保留到 `wave-check` 通过，之后才可清理。
+主 Works Agent 等整个 Wave 的结果全部返回后，把 patch 写入 `evidence/task-results/patches/`，确认共享工作区仍位于共同基线且没有 tracked 修改，再校验哈希、文件范围和同 Wave 不重叠约束。`patch-check` 通过后按 task id 稳定排序逐个执行 `git apply`、`mvn -pl <module> -Dtest=<Class#method> -DskipTests=false -Dmaven.test.skip=false test` 和单一 commit。主 Agent是唯一写入者和测试执行者。发生 patch 冲突、越权修改或失败测试时，不得手工覆盖冲突或推进 Wave；中止本 Wave，回退尚未提交的当前 patch，修订任务/DAG 后从新的共同基线重新派发。
 
-把每个结果写到 `evidence/task-results/<normalized-task-id>-<sha256前8位>.json`；normalized task id 使用与分支相同的字符替换规则，哈希按原始 task id 计算，以保证 Windows 文件名兼容且避免碰撞：
+Subagent 返回后，先把候选结果写到 `evidence/task-results/<normalized-task-id>-<sha256前8位>.json`，状态使用 `PATCH_READY`，此时不含 `commit`、`test_evidence`。normalized task id 使用字符替换规则，哈希按原始 task id 计算，以保证 Windows 文件名兼容且避免碰撞。运行 `patch-check` 通过后主 Agent才可应用补丁。每项提交和定向测试通过后，把同一结果更新为以下最终结构：
 
 ```json
 {
   "task": "REQ-1:user-service",
   "status": "PASS",
   "base_commit": "base123",
-  "source_commit": "task123",
-  "merged_commit": "merged123",
-  "branch": "works/REQ-1-user-service",
-  "worktree": "/absolute/project/.worktree/REQ-1-user-service",
+  "patch_file": "patches/REQ-1-user-service-acde1234.patch",
+  "patch_sha256": "64位sha256",
+  "commit": "merged123",
   "changed_files": ["user-service/src/main/java/UserService.java"],
   "covered_files": ["user-service/src/main/java/UserService.java"],
   "test_file": "user-service/src/test/java/UserServiceWorksTest.java",
@@ -37,6 +36,6 @@
 }
 ```
 
-结果齐备并完成合并后运行 `wave-check`。CLI 会静态检查范围和 Mockito 策略，并由主控制面重新执行每个精确 testcase。只有整个 Wave 通过才能进入下一 Wave。
+结果齐备并完成提交后运行 `wave-check`。CLI 会用稳定 `patch-id` 证明主提交与 Subagent 补丁语义一致，静态检查范围和 Mockito 策略，并由主控制面重新执行每个精确 testcase。只有整个 Wave 通过才能进入下一 Wave。
 
 最终 `coverage_scope` 明确记录为 `changed-code-only`；不得声称执行了完整回归、数据库集成或跨模块 E2E 测试。

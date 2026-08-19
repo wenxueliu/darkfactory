@@ -29,7 +29,7 @@ class Application:
         project = Path(found["project"])
         return {"ok": True, "checks": {
             "python_3_10_plus": sys.version_info >= (3, 10),
-            "git_worktree": discovery.git_root(project) is not None,
+            "git_managed": discovery.git_root(project) is not None,
             "maven_project": Path(found["pom"]).is_file(),
             "project_writable": project.exists() and project.is_dir(),
         }, "discovery": found}
@@ -151,6 +151,34 @@ class Application:
             current["module_tasks"] = module_plan["tasks"]
             current["waves"] = module_plan["waves"]
             current["module_plan_valid"] = True
+        elif operation == "patch-check":
+            wave = current["current_wave"]
+            result_dir = evidence / "task-results"
+            immutable_keys = ("task", "base_commit", "patch_file", "patch_sha256",
+                              "changed_files", "covered_files", "test_file")
+            candidate_hashes = {
+                str(path.relative_to(evidence)): hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in sorted((result_dir / "patches").glob("*.patch"))
+            }
+            candidate_projections = {}
+            for path in sorted(result_dir.glob("*.json")):
+                value = json.loads(path.read_text())
+                projection = {key: value.get(key) for key in immutable_keys}
+                encoded = json.dumps(projection, sort_keys=True, separators=(",", ":")).encode()
+                candidate_projections[value["task"]] = {
+                    "file": str(path.relative_to(evidence)),
+                    "sha256": hashlib.sha256(encoded).hexdigest(),
+                }
+            expected_tasks = set(current["waves"][wave - 1]["tasks"])
+            if set(candidate_projections) != expected_tasks:
+                raise WorksError("E305_INVALID_MODULE_PLAN",
+                                 "patch candidates must exactly match current wave tasks",
+                                 {"expected": sorted(expected_tasks),
+                                  "actual": sorted(candidate_projections)})
+            store.atomic_json(evidence / f"patch-set-{wave}.json", {
+                "passed": True, "wave": wave, "recorded_at": time.time(),
+                "candidate_hashes": candidate_hashes, "candidate_projections": candidate_projections,
+            })
         elif operation == "wave-check":
             wave = current["current_wave"]
             store.atomic_json(evidence / f"wave-{wave}.json", {
@@ -215,6 +243,12 @@ class Application:
                     "--results-dir", str(evidence / "task-results"),
                     "--baseline", str(evidence / "baseline.json"),
                     "--wave", str(current["current_wave"])]
+        if operation == "patch-check":
+            return [sys.executable, str(self.scripts / "module_plan.py"), "verify-patches",
+                    "--file", str(plan / "module-plan.json"),
+                    "--project-root", current["project_root"],
+                    "--results-dir", str(evidence / "task-results"),
+                    "--wave", str(current["current_wave"])]
         if operation == "finalize":
             return []
         action = "init" if operation == "baseline-init" else operation
@@ -266,6 +300,8 @@ class Application:
         (plan / "module-plan.json").unlink(missing_ok=True)
         for wave_file in evidence.glob("wave-*.json"):
             wave_file.unlink()
+        for patch_file in evidence.glob("patch-set-*.json"):
+            patch_file.unlink()
         for name in ("final-verification.json",):
             try:
                 (evidence / name).unlink()

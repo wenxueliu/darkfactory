@@ -41,24 +41,100 @@ def result_filename(task_id: str) -> str:
     return f"{token}-{digest}.json"
 
 
-def registered_worktrees(project: Path) -> dict[Path, dict[str, str]]:
-    proc = subprocess.run(
-        ["git", "-C", str(project), "worktree", "list", "--porcelain"], text=True,
+def patch_paths(content: bytes) -> set[str]:
+    paths: set[str] = set()
+    headers = 0
+    for raw in content.splitlines():
+        if not raw.startswith(b"diff --git a/"):
+            continue
+        headers += 1
+        line = raw.decode("utf-8", errors="replace")
+        match = re.fullmatch(r"diff --git a/(.+) b/(.+)", line)
+        if not match or match.group(1) != match.group(2):
+            raise ValueError("patch contains malformed or rename diff header")
+        paths.add(match.group(1))
+    if headers != len(paths):
+        raise ValueError("patch contains duplicate diff headers")
+    return paths
+
+
+def stable_patch_id(content: bytes) -> str | None:
+    proc = subprocess.run(["git", "patch-id", "--stable"], input=content,
+                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    if proc.returncode != 0 or not proc.stdout:
+        return None
+    return proc.stdout.decode(errors="replace").split()[0]
+
+
+def verify_patches(plan: dict, project: Path, results: Path, wave_number: int) -> list[str]:
+    errors: list[str] = []
+    dirty = subprocess.run(
+        ["git", "-C", str(project), "status", "--porcelain", "--untracked-files=no"], text=True,
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
     )
-    if proc.returncode != 0:
-        return {}
-    values: dict[Path, dict[str, str]] = {}
-    current: dict[str, str] = {}
-    for line in [*proc.stdout.splitlines(), ""]:
-        if not line:
-            if "worktree" in current:
-                values[Path(current["worktree"]).resolve()] = current
-            current = {}
-        else:
-            key, _, value = line.partition(" ")
-            current[key] = value
-    return values
+    if dirty.returncode != 0 or dirty.stdout.strip():
+        errors.append(f"wave {wave_number}: controller workspace must have no tracked changes before apply")
+    task_map = {task["id"]: task for task in plan["tasks"]}
+    ids = plan["waves"][wave_number - 1]["tasks"]
+    bases: set[str] = set()
+    all_paths: dict[str, str] = {}
+    for task_id in ids:
+        task = task_map[task_id]
+        try:
+            result = json.loads((results / result_filename(task_id)).read_text())
+            base = result["base_commit"]
+            patch_file = result["patch_file"]
+            expected_hash = result["patch_sha256"]
+            changed = result["changed_files"]
+            test_file = result["test_file"]
+            if result.get("task") != task_id or result.get("status") != "PATCH_READY":
+                raise ValueError("candidate result must be PATCH_READY for its task")
+            bases.add(base)
+            patch_path = (results / patch_file).resolve()
+            if not patch_path.is_relative_to(results.resolve()):
+                raise ValueError("patch escapes results directory")
+            content = patch_path.read_bytes()
+            if hashlib.sha256(content).hexdigest() != expected_hash:
+                raise ValueError("patch hash mismatch")
+            if stable_patch_id(content) is None:
+                raise ValueError("patch has no stable Git patch-id")
+            applicable = subprocess.run(
+                ["git", "-C", str(project), "apply", "--check", "-"], input=content,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            if applicable.returncode != 0:
+                raise ValueError("patch does not apply cleanly to shared base")
+            expected_paths = set(changed) | {test_file}
+            test_prefix = f"{task['module'].rstrip('/')}/src/test/"
+            if not isinstance(test_file, str) or not test_file.startswith(test_prefix):
+                raise ValueError("focused test_file must be under module/src/test")
+            if test_file in set(changed):
+                raise ValueError("focused test_file cannot be declared as production change")
+            if (project / test_file).exists():
+                raise ValueError("focused test file must not exist before patch apply")
+            actual_paths = patch_paths(content)
+            if actual_paths != expected_paths:
+                raise ValueError("patch paths do not match declared production and test files")
+            for relative in actual_paths:
+                if not inside_module(project, task["module"], relative):
+                    raise ValueError(f"patch path escapes module: {relative}")
+                if relative != test_file and not any(
+                        relative == scope.rstrip("/") or relative.startswith(scope.rstrip("/") + "/")
+                        for scope in task.get("write_scope", [])):
+                    raise ValueError(f"patch path escapes write_scope: {relative}")
+                if relative in all_paths:
+                    raise ValueError(f"patch path overlaps {all_paths[relative]}: {relative}")
+                all_paths[relative] = task_id
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            errors.append(f"{task_id}: invalid patch candidate ({exc})")
+    if len(bases) != 1:
+        errors.append(f"wave {wave_number}: all Subagent patches must use one shared base_commit")
+    else:
+        head = subprocess.run(["git", "-C", str(project), "rev-parse", "HEAD"], text=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        if head.returncode != 0 or head.stdout.strip() != next(iter(bases)):
+            errors.append(f"wave {wave_number}: shared base_commit must equal controller HEAD before apply")
+    return errors
 
 
 def validate(data: object, project: Path, reqs: list[str]) -> list[str]:
@@ -151,7 +227,6 @@ def verify_wave(plan: dict, project: Path, results: Path, wave_number: int,
     task_map = {task["id"]: task for task in plan["tasks"]}
     ids = plan["waves"][wave_number - 1]["tasks"]
     baseline_tests = set(baseline.get("tests", {}))
-    worktrees = registered_worktrees(project)
     wave_bases: set[str] = set()
     merged_by_task: dict[str, str] = {}
     for task_id in ids:
@@ -162,46 +237,29 @@ def verify_wave(plan: dict, project: Path, results: Path, wave_number: int,
         except (OSError, json.JSONDecodeError) as exc:
             errors.append(f"{task_id}: missing/invalid Subagent result ({exc})")
             continue
-        required_git = ("base_commit", "source_commit", "merged_commit", "branch", "worktree")
+        required_git = ("base_commit", "patch_file", "patch_sha256", "commit")
         if (result.get("status") != "PASS" or result.get("task") != task_id
                 or not all(isinstance(result.get(key), str) and result[key] for key in required_git)):
-            errors.append(f"{task_id}: result must be PASS with complete worktree commit evidence")
+            errors.append(f"{task_id}: result must be PASS with complete patch and commit evidence")
         base_commit = result.get("base_commit")
-        source_commit = result.get("source_commit")
-        merged_commit = result.get("merged_commit")
-        branch = result.get("branch")
-        worktree = result.get("worktree")
+        patch_file = result.get("patch_file")
+        patch_sha256 = result.get("patch_sha256")
+        merged_commit = result.get("commit")
         if isinstance(base_commit, str):
             wave_bases.add(base_commit)
         if isinstance(merged_commit, str):
             merged_by_task[task_id] = merged_commit
-        if isinstance(worktree, str):
+        patch = b""
+        if isinstance(patch_file, str):
             try:
-                worktree_path = Path(worktree).resolve()
-                if worktree_path == project.resolve():
-                    errors.append(f"{task_id}: Subagent worktree must be isolated from the controller workspace")
-                registered = worktrees.get(worktree_path)
-                expected_ref = f"refs/heads/{branch}" if isinstance(branch, str) else None
-                if (registered is None or registered.get("HEAD") != source_commit
-                        or registered.get("branch") != expected_ref):
-                    errors.append(f"{task_id}: worktree must remain registered at source_commit on its task branch")
-                dirty = subprocess.run(
-                    ["git", "-C", str(worktree_path), "status", "--porcelain"], text=True,
-                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                )
-                if dirty.returncode != 0 or dirty.stdout.strip():
-                    errors.append(f"{task_id}: task worktree must be clean")
-            except OSError:
-                errors.append(f"{task_id}: worktree path is invalid")
-        if isinstance(branch, str) and branch_token(task_id) not in branch:
-            errors.append(f"{task_id}: worktree branch must include the normalized task id")
-        if all(isinstance(value, str) for value in (base_commit, source_commit)):
-            parent = subprocess.run(
-                ["git", "-C", str(project), "rev-parse", f"{source_commit}^"], text=True,
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            )
-            if parent.returncode != 0 or parent.stdout.strip() != base_commit:
-                errors.append(f"{task_id}: source_commit must be a single commit based on the shared wave base")
+                patch_path = (results / patch_file).resolve()
+                if not patch_path.is_relative_to(results.resolve()):
+                    raise OSError("patch escapes results directory")
+                patch = patch_path.read_bytes()
+            except OSError as exc:
+                errors.append(f"{task_id}: missing/invalid patch artifact ({exc})")
+        if patch and hashlib.sha256(patch).hexdigest() != patch_sha256:
+            errors.append(f"{task_id}: patch_sha256 does not match patch artifact")
         changed = result.get("changed_files")
         covered = result.get("covered_files")
         if not isinstance(changed, list) or not changed or set(changed) != set(covered or []):
@@ -224,28 +282,30 @@ def verify_wave(plan: dict, project: Path, results: Path, wave_number: int,
             except OSError:
                 source = ""
                 errors.append(f"{task_id}: test_file does not exist")
-        if isinstance(source_commit, str) and isinstance(merged_commit, str):
+        if isinstance(merged_commit, str):
             expected_commit_files = set(changed) | ({test_file} if isinstance(test_file, str) else set())
-            for label, commit in (("source_commit", source_commit), ("merged_commit", merged_commit)):
-                proc = subprocess.run(
-                    ["git", "-C", str(project), "diff-tree", "--root", "--no-commit-id",
-                     "--name-only", "-r", commit], text=True,
-                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                )
-                committed = set(proc.stdout.splitlines()) if proc.returncode == 0 else set()
-                if proc.returncode != 0 or committed != expected_commit_files:
-                    errors.append(f"{task_id}: {label} files do not exactly match production + new focused test")
-            source_patch = subprocess.run(
-                ["git", "-C", str(project), "diff", f"{source_commit}^", source_commit, "--binary"],
+            try:
+                actual_patch_paths = patch_paths(patch)
+            except ValueError as exc:
+                actual_patch_paths = set()
+                errors.append(f"{task_id}: invalid patch artifact ({exc})")
+            if actual_patch_paths != expected_commit_files:
+                errors.append(f"{task_id}: patch paths do not exactly match production + new focused test")
+            proc = subprocess.run(
+                ["git", "-C", str(project), "diff-tree", "--root", "--no-commit-id",
+                 "--name-only", "-r", merged_commit], text=True,
                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             )
+            committed = set(proc.stdout.splitlines()) if proc.returncode == 0 else set()
+            if proc.returncode != 0 or committed != expected_commit_files:
+                errors.append(f"{task_id}: commit files do not exactly match production + new focused test")
             merged_patch = subprocess.run(
                 ["git", "-C", str(project), "diff", f"{merged_commit}^", merged_commit, "--binary"],
                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             )
-            if (source_patch.returncode != 0 or merged_patch.returncode != 0
-                    or source_patch.stdout != merged_patch.stdout):
-                errors.append(f"{task_id}: merged_commit patch must equal the worktree source_commit patch")
+            if (merged_patch.returncode != 0 or stable_patch_id(merged_patch.stdout) is None
+                    or stable_patch_id(merged_patch.stdout) != stable_patch_id(patch)):
+                errors.append(f"{task_id}: commit patch-id must equal the validated Subagent patch-id")
             ancestor = subprocess.run(
                 ["git", "-C", str(project), "merge-base", "--is-ancestor", merged_commit, "HEAD"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -297,7 +357,7 @@ def verify_wave(plan: dict, project: Path, results: Path, wave_number: int,
             if code != 0 or target["executed"] < 1 or target["failures"] or target["errors"]:
                 errors.append(f"{task_id}: controller focused-test replay failed")
     if len(wave_bases) != 1:
-        errors.append(f"wave {wave_number}: all worktrees must use one shared base_commit")
+        errors.append(f"wave {wave_number}: all Subagent patches must use one shared base_commit")
     elif len(merged_by_task) == len(ids):
         expected_parent = next(iter(wave_bases))
         for task_id in sorted(ids):
@@ -334,6 +394,11 @@ def main() -> int:
     wave.add_argument("--results-dir", required=True)
     wave.add_argument("--baseline", required=True)
     wave.add_argument("--wave", required=True, type=int)
+    patches = sub.add_parser("verify-patches")
+    patches.add_argument("--file", required=True)
+    patches.add_argument("--project-root", required=True)
+    patches.add_argument("--results-dir", required=True)
+    patches.add_argument("--wave", required=True, type=int)
     args = parser.parse_args()
     path = Path(args.output if args.action == "init" else args.file)
     if args.action == "init":
@@ -345,9 +410,11 @@ def main() -> int:
     data = json.loads(path.read_text())
     if args.action == "validate":
         errors = validate(data, Path(args.project_root).resolve(), args.req)
-    else:
+    elif args.action == "verify-wave":
         baseline = json.loads(Path(args.baseline).read_text())
         errors = verify_wave(data, Path(args.project_root).resolve(), Path(args.results_dir), args.wave, baseline)
+    else:
+        errors = verify_patches(data, Path(args.project_root).resolve(), Path(args.results_dir), args.wave)
     if errors:
         print(json.dumps({"ok": False, "error": ERROR, "violations": errors}, ensure_ascii=False, indent=2))
         return 2
