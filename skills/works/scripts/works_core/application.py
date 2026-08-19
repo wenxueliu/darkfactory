@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
-import re
 import subprocess
 import sys
 import time
@@ -50,32 +50,65 @@ class Application:
         plan, current = self.context(project)
         return {"ok": True, **store.refresh(plan, current)}
 
-    def set_requirements(self, project: Path, reqs: list[str]) -> dict:
-        if (not reqs or len(reqs) != len(set(reqs))
-                or any(not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", req) for req in reqs)):
-            raise WorksError("E302_INVALID_REQUIREMENTS", "Req IDs must be non-empty, ordered and unique")
+    def recover(self, project: Path) -> dict:
         plan, current = self.context(project)
         current = store.refresh(plan, current)
-        if current["state"] != "IMPACT_REQUIRED":
-            raise WorksError("E202_INVALID_STATE", f"set-reqs is forbidden in {current['state']}")
-        current["requirements"] = reqs
-        current["impact_valid"] = False
-        store.save(plan, current)
-        return store.refresh(plan, current)
+        activity_file = plan / "activity.jsonl"
+        rows = []
+        if activity_file.exists():
+            for line in activity_file.read_text().splitlines():
+                try:
+                    rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        last_failure = next((row for row in reversed(rows) if row.get("result") in {"failed", "blocked"}), None)
+        return {
+            "ok": True, "recovered": True, **current,
+            "last_activity": rows[-1] if rows else None,
+            "last_failure": last_failure,
+            "memory": {
+                "activity": str(activity_file),
+                "findings": str(plan / "findings.jsonl"),
+                "decisions": str(plan / "decisions.jsonl"),
+                "summaries": str(plan / "summaries"),
+            },
+        }
 
     def run(self, project: Path, operation: str, raw: list[str]) -> dict:
         plan, current = self.context(project)
         current = store.refresh(plan, current)
         evidence = Path(current["evidence_dir"])
+        if operation == "note":
+            return self._note(plan, current, raw)
         allowed_states = {
             "tdd-init": {"SETUP_REQUIRED"}, "probe": {"SETUP_REQUIRED"},
+            "contract-init": {"CONTRACT_REQUIRED"},
+            "contract-check": {"CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED"},
+            "contract-review-init": {"CONTRACT_REVIEW_REQUIRED"},
+            "contract-review-check": {"CONTRACT_REVIEW_REQUIRED"},
             "impact-init": {"IMPACT_REQUIRED"}, "impact-check": {"IMPACT_REQUIRED"},
             "red": {"READY_FOR_RED"}, "green": {"READY_FOR_IMPLEMENTATION"},
-            "verify": {"READY_FOR_ACCEPTANCE"}, "accept": {"READY_FOR_ACCEPTANCE"},
+            "finalize": {"READY_FOR_ACCEPTANCE"},
+            "implementation-review-init": {"IMPLEMENTATION_REVIEW_REQUIRED"},
+            "implementation-review-check": {"IMPLEMENTATION_REVIEW_REQUIRED"},
+            "reopen": {"READY_FOR_ACCEPTANCE", "IMPLEMENTATION_REVIEW_REQUIRED"},
         }
         if current["state"] not in allowed_states[operation]:
             raise WorksError("E202_INVALID_STATE", f"{operation} is forbidden in {current['state']}")
-        if operation not in current["allowed_actions"]:
+        logical_actions = {
+            "contract-check": "complete-contract-and-check",
+            "contract-review-check": "run-fresh-contract-verifier-and-check",
+            "impact-check": "complete-impact-map-and-check",
+            "red": "establish-red-for-current-requirement",
+            "green": "implement-current-requirement-and-run-green",
+            "reopen": "diagnose-and-reopen-failing-requirement",
+            "implementation-review-check": "run-fresh-implementation-verifier-and-check",
+        }
+        if operation == "contract-check" and current["state"] == "CONTRACT_REVIEW_REQUIRED":
+            logical_actions[operation] = "revise-contract-and-rerun-review"
+        if operation == "reopen" and current["state"] == "IMPLEMENTATION_REVIEW_REQUIRED":
+            logical_actions[operation] = "diagnose-review-and-reopen-requirement"
+        if operation not in current["allowed_actions"] and logical_actions.get(operation) not in current["allowed_actions"]:
             raise WorksError("E202_INVALID_STATE",
                              f"{operation} is not the next action; expected {current['allowed_actions'][0]}")
         if operation == "tdd-init" and (evidence / "baseline.json").exists():
@@ -85,43 +118,74 @@ class Application:
                                "--project-root", current["project_root"], "--state-dir", str(evidence)], operation)
             return {"ok": True, "operation": operation, "output": "baseline already initialized",
                     **store.refresh(plan, current)}
+        if operation == "reopen":
+            return self._reopen(plan, current, raw)
         command = self._command(plan, current, operation, raw)
+        signature = self._signature(Path(current["project_root"]), command)
+        attempt_key = f"{operation}:{current.get('current_req') or '-'}"
+        previous = current.setdefault("attempts", {}).get(attempt_key)
+        if previous and previous.get("signature") == signature and previous.get("result") == "failed":
+            store.activity(plan, current, operation, "blocked", error="identical_failure_retry",
+                           attempt=previous.get("count", 1))
+            raise WorksError("E901_REPEAT_FAILURE", "identical failed action requires a workspace or strategy change",
+                             previous)
         if operation == "green":
-            self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
-                           "--state-dir", str(evidence)], operation)
-        elif operation == "accept":
-            self._checked(
-                [sys.executable, str(self.scripts / "tdd_slice.py"), "verify",
-                 "--state-dir", str(evidence),
-                 *[item for req in current["requirements"] for item in ("--req", req)]],
-                operation,
-            )
-            self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
-                           "--state-dir", str(evidence)], operation)
+            try:
+                self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
+                               "--state-dir", str(evidence)], operation)
+            except WorksError as exc:
+                self._record_failure(plan, current, attempt_key, signature, operation, exc.code, exc.evidence)
+                raise
+        elif operation == "finalize":
+            try:
+                self._checked(
+                    [sys.executable, str(self.scripts / "tdd_slice.py"), "verify",
+                     "--state-dir", str(evidence),
+                     *[item for req in current["requirements"] for item in ("--req", req)]],
+                    operation,
+                )
+                self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
+                               "--state-dir", str(evidence)], operation)
+            except WorksError as exc:
+                store.atomic_json(evidence / "final-verification.json", {
+                    "passed": False, "phase": "tdd-or-boundary", "error": exc.code,
+                    "evidence": exc.evidence, "recorded_at": time.time(),
+                })
+                self._record_failure(plan, current, attempt_key, signature, operation, exc.code, exc.evidence)
+                raise
+            return self._finalize(plan, current)
         proc = subprocess.run(command, cwd=Path(current["project_root"]), text=True,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        if operation == "accept":
-            name = raw[raw.index("--name") + 1]
-            log = plan / "logs" / f"acceptance-{name}.log"
-            log.parent.mkdir(parents=True, exist_ok=True)
-            log.write_text(proc.stdout)
-            current.setdefault("acceptance", {})[name] = {
-                "exit": proc.returncode, "command": raw[raw.index("--") + 1:],
-                "recorded_at": time.time(), "log": str(log),
-            }
-            store.save(plan, current)
         if proc.returncode:
-            raise WorksError(self._classify(operation, proc.stdout), f"{operation} failed",
-                             {"exit": proc.returncode, "output": proc.stdout[-4000:]})
+            code = self._classify(operation, proc.stdout)
+            details = {"exit": proc.returncode, "output": proc.stdout[-4000:]}
+            self._record_failure(plan, current, attempt_key, signature, operation, code, details)
+            raise WorksError(code, f"{operation} failed", details)
         if operation == "tdd-init":
             self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
                            "--project-root", current["project_root"], "--state-dir", str(evidence)], operation)
+        elif operation == "contract-check":
+            contract = json.loads((plan / "requirement-contract.json").read_text())
+            current["requirements"] = [row["id"] for row in contract["requirements"]]
+            current["contract_valid"] = True
+            current["contract_review_valid"] = False
+            current["impact_valid"] = False
+            (plan / "contract-review.json").unlink(missing_ok=True)
+            current.setdefault("attempts", {}).pop("contract-review-check:-", None)
+        elif operation == "contract-review-check":
+            current["contract_review_valid"] = True
         elif operation == "impact-check":
             current["impact_valid"] = True
-        elif operation == "verify":
-            self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
-                           "--state-dir", str(evidence)], operation)
+        elif operation == "implementation-review-check":
+            current["implementation_review_valid"] = True
+        elif operation in {"contract-review-init", "implementation-review-init"}:
+            current.setdefault("attempts", {}).pop(f"{operation.removesuffix('-init')}-check:-", None)
         store.save(plan, current)
+        current.setdefault("attempts", {}).pop(attempt_key, None)
+        store.save(plan, current)
+        store.activity(plan, current, operation, "passed", command=command)
+        summary_name = f"{operation}-{current.get('current_req')}" if operation == "green" else operation
+        store.summarize(plan, current, summary_name, result="passed")
         return {"ok": True, "operation": operation, "output": proc.stdout, **store.refresh(plan, current)}
 
     def _command(self, plan: Path, current: dict, operation: str, raw: list[str]) -> list[str]:
@@ -130,6 +194,22 @@ class Application:
             expected = "READY_FOR_RED" if operation == "red" else "READY_FOR_IMPLEMENTATION"
             if current["state"] != expected:
                 raise WorksError("E202_INVALID_STATE", f"{operation} is forbidden in {current['state']}")
+        if operation == "contract-init":
+            return [sys.executable, str(self.scripts / "requirement_contract.py"), "init",
+                    "--output", str(plan / "requirement-contract.json"),
+                    "--requirement", current["requirement"]]
+        if operation == "contract-check":
+            return [sys.executable, str(self.scripts / "requirement_contract.py"), "validate",
+                    "--file", str(plan / "requirement-contract.json"),
+                    "--requirement", current["requirement"]]
+        if operation in {"contract-review-init", "contract-review-check",
+                         "implementation-review-init", "implementation-review-check"}:
+            kind = "contract" if operation.startswith("contract-") else "implementation"
+            action = "init" if operation.endswith("-init") else "validate"
+            option = "--output" if action == "init" else "--file"
+            return [sys.executable, str(self.scripts / "review_evidence.py"), action,
+                    "--type", kind, option, str(plan / f"{kind}-review.json"),
+                    "--contract", str(plan / "requirement-contract.json")]
         if operation == "impact-init":
             return [sys.executable, str(self.scripts / "impact_map.py"), "init",
                     "--output", str(plan / "impact-map.json"),
@@ -138,19 +218,119 @@ class Application:
             return [sys.executable, str(self.scripts / "impact_map.py"), "validate",
                     "--file", str(plan / "impact-map.json"), "--project-root", current["project_root"],
                     *[item for req in current["requirements"] for item in ("--req", req)]]
-        if operation == "accept":
-            if "--name" not in raw or "--" not in raw:
-                raise WorksError("E402_INVALID_ACCEPTANCE", "accept requires --name NAME -- COMMAND")
-            command = raw[raw.index("--") + 1:]
-            if not command:
-                raise WorksError("E402_INVALID_ACCEPTANCE", "accept command cannot be empty")
-            return command
+        if operation == "finalize":
+            return []
         action = "init" if operation == "tdd-init" else operation
         command = [sys.executable, str(self.scripts / "tdd_slice.py"), action]
         if operation == "tdd-init":
             command.extend(["--project-root", current["project_root"]])
         command.extend(["--state-dir", evidence, *raw])
         return command
+
+    def _finalize(self, plan: Path, current: dict) -> dict:
+        evidence = Path(current["evidence_dir"])
+        contract = json.loads((plan / "requirement-contract.json").read_text())
+        results = []
+        passed = True
+        logs = plan / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        for row in contract["acceptance_commands"]:
+            proc = subprocess.run(row["command"], cwd=Path(current["project_root"]), text=True,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            log = logs / f"acceptance-{row['id']}.log"
+            log.write_text(proc.stdout)
+            results.append({"id": row["id"], "covers": row["covers"], "command": row["command"],
+                            "exit": proc.returncode, "log": str(log)})
+            passed = passed and proc.returncode == 0
+        store.atomic_json(evidence / "final-verification.json", {
+            "passed": passed, "requirements": current["requirements"],
+            "acceptance": results, "recorded_at": time.time(),
+        })
+        if not passed:
+            signature = self._signature(Path(current["project_root"]), [])
+            self._record_failure(plan, current, "finalize:-", signature, "finalize",
+                                 "E401_ACCEPTANCE_FAILED", results)
+            raise WorksError("E401_ACCEPTANCE_FAILED", "one or more contract acceptance commands failed", results)
+        current["implementation_review_valid"] = False
+        (plan / "implementation-review.json").unlink(missing_ok=True)
+        current.setdefault("attempts", {}).pop("implementation-review-check:-", None)
+        store.save(plan, current)
+        current.setdefault("attempts", {}).pop("finalize:-", None)
+        store.save(plan, current)
+        store.activity(plan, current, "finalize", "passed", acceptance=results)
+        store.summarize(plan, current, "finalize", result="passed", acceptance=results)
+        return {"ok": True, "operation": "finalize", "acceptance": results,
+                **store.refresh(plan, current)}
+
+    def _reopen(self, plan: Path, current: dict, raw: list[str]) -> dict:
+        if "--req" not in raw or raw.index("--req") + 1 >= len(raw):
+            raise WorksError("E403_INVALID_REOPEN", "reopen requires --req REQ-ID")
+        req = raw[raw.index("--req") + 1]
+        if req not in current["requirements"]:
+            raise WorksError("E403_INVALID_REOPEN", f"unknown requirement: {req}")
+        evidence = Path(current["evidence_dir"])
+        repairs = current.setdefault("repairs", [])
+        suffix = f".repair-{1 + sum(row.get('of') == req for row in repairs)}"
+        repair_req = f"{req[:64 - len(suffix)]}{suffix}"
+        current["requirements"].append(repair_req)
+        repairs.append({"id": repair_req, "of": req, "created_at": time.time()})
+        for name in ("tdd-verify.json", "final-verification.json"):
+            try:
+                (evidence / name).unlink()
+            except FileNotFoundError:
+                pass
+        current["implementation_review_valid"] = False
+        (plan / "implementation-review.json").unlink(missing_ok=True)
+        current.setdefault("attempts", {}).pop("implementation-review-check:-", None)
+        store.save(plan, current)
+        store.activity(plan, current, "reopen", "passed", repair_req=repair_req, repair_of=req)
+        store.summarize(plan, current, f"reopen-{repair_req}", result="passed", repair_of=req)
+        return {"ok": True, "operation": "reopen", "repair_req": repair_req,
+                "repair_of": req, **store.refresh(plan, current)}
+
+    def _note(self, plan: Path, current: dict, raw: list[str]) -> dict:
+        if ("--kind" not in raw or "--text" not in raw
+                or raw.index("--kind") + 1 >= len(raw) or raw.index("--text") + 1 >= len(raw)):
+            raise WorksError("E701_INVALID_NOTE", "note requires --kind finding|decision --text TEXT")
+        kind = raw[raw.index("--kind") + 1]
+        if kind not in {"finding", "decision"}:
+            raise WorksError("E701_INVALID_NOTE", "note kind must be finding or decision")
+        value = raw[raw.index("--text") + 1]
+        req = raw[raw.index("--req") + 1] if "--req" in raw and raw.index("--req") + 1 < len(raw) else current.get("current_req")
+        path = plan / ("findings.jsonl" if kind == "finding" else "decisions.jsonl")
+        store.append_jsonl(path, {"time": time.time(), "req": req, "text": value})
+        store.activity(plan, current, "note", "passed", kind=kind, req=req)
+        return {"ok": True, "operation": "note", "kind": kind, "path": str(path)}
+
+    def _record_failure(self, plan: Path, current: dict, key: str, signature: str,
+                        operation: str, error: str, evidence: object) -> None:
+        previous = current.setdefault("attempts", {}).get(key, {})
+        count = previous.get("count", 0) + 1
+        current["attempts"][key] = {
+            "count": count, "signature": signature, "result": "failed", "error": error,
+            "required_strategy": "diagnose" if count == 1 else "alternative",
+        }
+        store.save(plan, current)
+        store.activity(plan, current, operation, "failed", error=error, attempt=count, evidence=evidence)
+
+    @staticmethod
+    def _signature(project: Path, command: list[str]) -> str:
+        status = subprocess.run(["git", "-C", str(project), "status", "--porcelain"], text=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout
+        status = "\n".join(line for line in status.splitlines() if ".planning/" not in line)
+        diff = subprocess.run(["git", "-C", str(project), "diff", "--binary", "HEAD", "--", ".",
+                               ":(exclude).planning/**"], text=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout
+        inputs = []
+        for option in ("--file", "--contract"):
+            if option in command and command.index(option) + 1 < len(command):
+                path = Path(command[command.index(option) + 1])
+                try:
+                    inputs.append(path.read_text())
+                except OSError:
+                    inputs.append("<missing>")
+        payload = json.dumps(command, ensure_ascii=False) + "\n" + status + "\n" + diff + "\n".join(inputs)
+        return hashlib.sha256(payload.encode()).hexdigest()
 
     def _checked(self, command: list[str], operation: str) -> None:
         proc = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -168,4 +348,7 @@ class Application:
         if "persistence dependency" in lowered:
             return "E510_BOUNDARY_VIOLATION"
         return {"red": "E311_INVALID_RED", "green": "E313_INVALID_GREEN",
+                "contract-check": "E302_INVALID_REQUIREMENT_CONTRACT",
+                "contract-review-check": "E303_CONTRACT_REVIEW_FAILED",
+                "implementation-review-check": "E402_IMPLEMENTATION_REVIEW_FAILED",
                 "impact-check": "E301_INVALID_IMPACT_MAP"}.get(operation, "E900_COMMAND_FAILED")

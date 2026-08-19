@@ -15,11 +15,11 @@ def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(prog="works")
     root.add_argument("--project", default=".")
     sub = root.add_subparsers(dest="action", required=True)
-    for name in ("doctor", "init", "status"):
+    for name in ("doctor", "init", "status", "recover"):
         sub.add_parser(name)
-    reqs = sub.add_parser("set-reqs")
-    reqs.add_argument("--req", action="append", required=True)
-    for name in ("tdd-init", "probe", "impact-init", "impact-check", "red", "green", "verify", "accept"):
+    for name in ("tdd-init", "probe", "contract-init", "contract-check", "contract-review-init",
+                 "contract-review-check", "impact-init", "impact-check", "red", "green", "finalize",
+                 "implementation-review-init", "implementation-review-check", "reopen", "note"):
         command = sub.add_parser(name)
         command.add_argument("arguments", nargs=argparse.REMAINDER)
     return root
@@ -36,8 +36,8 @@ def main(argv: list[str] | None = None) -> int:
             result = app.init(project)
         elif args.action == "status":
             result = app.status(project)
-        elif args.action == "set-reqs":
-            result = app.set_requirements(project, args.req)
+        elif args.action == "recover":
+            result = app.recover(project)
         else:
             raw = args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
             result = app.run(project, args.action, raw)

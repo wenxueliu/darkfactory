@@ -38,7 +38,7 @@ Green 必须使用与 Red 完全相同的命令。Red 测试哈希不能变化�
 
 ## Verify
 
-最终 verify 按固定 Req 顺序：
+最终 `finalize` 先按固定 Req 顺序调用底层 verify：
 
 - 校验 baseline、Red、Green、日志和报告哈希；
 - 校验 checkpoint 前驱链；
@@ -46,6 +46,6 @@ Green 必须使用与 Red 完全相同的命令。Red 测试哈希不能变化�
 - 重跑每个精确测试命令并要求目标 testcase 通过；
 - 确认当前生产指纹等于最后 Green。
 
-任何缺链、旧报告、测试弱化、选择器变化、Green 后生产修改或禁用测试都会失败。
+随后执行 `requirement-contract.json` 中全部验收命令。任何缺链、旧报告、测试弱化、选择器变化、Green 后生产修改、禁用测试或验收命令失败都会使 finalize 失败。
 
-Evidence 是不可变事实，但不能单独表示流程完成；`state.json` 根据完整证据和 acceptance 最新结果推导 `COMPLETE`。
+Evidence 不能单独表示流程完成；只有 `tdd-verify.json` 与 `final-verification.json` 都通过时，状态才是 `COMPLETE`。
