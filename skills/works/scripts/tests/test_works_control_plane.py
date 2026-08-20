@@ -173,7 +173,7 @@ class StateMachineTest(unittest.TestCase):
             app.run(root, "contract-init", [])
             authored = app.status(root)
             self.assertEqual(authored["next_action"]["id"], "complete-contract-and-check")
-            self.assertEqual(authored["next_action"]["subagent"], "contract-author")
+            self.assertEqual(authored["next_action"]["subagent"], "general")
             self.assertEqual(authored["next_action"]["reference"], "references/contract-author.md")
             contract = plan / "requirement-contract.json"
             contract.write_text(json.dumps({

@@ -125,7 +125,7 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
 
 def next_action(action_id: str, state: dict) -> dict:
     subagents = {
-        "complete-contract-and-check": "contract-author",
+        "complete-contract-and-check": "general",
         "run-fresh-contract-verifier-and-check": "contract-reviewer",
         "run-fresh-implementation-verifier-and-check": "implementation-reviewer",
     }

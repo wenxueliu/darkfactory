@@ -1,6 +1,6 @@
 # Contract author handoff
 
-`contract-init` 后必须通过 OpenCode Task 工具启动已注册的 `contract-author` subagent（项目定义：`.opencode/agents/contract-author.md`）。作者负责把 requirement 和仓库事实转换为完整契约，但不写文件、不调用 Works CLI、不推进状态。
+`contract-init` 后必须读取本文件，并通过 OpenCode Task 工具把本文件的全部规则交给一个 fresh 内置 `general` subagent。该 subagent 在本次 Task 中充当 contract-author，负责把 requirement 和仓库事实转换为完整契约，但不写文件、不调用 Works CLI、不推进状态。Works 不依赖项目级 agent 注册文件。
 
 ## 输入
 
@@ -31,9 +31,9 @@
 
 ## Works 主 Agent职责
 
-1. 调用 Task 时将 subagent type 明确设为 `contract-author`，prompt 列出上述输入的绝对路径，并要求读取这些文件后返回 payload。
+1. 调用 Task 时将 subagent type 明确设为 `general`，prompt 要求先完整读取本文件，再列出上述输入的绝对路径并要求返回 payload。
 2. 同步等待 Task 完成，从 Task result 获取作者响应；在收到非空结果前禁止写契约、运行 `contract-check` 或推进状态。启动 child session 不等于收到结果。
-3. 若 Task 失败、返回为空、被中断或响应没有且仅有一个 JSON 对象，废弃该 child session，启动新的 fresh `contract-author`；不得由主 Agent代写 payload。
+3. 若 Task 失败、返回为空、被中断或响应没有且仅有一个 JSON 对象，废弃该 child session，启动新的 fresh `general` author；不得由主 Agent代写 payload。
 4. 校验响应只有一个 JSON 对象，且顶层字段严格为 `version`、`requirement`、`requirements`、`acceptance_commands`。
 5. 确认 `version == 1`，`requirement` 与空模板完全一致；不得自行补全缺失行为或修改作者语义。
 6. 校验通过后，用该对象整体覆盖已初始化的 `requirement-contract.json`。
