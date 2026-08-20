@@ -17,6 +17,7 @@ import requirement_contract
 import service_boundary
 import baseline
 from works_core.application import Application, WorksError
+from works_core.common import windows_command
 from works_core.discovery import discover, discover_maven_command
 from works_core import state as store
 
@@ -956,6 +957,33 @@ class DiscoveryTest(unittest.TestCase):
             root = Path(directory)
             (root / "mvnw").write_text("#!/bin/sh\n")
             self.assertEqual(discover_maven_command(root, "nt", {}), "mvn")
+
+
+class CrossPlatformCommandTest(unittest.TestCase):
+    def test_linux_executes_maven_argv_directly(self):
+        command = ["/opt/apache-maven/bin/mvn", "-Dtest=ATest#works", "test"]
+        self.assertEqual(windows_command(command, "posix", {}), command)
+
+    def test_windows_runs_maven_cmd_through_comspec_with_quoted_path(self):
+        command = [r"C:\Program Files\Apache Maven\bin\mvn.cmd",
+                   "-Dtest=ATest#works", "test"]
+
+        resolved = windows_command(
+            command, "nt", {"COMSPEC": r"C:\Windows\System32\cmd.exe"}
+        )
+
+        self.assertEqual(
+            resolved,
+            'C:\\Windows\\System32\\cmd.exe /d /s /c '
+            '""C:\\Program Files\\Apache Maven\\bin\\mvn.cmd" '
+            '-Dtest=ATest#works test"',
+        )
+
+    def test_windows_supports_maven_bat_and_comspec_casing(self):
+        resolved = windows_command(
+            [r"C:\Maven\bin\mvn.bat", "test"], "nt", {"ComSpec": "custom-cmd.exe"}
+        )
+        self.assertEqual(resolved, 'custom-cmd.exe /d /s /c "C:\\Maven\\bin\\mvn.bat test"')
 
 
 if __name__ == "__main__":

@@ -5,7 +5,9 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
+from collections.abc import Mapping
 
 IGNORED_DIRS = {".git", ".planning", "target", "build", ".gradle", "node_modules"}
 
@@ -39,8 +41,16 @@ def sha(path: Path) -> str:
     return digest.hexdigest()
 
 
-def windows_command(command: list[str]) -> list[str]:
-    """Wrap a .cmd/.bat argv[0] for CreateProcess on Windows; identity elsewhere."""
-    if os.name == "nt" and command and command[0].lower().endswith((".cmd", ".bat")):
-        return ["cmd", "/c", *command]
+def windows_command(command: list[str], platform: str | None = None,
+                    env: Mapping[str, str] | None = None) -> list[str] | str:
+    """Build a safe CreateProcess argv for Windows batch files."""
+    platform = platform or os.name
+    env = os.environ if env is None else env
+    if platform == "nt" and command and command[0].lower().endswith((".cmd", ".bat")):
+        comspec = env.get("COMSPEC") or env.get("ComSpec") or "cmd.exe"
+        # cmd /s strips the outer quote pair. Keep the batch path and every Maven
+        # argument encoded by Python's Windows argv quoting rules inside that pair.
+        command_line = subprocess.list2cmdline(command)
+        launcher = subprocess.list2cmdline([comspec, "/d", "/s", "/c"])
+        return f'{launcher} "{command_line}"'
     return command
