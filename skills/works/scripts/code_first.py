@@ -9,7 +9,7 @@ from pathlib import Path
 import time
 
 from works_core.common import atomic_json, sha
-from tdd_slice import (
+from baseline import (
     changed,
     fingerprints,
     is_test,

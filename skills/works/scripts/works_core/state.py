@@ -124,6 +124,11 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
 
 
 def next_action(action_id: str, state: dict) -> dict:
+    subagents = {
+        "complete-contract-and-check": "contract-author",
+        "run-fresh-contract-verifier-and-check": "contract-reviewer",
+        "run-fresh-implementation-verifier-and-check": "implementation-reviewer",
+    }
     skills = {
         "run-fresh-contract-verifier-and-check": "impl-validator",
         "revise-contract-and-rerun-review": "impl-validator",
@@ -131,7 +136,7 @@ def next_action(action_id: str, state: dict) -> dict:
         "diagnose-review-and-reopen-requirement": "impl-validator",
     }
     references = {
-        "complete-contract-and-check": "references/exploration.md",
+        "complete-contract-and-check": "references/contract-author.md",
         "complete-impact-map-and-check": "references/exploration.md",
         "checkpoint-current-implementation": "references/code-first.md",
         "test-current-implementation": "references/code-first.md",
@@ -149,14 +154,15 @@ def next_action(action_id: str, state: dict) -> dict:
     }
     return {
         "id": action_id, "state": state.get("state"), "req": state.get("current_req"),
-        "skill": skills.get(action_id), "reference": references.get(action_id),
+        "skill": skills.get(action_id), "subagent": subagents.get(action_id),
+        "reference": references.get(action_id),
         "success_evidence": evidence.get(action_id),
     }
 
 
 # logical next-action id -> the single CLI operation that completes it
 NEXT_ACTION_OP = {
-    "tdd-init": "tdd-init",
+    "baseline-init": "baseline-init",
     "probe": "probe",
     "contract-init": "contract-init",
     "complete-contract-and-check": "contract-check",
@@ -179,7 +185,7 @@ NEXT_ACTION_OP = {
 
 def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
     if stage == "SETUP_REQUIRED":
-        return "tdd-init" if not (evidence / "baseline.json").exists() else "probe"
+        return "baseline-init" if not (evidence / "baseline.json").exists() else "probe"
     if stage == "CONTRACT_REQUIRED":
         return "contract-init" if not (plan / "requirement-contract.json").exists() else "complete-contract-and-check"
     if stage == "CONTRACT_REVIEW_REQUIRED":

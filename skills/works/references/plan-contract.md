@@ -6,25 +6,27 @@
 SETUP_REQUIRED
   -> baseline + successful probe (initialize Git when absent; run no tests)
 CONTRACT_REQUIRED
+  -> empty template
+  -> fresh read-only contract-author payload
   -> validated requirement-contract.json
 CONTRACT_REVIEW_REQUIRED
   -> fresh verifier confirms contract matches requirement.md
 IMPACT_REQUIRED
   -> validated impact-map.json
-READY_FOR_RED
-  -> current Req target assertion fails
 READY_FOR_IMPLEMENTATION
-  -> same target passes after implementation
+  -> current Req production change is frozen as an implementation checkpoint
+READY_FOR_TEST
+  -> current Req target testcase executes and passes
 READY_FOR_ACCEPTANCE
   -> finalize replays every Req and every contract acceptance command
-  -> failure: append a repair Req for the affected behavior and establish a new Red/Green
+  -> failure: append a repair Req for the affected behavior and repeat implementation/test
 IMPLEMENTATION_REVIEW_REQUIRED
   -> fresh verifier confirms each Req has matching implementation and tests
-  -> failure: append a repair Req and repeat Red/Green/finalize/review
+  -> failure: append a repair Req and repeat implementation/test/finalize/review
 COMPLETE
 ```
 
-`next_action` 始终只有一个。复合动作如 `establish-red-for-current-requirement` 表示模型先新增或复用当前行为测试，再立刻调用对应 CLI 门禁，不在两步之间重新规划或停止。
+`next_action` 始终只有一个。实现和测试分别由 `implement` 与 `test` 门禁记录；完成一个动作后立即重新读取状态，不在中间建立第二套计划。
 
 关键文件：
 
@@ -39,9 +41,9 @@ decisions.jsonl                    implementation choices
 summaries/                         small phase recovery summaries
 evidence/baseline.json             initial worktree snapshot
 evidence/preflight.json            baseline load/hash proof (no tests run)
-evidence/slices/<REQ>/red.json      failing behavior evidence
-evidence/slices/<REQ>/green.json    passing implementation evidence
-evidence/tdd-verify.json            replay of every Req test
+evidence/slices/<REQ>/implementation.json  frozen production change
+evidence/slices/<REQ>/test.json            passing testcase evidence
+evidence/code-first-verify.json            replay of every Req test
 evidence/final-verification.json    all contract commands and exits
 implementation-review.json         independent requirement/implementation review
 ```

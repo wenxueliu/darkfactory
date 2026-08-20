@@ -72,8 +72,8 @@ def main() -> int:
     base.mkdir(parents=True, exist_ok=True)
     make_repo(base, "service-boundary", "Add /users/{id}/label by reusing UserService. Never inject UserMapper into the controller.")
     make_repo(base, "dirty-worktree", "Change the displayed user label to uppercase.", dirty=True)
-    make_repo(base, "invalid-red", "Return 'missing' for id zero. The first attempted test has a broken fixture and must not count as Red.")
-    make_repo(base, "skip-tests", "Add a user label prefix with strict test-first evidence.", skipped=True)
+    make_repo(base, "broken-test", "Return 'missing' for id zero. The first attempted test has a broken fixture and must not count as valid evidence.")
+    make_repo(base, "skip-tests", "Add a user label prefix with strict implementation and test evidence.", skipped=True)
     print(base)
     return 0
 

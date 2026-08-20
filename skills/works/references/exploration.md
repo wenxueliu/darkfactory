@@ -8,13 +8,13 @@
 - **调用链**：入口 → Service → Mapper/Repository 的完整路径。
 - **本类方法与 Service API**：将要修改的类自身是否已有等价能力；只有本类没有时，再查同业务对象的同层 Service API。
 - **持久层**：Mapper/DAO/Repository 类型与依赖声明。
-- **测试 seam**：哪个已存在的公共行为边界应被测试，以及 Red 阶段要创建的 Maven 测试文件路径。
+- **测试 seam**：哪个已存在的公共行为边界应被测试，以及实现后要创建或复用的 Maven 测试文件路径。
 
 ## 方法
 
 1. 用 git / 文件搜索定位符号：类名、方法名、注解、`import` 依赖声明。
 2. 顺调用链追踪：从入口的依赖字段、构造器、方法体向下走，直到数据层。对每个计划修改的类，先阅读本类全部已有方法及其调用方，记录能覆盖需求的复用候选；本类无候选时才向外查同层 Service，最后才查 Mapper/Repository。
-3. 找测试 seam：把已存在的 Controller/Service/API 公共边界记为 `boundary`，把 Red 阶段要创建的 `src/test/java/` 文件记为 `planned_test`。参考现有同类测试的结构和断言，但不要把未创建的测试文件当作已存在证据。
+3. 找测试 seam：把已存在的 Controller/Service/API 公共边界记为 `boundary`，把实现后要创建或复用的 `src/test/java/` 文件记为 `planned_test`。参考现有同类测试的结构和断言，但不要把未创建的测试文件当作已存在证据。
 4. 交叉验证：至少两种方式（如 grep + 读文件）确认一个结论，再写进 contract/impact-map。
 
 ## 无人化硬约束

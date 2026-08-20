@@ -17,15 +17,15 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实
 <python> <skill-dir>/scripts/works.py --project <project> status
 ```
 
-只完成返回的结构化 `next_action.id`。它同时给出当前 Req、应加载的 Skill（仅审查门）或应读的 reference、以及成功证据。动作包含“编辑并运行门禁”时，把两者视为一个不可分割步骤；完成后立即再次运行 `status`。持续执行，直到 `state` 为 `COMPLETE`。命令失败时读取输出、记录发现、改变工作区或策略后重试；CLI 会拒绝完全相同的失败重放。
+只完成返回的结构化 `next_action.id`。它同时给出当前 Req、应启动的 fresh subagent、应加载的 Skill（仅审查门）或应读的 reference，以及成功证据。动作包含“subagent payload→写入→运行门禁”时，把它们视为一个不可分割步骤；完成后立即再次运行 `status`。持续执行，直到 `state` 为 `COMPLETE`。命令失败时读取输出、记录发现、改变工作区或策略后重试；CLI 会拒绝完全相同的失败重放。
 
 会话中断或上下文压缩后先运行 `recover`。探索得到可复用事实或关键选择时，用 `note` 写入轻量磁盘记忆；不要建立第二套 task plan。细节见 [Persistent memory](references/persistent-memory.md)。
 
 ## 自主流程
 
-1. `doctor`、`init`、`tdd-init`。
+1. `doctor`、`init`、`baseline-init`。
 2. 运行 `probe` 加载并校验 baseline；若项目尚未由 Git 管理，先执行 `git init`、`git add .`和 `git commit -m "init commit"`。此阶段不执行任何测试。
-3. `contract-init` 后读取完整 requirement 和仓库，把所有独立行为写入 `requirement-contract.json`；为每个 Req 写可观察验收标准，并给出覆盖全部 Req 的真实验收命令；运行 `contract-check`。
+3. `contract-init` 后按 [Contract author handoff](references/contract-author.md) 启动一个全新上下文、只读的 `contract-author` subagent。它读取完整 requirement 和仓库，只返回完整 `contract_payload`；Works 主 agent 校验后整体写入 `requirement-contract.json`，再运行 `contract-check`。失败则启动新的 author，不在原上下文中修补。
 4. 运行 `contract-review-init`，启动一个全新上下文、只读的校验 subagent，并加载 `impl-validator`。它只读取 requirement 和 requirement contract，返回带 `review_payload` 的审查报告；Works 主 agent 仅将该 payload 写入已初始化的 `contract-review.json`，再运行 `contract-review-check`。失败则修订契约并重新审查。
 5. `impact-init` 后从仓库填写 `impact-map.json`，运行 `impact-check`。
 6. 最小实现当前 Req：先复用当前类已有的等价方法，再考虑同层 Service API，只有都不能满足时才新增对 Mapper/Repository 的调用；运行 `implement` 冻结实现 checkpoint。
@@ -43,7 +43,7 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实
 <python> <skill-dir>/scripts/works.py --project <project> recover
 <python> <skill-dir>/scripts/works.py --project <project> note -- --kind finding --text "<fact>" [--req <REQ>]
 <python> <skill-dir>/scripts/works.py --project <project> note -- --kind decision --text "<choice>" [--req <REQ>]
-<python> <skill-dir>/scripts/works.py --project <project> tdd-init
+<python> <skill-dir>/scripts/works.py --project <project> baseline-init
 <python> <skill-dir>/scripts/works.py --project <project> probe
 <python> <skill-dir>/scripts/works.py --project <project> contract-init
 <python> <skill-dir>/scripts/works.py --project <project> contract-check

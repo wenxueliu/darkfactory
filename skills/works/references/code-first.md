@@ -1,5 +1,7 @@
 # Code-first evidence
 
+`baseline-init` 先冻结初始生产指纹并建立 sequence 0 checkpoint；它不记录测试指纹，也不运行测试。后续证据链从该生产基线开始。
+
 每个 Req 先实现、后测试，不建立 Red 证据：
 
 1. 完成当前 Req 的最小生产代码修改。

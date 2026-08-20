@@ -17,7 +17,7 @@ import code_first
 import requirement_contract
 import review_evidence
 import service_boundary
-import tdd_slice
+import baseline
 from works_core.application import Application, WorksError
 from works_core.discovery import discover, discover_maven_command
 from works_core import state as store
@@ -39,6 +39,8 @@ class BaselineProbeTest(unittest.TestCase):
             initialized = Application(SCRIPTS).init(root)
 
             self.assertEqual(initialized["state"], "SETUP_REQUIRED")
+            self.assertEqual(initialized["next_action"]["id"], "baseline-init")
+            self.assertEqual(initialized["allowed_actions"], ["baseline-init"])
             self.assertFalse(initialized["discovery"]["git_managed"])
             self.assertTrue(Path(initialized["plan_dir"]).is_dir())
 
@@ -46,39 +48,40 @@ class BaselineProbeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             state = root / ".planning" / "evidence"
-            with mock.patch.object(tdd_slice.subprocess, "run") as run:
+            with mock.patch.object(baseline.subprocess, "run") as run:
                 run.return_value.returncode = 128
-                result = tdd_slice.cmd_init(type("Args", (), {
+                result = baseline.cmd_init(type("Args", (), {
                     "project_root": str(root), "state_dir": str(state),
                 })())
 
             self.assertEqual(result, 0)
-            baseline = json.loads((state / "baseline.json").read_text())
-            self.assertFalse(baseline["git_managed"])
-            self.assertEqual(baseline["git_status"], [])
+            baseline_data = json.loads((state / "baseline.json").read_text())
+            self.assertFalse(baseline_data["git_managed"])
+            self.assertEqual(baseline_data["git_status"], [])
+            self.assertNotIn("tests", baseline_data)
 
     def test_probe_only_loads_locked_baseline_without_running_tests(self):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
-            baseline = {"version": 1, "project_root": directory, "production": {}, "tests": {}}
+            baseline_data = {"version": 1, "project_root": directory, "production": {}}
             baseline_file = state / "baseline.json"
-            baseline_file.write_text(json.dumps(baseline))
-            (state / "baseline.sha256").write_text(tdd_slice.sha(baseline_file) + "\n")
+            baseline_file.write_text(json.dumps(baseline_data))
+            (state / "baseline.sha256").write_text(baseline.sha(baseline_file) + "\n")
 
-            with mock.patch.object(tdd_slice.subprocess, "run") as run:
+            with mock.patch.object(baseline.subprocess, "run") as run:
                 run.return_value.returncode = 0
-                result = tdd_slice.cmd_probe(type("Args", (), {"state_dir": str(state)})())
+                result = baseline.cmd_probe(type("Args", (), {"state_dir": str(state)})())
 
             self.assertEqual(result, 0)
             run.assert_called_once_with(
                 ["git", "-C", directory, "rev-parse", "--is-inside-work-tree"],
-                stdout=tdd_slice.subprocess.DEVNULL,
-                stderr=tdd_slice.subprocess.DEVNULL,
+                stdout=baseline.subprocess.DEVNULL,
+                stderr=baseline.subprocess.DEVNULL,
             )
             preflight = json.loads((state / "preflight.json").read_text())
             self.assertTrue(preflight["passed"])
             self.assertEqual(preflight["source"], "baseline")
-            self.assertEqual(preflight["baseline_sha256"], tdd_slice.sha(baseline_file))
+            self.assertEqual(preflight["baseline_sha256"], baseline.sha(baseline_file))
             self.assertFalse(preflight["git_initialized"])
 
     def test_probe_initializes_and_commits_an_unmanaged_project(self):
@@ -86,14 +89,14 @@ class BaselineProbeTest(unittest.TestCase):
             state = Path(directory)
             baseline_file = state / "baseline.json"
             baseline_file.write_text(json.dumps({
-                "version": 1, "project_root": directory, "production": {}, "tests": {},
+                "version": 1, "project_root": directory, "production": {},
             }))
-            (state / "baseline.sha256").write_text(tdd_slice.sha(baseline_file) + "\n")
+            (state / "baseline.sha256").write_text(baseline.sha(baseline_file) + "\n")
             results = [mock.Mock(returncode=128), mock.Mock(returncode=0, stdout=""),
                        mock.Mock(returncode=0, stdout=""), mock.Mock(returncode=0, stdout="")]
 
-            with mock.patch.object(tdd_slice.subprocess, "run", side_effect=results) as run:
-                result = tdd_slice.cmd_probe(type("Args", (), {"state_dir": str(state)})())
+            with mock.patch.object(baseline.subprocess, "run", side_effect=results) as run:
+                result = baseline.cmd_probe(type("Args", (), {"state_dir": str(state)})())
 
             self.assertEqual(result, 0)
             self.assertEqual(run.call_args_list[1].args[0], ["git", "-C", directory, "init"])
@@ -107,12 +110,12 @@ class BaselineProbeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
             (state / "baseline.json").write_text(json.dumps({
-                "version": 1, "project_root": directory, "production": {}, "tests": {},
+                "version": 1, "project_root": directory, "production": {},
             }))
             (state / "baseline.sha256").write_text("stale\n")
 
             with self.assertRaisesRegex(SystemExit, "baseline hash lock mismatch"):
-                tdd_slice.cmd_probe(type("Args", (), {"state_dir": str(state)})())
+                baseline.cmd_probe(type("Args", (), {"state_dir": str(state)})())
 
 
 class ProductionFingerprintTest(unittest.TestCase):
@@ -128,7 +131,7 @@ class ProductionFingerprintTest(unittest.TestCase):
                 target.write_text("generated\n")
             (root / "module.iml").write_text("generated\n")
 
-            production = tdd_slice.fingerprints(root, production=True)
+            production = baseline.fingerprints(root, production=True)
 
             self.assertEqual(set(production), {"Main.java"})
 
@@ -139,11 +142,11 @@ class ProductionFingerprintTest(unittest.TestCase):
             "module/.classpath/generated.xml": "old",
             ".idea/workspace.xml": "old",
         }
-        self.assertEqual(tdd_slice.normalized_production(values), {"Main.java": "source"})
+        self.assertEqual(baseline.normalized_production(values), {"Main.java": "source"})
 
     def test_keeps_real_production_changes(self):
         self.assertEqual(
-            tdd_slice.normalized_production({"src/main/java/Main.java": "changed"}),
+            baseline.normalized_production({"src/main/java/Main.java": "changed"}),
             {"src/main/java/Main.java": "changed"},
         )
 
@@ -168,6 +171,10 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(updated["state"], "CONTRACT_REQUIRED")
             self.assertEqual(updated["next_action"]["id"], "contract-init")
             app.run(root, "contract-init", [])
+            authored = app.status(root)
+            self.assertEqual(authored["next_action"]["id"], "complete-contract-and-check")
+            self.assertEqual(authored["next_action"]["subagent"], "contract-author")
+            self.assertEqual(authored["next_action"]["reference"], "references/contract-author.md")
             contract = plan / "requirement-contract.json"
             contract.write_text(json.dumps({
                 "version": 1,
@@ -193,14 +200,14 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(updated["next_action"]["id"], "impact-init")
             self.assertTrue((plan / "summaries" / "contract-check.json").is_file())
 
-    def test_invalid_transition_blocks_red(self):
+    def test_invalid_transition_blocks_implementation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             project_fixture(root)
             app = Application(SCRIPTS)
             app.init(root)
             with self.assertRaises(WorksError) as caught:
-                app.run(root, "red", [])
+                app.run(root, "implement", [])
             self.assertEqual(caught.exception.code, "E202_INVALID_STATE")
 
     def test_failed_finalization_exposes_autonomous_repair_action(self):

@@ -1,6 +1,6 @@
 # 失败诊断（无人化）
 
-`red`/`green`/`finalize` 失败时，从真实命令输出定位根因、改策略重试。这是内置 reference，不加载外部 `sw-systematic-debugging` Skill。
+`implement`/`test`/`finalize` 失败时，从真实命令输出定位根因、改策略重试。这是内置 reference，不加载外部 `sw-systematic-debugging` Skill。
 
 ## 方法
 
@@ -10,9 +10,10 @@
 | 错误码 | 含义 | 修正方向 |
 |---|---|---|
 | `E203_TESTS_SKIPPED` | 测试被跳过 | 补 `-DskipTests=false -Dmaven.test.skip=false` 等覆盖 |
-| `E312_PRODUCTION_BEFORE_RED` | Red 前生产已变 | 回退生产改动，先立 Red |
+| `E314_INVALID_IMPLEMENTATION` | 实现 checkpoint 无有效生产变更 | 完成当前 Req 的最小生产修改后重试 |
+| `E315_INVALID_TEST` | 目标测试未真实执行并通过 | 修正实现、测试、fixture 或命令后重试 |
+| `E316_PRODUCTION_AFTER_IMPLEMENTATION` | 实现 checkpoint 后生产代码又变化 | 重新建立 repair Req 的实现与测试证据链 |
 | `E510_BOUNDARY_VIOLATION` | 入口直连持久层 | 复用/扩展 Service API |
-| `E311`/`E313` | Red/Green 无效 | 修正断言、fixture 或编译错后重试 |
 | `E901_REPEAT_FAILURE` | 完全相同失败重放 | 必须改变工作区或策略 |
 
 3. **单变量假设**：一次只改一个东西，验证一个假设（编译？fixture？断言？环境？）。

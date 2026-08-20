@@ -8,8 +8,9 @@
       "prompt": "/works。根据根目录 requirement.md 全自动完成，不要询问我。",
       "assertions": [
         "works 保持唯一流程控制；审查使用全新只读 subagent，subagent 返回 payload 而 Works 负责落盘",
+        "contract-init 后由全新只读 contract-author subagent 返回完整 payload，Works 负责校验和写入",
         "requirement-contract 覆盖文档中的全部独立行为",
-        "每个 Req 都有 Red、Green 和 replay",
+        "每个 Req 都有 implementation、test 和 replay 证据",
         "契约验收和独立实现审查都通过后才进入 COMPLETE"
       ]
     },
@@ -19,7 +20,7 @@
       "assertions": [
         "契约保存三个有序 Req",
         "验收命令包含受影响模块和依赖模块",
-        "每个 Green 后自动进入下一 Req",
+        "每个 Req 测试 checkpoint 后自动进入下一 Req",
         "中途没有请求人工确认"
       ]
     },
@@ -27,9 +28,9 @@
       "id": 3,
       "prompt": "/works。第一次新测试会因为 fixture 配置错误而失败，请自行诊断直到完成。",
       "assertions": [
-        "fixture 或编译错误不生成有效 Red",
+        "fixture 或编译错误不生成有效 test 证据",
         "模型依据输出修正后重新运行",
-        "目标 testcase assertion failure 后才进入实现",
+        "目标 testcase 修复后必须真实执行并通过",
         "最终 finalize 通过"
       ]
     },
@@ -59,17 +60,17 @@
       "assertions": [
         "每次 status 只有一个 next_action",
         "四个行为均映射到 Req 和验收标准",
-        "任务后半段仍保持相同 TDD 与验收范围",
+        "任务后半段仍保持相同 code-first 证据与验收范围",
         "没有阶段性总结后停止"
       ]
     },
     {
       "id": 7,
-      "prompt": "/works。探索、TDD、调试和验证使用内置 reference，审查使用 impl-validator subagent，但不要询问我。",
+      "prompt": "/works。探索、实现后测试、调试和验证使用内置 reference，审查使用 impl-validator subagent，但不要询问我。",
       "assertions": [
         "内置 reference 或 impl-validator 只按当前阶段使用，works state 仍是唯一流程状态",
         "内置 reference 不要求人工确认，全程无用户提问",
-        "reference 的结论不能替代 red、green 或 finalize 证据",
+        "reference 的结论不能替代 implementation、test 或 finalize 证据",
         "开发 subagent 不控制状态，两个审查使用全新只读 subagent，审查 JSON 由 Works 主 agent 写入"
       ]
     },
@@ -77,7 +78,7 @@
       "id": 8,
       "prompt": "/works。任务很长，可能发生上下文压缩；失败时不要重复无效动作。",
       "assertions": [
-        "status 返回包含 id、req、skill、reference 和 success_evidence 的结构化 next_action",
+        "status 返回包含 id、req、skill、subagent、reference 和 success_evidence 的结构化 next_action",
         "失败动作写入 activity.jsonl 和 state attempts",
         "相同命令与工作区的失败重放被 E901 阻止",
         "recover 返回最后活动、最后失败和当前 next_action",
@@ -92,7 +93,7 @@
         "contract-check 后进入 CONTRACT_REVIEW_REQUIRED",
         "契约审查失败时修订契约并启动新的 verifier",
         "finalize 后进入 IMPLEMENTATION_REVIEW_REQUIRED",
-        "实现审查失败时 reopen 对应 Req 并重新完成 Red/Green/finalize",
+        "实现审查失败时 reopen 对应 Req 并重新完成 implementation/test/finalize",
         "只有独立实现审查 PASS 才进入 COMPLETE"
       ]
     }

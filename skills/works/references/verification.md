@@ -4,7 +4,7 @@
 
 ## 证据优先
 
-- 完成声明只由 works CLI 记录的事实推进：`tdd-verify.json`（重放每个 Req 测试）+ `final-verification.json`（契约里每条验收命令真实退出 0）。
+- 完成声明只由 works CLI 记录的事实推进：`code-first-verify.json`（重放每个 Req 测试）+ `final-verification.json`（契约里每条验收命令真实退出 0）。
 - 文字结论不是证据；只有退出码、JUnit 和证据文件算数。
 
 ## finalize 做什么
@@ -15,7 +15,7 @@
 2. 检查 Service 边界（无新增入口→持久层依赖）。
 3. 跑契约里每条验收命令，写入 `acceptance-*.log`。
 
-模型在 finalize 前只需确认：每个 Req 都有 Red + Green，且当前生产指纹等于最后 Green（见 [TDD evidence](tdd-evidence.md)）。
+模型在 finalize 前只需确认：每个 Req 都有 implementation + test 证据，且当前生产指纹等于最后 test checkpoint（见 [Code-first evidence](code-first.md)）。
 
 ## 无人化硬约束
 

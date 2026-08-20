@@ -5,14 +5,14 @@
 - 使用 OpenCode 原生 `skill` 工具加载 `works`；由 works 按 `skill-routing.md` 加载 `impl-validator`（审查门）或读内置 reference。
 - 使用 OpenCode 原生 read/edit/write/patch/bash 能力执行本 Skill。
 - 辅助 Skill 只提供当前阶段的方法；`state.json`、CLI 门禁和完成判定始终由 works 控制。
-- 开发阶段可使用 subagent；两个审查门必须使用全新上下文的只读 subagent。始终不使用人工确认。
+- `contract-init` 后必须使用 fresh 只读 contract-author；两个审查门必须分别使用另一个全新上下文的只读 reviewer。始终不使用人工确认。
 - 推荐模型配置为 `opencode-go/minimax-m2.7`；也可通过 `/connect` 连接 MiniMax 后用 `/models` 选择 M2.7。
 
 ## M2.7 discipline
 
 - 每次只关注 `status.next_action`、`current_req` 和该 Req 的相关 diff。
 - 不在对话中维护第二份计划；磁盘状态是唯一进度。
-- 一个 Green 后立即重新运行 `status`，不要总结或询问是否继续。
+- 一个 Req 的 test checkpoint 后立即重新运行 `status`，不要总结或询问是否继续。
 - 工具调用失败必须依据真实输出改变策略；不要把拟执行命令当成执行结果。
 - 长日志保存在 plan 中，只把失败摘要保留在当前上下文。
 

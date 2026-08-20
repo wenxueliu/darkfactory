@@ -26,8 +26,8 @@ Works 主 agent 必须校验 payload 是单一 JSON 对象，`version`、`type` 
 
 ## Implementation review
 
-只提供 `requirement.md`、`requirement-contract.json`、`impact-map.json`、最终 git diff、Red/Green/replay 和 `final-verification.json`。逐 Req 判断行为是否实现且有测试证据，在 `review_payload` 的 `implementation` 和 `tests` 中返回结构化位置证据：项目相对 `path`、有效 `line`、非空 `symbol` 和解释 Req 关联的 `reason`。CLI 会验证路径边界、文件存在性和行号。发现额外行为写入 `extra`。
+只提供 `requirement.md`、`requirement-contract.json`、`impact-map.json`、最终 git diff、implementation/test/replay 证据和 `final-verification.json`。逐 Req 判断行为是否实现且有测试证据，在 `review_payload` 的 `implementation` 和 `tests` 中返回结构化位置证据：项目相对 `path`、有效 `line`、非空 `symbol` 和解释 Req 关联的 `reason`。CLI 会验证路径边界、文件存在性和行号。发现额外行为写入 `extra`。
 
 每个 Req 还必须检查复用顺序：对 diff 中每个新增 Mapper/Repository 调用，先阅读所在类的已有方法，再查同层 Service API。若已有方法能以相同输入输出、过滤条件和副作用满足需求，直接调用持久层必须将该 Req 标为 `FAIL`，finding 指出应复用的类和方法。只有本类和同层 Service 都没有等价能力时，新增 Mapper/Repository 调用才可通过此项审查。
 
-若失败，works 对失败 Req 执行 `reopen`，完成新的 Red→Green 和 finalize 后，再启动新的 verifier。只有该审查通过，状态才能进入 `COMPLETE`。
+若失败，works 对失败 Req 执行 `reopen`，完成新的 implementation→test 和 finalize 后，再启动新的 verifier。只有该审查通过，状态才能进入 `COMPLETE`。

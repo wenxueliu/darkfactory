@@ -84,7 +84,7 @@ class Application:
         if operation not in current["allowed_actions"]:
             raise WorksError("E202_INVALID_STATE",
                              f"{operation} is not the next action; expected {current['next_action']['id']}")
-        if operation == "tdd-init" and (evidence / "baseline.json").exists():
+        if operation == "baseline-init" and (evidence / "baseline.json").exists():
             boundary = evidence / "service-boundary-baseline.json"
             if not boundary.exists():
                 self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
@@ -134,7 +134,7 @@ class Application:
             details = {"exit": proc.returncode, "output": proc.stdout[-4000:]}
             self._record_failure(plan, current, attempt_key, signature, operation, code, details)
             raise WorksError(code, f"{operation} failed", details)
-        if operation == "tdd-init":
+        if operation == "baseline-init":
             self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
                            "--project-root", current["project_root"], "--state-dir", str(evidence)], operation)
         elif operation == "contract-check":
@@ -195,10 +195,10 @@ class Application:
                     *[item for req in current["requirements"] for item in ("--req", req)]]
         if operation == "finalize":
             return []
-        action = "init" if operation == "tdd-init" else operation
-        runner = "code_first.py" if operation in {"implement", "test"} else "tdd_slice.py"
+        action = "init" if operation == "baseline-init" else operation
+        runner = "code_first.py" if operation in {"implement", "test"} else "baseline.py"
         command = [sys.executable, str(self.scripts / runner), action]
-        if operation == "tdd-init":
+        if operation == "baseline-init":
             command.extend(["--project-root", current["project_root"]])
         command.extend(["--state-dir", evidence, *raw])
         return command
@@ -319,8 +319,8 @@ class Application:
         lowered = output.lower()
         if "skip configuration" in lowered:
             return "E203_TESTS_SKIPPED"
-        if "production differs" in lowered:
-            return "E312_PRODUCTION_BEFORE_RED"
+        if "production changed after implementation checkpoint" in lowered:
+            return "E316_PRODUCTION_AFTER_IMPLEMENTATION"
         if "persistence dependency" in lowered:
             return "E510_BOUNDARY_VIOLATION"
         return {"implement": "E314_INVALID_IMPLEMENTATION", "test": "E315_INVALID_TEST",

@@ -1,6 +1,6 @@
 # Requirement contract
 
-`<plan>/requirement-contract.json` 是 requirement 到实现与验收的追踪契约。`contract-init` 创建空模板；模型读取明确的 requirement 和代码库后一次性补全，`contract-check` 校验结构与覆盖率。
+`<plan>/requirement-contract.json` 是 requirement 到实现与验收的追踪契约。`contract-init` 创建空模板；fresh `contract-author` subagent 读取明确的 requirement 和代码库后返回完整 payload，由 Works 主 agent 一次性写入；`contract-check` 校验结构与覆盖率。
 
 ```json
 {
