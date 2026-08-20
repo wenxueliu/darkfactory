@@ -401,6 +401,43 @@ class RequirementContractTest(unittest.TestCase):
             self.assertEqual(implementation["reuse"]["target"]["path"], "Controller.java")
             self.assertEqual(implementation["test_target"]["file"], "src/test/java/ATest.java")
 
+    def test_contract_paths_normalize_absolute_and_repository_prefixed_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory) / "repository"
+            project = repository / "service"
+            project.mkdir(parents=True)
+            existing = project / "src/main/java/Service.java"
+            existing.parent.mkdir(parents=True)
+            existing.write_text("class Service { void existing() {} }\n")
+            implementation = implementation_fixture()
+            implementation["entrypoint"] = {
+                "path": str(project / "src/main/java/NewController.java"), "symbol": "create",
+            }
+            implementation["reuse"]["target"] = {
+                "path": "repository/service/src/main/java/Service.java", "symbol": "existing",
+            }
+            implementation["test_target"]["file"] = (
+                "repository/service/src/test/java/NewControllerTest.java"
+            )
+            data = {"requirements": [{"implementation": implementation}]}
+
+            self.assertTrue(requirement_contract.normalize_project_paths(data, project))
+            self.assertEqual(
+                implementation["entrypoint"]["path"], "src/main/java/NewController.java"
+            )
+            self.assertEqual(
+                implementation["reuse"]["target"]["path"], "src/main/java/Service.java"
+            )
+            self.assertEqual(
+                implementation["test_target"]["file"], "src/test/java/NewControllerTest.java"
+            )
+
+    def test_contract_recognizes_windows_maven_absolute_path(self):
+        self.assertEqual(
+            requirement_contract.executable_name(r"C:\\apache-maven\\bin\\mvn.cmd"),
+            "mvn.cmd",
+        )
+
     def test_allows_a_planned_entrypoint_but_requires_existing_reuse_target(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

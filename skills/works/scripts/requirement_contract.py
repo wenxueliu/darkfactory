@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from pathlib import PureWindowsPath
 import re
 
 
@@ -99,7 +100,7 @@ def template(requirement: Path) -> dict:
 
 
 def normalize_project_paths(data: object, project: Path) -> bool:
-    """Canonicalize optional project-directory-prefixed paths in a contract in place."""
+    """Canonicalize paths under the discovered project root in place."""
     if not isinstance(data, dict) or not isinstance(data.get("requirements"), list):
         return False
     changed = False
@@ -114,10 +115,25 @@ def normalize_project_paths(data: object, project: Path) -> bool:
                 continue
             key = "path" if "path" in target else "file"
             relative = Path(target[key].replace("\\", "/"))
-            if relative.parts[:1] == (project.name,) and len(relative.parts) > 1:
-                target[key] = Path(*relative.parts[1:]).as_posix()
+            normalized: Path | None = None
+            if relative.is_absolute():
+                try:
+                    normalized = relative.resolve().relative_to(project.resolve())
+                except ValueError:
+                    pass
+            elif not (project / relative).exists() and project.name in relative.parts:
+                project_index = len(relative.parts) - 1 - relative.parts[::-1].index(project.name)
+                if project_index + 1 < len(relative.parts):
+                    normalized = Path(*relative.parts[project_index + 1:])
+            if normalized is not None and target[key] != normalized.as_posix():
+                target[key] = normalized.as_posix()
                 changed = True
     return changed
+
+
+def executable_name(command: str) -> str:
+    """Return an executable basename for either POSIX or Windows-style argv."""
+    return PureWindowsPath(command).name.lower()
 
 
 def validate(data: object, requirement: Path, project_root: Path | None = None) -> list[str]:
@@ -196,7 +212,7 @@ def validate(data: object, requirement: Path, project_root: Path | None = None) 
             if unknown:
                 errors.append(f"{prefix}.covers contains unknown IDs: {unknown!r}")
             covered.update(req for req in coverage if req in ids)
-            executable = Path(command[0]).name.lower() if command else ""
+            executable = executable_name(command[0]) if command else ""
             lifecycle = {"test", "verify", "package"} & set(command)
             if executable in {"mvn", "mvnw", "mvnw.cmd"} and lifecycle:
                 if "-DskipTests=false" not in command or "-Dmaven.test.skip=false" not in command:
