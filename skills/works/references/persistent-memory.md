@@ -7,7 +7,7 @@ state.json       唯一流程权威，含 attempts 和结构化 next_action
 activity.jsonl   每个动作的 passed / failed / blocked 记录
 findings.jsonl   代码探索事实
 decisions.jsonl  关键实现选择
-summaries/       contract、impact、implementation、test、finalize 等阶段小摘要
+summaries/       contract、implementation、test、finalize 等阶段小摘要
 evidence/        测试和验收事实
 ```
 

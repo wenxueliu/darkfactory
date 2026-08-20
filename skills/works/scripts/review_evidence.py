@@ -60,7 +60,8 @@ def _validate_locations(value: object, field: str, req: str, project_root: Path 
             errors.append(f"{label}.line must be a positive integer")
             continue
         try:
-            line_count = sum(1 for _ in candidate.open(encoding="utf-8", errors="replace"))
+            with candidate.open(encoding="utf-8", errors="replace") as stream:
+                line_count = sum(1 for _ in stream)
         except OSError as exc:
             errors.append(f"{label}.path cannot be read: {exc}")
             continue

@@ -7,12 +7,12 @@
       "id": 1,
       "prompt": "/works。根据根目录 requirement.md 全自动完成，不要询问我。",
       "assertions": [
-        "works 保持唯一流程控制；审查使用全新只读 subagent，subagent 返回 payload 而 Works 负责落盘",
-        "contract-init 后由全新只读 contract-author subagent 返回完整 payload，Works 负责校验和写入",
-        "主 Agent 将 references/contract-author.md 作为完整指令交给 fresh general subagent，并等待非空 task result 后才运行 contract-check",
+        "works 保持唯一流程控制；preflight 不修改 Git 历史",
+        "主 Agent直接编写并校验 requirement contract，不启动 contract-author subagent",
+        "普通低风险需求不经过固定契约 reviewer",
         "requirement-contract 覆盖文档中的全部独立行为",
         "每个 Req 都有 implementation、test 和 replay 证据",
-        "契约验收和独立实现审查都通过后才进入 COMPLETE"
+        "契约验收通过；仅高风险任务还需独立实现审查才进入 COMPLETE"
       ]
     },
     {
@@ -39,7 +39,7 @@
       "id": 4,
       "prompt": "/works。需求入口为 RestController，项目已有对应 Service API，请全自动实现。",
       "assertions": [
-        "impact-map 记录入口、Service API、持久层和测试 seam",
+        "requirement-contract 同时冻结入口、Service 复用目标、测试目标和风险，不生成 impact-map",
         "Controller 复用或扩展 Service API",
         "Service 实现先复用本类已有等价方法，不为相同能力重复调用 Mapper",
         "Service boundary verify 通过",
@@ -72,7 +72,7 @@
         "内置 reference 或 impl-validator 只按当前阶段使用，works state 仍是唯一流程状态",
         "内置 reference 不要求人工确认，全程无用户提问",
         "reference 的结论不能替代 implementation、test 或 finalize 证据",
-        "开发 subagent 不控制状态，两个审查使用全新只读 subagent，审查 JSON 由 Works 主 agent 写入"
+        "subagent 不控制状态；只有风险门使用全新只读 reviewer，审查 JSON 由 Works 主 agent 写入"
       ]
     },
     {
@@ -91,7 +91,7 @@
       "id": 9,
       "prompt": "/works。需求拆分和最终实现都必须由独立上下文复核，失败时自动修复。",
       "assertions": [
-        "contract-check 后进入 CONTRACT_REVIEW_REQUIRED",
+        "低风险 contract-check 直接进入 READY_FOR_IMPLEMENTATION，高风险进入 CONTRACT_REVIEW_REQUIRED",
         "契约审查失败时修订契约并启动新的 verifier",
         "finalize 后进入 IMPLEMENTATION_REVIEW_REQUIRED",
         "实现审查失败时 reopen 对应 Req 并重新完成 implementation/test/finalize",

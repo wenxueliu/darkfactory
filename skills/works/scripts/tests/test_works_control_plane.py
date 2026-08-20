@@ -12,7 +12,6 @@ from unittest import mock
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
-import impact_map
 import code_first
 import requirement_contract
 import review_evidence
@@ -27,6 +26,25 @@ def project_fixture(root: Path) -> None:
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     (root / "pom.xml").write_text("<project/>")
     (root / "requirement.md").write_text("# Requirement")
+    (root / "Controller.java").write_text("class Controller { void existing() {} }\n")
+
+
+def implementation_fixture(kind: str = "existing_method", risks: list[str] | None = None) -> dict:
+    absence = []
+    if kind == "persistence":
+        absence = [
+            {"scope": "current_class", "evidence": "Controller has no equivalent method",
+             "reason": "searched current class"},
+            {"scope": "same_layer_service", "evidence": "no matching service API",
+             "reason": "searched same-layer services"},
+        ]
+    return {
+        "entrypoint": {"path": "Controller.java", "symbol": "Controller"},
+        "reuse": {"kind": kind, "target": {"path": "Controller.java", "symbol": "existing"},
+                  "reason": "reuse the existing boundary", "absence_evidence": absence},
+        "test_target": {"file": "src/test/java/ATest.java", "selector": "ATest#works"},
+        "risks": risks or [],
+    }
 
 
 class BaselineProbeTest(unittest.TestCase):
@@ -39,8 +57,8 @@ class BaselineProbeTest(unittest.TestCase):
             initialized = Application(SCRIPTS).init(root)
 
             self.assertEqual(initialized["state"], "SETUP_REQUIRED")
-            self.assertEqual(initialized["next_action"]["id"], "baseline-init")
-            self.assertEqual(initialized["allowed_actions"], ["baseline-init"])
+            self.assertEqual(initialized["next_action"]["id"], "preflight")
+            self.assertEqual(initialized["allowed_actions"], ["preflight"])
             self.assertFalse(initialized["discovery"]["git_managed"])
             self.assertTrue(Path(initialized["plan_dir"]).is_dir())
 
@@ -59,6 +77,37 @@ class BaselineProbeTest(unittest.TestCase):
             self.assertFalse(baseline_data["git_managed"])
             self.assertEqual(baseline_data["git_status"], [])
             self.assertNotIn("tests", baseline_data)
+
+    def test_preflight_combines_baseline_and_probe_without_git_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state = root / ".planning" / "evidence"
+            with mock.patch.object(baseline.subprocess, "run",
+                                   return_value=mock.Mock(returncode=128)) as run:
+                result = baseline.cmd_preflight(type("Args", (), {
+                    "project_root": str(root), "state_dir": str(state),
+                })())
+
+            self.assertEqual(result, 0)
+            self.assertTrue((state / "baseline.json").is_file())
+            self.assertEqual(json.loads((state / "preflight.json").read_text())["baseline_mode"],
+                             "fingerprint")
+            self.assertTrue(all(call.args[0][-1] != "init" for call in run.call_args_list))
+
+    def test_preflight_recovers_from_a_partial_attempt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state = root / ".planning" / "evidence"
+            with mock.patch.object(baseline.subprocess, "run",
+                                   return_value=mock.Mock(returncode=128)):
+                baseline.cmd_preflight(type("Args", (), {
+                    "project_root": str(root), "state_dir": str(state),
+                })())
+                (state / "preflight.json").unlink()
+                result = baseline.cmd_preflight(type("Args", (), {
+                    "project_root": str(root), "state_dir": str(state),
+                })())
+            self.assertEqual(result, 0)
 
     def test_probe_only_loads_locked_baseline_without_running_tests(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -82,9 +131,10 @@ class BaselineProbeTest(unittest.TestCase):
             self.assertTrue(preflight["passed"])
             self.assertEqual(preflight["source"], "baseline")
             self.assertEqual(preflight["baseline_sha256"], baseline.sha(baseline_file))
-            self.assertFalse(preflight["git_initialized"])
+            self.assertTrue(preflight["git_managed"])
+            self.assertEqual(preflight["baseline_mode"], "git")
 
-    def test_probe_initializes_and_commits_an_unmanaged_project(self):
+    def test_probe_uses_fingerprint_baseline_without_initializing_git(self):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
             baseline_file = state / "baseline.json"
@@ -92,19 +142,15 @@ class BaselineProbeTest(unittest.TestCase):
                 "version": 1, "project_root": directory, "production": {},
             }))
             (state / "baseline.sha256").write_text(baseline.sha(baseline_file) + "\n")
-            results = [mock.Mock(returncode=128), mock.Mock(returncode=0, stdout=""),
-                       mock.Mock(returncode=0, stdout=""), mock.Mock(returncode=0, stdout="")]
-
-            with mock.patch.object(baseline.subprocess, "run", side_effect=results) as run:
+            with mock.patch.object(baseline.subprocess, "run",
+                                   return_value=mock.Mock(returncode=128)) as run:
                 result = baseline.cmd_probe(type("Args", (), {"state_dir": str(state)})())
 
             self.assertEqual(result, 0)
-            self.assertEqual(run.call_args_list[1].args[0], ["git", "-C", directory, "init"])
-            self.assertEqual(run.call_args_list[2].args[0], ["git", "-C", directory, "add", "."])
-            self.assertEqual(run.call_args_list[3].args[0][-4:], [
-                "user.email=works@example.invalid", "commit", "-m", "init commit",
-            ])
-            self.assertTrue(json.loads((state / "preflight.json").read_text())["git_initialized"])
+            self.assertEqual(run.call_count, 1)
+            preflight = json.loads((state / "preflight.json").read_text())
+            self.assertFalse(preflight["git_managed"])
+            self.assertEqual(preflight["baseline_mode"], "fingerprint")
 
     def test_probe_rejects_a_modified_baseline(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -152,6 +198,22 @@ class ProductionFingerprintTest(unittest.TestCase):
 
 
 class StateMachineTest(unittest.TestCase):
+    def test_review_routing_is_risk_based(self):
+        low_contract = {"requirements": [{
+            "statement": "return a label", "acceptance_criteria": ["label is visible"],
+        }]}
+        high_contract = {"requirements": [{
+            "statement": "enforce permission", "acceptance_criteria": ["access is denied"],
+        }]}
+        self.assertFalse(Application._contract_review_required(low_contract))
+        self.assertTrue(Application._contract_review_required(high_contract))
+        self.assertFalse(Application._implementation_review_required({"requirements": [{
+            "implementation": implementation_fixture(risks=["low"]),
+        }]}))
+        self.assertTrue(Application._implementation_review_required({"requirements": [{
+            "implementation": implementation_fixture(kind="persistence", risks=["data change"]),
+        }]}))
+
     def test_single_state_file_drives_setup_and_impact(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -165,7 +227,9 @@ class StateMachineTest(unittest.TestCase):
             current = store.load(plan)
             evidence = Path(current["evidence_dir"])
             evidence.mkdir()
-            (evidence / "baseline.json").write_text("{}")
+            (evidence / "baseline.json").write_text(json.dumps({
+                "project_root": str(root), "production": {},
+            }))
             (evidence / "preflight.json").write_text('{"passed": true}')
             updated = app.status(root)
             self.assertEqual(updated["state"], "CONTRACT_REQUIRED")
@@ -173,32 +237,23 @@ class StateMachineTest(unittest.TestCase):
             app.run(root, "contract-init", [])
             authored = app.status(root)
             self.assertEqual(authored["next_action"]["id"], "complete-contract-and-check")
-            self.assertEqual(authored["next_action"]["subagent"], "general")
-            self.assertEqual(authored["next_action"]["reference"], "references/contract-author.md")
+            self.assertIsNone(authored["next_action"]["subagent"])
             contract = plan / "requirement-contract.json"
             contract.write_text(json.dumps({
                 "version": 1,
                 "requirement": str((root / "requirement.md").resolve()),
                 "requirements": [{"id": "REQ-1", "statement": "behavior",
-                                  "acceptance_criteria": ["observable result"]}],
+                                  "acceptance_criteria": ["observable result"],
+                                  "implementation": implementation_fixture()}],
                 "acceptance_commands": [{"id": "module-tests", "covers": ["REQ-1"],
                                          "command": ["mvn", "-DskipTests=false",
                                                      "-Dmaven.test.skip=false",
                                                      "-Dtest=ATest#works", "test"]}],
             }))
             updated = app.run(root, "contract-check", [])
-            self.assertEqual(updated["state"], "CONTRACT_REVIEW_REQUIRED")
+            self.assertEqual(updated["state"], "READY_FOR_IMPLEMENTATION")
             self.assertEqual(updated["requirements"], ["REQ-1"])
-            self.assertEqual(updated["next_action"]["id"], "contract-review-init")
-            app.run(root, "contract-review-init", [])
-            review = plan / "contract-review.json"
-            value = json.loads(review.read_text())
-            value.update({"result": "PASS"})
-            value["requirements"][0]["status"] = "PASS"
-            review.write_text(json.dumps(value))
-            updated = app.run(root, "contract-review-check", [])
-            self.assertEqual(updated["state"], "IMPACT_REQUIRED")
-            self.assertEqual(updated["next_action"]["id"], "impact-init")
+            self.assertEqual(updated["next_action"]["id"], "checkpoint-current-implementation")
             self.assertTrue((plan / "summaries" / "contract-check.json").is_file())
 
     def test_invalid_transition_blocks_implementation(self):
@@ -221,9 +276,11 @@ class StateMachineTest(unittest.TestCase):
             current = store.load(plan)
             evidence = Path(current["evidence_dir"])
             evidence.mkdir()
-            (evidence / "baseline.json").write_text("{}")
+            (evidence / "baseline.json").write_text(json.dumps({
+                "project_root": str(root), "production": {},
+            }))
             (evidence / "preflight.json").write_text('{"passed": true}')
-            current.update({"contract_valid": True, "contract_review_valid": True, "impact_valid": True,
+            current.update({"contract_valid": True, "contract_review_valid": True,
                             "requirements": ["REQ-1"]})
             (evidence / "slices" / "REQ-1").mkdir(parents=True)
             (evidence / "slices" / "REQ-1" / "test.json").write_text("{}")
@@ -253,7 +310,7 @@ class StateMachineTest(unittest.TestCase):
                 (evidence / name).write_text(json.dumps(value))
             (evidence / "slices" / "REQ-1" / "test.json").write_text("{}")
             (plan / "requirement-contract.json").write_text(json.dumps({"requirements": [{"id": "REQ-1"}]}))
-            current.update({"contract_valid": True, "contract_review_valid": True, "impact_valid": True,
+            current.update({"contract_valid": True, "contract_review_valid": True,
                             "implementation_review_valid": False, "requirements": ["REQ-1"]})
             store.save(plan, current)
             updated = app.status(root)
@@ -285,11 +342,14 @@ class StateMachineTest(unittest.TestCase):
             current = store.load(plan)
             evidence = Path(current["evidence_dir"])
             evidence.mkdir()
-            (evidence / "baseline.json").write_text("{}")
+            (evidence / "baseline.json").write_text(json.dumps({
+                "project_root": str(root), "production": {},
+            }))
             (evidence / "preflight.json").write_text('{"passed": true}')
             contract = {"version": 1, "requirement": str((root / "requirement.md").resolve()),
-                        "requirements": [{"id": "REQ-1", "statement": "behavior",
-                                          "acceptance_criteria": ["result"]}],
+                        "requirements": [{"id": "REQ-1", "statement": "security behavior",
+                                          "acceptance_criteria": ["result"],
+                                          "implementation": implementation_fixture()}],
                         "acceptance_commands": [{"id": "tests", "covers": ["REQ-1"],
                                                  "command": ["mvn", "-DskipTests=false",
                                                              "-Dmaven.test.skip=false",
@@ -303,7 +363,7 @@ class StateMachineTest(unittest.TestCase):
             review.write_text(json.dumps(failed))
             with self.assertRaises(WorksError):
                 app.run(root, "contract-review-check", [])
-            contract["requirements"][0]["statement"] = "revised behavior"
+            contract["requirements"][0]["statement"] = "revised security behavior"
             (plan / "requirement-contract.json").write_text(json.dumps(contract))
             app.run(root, "contract-check", [])
             app.run(root, "contract-review-init", [])
@@ -312,7 +372,7 @@ class StateMachineTest(unittest.TestCase):
             passed["requirements"][0]["status"] = "PASS"
             review.write_text(json.dumps(passed))
             updated = app.run(root, "contract-review-check", [])
-            self.assertEqual(updated["state"], "IMPACT_REQUIRED")
+            self.assertEqual(updated["state"], "READY_FOR_IMPLEMENTATION")
 
     def test_records_notes_and_recovers_last_activity(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -350,68 +410,17 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual([row["result"] for row in activity[-2:]], ["failed", "blocked"])
 
 
-class ImpactMapTest(unittest.TestCase):
-    def test_requires_real_evidence(self):
-        with tempfile.TemporaryDirectory() as directory:
-            project = Path(directory)
-            (project / "Controller.java").write_text("class Controller {}")
-            data = impact_map.template(["REQ-1"])
-            self.assertTrue(impact_map.validate(data, project, ["REQ-1"]))
-            row = data["requirements"][0]
-            row.update({"behavior": "download", "entrypoints": ["Controller.java:1"],
-                        "service_apis": ["Controller.java:1"], "persistence": ["Controller.java:1"],
-                        "test_seams": [{
-                            "boundary": "Controller.java:1",
-                            "planned_test": "src/test/java/ControllerTest.java",
-                        }], "risks": ["compatibility"]})
-            self.assertEqual(impact_map.validate(data, project, ["REQ-1"]), [])
-
-    def test_allows_planned_test_file_to_not_exist(self):
-        with tempfile.TemporaryDirectory() as directory:
-            project = Path(directory)
-            (project / "Service.java").write_text("class Service {}\n")
-            self.assertTrue(impact_map.boundary_evidence(project, "Service.java:1"))
-            self.assertTrue(impact_map.planned_test_path(
-                project, "module/src/test/java/example/ServiceTest.java"))
-
-    def test_rejects_missing_or_invalid_boundary(self):
-        with tempfile.TemporaryDirectory() as directory:
-            project = Path(directory)
-            (project / "Service.java").write_text("class Service {}\n")
-            self.assertFalse(impact_map.boundary_evidence(project, "Missing.java:1"))
-            self.assertFalse(impact_map.boundary_evidence(project, "Service.java:2"))
-            self.assertFalse(impact_map.boundary_evidence(project, "Service.java"))
-
-    def test_rejects_unsafe_or_non_test_planned_path(self):
-        with tempfile.TemporaryDirectory() as directory:
-            project = Path(directory)
-            self.assertFalse(impact_map.planned_test_path(project, "../ServiceTest.java"))
-            self.assertFalse(impact_map.planned_test_path(project, "src/main/java/ServiceTest.java"))
-            self.assertFalse(impact_map.planned_test_path(project, "src/test/java/Service.java"))
-
-    def test_rejects_legacy_string_test_seam(self):
-        with tempfile.TemporaryDirectory() as directory:
-            project = Path(directory)
-            (project / "Controller.java").write_text("class Controller {}\n")
-            data = impact_map.template(["REQ-1"])
-            data["requirements"][0].update({
-                "behavior": "download", "entrypoints": ["Controller.java:1"],
-                "service_apis": ["Controller.java:1"], "persistence": ["Controller.java:1"],
-                "test_seams": ["Controller.java:1"], "risks": ["compatibility"],
-            })
-            errors = impact_map.validate(data, project, ["REQ-1"])
-            self.assertTrue(any("must contain exactly boundary and planned_test" in error
-                                for error in errors))
-
-
 class RequirementContractTest(unittest.TestCase):
     def test_requires_full_command_coverage(self):
         with tempfile.TemporaryDirectory() as directory:
             requirement = Path(directory) / "requirement.md"
             requirement.write_text("# Requirement")
+            (Path(directory) / "Controller.java").write_text(
+                "class Controller { void existing() {} }\n")
             data = requirement_contract.template(requirement)
             data["requirements"] = [{"id": "REQ-1", "statement": "behavior",
-                                     "acceptance_criteria": ["result"]}]
+                                     "acceptance_criteria": ["result"],
+                                     "implementation": implementation_fixture()}]
             self.assertTrue(requirement_contract.validate(data, requirement))
             data["acceptance_commands"] = [{"id": "tests", "covers": ["REQ-1"],
                                             "command": ["mvn", "-DskipTests=false",
@@ -419,13 +428,50 @@ class RequirementContractTest(unittest.TestCase):
                                                         "-Dtest=ATest#works", "test"]}]
             self.assertEqual(requirement_contract.validate(data, requirement), [])
 
+    def test_persistence_reuse_requires_both_absence_scopes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            requirement = root / "requirement.md"
+            requirement.write_text("# Requirement")
+            (root / "Controller.java").write_text("class Controller { void existing() {} }\n")
+            implementation = implementation_fixture(kind="persistence")
+            implementation["reuse"]["absence_evidence"].pop()
+            data = requirement_contract.template(requirement)
+            data["requirements"] = [{"id": "REQ-1", "statement": "save",
+                                     "acceptance_criteria": ["saved"],
+                                     "implementation": implementation}]
+            errors = requirement_contract.validate(data, requirement)
+            self.assertTrue(any("requires current_class and same_layer_service" in error
+                                for error in errors))
+
+    def test_test_target_must_match_acceptance_selector(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            requirement = root / "requirement.md"
+            requirement.write_text("# Requirement")
+            (root / "Controller.java").write_text("class Controller { void existing() {} }\n")
+            data = requirement_contract.template(requirement)
+            data["requirements"] = [{"id": "REQ-1", "statement": "behavior",
+                                     "acceptance_criteria": ["result"],
+                                     "implementation": implementation_fixture()}]
+            data["acceptance_commands"] = [{
+                "id": "tests", "covers": ["REQ-1"],
+                "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
+                            "-Dtest=ATest#different", "test"],
+            }]
+            errors = requirement_contract.validate(data, requirement)
+            self.assertTrue(any("test_target.selector must match" in error for error in errors))
+
     def test_rejects_module_wide_test_command(self):
         with tempfile.TemporaryDirectory() as directory:
             requirement = Path(directory) / "requirement.md"
             requirement.write_text("# Requirement")
+            (Path(directory) / "Controller.java").write_text(
+                "class Controller { void existing() {} }\n")
             data = requirement_contract.template(requirement)
             data["requirements"] = [{"id": "REQ-1", "statement": "behavior",
-                                     "acceptance_criteria": ["result"]}]
+                                     "acceptance_criteria": ["result"],
+                                     "implementation": implementation_fixture()}]
             data["acceptance_commands"] = [{"id": "tests", "covers": ["REQ-1"],
                                             "command": ["mvn", "-DskipTests=false",
                                                         "-Dmaven.test.skip=false", "test"]}]
@@ -436,9 +482,12 @@ class RequirementContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             requirement = Path(directory) / "requirement.md"
             requirement.write_text("# Requirement")
+            (Path(directory) / "Controller.java").write_text(
+                "class Controller { void existing() {} }\n")
             data = requirement_contract.template(requirement)
             data["requirements"] = [{"id": "REQ-1", "statement": "behavior",
-                                     "acceptance_criteria": ["result"]}]
+                                     "acceptance_criteria": ["result"],
+                                     "implementation": implementation_fixture()}]
             data["acceptance_commands"] = [{"id": "done", "covers": ["REQ-1"],
                                             "command": ["true"]}]
             errors = requirement_contract.validate(data, requirement)
@@ -530,7 +579,9 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             }))
             contract = root / "requirement-contract.json"
             contract.write_text(json.dumps({"acceptance_commands": [{
-                "covers": ["REQ-1"], "command": ["mvn", "-Dtest=ATest#works", "test"]
+                "covers": ["REQ-1"], "command": ["mvn", "-DskipTests=false",
+                                                       "-Dmaven.test.skip=false",
+                                                       "-Dtest=ATest#works", "test"]
             }]}))
             args = type("Args", (), {
                 "state_dir": str(state), "req": "REQ-1", "test_file": "src/test/java/ATest.java",
@@ -549,7 +600,7 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             state.mkdir(parents=True)
             source = root / "src/main/java/A.java"
             source.parent.mkdir(parents=True)
-            source.write_text("class A {}\n")
+            source.write_text("class A { void existing() {} void changed() { existing(); } }\n")
             test = root / "src/test/java/ATest.java"
             test.parent.mkdir(parents=True)
             test.write_text(
@@ -563,16 +614,28 @@ class CodeFirstEvidenceTest(unittest.TestCase):
                 "sequence": 0, "production": {}, "previous_req": None,
             }))
             contract = root / "requirement-contract.json"
-            contract.write_text(json.dumps({"acceptance_commands": [{
-                "covers": ["REQ-1"], "command": ["mvn", "-Dtest=ATest#works", "test"]
+            contract.write_text(json.dumps({"requirements": [{
+                "id": "REQ-1", "implementation": {"reuse": {
+                    "kind": "existing_method",
+                    "target": {"path": "src/main/java/A.java", "symbol": "existing"},
+                    "reason": "reuse existing method", "absence_evidence": [],
+                }},
+            }], "acceptance_commands": [{
+                "covers": ["REQ-1"], "command": ["mvn", "-DskipTests=false",
+                                                       "-Dmaven.test.skip=false",
+                                                       "-Dtest=ATest#works", "test"]
             }]}))
-            implement = type("Args", (), {"state_dir": str(state), "req": "REQ-1"})()
+            (state / "reuse-baseline.json").write_text(json.dumps({
+                "persistence_invocations": {},
+            }))
+            implement = type("Args", (), {"state_dir": str(state), "req": "REQ-1",
+                                            "contract": str(contract), "contract_req": "REQ-1"})()
             self.assertEqual(code_first.cmd_implement(implement), 0)
             command = ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
                        "-Dtest=ATest#works", "test"]
             test_args = type("Args", (), {"state_dir": str(state), "req": "REQ-1",
                                            "test_file": "src/test/java/ATest.java",
-                                           "testcase": "ATest#works", "command": command,
+                                           "testcase": "ATest#works", "command": [],
                                            "contract": str(contract), "contract_req": "REQ-1"})()
             junit = {"target": {"executed": 1, "failures": 0, "errors": 0}, "files": []}
             def passing_run(_root, _command, log, _reports, _testcase):
@@ -583,14 +646,77 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             self.assertTrue((state / "slices" / "REQ-1" / "implementation.json").is_file())
             self.assertTrue((state / "slices" / "REQ-1" / "test.json").is_file())
 
+    def test_implementation_rejects_ignored_service_reuse_decision(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "Service.java"
+            source.write_text("class Service { void existing() {} void changed() {} }\n")
+            contract = root / "requirement-contract.json"
+            contract.write_text(json.dumps({"requirements": [{
+                "id": "REQ-1", "implementation": {"reuse": {
+                    "kind": "service_api",
+                    "target": {"path": "Service.java", "symbol": "existing"},
+                    "reason": "reuse service API", "absence_evidence": [],
+                }},
+            }]}))
+            reuse_baseline = root / "reuse-baseline.json"
+            reuse_baseline.write_text(json.dumps({"persistence_invocations": {}}))
+            with self.assertRaisesRegex(SystemExit, "does not use selected service_api"):
+                code_first.require_reuse_decision(
+                    contract, "REQ-1", root, ["Service.java"], reuse_baseline
+                )
+
+    def test_reuse_target_in_comment_does_not_satisfy_checkpoint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "Service.java"
+            source.write_text("class Service { void existing() {} void changed() { /* existing(); */ } }\n")
+            contract = root / "requirement-contract.json"
+            contract.write_text(json.dumps({"requirements": [{
+                "id": "REQ-1", "implementation": {"reuse": {
+                    "kind": "service_api",
+                    "target": {"path": "Service.java", "symbol": "existing"},
+                    "reason": "reuse service API", "absence_evidence": [],
+                }},
+            }]}))
+            reuse_baseline = root / "reuse-baseline.json"
+            reuse_baseline.write_text(json.dumps({"persistence_invocations": {}}))
+            with self.assertRaisesRegex(SystemExit, "does not use selected service_api"):
+                code_first.require_reuse_decision(
+                    contract, "REQ-1", root, ["Service.java"], reuse_baseline
+                )
+
+    def test_service_reuse_decision_rejects_new_mapper_call(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "Service.java"
+            source.write_text(
+                "class Service { UserMapper mapper; void existing() {} "
+                "void changed() { existing(); mapper.select(); } }\n"
+            )
+            contract = root / "requirement-contract.json"
+            contract.write_text(json.dumps({"requirements": [{
+                "id": "REQ-1", "implementation": {"reuse": {
+                    "kind": "service_api",
+                    "target": {"path": "Service.java", "symbol": "existing"},
+                    "reason": "reuse service API", "absence_evidence": [],
+                }},
+            }]}))
+            reuse_baseline = root / "reuse-baseline.json"
+            reuse_baseline.write_text(json.dumps({"persistence_invocations": {}}))
+            with self.assertRaisesRegex(SystemExit, "forbids new Mapper/Repository calls"):
+                code_first.require_reuse_decision(
+                    contract, "REQ-1", root, ["Service.java"], reuse_baseline
+                )
+
     def test_rejects_testcase_that_drifted_from_requirement_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             contract = Path(directory) / "requirement-contract.json"
             contract.write_text(json.dumps({"acceptance_commands": [{
                 "covers": ["REQ-1"], "command": ["mvn", "-Dtest=ATest#expected", "test"]
             }]}))
-            with self.assertRaisesRegex(SystemExit, "does not match contract selectors"):
-                code_first.require_contract_testcase(contract, "REQ-1", "ATest#actual")
+            with self.assertRaisesRegex(SystemExit, "must resolve to exactly one contract"):
+                code_first.resolve_contract_test_command(contract, "REQ-1", "ATest#actual")
 
     def test_accepts_testcase_declared_for_requirement_contract(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -599,8 +725,21 @@ class CodeFirstEvidenceTest(unittest.TestCase):
                 "covers": ["REQ-1"], "command": ["mvn", "-Dtest=ATest#expected", "test"]
             }]}))
             self.assertEqual(
-                code_first.require_contract_testcase(contract, "REQ-1", "pkg.ATest#expected"),
-                ["ATest#expected"],
+                code_first.resolve_contract_test_command(contract, "REQ-1", "pkg.ATest#expected"),
+                ["mvn", "-Dtest=ATest#expected", "test"],
+            )
+
+    def test_resolves_windows_wrapper_argv_without_shell_parsing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            contract = Path(directory) / "requirement-contract.json"
+            command = [r"C:\\repo\\mvnw.cmd", "-DskipTests=false", "-Dmaven.test.skip=false",
+                       "-Dtest=ATest#expected", "test"]
+            contract.write_text(json.dumps({"acceptance_commands": [{
+                "covers": ["REQ-1"], "command": command,
+            }]}))
+            self.assertEqual(
+                code_first.resolve_contract_test_command(contract, "REQ-1", "ATest#expected"),
+                command,
             )
 
     def test_policy_rejects_spring_boot_test(self):
@@ -611,15 +750,15 @@ class CodeFirstEvidenceTest(unittest.TestCase):
                 code_first.require_targeted_mockito_test(
                     test, "ATest#works", ["mvn", "-Dtest=ATest#works", "test"])
 
-    def test_policy_rejects_full_suite_and_non_mockito_test(self):
+    def test_policy_allows_plain_junit_but_rejects_full_suite(self):
         with tempfile.TemporaryDirectory() as directory:
             test = Path(directory) / "ATest.java"
             test.write_text("class ATest { void works() {} }")
-            with self.assertRaisesRegex(SystemExit, "must use Mockito"):
-                code_first.require_targeted_mockito_test(test, "ATest#works", ["mvn", "test"])
-            test.write_text("import org.mockito.Mock; class ATest { @Mock Object dep; }")
+            policy = code_first.require_targeted_test(
+                test, "ATest#works", ["mvn", "-Dtest=ATest#works", "test"])
+            self.assertEqual(policy["framework"], "JUnit")
             with self.assertRaisesRegex(SystemExit, "exactly one -Dtest"):
-                code_first.require_targeted_mockito_test(test, "ATest#works", ["mvn", "test"])
+                code_first.require_targeted_test(test, "ATest#works", ["mvn", "test"])
 
 
 class DiscoveryTest(unittest.TestCase):

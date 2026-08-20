@@ -11,6 +11,69 @@ import re
 
 ERROR = "E302_INVALID_REQUIREMENT_CONTRACT"
 REQ_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+REUSE_KINDS = {"existing_method", "service_api", "persistence", "architecture_exception"}
+
+
+def _target_errors(value: object, prefix: str, project: Path) -> list[str]:
+    if not isinstance(value, dict) or set(value) != {"path", "symbol"}:
+        return [f"{prefix} must contain exactly path and symbol"]
+    path_value, symbol = value.get("path"), value.get("symbol")
+    if not isinstance(path_value, str) or not path_value or Path(path_value).is_absolute():
+        return [f"{prefix}.path must be project-relative"]
+    candidate = (project / path_value).resolve()
+    try:
+        candidate.relative_to(project.resolve())
+    except ValueError:
+        return [f"{prefix}.path escapes the project root"]
+    if not candidate.is_file():
+        return [f"{prefix}.path does not exist: {path_value}"]
+    if not isinstance(symbol, str) or not symbol.strip():
+        return [f"{prefix}.symbol is required"]
+    if not re.search(rf"\b{re.escape(symbol)}\b", candidate.read_text(encoding="utf-8", errors="replace")):
+        return [f"{prefix}.symbol does not exist in {path_value}: {symbol}"]
+    return []
+
+
+def _implementation_errors(value: object, prefix: str, project: Path) -> list[str]:
+    if not isinstance(value, dict) or set(value) != {"entrypoint", "reuse", "test_target", "risks"}:
+        return [f"{prefix} must contain exactly entrypoint, reuse, test_target, and risks"]
+    errors = _target_errors(value.get("entrypoint"), f"{prefix}.entrypoint", project)
+    reuse = value.get("reuse")
+    if not isinstance(reuse, dict) or set(reuse) != {"kind", "target", "reason", "absence_evidence"}:
+        errors.append(f"{prefix}.reuse must contain exactly kind, target, reason, and absence_evidence")
+    else:
+        kind = reuse.get("kind")
+        if kind not in REUSE_KINDS:
+            errors.append(f"{prefix}.reuse.kind is invalid")
+        errors.extend(_target_errors(reuse.get("target"), f"{prefix}.reuse.target", project))
+        if not isinstance(reuse.get("reason"), str) or not reuse["reason"].strip():
+            errors.append(f"{prefix}.reuse.reason is required")
+        absence = reuse.get("absence_evidence")
+        if not isinstance(absence, list):
+            errors.append(f"{prefix}.reuse.absence_evidence must be an array")
+        elif kind == "persistence":
+            scopes = {item.get("scope") for item in absence if isinstance(item, dict)}
+            if scopes != {"current_class", "same_layer_service"} or any(
+                not isinstance(item, dict)
+                or set(item) != {"scope", "evidence", "reason"}
+                or not isinstance(item.get("evidence"), str) or not item["evidence"].strip()
+                or not isinstance(item.get("reason"), str) or not item["reason"].strip()
+                for item in absence
+            ):
+                errors.append(f"{prefix}.reuse.persistence requires current_class and same_layer_service evidence")
+        elif absence:
+            errors.append(f"{prefix}.reuse.absence_evidence is only allowed for persistence")
+    test_target = value.get("test_target")
+    if (not isinstance(test_target, dict) or set(test_target) != {"file", "selector"}
+            or not isinstance(test_target.get("file"), str)
+            or not test_target["file"].endswith(("Test.java", "Tests.java", "IT.java"))
+            or not isinstance(test_target.get("selector"), str)
+            or "#" not in test_target["selector"]):
+        errors.append(f"{prefix}.test_target must contain a Maven test file and Class#method selector")
+    risks = value.get("risks")
+    if not isinstance(risks, list) or any(not isinstance(item, str) for item in risks):
+        errors.append(f"{prefix}.risks must be an array of strings")
+    return errors
 
 
 def template(requirement: Path) -> dict:
@@ -30,6 +93,7 @@ def validate(data: object, requirement: Path) -> list[str]:
         errors.append("version must be 1")
     if Path(str(data.get("requirement", ""))).resolve() != requirement.resolve():
         errors.append("requirement must match the discovered requirement document")
+    project = requirement.resolve().parent
     rows = data.get("requirements")
     if not isinstance(rows, list) or not rows:
         errors.append("requirements must be a non-empty array")
@@ -52,6 +116,7 @@ def validate(data: object, requirement: Path) -> list[str]:
             not isinstance(item, str) or not item.strip() for item in criteria
         ):
             errors.append(f"{prefix}.acceptance_criteria must contain executable behaviors")
+        errors.extend(_implementation_errors(row.get("implementation"), f"{prefix}.implementation", project))
     if len(ids) != len(set(ids)):
         errors.append("requirement IDs must be unique and ordered")
 
@@ -62,6 +127,7 @@ def validate(data: object, requirement: Path) -> list[str]:
     command_ids: list[str] = []
     covered: set[str] = set()
     maven_covered: set[str] = set()
+    selectors_by_req: dict[str, set[str]] = {req: set() for req in ids}
     for index, row in enumerate(commands):
         prefix = f"acceptance_commands[{index}]"
         if not isinstance(row, dict):
@@ -96,6 +162,9 @@ def validate(data: object, requirement: Path) -> list[str]:
                     errors.append(f"{prefix}.command must target exactly one implemented behavior with -Dtest=Class#method")
                 else:
                     maven_covered.update(req for req in coverage if req in ids)
+                    for req in coverage:
+                        if req in selectors_by_req:
+                            selectors_by_req[req].add(targeted[0].split("=", 1)[1])
     if len(command_ids) != len(set(command_ids)):
         errors.append("acceptance command IDs must be unique")
     missing = [req for req in ids if req not in covered]
@@ -104,6 +173,14 @@ def validate(data: object, requirement: Path) -> list[str]:
     missing_maven = [req for req in ids if req not in maven_covered]
     if missing_maven:
         errors.append(f"requirements missing Maven test/verify/package coverage: {missing_maven!r}")
+    for row in rows:
+        if not isinstance(row, dict) or row.get("id") not in selectors_by_req:
+            continue
+        planned = row.get("implementation", {}).get("test_target", {}).get("selector")
+        if planned and selectors_by_req[row["id"]] != {planned}:
+            errors.append(
+                f"{row['id']}: implementation.test_target.selector must match its acceptance command"
+            )
     return errors
 
 

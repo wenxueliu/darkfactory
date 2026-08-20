@@ -84,12 +84,12 @@ class Application:
         if operation not in current["allowed_actions"]:
             raise WorksError("E202_INVALID_STATE",
                              f"{operation} is not the next action; expected {current['next_action']['id']}")
-        if operation == "baseline-init" and (evidence / "baseline.json").exists():
+        if operation == "preflight" and (evidence / "preflight.json").exists():
             boundary = evidence / "service-boundary-baseline.json"
             if not boundary.exists():
                 self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
                                "--project-root", current["project_root"], "--state-dir", str(evidence)], operation)
-            return {"ok": True, "operation": operation, "output": "baseline already initialized",
+            return {"ok": True, "operation": operation, "output": "preflight already completed",
                     **store.refresh(plan, current)}
         if operation == "reopen":
             return self._reopen(plan, current, raw)
@@ -134,21 +134,23 @@ class Application:
             details = {"exit": proc.returncode, "output": proc.stdout[-4000:]}
             self._record_failure(plan, current, attempt_key, signature, operation, code, details)
             raise WorksError(code, f"{operation} failed", details)
-        if operation == "baseline-init":
+        if operation == "preflight":
             self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
                            "--project-root", current["project_root"], "--state-dir", str(evidence)], operation)
         elif operation == "contract-check":
             contract = json.loads((plan / "requirement-contract.json").read_text())
+            self._checked([sys.executable, str(self.scripts / "code_first.py"), "reuse-init",
+                           "--state-dir", str(evidence)], operation)
             current["requirements"] = [row["id"] for row in contract["requirements"]]
             current["contract_valid"] = True
-            current["contract_review_valid"] = False
-            current["impact_valid"] = False
+            current["contract_review_required"] = self._contract_review_required(contract)
+            current["contract_review_valid"] = not current["contract_review_required"]
+            current["implementation_review_required"] = self._implementation_review_required(contract)
+            current["implementation_review_valid"] = not current["implementation_review_required"]
             (plan / "contract-review.json").unlink(missing_ok=True)
             current.setdefault("attempts", {}).pop("contract-review-check:-", None)
         elif operation == "contract-review-check":
             current["contract_review_valid"] = True
-        elif operation == "impact-check":
-            current["impact_valid"] = True
         elif operation == "implementation-review-check":
             current["implementation_review_valid"] = True
         elif operation in {"contract-review-init", "implementation-review-init"}:
@@ -185,21 +187,19 @@ class Application:
                     "--type", kind, option, str(plan / f"{kind}-review.json"),
                     "--contract", str(plan / "requirement-contract.json"),
                     "--project-root", current["project_root"]]
-        if operation == "impact-init":
-            return [sys.executable, str(self.scripts / "impact_map.py"), "init",
-                    "--output", str(plan / "impact-map.json"),
-                    *[item for req in current["requirements"] for item in ("--req", req)]]
-        if operation == "impact-check":
-            return [sys.executable, str(self.scripts / "impact_map.py"), "validate",
-                    "--file", str(plan / "impact-map.json"), "--project-root", current["project_root"],
-                    *[item for req in current["requirements"] for item in ("--req", req)]]
         if operation == "finalize":
             return []
-        action = "init" if operation == "baseline-init" else operation
+        action = operation
         runner = "code_first.py" if operation in {"implement", "test"} else "baseline.py"
         command = [sys.executable, str(self.scripts / runner), action]
-        if operation == "baseline-init":
+        if operation == "preflight":
             command.extend(["--project-root", current["project_root"]])
+        elif operation == "implement":
+            current_req = current["current_req"]
+            repair = next((row for row in current.get("repairs", []) if row.get("id") == current_req), None)
+            contract_req = repair["of"] if repair else current_req
+            command.extend(["--contract", str(plan / "requirement-contract.json"),
+                            "--contract-req", contract_req])
         elif operation == "test":
             current_req = current["current_req"]
             repair = next((row for row in current.get("repairs", []) if row.get("id") == current_req), None)
@@ -208,6 +208,37 @@ class Application:
                             "--contract-req", contract_req])
         command.extend(["--state-dir", evidence, *raw])
         return command
+
+    @staticmethod
+    def _contract_review_required(contract: dict) -> bool:
+        rows = contract.get("requirements", [])
+        text = " ".join(
+            str(value)
+            for row in rows if isinstance(row, dict)
+            for value in (row.get("statement", ""), *row.get("acceptance_criteria", []))
+        ).lower()
+        high_risk_terms = {
+            "security", "permission", "authorization", "transaction", "migration",
+            "跨模块", "跨服务", "权限", "安全", "事务", "迁移", "兼容",
+        }
+        return len(rows) >= 4 or any(term in text for term in high_risk_terms)
+
+    @staticmethod
+    def _implementation_review_required(contract: dict) -> bool:
+        rows = contract.get("requirements", [])
+        high_risk_terms = {
+            "security", "permission", "transaction", "migration", "compatibility",
+            "权限", "安全", "事务", "迁移", "兼容", "跨模块", "跨服务",
+        }
+        for row in rows:
+            implementation = row.get("implementation", {}) if isinstance(row, dict) else {}
+            decision = implementation.get("reuse", {})
+            if decision.get("kind") in {"persistence", "architecture_exception"}:
+                return True
+            risks = " ".join(str(item) for item in implementation.get("risks", [])).lower()
+            if any(term in risks for term in high_risk_terms):
+                return True
+        return len(rows) >= 4
 
     def _finalize(self, plan: Path, current: dict) -> dict:
         evidence = Path(current["evidence_dir"])
@@ -333,4 +364,4 @@ class Application:
                 "contract-check": "E302_INVALID_REQUIREMENT_CONTRACT",
                 "contract-review-check": "E303_CONTRACT_REVIEW_FAILED",
                 "implementation-review-check": "E402_IMPLEMENTATION_REVIEW_FAILED",
-                "impact-check": "E301_INVALID_IMPACT_MAP"}.get(operation, "E900_COMMAND_FAILED")
+                }.get(operation, "E900_COMMAND_FAILED")

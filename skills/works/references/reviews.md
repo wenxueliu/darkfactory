@@ -1,6 +1,6 @@
 # Independent reviews
 
-两次审查都必须由全新上下文的只读 subagent 执行，并加载 `impl-validator`。它不能修改任何文件，只在响应中返回审查报告和机器可读的 `review_payload`。Works 主 agent 是唯一落盘者：它只能把 payload 原样写入已初始化的 review JSON，不得自行补全、改写或将 FAIL 提升为 PASS。Works 仍是唯一 orchestrator。
+审查是风险门，不是固定仪式。Req ≥ 4，或涉及安全、权限、事务、迁移、兼容、跨模块/跨服务、持久层新增或架构例外时，由全新上下文的只读 subagent 加载 `impl-validator`。普通需求依赖确定性门禁后直接推进。Reviewer 不能修改文件，只返回 review payload；Works 负责落盘。
 
 ## Subagent 调用契约
 
@@ -26,10 +26,10 @@ Works 主 agent 必须校验 payload 是单一 JSON 对象，`version`、`type` 
 
 ## Implementation review
 
-只提供 `requirement.md`、`requirement-contract.json`、`impact-map.json`、最终 git diff、implementation/test/replay 证据和 `final-verification.json`。逐 Req 判断行为是否实现且有测试证据，在 `review_payload` 的 `implementation` 和 `tests` 中返回结构化位置证据：项目相对 `path`、有效 `line`、非空 `symbol` 和解释 Req 关联的 `reason`。CLI 会验证路径边界、文件存在性和行号。发现额外行为写入 `extra`。
+只提供 `requirement.md`、`requirement-contract.json`、最终 git diff、implementation/test/replay 证据和 `final-verification.json`。逐 Req 判断行为是否实现且有测试证据，在 `review_payload` 的 `implementation` 和 `tests` 中返回结构化位置证据。发现额外行为写入 `extra`。
 
-每个 Req 还必须检查复用顺序：对 diff 中每个新增 Mapper/Repository 调用，先阅读所在类的已有方法，再查同层 Service API。若已有方法能以相同输入输出、过滤条件和副作用满足需求，直接调用持久层必须将该 Req 标为 `FAIL`，finding 指出应复用的类和方法。只有本类和同层 Service 都没有等价能力时，新增 Mapper/Repository 调用才可通过此项审查。
+每个 Req 还必须检查复用顺序，并核对 implementation evidence 绑定的 contract `implementation.reuse` 与最终 diff 一致。只有 contract 选择 `persistence`、包含本类与同层 Service 的缺失证据，并且 reviewer 独立确认两处确无等价能力时，新增 Mapper/Repository 调用才可通过。
 
-同时检查测试隔离：每个 Req 的测试只能断言本次实现或修改的行为，必须使用 Mockito，禁止 `@SpringBootTest`；第三方 SDK、HTTP/RPC client、数据库、消息、缓存、文件、时钟及其他外部协作者必须直接 mock。发现真实外部调用、Spring context、模块级/全量命令或无关存量行为断言时，将对应 Req 标为 `FAIL`。
+同时检查测试隔离：每个 Req 的测试只能断言本次行为；存在外部协作者时使用 Mockito 或项目已有 fake，纯逻辑允许普通 JUnit。禁止无必要的 Spring context、真实外部调用、模块级/全量命令或无关存量断言。
 
 若失败，works 对失败 Req 执行 `reopen`，完成新的 implementation→test 和 finalize 后，再启动新的 verifier。只有该审查通过，状态才能进入 `COMPLETE`。

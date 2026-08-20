@@ -195,29 +195,24 @@ def cmd_probe(args: argparse.Namespace) -> int:
     digest = sha(baseline_file)
     if not baseline_lock.exists() or baseline_lock.read_text().strip() != digest:
         raise SystemExit("baseline hash lock mismatch")
-    git_initialized = False
     managed = subprocess.run(
         ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     ).returncode == 0
-    if not managed:
-        commands = [
-            ["git", "-C", str(root), "init"],
-            ["git", "-C", str(root), "add", "."],
-            ["git", "-C", str(root), "-c", "user.name=works", "-c", "user.email=works@example.invalid",
-             "commit", "-m", "init commit"],
-        ]
-        for command in commands:
-            proc = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            if proc.returncode:
-                raise SystemExit(f"Git initialization failed: {' '.join(command)}\n{proc.stdout}")
-        git_initialized = True
     atomic_json(state / "preflight.json", {
         "passed": True, "source": "baseline", "baseline_version": baseline.get("version"),
-        "baseline_sha256": digest, "git_initialized": git_initialized, "recorded_at": time.time(),
+        "baseline_sha256": digest, "git_managed": managed,
+        "baseline_mode": "git" if managed else "fingerprint", "recorded_at": time.time(),
     })
     print(state / "preflight.json")
     return 0
+
+
+def cmd_preflight(args: argparse.Namespace) -> int:
+    """Create and verify one immutable baseline without changing Git history."""
+    if not (Path(args.state_dir).resolve() / "baseline.json").exists():
+        cmd_init(args)
+    return cmd_probe(args)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -230,6 +225,10 @@ def parser() -> argparse.ArgumentParser:
     probe = sub.add_parser("probe")
     probe.add_argument("--state-dir", required=True)
     probe.set_defaults(func=cmd_probe)
+    preflight = sub.add_parser("preflight")
+    preflight.add_argument("--project-root", required=True)
+    preflight.add_argument("--state-dir", required=True)
+    preflight.set_defaults(func=cmd_preflight)
     return root
 
 

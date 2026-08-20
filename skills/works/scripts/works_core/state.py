@@ -9,7 +9,7 @@ from .common import append_jsonl, atomic_json
 
 
 STATES = {
-    "SETUP_REQUIRED", "CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED", "IMPACT_REQUIRED",
+    "SETUP_REQUIRED", "CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED",
     "READY_FOR_IMPLEMENTATION", "READY_FOR_TEST", "READY_FOR_ACCEPTANCE",
     "IMPLEMENTATION_REVIEW_REQUIRED", "COMPLETE", "BLOCKED",
 }
@@ -32,7 +32,7 @@ def create(project: Path, requirement: Path, discovery: dict) -> tuple[Path, dic
         "version": 2, "state": "SETUP_REQUIRED", "project_root": str(project),
         "requirement": str(requirement), "plan_dir": str(plan), "evidence_dir": str(plan / "evidence"),
         "requirements": [], "current_req": None, "contract_valid": False, "contract_review_valid": False,
-        "impact_valid": False, "implementation_review_valid": False,
+        "implementation_review_valid": False,
         "discovery": discovery, "created_at": time.time(), "updated_at": time.time(),
     }
     save(plan, state)
@@ -87,10 +87,8 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
         stage = "SETUP_REQUIRED"
     elif not state.get("contract_valid") or not state["requirements"]:
         stage = "CONTRACT_REQUIRED"
-    elif not state.get("contract_review_valid"):
+    elif state.get("contract_review_required") and not state.get("contract_review_valid"):
         stage = "CONTRACT_REVIEW_REQUIRED"
-    elif not state.get("impact_valid"):
-        stage = "IMPACT_REQUIRED"
     else:
         current = None
         implementation_checkpointed = False
@@ -109,7 +107,9 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
             final = evidence / "final-verification.json"
             finalized = final.exists() and json.loads(final.read_text()).get("passed")
             if verified and finalized:
-                stage = "COMPLETE" if state.get("implementation_review_valid") else "IMPLEMENTATION_REVIEW_REQUIRED"
+                review_required = state.get("implementation_review_required", True)
+                stage = ("IMPLEMENTATION_REVIEW_REQUIRED"
+                         if review_required and not state.get("implementation_review_valid") else "COMPLETE")
             else:
                 stage = "READY_FOR_ACCEPTANCE"
     state["state"] = stage
@@ -117,15 +117,14 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
     state["allowed_actions"] = [NEXT_ACTION_OP[action_id]]
     state["forbidden_actions"] = [] if stage == "READY_FOR_IMPLEMENTATION" else ["edit_production"]
     state["next_action_id"] = action_id
-    state["next_action"] = next_action(action_id, state)
+    state["next_action"] = next_action(action_id, state, plan)
     if persist:
         save(plan, state)
     return state
 
 
-def next_action(action_id: str, state: dict) -> dict:
+def next_action(action_id: str, state: dict, plan: Path | None = None) -> dict:
     subagents = {
-        "complete-contract-and-check": "general",
         "run-fresh-contract-verifier-and-check": "contract-reviewer",
         "run-fresh-implementation-verifier-and-check": "implementation-reviewer",
     }
@@ -136,8 +135,7 @@ def next_action(action_id: str, state: dict) -> dict:
         "diagnose-review-and-reopen-requirement": "impl-validator",
     }
     references = {
-        "complete-contract-and-check": "references/contract-author.md",
-        "complete-impact-map-and-check": "references/exploration.md",
+        "complete-contract-and-check": "references/requirement-contract.md",
         "checkpoint-current-implementation": "references/code-first.md",
         "test-current-implementation": "references/code-first.md",
         "diagnose-and-reopen-failing-requirement": "references/diagnosis.md",
@@ -146,31 +144,39 @@ def next_action(action_id: str, state: dict) -> dict:
     evidence = {
         "complete-contract-and-check": "requirement-contract.json",
         "run-fresh-contract-verifier-and-check": "contract-review.json",
-        "complete-impact-map-and-check": "impact-map.json",
         "checkpoint-current-implementation": f"evidence/slices/{state.get('current_req')}/implementation.json",
         "test-current-implementation": f"evidence/slices/{state.get('current_req')}/test.json",
         "finalize": "evidence/final-verification.json",
         "run-fresh-implementation-verifier-and-check": "implementation-review.json",
     }
-    return {
+    result = {
         "id": action_id, "state": state.get("state"), "req": state.get("current_req"),
         "skill": skills.get(action_id), "subagent": subagents.get(action_id),
         "reference": references.get(action_id),
         "success_evidence": evidence.get(action_id),
     }
+    if action_id == "checkpoint-current-implementation" and plan is not None:
+        contract_req = state.get("current_req")
+        repair = next((row for row in state.get("repairs", []) if row.get("id") == contract_req), None)
+        if repair:
+            contract_req = repair.get("of")
+        try:
+            contract = json.loads((plan / "requirement-contract.json").read_text())
+            row = next(item for item in contract["requirements"] if item["id"] == contract_req)
+            result["reuse_decision"] = row["implementation"]["reuse"]
+        except (OSError, json.JSONDecodeError, KeyError, StopIteration, TypeError):
+            result["reuse_decision"] = None
+    return result
 
 
 # logical next-action id -> the single CLI operation that completes it
 NEXT_ACTION_OP = {
-    "baseline-init": "baseline-init",
-    "probe": "probe",
+    "preflight": "preflight",
     "contract-init": "contract-init",
     "complete-contract-and-check": "contract-check",
     "contract-review-init": "contract-review-init",
     "run-fresh-contract-verifier-and-check": "contract-review-check",
     "revise-contract-and-rerun-review": "contract-check",
-    "impact-init": "impact-init",
-    "complete-impact-map-and-check": "impact-check",
     "checkpoint-current-implementation": "implement",
     "test-current-implementation": "test",
     "finalize": "finalize",
@@ -185,7 +191,7 @@ NEXT_ACTION_OP = {
 
 def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
     if stage == "SETUP_REQUIRED":
-        return "baseline-init" if not (evidence / "baseline.json").exists() else "probe"
+        return "preflight"
     if stage == "CONTRACT_REQUIRED":
         return "contract-init" if not (plan / "requirement-contract.json").exists() else "complete-contract-and-check"
     if stage == "CONTRACT_REVIEW_REQUIRED":
@@ -196,8 +202,6 @@ def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
         if result and result != "PASS":
             return "revise-contract-and-rerun-review"
         return "run-fresh-contract-verifier-and-check"
-    if stage == "IMPACT_REQUIRED":
-        return "impact-init" if not (plan / "impact-map.json").exists() else "complete-impact-map-and-check"
     if stage == "READY_FOR_IMPLEMENTATION":
         return "checkpoint-current-implementation"
     if stage == "READY_FOR_TEST":
