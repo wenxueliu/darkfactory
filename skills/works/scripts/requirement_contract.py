@@ -98,7 +98,29 @@ def template(requirement: Path) -> dict:
     }
 
 
-def validate(data: object, requirement: Path) -> list[str]:
+def normalize_project_paths(data: object, project: Path) -> bool:
+    """Canonicalize optional project-directory-prefixed paths in a contract in place."""
+    if not isinstance(data, dict) or not isinstance(data.get("requirements"), list):
+        return False
+    changed = False
+    for row in data["requirements"]:
+        implementation = row.get("implementation", {}) if isinstance(row, dict) else {}
+        targets = [implementation.get("entrypoint"),
+                   implementation.get("reuse", {}).get("target")
+                   if isinstance(implementation.get("reuse"), dict) else None,
+                   implementation.get("test_target")]
+        for target in targets:
+            if not isinstance(target, dict) or not isinstance(target.get("path" if "path" in target else "file"), str):
+                continue
+            key = "path" if "path" in target else "file"
+            relative = Path(target[key].replace("\\", "/"))
+            if relative.parts[:1] == (project.name,) and len(relative.parts) > 1:
+                target[key] = Path(*relative.parts[1:]).as_posix()
+                changed = True
+    return changed
+
+
+def validate(data: object, requirement: Path, project_root: Path | None = None) -> list[str]:
     if not isinstance(data, dict):
         return ["contract must be an object"]
     errors: list[str] = []
@@ -106,7 +128,7 @@ def validate(data: object, requirement: Path) -> list[str]:
         errors.append("version must be 1")
     if Path(str(data.get("requirement", ""))).resolve() != requirement.resolve():
         errors.append("requirement must match the discovered requirement document")
-    project = requirement.resolve().parent
+    project = (project_root or requirement.resolve().parent).resolve()
     rows = data.get("requirements")
     if not isinstance(rows, list) or not rows:
         errors.append("requirements must be a non-empty array")
@@ -215,6 +237,7 @@ def main() -> int:
     check = sub.add_parser("validate")
     check.add_argument("--file", required=True)
     check.add_argument("--requirement", required=True)
+    check.add_argument("--project-root", required=True)
     args = parser.parse_args()
     path = Path(args.output if args.action == "init" else args.file)
     requirement = Path(args.requirement)
@@ -228,10 +251,14 @@ def main() -> int:
         data = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
         raise SystemExit(f"{ERROR}: {exc}")
-    errors = validate(data, requirement)
+    project = Path(args.project_root)
+    normalized = normalize_project_paths(data, project)
+    errors = validate(data, requirement, project)
     if errors:
         print(json.dumps({"ok": False, "error": ERROR, "violations": errors}, ensure_ascii=False, indent=2))
         return 2
+    if normalized:
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({"ok": True, "requirements": [row["id"] for row in data["requirements"]]}, ensure_ascii=False))
     return 0
 

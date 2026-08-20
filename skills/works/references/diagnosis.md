@@ -14,7 +14,6 @@
 | `E315_INVALID_TEST` | 目标测试未真实执行并通过 | 修正实现、测试、fixture 或命令后重试 |
 | `E316_PRODUCTION_AFTER_IMPLEMENTATION` | 实现 checkpoint 后生产代码又变化 | 重新建立 repair Req 的实现与测试证据链 |
 | `E510_BOUNDARY_VIOLATION` | 入口直连持久层 | 复用/扩展 Service API |
-| `E901_REPEAT_FAILURE` | 完全相同失败重放 | 必须改变工作区或策略 |
 
 3. **单变量假设**：一次只改一个东西，验证一个假设（编译？fixture？断言？环境？）。
 4. **改策略后重试**：CLI 会拒绝完全相同失败的重放，所以每次重试前都要有真实变化。

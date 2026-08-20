@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import hashlib
 from pathlib import Path
 import shutil
 import subprocess
@@ -96,20 +95,13 @@ class Application:
         if operation == "rework":
             return self._rework(plan, current, raw)
         command = self._command(plan, current, operation, raw)
-        signature = self._signature(Path(current["project_root"]), command)
         attempt_key = f"{operation}:{current.get('current_req') or '-'}"
-        previous = current.setdefault("attempts", {}).get(attempt_key)
-        if previous and previous.get("signature") == signature and previous.get("result") == "failed":
-            store.activity(plan, current, operation, "blocked", error="identical_failure_retry",
-                           attempt=previous.get("count", 1))
-            raise WorksError("E901_REPEAT_FAILURE", "identical failed action requires a workspace or strategy change",
-                             previous)
         if operation == "test":
             try:
                 self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
                                "--state-dir", str(evidence)], operation)
             except WorksError as exc:
-                self._record_failure(plan, current, attempt_key, signature, operation, exc.code, exc.evidence)
+                self._record_failure(plan, current, attempt_key, operation, exc.code, exc.evidence)
                 raise
         elif operation == "finalize":
             try:
@@ -126,7 +118,7 @@ class Application:
                     "passed": False, "phase": "code-first-or-boundary", "error": exc.code,
                     "evidence": exc.evidence, "recorded_at": time.time(),
                 })
-                self._record_failure(plan, current, attempt_key, signature, operation, exc.code, exc.evidence)
+                self._record_failure(plan, current, attempt_key, operation, exc.code, exc.evidence)
                 raise
             return self._finalize(plan, current)
         proc = subprocess.run(command, cwd=Path(current["project_root"]), text=True,
@@ -134,7 +126,7 @@ class Application:
         if proc.returncode:
             code = self._classify(operation, proc.stdout)
             details = {"exit": proc.returncode, "output": proc.stdout[-4000:]}
-            self._record_failure(plan, current, attempt_key, signature, operation, code, details)
+            self._record_failure(plan, current, attempt_key, operation, code, details)
             raise WorksError(code, f"{operation} failed", details)
         if operation == "preflight":
             self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
@@ -164,15 +156,15 @@ class Application:
         if operation == "contract-check":
             return [sys.executable, str(self.scripts / "requirement_contract.py"), "validate",
                     "--file", str(plan / "requirement-contract.json"),
-                    "--requirement", current["requirement"]]
+                    "--requirement", current["requirement"],
+                    "--project-root", current["project_root"]]
         if operation == "finalize":
             return []
         action = operation
         runner = "code_first.py" if operation in {"implement", "test"} else "baseline.py"
         command = [sys.executable, str(self.scripts / runner), action]
         if operation == "preflight":
-            command.extend(["--project-root", current["project_root"],
-                            "--build", current.get("discovery", {}).get("build", "mvn")])
+            command.extend(["--project-root", current["project_root"]])
         elif operation == "implement":
             current_req = current["current_req"]
             repair = next((row for row in current.get("repairs", []) if row.get("id") == current_req), None)
@@ -208,8 +200,7 @@ class Application:
             "acceptance": results, "recorded_at": time.time(),
         })
         if not passed:
-            signature = self._signature(Path(current["project_root"]), [])
-            self._record_failure(plan, current, "finalize:-", signature, "finalize",
+            self._record_failure(plan, current, "finalize:-", "finalize",
                                  "E401_ACCEPTANCE_FAILED", results)
             raise WorksError("E401_ACCEPTANCE_FAILED", "one or more contract acceptance commands failed", results)
         store.save(plan, current)
@@ -287,35 +278,16 @@ class Application:
         store.activity(plan, current, "note", "passed", kind=kind, req=req)
         return {"ok": True, "operation": "note", "kind": kind, "path": str(path)}
 
-    def _record_failure(self, plan: Path, current: dict, key: str, signature: str,
+    def _record_failure(self, plan: Path, current: dict, key: str,
                         operation: str, error: str, evidence: object) -> None:
         previous = current.setdefault("attempts", {}).get(key, {})
         count = previous.get("count", 0) + 1
         current["attempts"][key] = {
-            "count": count, "signature": signature, "result": "failed", "error": error,
+            "count": count, "result": "failed", "error": error,
             "required_strategy": "diagnose" if count == 1 else "alternative",
         }
         store.save(plan, current)
         store.activity(plan, current, operation, "failed", error=error, attempt=count, evidence=evidence)
-
-    @staticmethod
-    def _signature(project: Path, command: list[str]) -> str:
-        status = subprocess.run(["git", "-C", str(project), "status", "--porcelain"], text=True,
-                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout
-        status = "\n".join(line for line in status.splitlines() if ".planning/" not in line)
-        diff = subprocess.run(["git", "-C", str(project), "diff", "--binary", "HEAD", "--", ".",
-                               ":(exclude).planning/**"], text=True,
-                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout
-        inputs = []
-        for option in ("--file", "--contract"):
-            if option in command and command.index(option) + 1 < len(command):
-                path = Path(command[command.index(option) + 1])
-                try:
-                    inputs.append(path.read_text())
-                except OSError:
-                    inputs.append("<missing>")
-        payload = json.dumps(command, ensure_ascii=False) + "\n" + status + "\n" + diff + "\n".join(inputs)
-        return hashlib.sha256(payload.encode()).hexdigest()
 
     def _checked(self, command: list[str], operation: str) -> None:
         proc = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

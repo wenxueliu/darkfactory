@@ -93,7 +93,7 @@
       "assertions": [
         "status 返回包含 id、req、skill、subagent、reference 和 success_evidence 的结构化 next_action",
         "失败动作写入 activity.jsonl 和 state attempts",
-        "相同命令与工作区的失败重放被 E901 阻止",
+        "失败记录不包含工作区 signature，瞬时环境错误允许重试",
         "recover 返回最后活动、最后失败和当前 next_action",
         "关键发现与决策可写入独立 JSONL，且不成为第二套流程状态",
         "不生成与 state/activity/evidence 重复的阶段 summaries"

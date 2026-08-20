@@ -29,4 +29,4 @@ evidence/        测试和验收事实
 
 ## 失败策略
 
-失败会写入 `activity.jsonl` 和 `state.json.attempts`。如果命令及工作区与上次失败完全相同，CLI 返回 `E901_REPEAT_FAILURE`。修改测试、实现、fixture、命令或诊断策略后再重试。
+失败会写入 `activity.jsonl` 和 `state.json.attempts`，记录次数、错误和下一步策略。CLI 不计算工作区签名，也不阻止相同命令重试；Agent 根据错误判断应直接重试还是先修改实现、测试、fixture 或环境。

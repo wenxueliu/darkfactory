@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import shutil
@@ -215,12 +214,7 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         cmd_init(args)
     cmd_probe(args)
     state, root, _ = state_paths(args)
-    build = getattr(args, "build", None) or (
-        str(root / ("mvnw.cmd" if os.name == "nt" else "mvnw"))
-        if (root / ("mvnw.cmd" if os.name == "nt" else "mvnw")).is_file()
-        else "mvn"
-    )
-    command = [build, "-DskipTests", "compile"]
+    command = ["mvn", "-DskipTests", "compile"]
     proc = subprocess.run(windows_command(command), cwd=root, text=True,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = proc.stdout if isinstance(proc.stdout, str) else ""
@@ -247,7 +241,6 @@ def parser() -> argparse.ArgumentParser:
     preflight = sub.add_parser("preflight")
     preflight.add_argument("--project-root", required=True)
     preflight.add_argument("--state-dir", required=True)
-    preflight.add_argument("--build")
     preflight.set_defaults(func=cmd_preflight)
     return root
 

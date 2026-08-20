@@ -11,11 +11,11 @@ description: 面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实现
 <python> <skill-dir>/scripts/works.py --project <project> init
 ```
 
-每次只完成响应中的 `next_action`，并直接使用动作响应刷新后的 `state/current_req/next_action`；不要在每个成功动作后重复运行 `status`。只有恢复、响应丢失或人工检查时运行 `recover/status`。命令失败时根据真实输出改变工作区或策略再重试；CLI 会阻止完全相同的失败重放。`state.json` 是唯一流程状态，不建立第二套计划。
+每次只完成响应中的 `next_action`，并直接使用动作响应刷新后的 `state/current_req/next_action`；不要在每个成功动作后重复运行 `status`。只有恢复、响应丢失或人工检查时运行 `recover/status`。命令失败时记录真实输出和次数，再由 Agent 诊断或重试；不要维护工作区签名。`state.json` 是唯一流程状态，不建立第二套计划。
 
 ## 流程
 
-1. `init` 完成项目发现，随后执行唯一正常环境动作 `preflight`：保存 dirty baseline、生产指纹、Service boundary，并记录 `compile` 基线的命令、退出码和失败摘要；不运行测试。`doctor` 仅用于人工排障，不属于正常状态机。
+1. `init` 完成项目发现，随后执行唯一正常环境动作 `preflight`：在 Maven 项目目录固定运行 `mvn -DskipTests compile`，保存 dirty baseline、生产指纹、Service boundary，并记录编译命令、退出码和失败摘要；不运行测试。Windows 和 Linux 都使用系统已安装的 `mvn`，不选择 wrapper。`doctor` 仅用于人工排障，不属于正常状态机。
 2. 按 `references/exploration.md` 探索仓库，再依据 `references/requirement-contract.md` 一次性填写 Req、轻量 requirement 来源、入口、复用决策、测试目标和验收命令，随后运行 `contract-check`。`contract-init` 只是创建契约文件的内部准备动作，不代表业务阶段。不要创建独立 impact-map。
 3. 优先复用当前类已有方法，其次同层 Service API；只有新增持久层调用时才在 contract 中提交两级缺失证据。`contract-check` 通过后直接进入实现，不做实现前的独立审查。
 4. 最小实现当前 Req，运行 `implement` 冻结生产 checkpoint。随后添加只覆盖该行为的快速测试并运行 `test`。测试若表明生产代码需要修改，执行 `rework -- --req <REQ> --reason production-fix`：保留失败日志、归档旧 implementation evidence，并回到实现；不要创建 repair Req。有外部协作者时优先 Mockito；纯逻辑允许普通 JUnit。

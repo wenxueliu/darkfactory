@@ -41,6 +41,7 @@
 - 验收标准必须是可观察行为，不写“代码已修改”“实现合理”等内部描述。
 - 每个 Req 的 `implementation` 同时保存入口、编码前冻结的复用决策和测试目标；不创建第二份 impact-map，也不维护风险分类。
 - `entrypoint` 和 `reuse.target` 使用稳定的项目相对 `path + symbol`，不保存容易随编辑漂移的行号。
+- 路径基准是 discovery 返回的 Maven 项目目录，不是 `requirement.md` 所在目录。若输入误带项目目录名前缀（如 `service/src/main/...`），`contract-check` 会规范化为 `src/main/...` 后再保存，后续阶段只使用规范化路径。
 - Contract 阶段允许 `entrypoint` 文件或 symbol 尚不存在，因为它可以是计划新增的 Controller/API/handler；此时只校验路径不越界且 symbol 非空。`implement` checkpoint 再强制验证入口文件和 symbol 已真实创建。
 - `reuse.target` 是复用决策的现有证据，Contract 阶段必须已经存在，不能引用计划新增的文件或 symbol。
 - `reuse.kind` 只能为 `existing_method`、`service_api`、`persistence` 或 `architecture_exception`。选择 `persistence` 时，`absence_evidence` 必须同时包含 `current_class` 和 `same_layer_service`；其他类型必须为空。

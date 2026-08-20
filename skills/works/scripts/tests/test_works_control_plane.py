@@ -93,6 +93,7 @@ class BaselineProbeTest(unittest.TestCase):
             self.assertTrue(all(call.args[0][-1] != "init" for call in run.call_args_list))
             compile_call = next(call for call in run.call_args_list
                                 if call.args[0][-2:] == ["-DskipTests", "compile"])
+            self.assertEqual(compile_call.args[0][0], "mvn")
             self.assertEqual(compile_call.kwargs["cwd"], root)
 
     def test_preflight_recovers_from_a_partial_attempt(self):
@@ -341,7 +342,7 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(recovered["last_activity"]["action"], "note")
             self.assertTrue(Path(recovered["memory"]["findings"]).is_file())
 
-    def test_blocks_identical_failed_action(self):
+    def test_repeated_failure_is_recorded_without_signature_blocking(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             project_fixture(root)
@@ -356,16 +357,51 @@ class StateMachineTest(unittest.TestCase):
             app.run(root, "contract-init", [])
             with self.assertRaises(WorksError):
                 app.run(root, "contract-check", [])
-            with self.assertRaises(WorksError) as caught:
+            with self.assertRaises(WorksError):
                 app.run(root, "contract-check", [])
-            self.assertEqual(caught.exception.code, "E901_REPEAT_FAILURE")
             state = store.load(plan)
-            self.assertEqual(state["attempts"]["contract-check:-"]["count"], 1)
+            self.assertEqual(state["attempts"]["contract-check:-"]["count"], 2)
+            self.assertNotIn("signature", state["attempts"]["contract-check:-"])
             activity = [json.loads(line) for line in (plan / "activity.jsonl").read_text().splitlines()]
-            self.assertEqual([row["result"] for row in activity[-2:]], ["failed", "blocked"])
+            self.assertEqual([row["result"] for row in activity[-2:]], ["failed", "failed"])
 
 
 class RequirementContractTest(unittest.TestCase):
+    def test_contract_paths_use_explicit_project_root_and_strip_project_prefix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            requirement = repository / "requirement.md"
+            requirement.write_text("# Requirement")
+            project = repository / "service"
+            project.mkdir()
+            (project / "Controller.java").write_text(
+                "class Controller { void existing() {} }\n")
+            implementation = implementation_fixture()
+            implementation["entrypoint"] = {
+                "path": "service/Controller.java", "symbol": "Controller",
+            }
+            implementation["reuse"]["target"] = {
+                "path": "service/Controller.java", "symbol": "existing",
+            }
+            implementation["test_target"]["file"] = "service/src/test/java/ATest.java"
+            data = requirement_contract.template(requirement)
+            data["requirements"] = [{
+                "id": "REQ-1", "statement": "behavior",
+                "source": {"heading": "Requirement", "item": "behavior"},
+                "acceptance_criteria": ["result"], "implementation": implementation,
+            }]
+            data["acceptance_commands"] = [{
+                "id": "tests", "covers": ["REQ-1"],
+                "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
+                            "-Dtest=ATest#works", "test"],
+            }]
+
+            self.assertTrue(requirement_contract.normalize_project_paths(data, project))
+            self.assertEqual(requirement_contract.validate(data, requirement, project), [])
+            self.assertEqual(implementation["entrypoint"]["path"], "Controller.java")
+            self.assertEqual(implementation["reuse"]["target"]["path"], "Controller.java")
+            self.assertEqual(implementation["test_target"]["file"], "src/test/java/ATest.java")
+
     def test_allows_a_planned_entrypoint_but_requires_existing_reuse_target(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
