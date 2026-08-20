@@ -49,7 +49,7 @@
 - `acceptance_commands` 使用 argv 数组，不使用 shell 字符串。
 - Maven argv 的首项使用 discovery 返回的平台入口：优先取 `M2_HOME/bin/mvn`（Windows 为 `mvn.cmd`）；入口不存在时再取平台对应的项目 wrapper，没有 wrapper 时为 `mvn`。命令从 `discovery.maven_project` 执行，不需要额外拼接子项目 `-f`。
 - `contract-check` 会把 Maven argv 首项统一改写为 `discovery.build` 的真实路径；不要依赖 shell 展开 `$M2_HOME`、`%M2_HOME%` 或 `~`，因为测试通过 Python `subprocess` 的 argv 模式执行。
-- Linux 直接执行 Maven argv；Windows 的 `mvn.cmd`/`.bat` 统一通过 `%COMSPEC% /d /s /c` 执行，并把含空格的 Maven 路径编码成单条命令字符串。不要手工添加 `cmd /c`。
+- Linux 直接执行 Maven argv；Windows 的 `mvn.cmd`/`.bat` 统一通过 `%COMSPEC% /d /s /c` 执行，并对 Maven 路径及每个参数分别加引号，确保 `-Dmaven.test.skip=false` 等参数不被 PowerShell/cmd 拆分。不要手工添加 `cmd /c` 或额外引号。
 - 每个 Req 至少由一条精确定向验收命令覆盖；每条 Maven 命令必须包含唯一 `-Dtest=Class#method`，只执行当前 Req 的新实现行为，禁止模块级、依赖模块或全量存量测试。
 - `acceptance_commands` 是前瞻性测试契约：目标测试类和方法允许尚不存在。`contract-check` 只验证命令结构、行为可测试性和 Req 覆盖，不执行命令。
 - 当前 Req 进入 test checkpoint 后，实际 `--testcase` 和 Maven `-Dtest` 必须匹配该 Req 契约中声明的 selector；repair Req 回溯匹配其原始 Req。测试文件和方法此时必须真实存在并执行通过。

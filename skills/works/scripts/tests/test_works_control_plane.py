@@ -966,7 +966,7 @@ class CrossPlatformCommandTest(unittest.TestCase):
 
     def test_windows_runs_maven_cmd_through_comspec_with_quoted_path(self):
         command = [r"C:\Program Files\Apache Maven\bin\mvn.cmd",
-                   "-Dtest=ATest#works", "test"]
+                   "-Dmaven.test.skip=false", "-Dtest=ATest#works", "test"]
 
         resolved = windows_command(
             command, "nt", {"COMSPEC": r"C:\Windows\System32\cmd.exe"}
@@ -976,14 +976,16 @@ class CrossPlatformCommandTest(unittest.TestCase):
             resolved,
             'C:\\Windows\\System32\\cmd.exe /d /s /c '
             '""C:\\Program Files\\Apache Maven\\bin\\mvn.cmd" '
-            '-Dtest=ATest#works test"',
+            '"-Dmaven.test.skip=false" "-Dtest=ATest#works" "test""',
         )
 
     def test_windows_supports_maven_bat_and_comspec_casing(self):
         resolved = windows_command(
             [r"C:\Maven\bin\mvn.bat", "test"], "nt", {"ComSpec": "custom-cmd.exe"}
         )
-        self.assertEqual(resolved, 'custom-cmd.exe /d /s /c "C:\\Maven\\bin\\mvn.bat test"')
+        self.assertEqual(
+            resolved, 'custom-cmd.exe /d /s /c ""C:\\Maven\\bin\\mvn.bat" "test""'
+        )
 
 
 if __name__ == "__main__":

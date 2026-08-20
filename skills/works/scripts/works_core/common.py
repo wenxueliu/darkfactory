@@ -48,9 +48,11 @@ def windows_command(command: list[str], platform: str | None = None,
     env = os.environ if env is None else env
     if platform == "nt" and command and command[0].lower().endswith((".cmd", ".bat")):
         comspec = env.get("COMSPEC") or env.get("ComSpec") or "cmd.exe"
-        # cmd /s strips the outer quote pair. Keep the batch path and every Maven
-        # argument encoded by Python's Windows argv quoting rules inside that pair.
-        command_line = subprocess.list2cmdline(command)
+        # cmd /s strips the outer quote pair. Quote every inner argument so Maven
+        # properties such as -Dmaven.test.skip=false survive batch/cmd parsing as
+        # one argument even when the caller itself was launched from PowerShell.
+        command_line = " ".join(f'"{part.replace(chr(34), chr(34) * 2)}"'
+                                for part in command)
         launcher = subprocess.list2cmdline([comspec, "/d", "/s", "/c"])
         return f'{launcher} "{command_line}"'
     return command
