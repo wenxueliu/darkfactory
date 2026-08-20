@@ -179,6 +179,24 @@ def require_reuse_decision(contract_path: Path, req: str, root: Path,
     return decision
 
 
+def require_implemented_entrypoint(contract_path: Path, req: str, root: Path) -> dict:
+    contract = load(contract_path)
+    row = next((item for item in contract.get("requirements", []) if item.get("id") == req), None)
+    target = row.get("implementation", {}).get("entrypoint") if isinstance(row, dict) else None
+    if not isinstance(target, dict):
+        raise SystemExit(f"entrypoint policy violation: missing entrypoint for {req}")
+    path_value, symbol = target.get("path"), target.get("symbol")
+    if not isinstance(path_value, str) or not isinstance(symbol, str):
+        raise SystemExit(f"entrypoint policy violation: invalid entrypoint for {req}")
+    candidate = (root / path_value).resolve()
+    if not candidate.is_relative_to(root) or not candidate.is_file():
+        raise SystemExit(f"entrypoint policy violation: implemented entrypoint does not exist for {req}: {path_value}")
+    source = candidate.read_text(encoding="utf-8", errors="replace")
+    if not re.search(rf"\b{re.escape(symbol)}\b", source):
+        raise SystemExit(f"entrypoint policy violation: implemented symbol does not exist for {req}: {symbol}")
+    return target
+
+
 def cmd_implement(args: argparse.Namespace) -> int:
     req = req_id(args.req)
     state, root, _ = state_paths(args)
@@ -192,6 +210,7 @@ def cmd_implement(args: argparse.Namespace) -> int:
         Path(args.contract), args.contract_req, root, production_changes,
         state / "reuse-baseline.json",
     )
+    entrypoint = require_implemented_entrypoint(Path(args.contract), args.contract_req, root)
     slice_dir = state / "slices" / req
     slice_dir.mkdir(parents=True, exist_ok=True)
     if (slice_dir / "implementation.json").exists():
@@ -203,6 +222,7 @@ def cmd_implement(args: argparse.Namespace) -> int:
         "changed": production_changes,
         "contract_req": args.contract_req,
         "reuse_decision": reuse_decision,
+        "entrypoint": entrypoint,
         "requirement_contract_sha256": sha(Path(args.contract)),
         "checkpoint_sequence": checkpoint["sequence"],
         "previous_req": checkpoint["previous_req"],
@@ -320,15 +340,16 @@ def cmd_verify(args: argparse.Namespace) -> int:
             after = normalized_production(implementation["production"])
             if before != expected_production or after == before:
                 failures.append(f"{req}: invalid implementation production transition")
-            verify_log = slice_dir / "verify.log"
-            code, junit = run_command(root, test["command"], verify_log,
-                                      slice_dir / "verify-reports", test["testcase"])
-            target = junit["target"]
-            verification_runs.append({"req": req, "command": test["command"], "exit": code,
-                                      "target": target, "log": str(verify_log),
-                                      "log_sha256": sha(verify_log), "reports": junit["files"]})
-            if code != 0 or target["executed"] < 1 or target["failures"] != 0 or target["errors"] != 0:
-                failures.append(f"{req}: final target testcase did not execute and pass")
+            if not getattr(args, "no_replay", False):
+                verify_log = slice_dir / "verify.log"
+                code, junit = run_command(root, test["command"], verify_log,
+                                          slice_dir / "verify-reports", test["testcase"])
+                target = junit["target"]
+                verification_runs.append({"req": req, "command": test["command"], "exit": code,
+                                          "target": target, "log": str(verify_log),
+                                          "log_sha256": sha(verify_log), "reports": junit["files"]})
+                if code != 0 or target["executed"] < 1 or target["failures"] != 0 or target["errors"] != 0:
+                    failures.append(f"{req}: final target testcase did not execute and pass")
             expected_production = after
             previous_req = req
         except (OSError, SystemExit, KeyError, json.JSONDecodeError) as exc:
@@ -372,6 +393,7 @@ def parser() -> argparse.ArgumentParser:
     verify = sub.add_parser("verify")
     verify.add_argument("--state-dir", required=True)
     verify.add_argument("--req", action="append", default=[])
+    verify.add_argument("--no-replay", action="store_true")
     verify.set_defaults(func=cmd_verify)
     return root
 

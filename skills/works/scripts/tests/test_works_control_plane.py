@@ -14,7 +14,6 @@ sys.path.insert(0, str(SCRIPTS))
 
 import code_first
 import requirement_contract
-import review_evidence
 import service_boundary
 import baseline
 from works_core.application import Application, WorksError
@@ -29,7 +28,7 @@ def project_fixture(root: Path) -> None:
     (root / "Controller.java").write_text("class Controller { void existing() {} }\n")
 
 
-def implementation_fixture(kind: str = "existing_method", risks: list[str] | None = None) -> dict:
+def implementation_fixture(kind: str = "existing_method") -> dict:
     absence = []
     if kind == "persistence":
         absence = [
@@ -43,7 +42,6 @@ def implementation_fixture(kind: str = "existing_method", risks: list[str] | Non
         "reuse": {"kind": kind, "target": {"path": "Controller.java", "symbol": "existing"},
                   "reason": "reuse the existing boundary", "absence_evidence": absence},
         "test_target": {"file": "src/test/java/ATest.java", "selector": "ATest#works"},
-        "risks": risks or [],
     }
 
 
@@ -198,22 +196,6 @@ class ProductionFingerprintTest(unittest.TestCase):
 
 
 class StateMachineTest(unittest.TestCase):
-    def test_review_routing_is_risk_based(self):
-        low_contract = {"requirements": [{
-            "statement": "return a label", "acceptance_criteria": ["label is visible"],
-        }]}
-        high_contract = {"requirements": [{
-            "statement": "enforce permission", "acceptance_criteria": ["access is denied"],
-        }]}
-        self.assertFalse(Application._contract_review_required(low_contract))
-        self.assertTrue(Application._contract_review_required(high_contract))
-        self.assertFalse(Application._implementation_review_required({"requirements": [{
-            "implementation": implementation_fixture(risks=["low"]),
-        }]}))
-        self.assertTrue(Application._implementation_review_required({"requirements": [{
-            "implementation": implementation_fixture(kind="persistence", risks=["data change"]),
-        }]}))
-
     def test_single_state_file_drives_setup_and_impact(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -243,6 +225,7 @@ class StateMachineTest(unittest.TestCase):
                 "version": 1,
                 "requirement": str((root / "requirement.md").resolve()),
                 "requirements": [{"id": "REQ-1", "statement": "behavior",
+                                  "source": {"heading": "Requirement", "item": "behavior"},
                                   "acceptance_criteria": ["observable result"],
                                   "implementation": implementation_fixture()}],
                 "acceptance_commands": [{"id": "module-tests", "covers": ["REQ-1"],
@@ -254,7 +237,7 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(updated["state"], "READY_FOR_IMPLEMENTATION")
             self.assertEqual(updated["requirements"], ["REQ-1"])
             self.assertEqual(updated["next_action"]["id"], "checkpoint-current-implementation")
-            self.assertTrue((plan / "summaries" / "contract-check.json").is_file())
+            self.assertFalse((plan / "summaries").exists())
 
     def test_invalid_transition_blocks_implementation(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -280,7 +263,7 @@ class StateMachineTest(unittest.TestCase):
                 "project_root": str(root), "production": {},
             }))
             (evidence / "preflight.json").write_text('{"passed": true}')
-            current.update({"contract_valid": True, "contract_review_valid": True,
+            current.update({"contract_valid": True,
                             "requirements": ["REQ-1"]})
             (evidence / "slices" / "REQ-1").mkdir(parents=True)
             (evidence / "slices" / "REQ-1" / "test.json").write_text("{}")
@@ -294,7 +277,35 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(repaired["current_req"], "REQ-1.repair-1")
             self.assertEqual(repaired["requirements"], ["REQ-1", "REQ-1.repair-1"])
 
-    def test_complete_requires_passing_implementation_review(self):
+    def test_failed_req_test_routes_to_rework_without_creating_repair_req(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            app = Application(SCRIPTS)
+            initialized = app.init(root)
+            plan = Path(initialized["plan_dir"])
+            current = store.load(plan)
+            evidence = Path(current["evidence_dir"])
+            slice_dir = evidence / "slices" / "REQ-1"
+            slice_dir.mkdir(parents=True)
+            (evidence / "baseline.json").write_text(json.dumps({"project_root": str(root)}))
+            (evidence / "preflight.json").write_text('{"passed": true}')
+            (slice_dir / "implementation.json").write_text('{"req": "REQ-1"}')
+            (slice_dir / "test.log").write_text("failed test output")
+            current.update({"contract_valid": True, "requirements": ["REQ-1"],
+                            "attempts": {"test:REQ-1": {"result": "failed"}}})
+            store.save(plan, current)
+
+            status = app.status(root)
+            self.assertEqual(status["next_action"]["id"], "rework-current-implementation")
+            result = app.run(root, "rework", ["--req", "REQ-1", "--reason", "production-fix"])
+
+            self.assertEqual(result["state"], "READY_FOR_IMPLEMENTATION")
+            self.assertEqual(result["requirements"], ["REQ-1"])
+            self.assertFalse((slice_dir / "implementation.json").exists())
+            self.assertTrue(Path(result["archive"]).joinpath("implementation.json").is_file())
+
+    def test_complete_requires_only_passing_deterministic_gates(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             project_fixture(root)
@@ -310,69 +321,10 @@ class StateMachineTest(unittest.TestCase):
                 (evidence / name).write_text(json.dumps(value))
             (evidence / "slices" / "REQ-1" / "test.json").write_text("{}")
             (plan / "requirement-contract.json").write_text(json.dumps({"requirements": [{"id": "REQ-1"}]}))
-            current.update({"contract_valid": True, "contract_review_valid": True,
-                            "implementation_review_valid": False, "requirements": ["REQ-1"]})
+            current.update({"contract_valid": True, "requirements": ["REQ-1"]})
             store.save(plan, current)
             updated = app.status(root)
-            self.assertEqual(updated["state"], "IMPLEMENTATION_REVIEW_REQUIRED")
-            app.run(root, "implementation-review-init", [])
-            review = plan / "implementation-review.json"
-            (root / "A.java").write_text("class A {}\n")
-            (root / "ATest.java").write_text("class ATest {}\n")
-            value = json.loads(review.read_text())
-            value.update({"result": "PASS"})
-            value["requirements"][0].update({
-                "status": "PASS",
-                "implementation": [{"path": "A.java", "line": 1, "symbol": "A",
-                                    "reason": "implements REQ-1"}],
-                "tests": [{"path": "ATest.java", "line": 1, "symbol": "ATest",
-                           "reason": "tests REQ-1"}],
-            })
-            review.write_text(json.dumps(value))
-            updated = app.run(root, "implementation-review-check", [])
             self.assertEqual(updated["state"], "COMPLETE")
-
-    def test_failed_contract_review_can_be_revised_and_passed(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            project_fixture(root)
-            app = Application(SCRIPTS)
-            initialized = app.init(root)
-            plan = Path(initialized["plan_dir"])
-            current = store.load(plan)
-            evidence = Path(current["evidence_dir"])
-            evidence.mkdir()
-            (evidence / "baseline.json").write_text(json.dumps({
-                "project_root": str(root), "production": {},
-            }))
-            (evidence / "preflight.json").write_text('{"passed": true}')
-            contract = {"version": 1, "requirement": str((root / "requirement.md").resolve()),
-                        "requirements": [{"id": "REQ-1", "statement": "security behavior",
-                                          "acceptance_criteria": ["result"],
-                                          "implementation": implementation_fixture()}],
-                        "acceptance_commands": [{"id": "tests", "covers": ["REQ-1"],
-                                                 "command": ["mvn", "-DskipTests=false",
-                                                             "-Dmaven.test.skip=false",
-                                                             "-Dtest=ATest#works", "test"]}]}
-            (plan / "requirement-contract.json").write_text(json.dumps(contract))
-            app.run(root, "contract-check", [])
-            app.run(root, "contract-review-init", [])
-            review = plan / "contract-review.json"
-            failed = json.loads(review.read_text())
-            failed.update({"result": "CHANGES_REQUIRED", "missing": ["behavior"]})
-            review.write_text(json.dumps(failed))
-            with self.assertRaises(WorksError):
-                app.run(root, "contract-review-check", [])
-            contract["requirements"][0]["statement"] = "revised security behavior"
-            (plan / "requirement-contract.json").write_text(json.dumps(contract))
-            app.run(root, "contract-check", [])
-            app.run(root, "contract-review-init", [])
-            passed = json.loads(review.read_text())
-            passed["result"] = "PASS"
-            passed["requirements"][0]["status"] = "PASS"
-            review.write_text(json.dumps(passed))
-            updated = app.run(root, "contract-review-check", [])
-            self.assertEqual(updated["state"], "READY_FOR_IMPLEMENTATION")
 
     def test_records_notes_and_recovers_last_activity(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -411,6 +363,34 @@ class StateMachineTest(unittest.TestCase):
 
 
 class RequirementContractTest(unittest.TestCase):
+    def test_allows_a_planned_entrypoint_but_requires_existing_reuse_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            requirement = root / "requirement.md"
+            requirement.write_text("# Requirement")
+            (root / "Service.java").write_text("class Service { void existing() {} }\n")
+            implementation = implementation_fixture()
+            implementation["entrypoint"] = {
+                "path": "src/main/java/NewController.java", "symbol": "create",
+            }
+            implementation["reuse"]["target"] = {"path": "Service.java", "symbol": "existing"}
+            data = requirement_contract.template(requirement)
+            data["requirements"] = [{
+                "id": "REQ-1", "statement": "create endpoint",
+                "source": {"heading": "Requirement", "item": "create endpoint"},
+                "acceptance_criteria": ["endpoint responds"], "implementation": implementation,
+            }]
+            data["acceptance_commands"] = [{
+                "id": "tests", "covers": ["REQ-1"],
+                "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
+                            "-Dtest=ATest#works", "test"],
+            }]
+
+            self.assertEqual(requirement_contract.validate(data, requirement), [])
+            implementation["reuse"]["target"] = {"path": "MissingService.java", "symbol": "existing"}
+            self.assertTrue(any("reuse.target.path does not exist" in error
+                                for error in requirement_contract.validate(data, requirement)))
+
     def test_requires_full_command_coverage(self):
         with tempfile.TemporaryDirectory() as directory:
             requirement = Path(directory) / "requirement.md"
@@ -419,6 +399,7 @@ class RequirementContractTest(unittest.TestCase):
                 "class Controller { void existing() {} }\n")
             data = requirement_contract.template(requirement)
             data["requirements"] = [{"id": "REQ-1", "statement": "behavior",
+                                     "source": {"heading": "Requirement", "item": "behavior"},
                                      "acceptance_criteria": ["result"],
                                      "implementation": implementation_fixture()}]
             self.assertTrue(requirement_contract.validate(data, requirement))
@@ -494,68 +475,6 @@ class RequirementContractTest(unittest.TestCase):
             self.assertTrue(any("Maven" in error for error in errors))
 
 
-class ReviewEvidenceTest(unittest.TestCase):
-    def test_implementation_review_requires_code_and_test_evidence(self):
-        data = review_evidence.template("implementation", ["REQ-1"])
-        data["result"] = "PASS"
-        data["requirements"][0]["status"] = "PASS"
-        errors = review_evidence.validate(data, "implementation", ["REQ-1"])
-        self.assertTrue(any("implementation evidence" in error for error in errors))
-        self.assertTrue(any("test evidence" in error for error in errors))
-
-    def test_implementation_review_validates_structured_locations(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "A.java").write_text("class A {}\n")
-            (root / "ATest.java").write_text("class ATest {}\n")
-            data = review_evidence.template("implementation", ["REQ-1"])
-            data["result"] = "PASS"
-            data["requirements"][0].update({
-                "status": "PASS",
-                "implementation": [{"path": "A.java", "line": 1, "symbol": "A",
-                                    "reason": "implements REQ-1"}],
-                "tests": [{"path": "ATest.java", "line": 1, "symbol": "ATest",
-                           "reason": "tests REQ-1"}],
-            })
-            self.assertEqual(review_evidence.validate(data, "implementation", ["REQ-1"], root), [])
-
-    def test_implementation_review_rejects_fake_or_escaping_locations(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "A.java").write_text("class A {}\n")
-            data = review_evidence.template("implementation", ["REQ-1"])
-            data["result"] = "PASS"
-            data["requirements"][0].update({
-                "status": "PASS",
-                "implementation": [{"path": "A.java", "line": 99, "symbol": "A",
-                                    "reason": "fake line"}],
-                "tests": [{"path": "../outside.java", "line": 1, "symbol": "Outside",
-                           "reason": "outside project"}],
-            })
-            errors = review_evidence.validate(data, "implementation", ["REQ-1"], root)
-            self.assertTrue(any("exceeds file length" in error for error in errors))
-            self.assertTrue(any("escapes the project root" in error for error in errors))
-
-    def test_implementation_review_rejects_legacy_string_evidence(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            data = review_evidence.template("implementation", ["REQ-1"])
-            data["result"] = "PASS"
-            data["requirements"][0].update({"status": "PASS", "implementation": ["A.java:1"],
-                                               "tests": ["ATest.java:1"]})
-            errors = review_evidence.validate(data, "implementation", ["REQ-1"], root)
-            self.assertEqual(sum("must be an object" in error for error in errors), 2)
-
-    def test_contract_review_rejects_missing_requirement(self):
-        data = review_evidence.template("contract", ["REQ-1"])
-        data.update({"result": "PASS", "requirements": []})
-        self.assertTrue(review_evidence.validate(data, "contract", ["REQ-1"]))
-
-    def test_review_rejects_non_object_json(self):
-        self.assertEqual(review_evidence.validate([], "contract", ["REQ-1"]),
-                         ["review must be a JSON object"])
-
-
 class ServiceBoundaryTest(unittest.TestCase):
     def test_comments_do_not_trigger_dependency(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -615,7 +534,9 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             }))
             contract = root / "requirement-contract.json"
             contract.write_text(json.dumps({"requirements": [{
-                "id": "REQ-1", "implementation": {"reuse": {
+                "id": "REQ-1", "implementation": {
+                    "entrypoint": {"path": "src/main/java/A.java", "symbol": "changed"},
+                    "reuse": {
                     "kind": "existing_method",
                     "target": {"path": "src/main/java/A.java", "symbol": "existing"},
                     "reason": "reuse existing method", "absence_evidence": [],
@@ -645,6 +566,23 @@ class CodeFirstEvidenceTest(unittest.TestCase):
                 self.assertEqual(code_first.cmd_test(test_args), 0)
             self.assertTrue((state / "slices" / "REQ-1" / "implementation.json").is_file())
             self.assertTrue((state / "slices" / "REQ-1" / "test.json").is_file())
+
+    def test_implementation_checkpoint_requires_planned_entrypoint_to_exist(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            contract = root / "requirement-contract.json"
+            contract.write_text(json.dumps({"requirements": [{
+                "id": "REQ-1", "implementation": {
+                    "entrypoint": {"path": "NewController.java", "symbol": "create"},
+                },
+            }]}))
+            with self.assertRaisesRegex(SystemExit, "implemented entrypoint does not exist"):
+                code_first.require_implemented_entrypoint(contract, "REQ-1", root)
+            (root / "NewController.java").write_text("class NewController { void create() {} }\n")
+            self.assertEqual(
+                code_first.require_implemented_entrypoint(contract, "REQ-1", root),
+                {"path": "NewController.java", "symbol": "create"},
+            )
 
     def test_implementation_rejects_ignored_service_reuse_decision(self):
         with tempfile.TemporaryDirectory() as directory:

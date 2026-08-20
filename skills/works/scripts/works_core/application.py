@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -71,7 +72,6 @@ class Application:
                 "activity": str(activity_file),
                 "findings": str(plan / "findings.jsonl"),
                 "decisions": str(plan / "decisions.jsonl"),
-                "summaries": str(plan / "summaries"),
             },
         }
 
@@ -93,6 +93,8 @@ class Application:
                     **store.refresh(plan, current)}
         if operation == "reopen":
             return self._reopen(plan, current, raw)
+        if operation == "rework":
+            return self._rework(plan, current, raw)
         command = self._command(plan, current, operation, raw)
         signature = self._signature(Path(current["project_root"]), command)
         attempt_key = f"{operation}:{current.get('current_req') or '-'}"
@@ -113,7 +115,7 @@ class Application:
             try:
                 self._checked(
                     [sys.executable, str(self.scripts / "code_first.py"), "verify",
-                     "--state-dir", str(evidence),
+                     "--state-dir", str(evidence), "--no-replay",
                      *[item for req in current["requirements"] for item in ("--req", req)]],
                     operation,
                 )
@@ -143,25 +145,10 @@ class Application:
                            "--state-dir", str(evidence)], operation)
             current["requirements"] = [row["id"] for row in contract["requirements"]]
             current["contract_valid"] = True
-            current["contract_review_required"] = self._contract_review_required(contract)
-            current["contract_review_valid"] = not current["contract_review_required"]
-            current["implementation_review_required"] = self._implementation_review_required(contract)
-            current["implementation_review_valid"] = not current["implementation_review_required"]
-            (plan / "contract-review.json").unlink(missing_ok=True)
-            current.setdefault("attempts", {}).pop("contract-review-check:-", None)
-        elif operation == "contract-review-check":
-            current["contract_review_valid"] = True
-        elif operation == "implementation-review-check":
-            current["implementation_review_valid"] = True
-        elif operation in {"contract-review-init", "implementation-review-init"}:
-            current.setdefault("attempts", {}).pop(f"{operation.removesuffix('-init')}-check:-", None)
         store.save(plan, current)
         current.setdefault("attempts", {}).pop(attempt_key, None)
         store.save(plan, current)
         store.activity(plan, current, operation, "passed", command=command)
-        summary_name = (f"{operation}-{current.get('current_req')}"
-                        if operation in {"implement", "test"} else operation)
-        store.summarize(plan, current, summary_name, result="passed")
         return {"ok": True, "operation": operation, "output": proc.stdout, **store.refresh(plan, current)}
 
     def _command(self, plan: Path, current: dict, operation: str, raw: list[str]) -> list[str]:
@@ -178,22 +165,14 @@ class Application:
             return [sys.executable, str(self.scripts / "requirement_contract.py"), "validate",
                     "--file", str(plan / "requirement-contract.json"),
                     "--requirement", current["requirement"]]
-        if operation in {"contract-review-init", "contract-review-check",
-                         "implementation-review-init", "implementation-review-check"}:
-            kind = "contract" if operation.startswith("contract-") else "implementation"
-            action = "init" if operation.endswith("-init") else "validate"
-            option = "--output" if action == "init" else "--file"
-            return [sys.executable, str(self.scripts / "review_evidence.py"), action,
-                    "--type", kind, option, str(plan / f"{kind}-review.json"),
-                    "--contract", str(plan / "requirement-contract.json"),
-                    "--project-root", current["project_root"]]
         if operation == "finalize":
             return []
         action = operation
         runner = "code_first.py" if operation in {"implement", "test"} else "baseline.py"
         command = [sys.executable, str(self.scripts / runner), action]
         if operation == "preflight":
-            command.extend(["--project-root", current["project_root"]])
+            command.extend(["--project-root", current["project_root"],
+                            "--build", current.get("discovery", {}).get("build", "mvn")])
         elif operation == "implement":
             current_req = current["current_req"]
             repair = next((row for row in current.get("repairs", []) if row.get("id") == current_req), None)
@@ -208,37 +187,6 @@ class Application:
                             "--contract-req", contract_req])
         command.extend(["--state-dir", evidence, *raw])
         return command
-
-    @staticmethod
-    def _contract_review_required(contract: dict) -> bool:
-        rows = contract.get("requirements", [])
-        text = " ".join(
-            str(value)
-            for row in rows if isinstance(row, dict)
-            for value in (row.get("statement", ""), *row.get("acceptance_criteria", []))
-        ).lower()
-        high_risk_terms = {
-            "security", "permission", "authorization", "transaction", "migration",
-            "跨模块", "跨服务", "权限", "安全", "事务", "迁移", "兼容",
-        }
-        return len(rows) >= 4 or any(term in text for term in high_risk_terms)
-
-    @staticmethod
-    def _implementation_review_required(contract: dict) -> bool:
-        rows = contract.get("requirements", [])
-        high_risk_terms = {
-            "security", "permission", "transaction", "migration", "compatibility",
-            "权限", "安全", "事务", "迁移", "兼容", "跨模块", "跨服务",
-        }
-        for row in rows:
-            implementation = row.get("implementation", {}) if isinstance(row, dict) else {}
-            decision = implementation.get("reuse", {})
-            if decision.get("kind") in {"persistence", "architecture_exception"}:
-                return True
-            risks = " ".join(str(item) for item in implementation.get("risks", [])).lower()
-            if any(term in risks for term in high_risk_terms):
-                return True
-        return len(rows) >= 4
 
     def _finalize(self, plan: Path, current: dict) -> dict:
         evidence = Path(current["evidence_dir"])
@@ -264,14 +212,10 @@ class Application:
             self._record_failure(plan, current, "finalize:-", signature, "finalize",
                                  "E401_ACCEPTANCE_FAILED", results)
             raise WorksError("E401_ACCEPTANCE_FAILED", "one or more contract acceptance commands failed", results)
-        current["implementation_review_valid"] = False
-        (plan / "implementation-review.json").unlink(missing_ok=True)
-        current.setdefault("attempts", {}).pop("implementation-review-check:-", None)
         store.save(plan, current)
         current.setdefault("attempts", {}).pop("finalize:-", None)
         store.save(plan, current)
         store.activity(plan, current, "finalize", "passed", acceptance=results)
-        store.summarize(plan, current, "finalize", result="passed", acceptance=results)
         return {"ok": True, "operation": "finalize", "acceptance": results,
                 **store.refresh(plan, current)}
 
@@ -292,14 +236,42 @@ class Application:
                 (evidence / name).unlink()
             except FileNotFoundError:
                 pass
-        current["implementation_review_valid"] = False
-        (plan / "implementation-review.json").unlink(missing_ok=True)
-        current.setdefault("attempts", {}).pop("implementation-review-check:-", None)
         store.save(plan, current)
         store.activity(plan, current, "reopen", "passed", repair_req=repair_req, repair_of=req)
-        store.summarize(plan, current, f"reopen-{repair_req}", result="passed", repair_of=req)
         return {"ok": True, "operation": "reopen", "repair_req": repair_req,
                 "repair_of": req, **store.refresh(plan, current)}
+
+    def _rework(self, plan: Path, current: dict, raw: list[str]) -> dict:
+        req = current.get("current_req")
+        if "--req" not in raw or raw.index("--req") + 1 >= len(raw) or raw[raw.index("--req") + 1] != req:
+            raise WorksError("E404_INVALID_REWORK", f"rework requires --req {req}")
+        if "--reason" not in raw or raw.index("--reason") + 1 >= len(raw):
+            raise WorksError("E404_INVALID_REWORK", "rework requires --reason production-fix")
+        reason = raw[raw.index("--reason") + 1]
+        if reason != "production-fix":
+            raise WorksError("E404_INVALID_REWORK", "rework reason must be production-fix")
+        attempt_key = f"test:{req}"
+        if current.get("attempts", {}).get(attempt_key, {}).get("result") != "failed":
+            raise WorksError("E404_INVALID_REWORK", "rework is allowed only after the current Req test failed")
+        evidence = Path(current["evidence_dir"])
+        slice_dir = evidence / "slices" / str(req)
+        archive_root = evidence / "archive" / str(req)
+        archive_root.mkdir(parents=True, exist_ok=True)
+        sequence = 1 + len([path for path in archive_root.iterdir() if path.is_dir()])
+        archive = archive_root / f"rework-{sequence}"
+        archive.mkdir()
+        for name in ("implementation.json", "test.log", "test-reports"):
+            source = slice_dir / name
+            if source.exists():
+                shutil.move(str(source), str(archive / name))
+        current.setdefault("reworks", []).append({
+            "req": req, "reason": reason, "archive": str(archive), "created_at": time.time(),
+        })
+        current.setdefault("attempts", {}).pop(attempt_key, None)
+        store.save(plan, current)
+        store.activity(plan, current, "rework", "passed", req=req, reason=reason, archive=str(archive))
+        return {"ok": True, "operation": "rework", "req": req, "archive": str(archive),
+                **store.refresh(plan, current)}
 
     def _note(self, plan: Path, current: dict, raw: list[str]) -> dict:
         if ("--kind" not in raw or "--text" not in raw
@@ -362,6 +334,4 @@ class Application:
             return "E510_BOUNDARY_VIOLATION"
         return {"implement": "E314_INVALID_IMPLEMENTATION", "test": "E315_INVALID_TEST",
                 "contract-check": "E302_INVALID_REQUIREMENT_CONTRACT",
-                "contract-review-check": "E303_CONTRACT_REVIEW_FAILED",
-                "implementation-review-check": "E402_IMPLEMENTATION_REVIEW_FAILED",
                 }.get(operation, "E900_COMMAND_FAILED")

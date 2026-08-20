@@ -7,7 +7,6 @@ state.json       唯一流程权威，含 attempts 和结构化 next_action
 activity.jsonl   每个动作的 passed / failed / blocked 记录
 findings.jsonl   代码探索事实
 decisions.jsonl  关键实现选择
-summaries/       contract、implementation、test、finalize 等阶段小摘要
 evidence/        测试和验收事实
 ```
 
@@ -17,7 +16,7 @@ evidence/        测试和验收事实
 <python> <skill-dir>/scripts/works.py --project <project> recover
 ```
 
-返回当前状态、唯一 next action、最后活动、最后失败和记忆文件路径。恢复后直接执行 next action，不重新规划全部任务。
+返回当前状态、唯一 next action、最后活动、最后失败和记忆文件路径。恢复后直接执行 next action，不重新规划全部任务。正常动作响应已包含刷新后的 next action，因此成功后不额外调用 `status`。
 
 ## 记录
 

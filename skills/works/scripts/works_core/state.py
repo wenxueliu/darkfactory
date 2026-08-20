@@ -9,9 +9,9 @@ from .common import append_jsonl, atomic_json
 
 
 STATES = {
-    "SETUP_REQUIRED", "CONTRACT_REQUIRED", "CONTRACT_REVIEW_REQUIRED",
+    "SETUP_REQUIRED", "CONTRACT_REQUIRED",
     "READY_FOR_IMPLEMENTATION", "READY_FOR_TEST", "READY_FOR_ACCEPTANCE",
-    "IMPLEMENTATION_REVIEW_REQUIRED", "COMPLETE", "BLOCKED",
+    "COMPLETE", "BLOCKED",
 }
 
 
@@ -31,8 +31,7 @@ def create(project: Path, requirement: Path, discovery: dict) -> tuple[Path, dic
     state = {
         "version": 2, "state": "SETUP_REQUIRED", "project_root": str(project),
         "requirement": str(requirement), "plan_dir": str(plan), "evidence_dir": str(plan / "evidence"),
-        "requirements": [], "current_req": None, "contract_valid": False, "contract_review_valid": False,
-        "implementation_review_valid": False,
+        "requirements": [], "current_req": None, "contract_valid": False,
         "discovery": discovery, "created_at": time.time(), "updated_at": time.time(),
     }
     save(plan, state)
@@ -71,14 +70,6 @@ def activity(plan: Path, state: dict, action: str, result: str, **details: objec
     })
 
 
-def summarize(plan: Path, state: dict, action: str, **details: object) -> None:
-    atomic_json(plan / "summaries" / f"{action}.json", {
-        "time": time.time(), "action": action, "state": state.get("state"),
-        "current_req": state.get("current_req"), "requirements": state.get("requirements", []),
-        **details,
-    })
-
-
 def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
     evidence = Path(state["evidence_dir"])
     baseline = evidence / "baseline.json"
@@ -87,8 +78,6 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
         stage = "SETUP_REQUIRED"
     elif not state.get("contract_valid") or not state["requirements"]:
         stage = "CONTRACT_REQUIRED"
-    elif state.get("contract_review_required") and not state.get("contract_review_valid"):
-        stage = "CONTRACT_REVIEW_REQUIRED"
     else:
         current = None
         implementation_checkpointed = False
@@ -107,13 +96,11 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
             final = evidence / "final-verification.json"
             finalized = final.exists() and json.loads(final.read_text()).get("passed")
             if verified and finalized:
-                review_required = state.get("implementation_review_required", True)
-                stage = ("IMPLEMENTATION_REVIEW_REQUIRED"
-                         if review_required and not state.get("implementation_review_valid") else "COMPLETE")
+                stage = "COMPLETE"
             else:
                 stage = "READY_FOR_ACCEPTANCE"
     state["state"] = stage
-    action_id = _next_action_id(stage, plan, evidence)
+    action_id = _next_action_id(stage, plan, evidence, state)
     state["allowed_actions"] = [NEXT_ACTION_OP[action_id]]
     state["forbidden_actions"] = [] if stage == "READY_FOR_IMPLEMENTATION" else ["edit_production"]
     state["next_action_id"] = action_id
@@ -124,30 +111,21 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
 
 
 def next_action(action_id: str, state: dict, plan: Path | None = None) -> dict:
-    subagents = {
-        "run-fresh-contract-verifier-and-check": "contract-reviewer",
-        "run-fresh-implementation-verifier-and-check": "implementation-reviewer",
-    }
-    skills = {
-        "run-fresh-contract-verifier-and-check": "impl-validator",
-        "revise-contract-and-rerun-review": "impl-validator",
-        "run-fresh-implementation-verifier-and-check": "impl-validator",
-        "diagnose-review-and-reopen-requirement": "impl-validator",
-    }
+    subagents = {}
+    skills = {}
     references = {
         "complete-contract-and-check": "references/requirement-contract.md",
         "checkpoint-current-implementation": "references/code-first.md",
         "test-current-implementation": "references/code-first.md",
+        "rework-current-implementation": "references/code-first.md",
         "diagnose-and-reopen-failing-requirement": "references/diagnosis.md",
         "finalize": "references/verification.md",
     }
     evidence = {
         "complete-contract-and-check": "requirement-contract.json",
-        "run-fresh-contract-verifier-and-check": "contract-review.json",
         "checkpoint-current-implementation": f"evidence/slices/{state.get('current_req')}/implementation.json",
         "test-current-implementation": f"evidence/slices/{state.get('current_req')}/test.json",
         "finalize": "evidence/final-verification.json",
-        "run-fresh-implementation-verifier-and-check": "implementation-review.json",
     }
     result = {
         "id": action_id, "state": state.get("state"), "req": state.get("current_req"),
@@ -174,56 +152,42 @@ NEXT_ACTION_OP = {
     "preflight": "preflight",
     "contract-init": "contract-init",
     "complete-contract-and-check": "contract-check",
-    "contract-review-init": "contract-review-init",
-    "run-fresh-contract-verifier-and-check": "contract-review-check",
-    "revise-contract-and-rerun-review": "contract-check",
     "checkpoint-current-implementation": "implement",
     "test-current-implementation": "test",
+    "rework-current-implementation": "rework",
     "finalize": "finalize",
     "diagnose-and-reopen-failing-requirement": "reopen",
-    "implementation-review-init": "implementation-review-init",
-    "run-fresh-implementation-verifier-and-check": "implementation-review-check",
-    "diagnose-review-and-reopen-requirement": "reopen",
     "report": "report",
     "inspect_evidence": "inspect_evidence",
 }
 
 
-def _next_action_id(stage: str, plan: Path, evidence: Path) -> str:
+def _next_action_id(stage: str, plan: Path, evidence: Path, state: dict) -> str:
     if stage == "SETUP_REQUIRED":
         return "preflight"
     if stage == "CONTRACT_REQUIRED":
         return "contract-init" if not (plan / "requirement-contract.json").exists() else "complete-contract-and-check"
-    if stage == "CONTRACT_REVIEW_REQUIRED":
-        review = plan / "contract-review.json"
-        result = review_result(review)
-        if not review.exists():
-            return "contract-review-init"
-        if result and result != "PASS":
-            return "revise-contract-and-rerun-review"
-        return "run-fresh-contract-verifier-and-check"
     if stage == "READY_FOR_IMPLEMENTATION":
         return "checkpoint-current-implementation"
     if stage == "READY_FOR_TEST":
+        req = _current_req_from_evidence(evidence)
+        attempt = state.get("attempts", {}).get(f"test:{req}", {})
+        if attempt.get("result") == "failed":
+            return "rework-current-implementation"
         return "test-current-implementation"
     if stage == "READY_FOR_ACCEPTANCE":
         final = evidence / "final-verification.json"
         failed = final.exists() and not json.loads(final.read_text()).get("passed")
         return "diagnose-and-reopen-failing-requirement" if failed else "finalize"
-    if stage == "IMPLEMENTATION_REVIEW_REQUIRED":
-        review = plan / "implementation-review.json"
-        result = review_result(review)
-        if not review.exists():
-            return "implementation-review-init"
-        if result and result != "PASS":
-            return "diagnose-review-and-reopen-requirement"
-        return "run-fresh-implementation-verifier-and-check"
     return "report" if stage == "COMPLETE" else "inspect_evidence"
 
 
-def review_result(path: Path) -> str:
-    try:
-        data = json.loads(path.read_text())
-        return str(data.get("result", "")) if isinstance(data, dict) else ""
-    except (OSError, json.JSONDecodeError):
-        return ""
+def _current_req_from_evidence(evidence: Path) -> str | None:
+    """Return the first implementation slice that does not yet have passing test evidence."""
+    slices = evidence / "slices"
+    if not slices.is_dir():
+        return None
+    for path in slices.iterdir():
+        if path.is_dir() and (path / "implementation.json").exists() and not (path / "test.json").exists():
+            return path.name
+    return None

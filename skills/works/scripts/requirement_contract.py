@@ -34,10 +34,26 @@ def _target_errors(value: object, prefix: str, project: Path) -> list[str]:
     return []
 
 
+def _planned_target_errors(value: object, prefix: str, project: Path) -> list[str]:
+    """Validate a future code target without requiring it to exist during contract authoring."""
+    if not isinstance(value, dict) or set(value) != {"path", "symbol"}:
+        return [f"{prefix} must contain exactly path and symbol"]
+    path_value, symbol = value.get("path"), value.get("symbol")
+    if not isinstance(path_value, str) or not path_value or Path(path_value).is_absolute():
+        return [f"{prefix}.path must be project-relative"]
+    try:
+        (project / path_value).resolve().relative_to(project.resolve())
+    except ValueError:
+        return [f"{prefix}.path escapes the project root"]
+    if not isinstance(symbol, str) or not symbol.strip():
+        return [f"{prefix}.symbol is required"]
+    return []
+
+
 def _implementation_errors(value: object, prefix: str, project: Path) -> list[str]:
-    if not isinstance(value, dict) or set(value) != {"entrypoint", "reuse", "test_target", "risks"}:
-        return [f"{prefix} must contain exactly entrypoint, reuse, test_target, and risks"]
-    errors = _target_errors(value.get("entrypoint"), f"{prefix}.entrypoint", project)
+    if not isinstance(value, dict) or set(value) != {"entrypoint", "reuse", "test_target"}:
+        return [f"{prefix} must contain exactly entrypoint, reuse, and test_target"]
+    errors = _planned_target_errors(value.get("entrypoint"), f"{prefix}.entrypoint", project)
     reuse = value.get("reuse")
     if not isinstance(reuse, dict) or set(reuse) != {"kind", "target", "reason", "absence_evidence"}:
         errors.append(f"{prefix}.reuse must contain exactly kind, target, reason, and absence_evidence")
@@ -70,9 +86,6 @@ def _implementation_errors(value: object, prefix: str, project: Path) -> list[st
             or not isinstance(test_target.get("selector"), str)
             or "#" not in test_target["selector"]):
         errors.append(f"{prefix}.test_target must contain a Maven test file and Class#method selector")
-    risks = value.get("risks")
-    if not isinstance(risks, list) or any(not isinstance(item, str) for item in risks):
-        errors.append(f"{prefix}.risks must be an array of strings")
     return errors
 
 
@@ -111,6 +124,11 @@ def validate(data: object, requirement: Path) -> list[str]:
             ids.append(req)
         if not isinstance(row.get("statement"), str) or not row["statement"].strip():
             errors.append(f"{prefix}.statement is required")
+        source = row.get("source")
+        if (not isinstance(source, dict) or set(source) != {"heading", "item"}
+                or not all(isinstance(source.get(key), str) and source[key].strip()
+                           for key in ("heading", "item"))):
+            errors.append(f"{prefix}.source must contain non-empty heading and item")
         criteria = row.get("acceptance_criteria")
         if not isinstance(criteria, list) or not criteria or any(
             not isinstance(item, str) or not item.strip() for item in criteria
@@ -119,6 +137,10 @@ def validate(data: object, requirement: Path) -> list[str]:
         errors.extend(_implementation_errors(row.get("implementation"), f"{prefix}.implementation", project))
     if len(ids) != len(set(ids)):
         errors.append("requirement IDs must be unique and ordered")
+    sources = [json.dumps(row.get("source"), ensure_ascii=False, sort_keys=True)
+               for row in rows if isinstance(row, dict) and isinstance(row.get("source"), dict)]
+    if len(sources) != len(set(sources)):
+        errors.append("requirement sources must be unique")
 
     commands = data.get("acceptance_commands")
     if not isinstance(commands, list) or not commands:

@@ -20,6 +20,12 @@
 - 指定 testcase 确实执行且通过；
 - 生成新鲜的 Surefire/Failsafe JUnit XML 证据。
 
-实现前必须读取 `status.next_action.reuse_decision`，并严格使用其中选定的复用目标。`contract-check` 冻结持久层调用基线；`implement` 重新读取 `requirement-contract.json`，校验目标文件和 symbol 仍有效，并把决策及 contract 哈希写入 implementation evidence。选择 `existing_method` 或 `service_api` 时，变更后的生产文件必须实际引用该目标，且相对基线不得新增 Mapper/DAO/Repository 或直接数据访问调用。repair Req 使用原始 Req 的复用决策。不得在实现后反向修改 contract 为已经写出的代码辩护。
+实现前必须读取 `status.next_action.reuse_decision`，并严格使用其中选定的复用目标。`contract-check` 冻结持久层调用基线；`implement` 重新读取 `requirement-contract.json`，校验复用目标仍有效，并确认 contract 中计划的入口文件和 symbol 已真实存在，再把入口、复用决策及 contract 哈希写入 implementation evidence。选择 `existing_method` 或 `service_api` 时，变更后的生产文件必须实际引用该目标，且相对基线不得新增 Mapper/DAO/Repository 或直接数据访问调用。repair Req 使用原始 Req 的复用决策。不得在实现后反向修改 contract 为已经写出的代码辩护。
 
-若测试失败，先诊断并改变实现或测试策略后重试；不能修改 `.planning/` 中的证据文件。
+若测试失败且只需修测试/fixture，修改测试后重试。若失败证明生产代码需要修改，运行：
+
+```text
+rework -- --req <REQ> --reason production-fix
+```
+
+CLI 保留失败日志，将旧 implementation evidence 归档到 `evidence/archive/<REQ>/`，清除该次失败 attempt，并回到 `READY_FOR_IMPLEMENTATION`。重新修改生产代码后再次执行 `implement → test`。不要手改 `.planning/`，也不要为尚未完成的 Req 创建 repair Req。

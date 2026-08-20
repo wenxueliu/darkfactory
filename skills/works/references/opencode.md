@@ -2,10 +2,10 @@
 
 ## Runtime
 
-- 使用 OpenCode 原生 `skill` 工具加载 `works`；由 works 按 `skill-routing.md` 加载 `impl-validator`（审查门）或读内置 reference。
+- 使用 OpenCode 原生 `skill` 工具加载 `works`；works 按 `skill-routing.md` 读取内置 reference。
 - 使用 OpenCode 原生 read/edit/write/patch/bash 能力执行本 Skill。
 - 辅助 Skill 只提供当前阶段的方法；`state.json`、CLI 门禁和完成判定始终由 works 控制。
-- 主 Agent直接编写 requirement contract。只有状态机判定为高风险时，才使用全新上下文的只读 reviewer。始终不使用人工确认。
+- 主 Agent直接编写 requirement contract，依靠确定性门禁推进，始终不使用人工确认。
 - 推荐模型配置为 `opencode-go/minimax-m2.7`；也可通过 `/connect` 连接 MiniMax 后用 `/models` 选择 M2.7。
 
 ## M2.7 discipline

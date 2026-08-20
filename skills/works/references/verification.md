@@ -4,16 +4,16 @@
 
 ## 证据优先
 
-- 完成声明只由 works CLI 记录的事实推进：`code-first-verify.json`（重放每个 Req 测试）+ `final-verification.json`（契约里每条验收命令真实退出 0）。
+- 完成声明只由 works CLI 记录的事实推进：`code-first-verify.json`（校验 checkpoint 与 evidence hash）+ `final-verification.json`（契约里每条验收命令真实退出 0）。
 - 文字结论不是证据；只有退出码、JUnit 和证据文件算数。
 
 ## finalize 做什么
 
 `finalize` 命令会：
 
-1. 重放全部 Req 的精确测试命令，要求目标 testcase 执行并通过。
-2. 检查 Service 边界（无新增入口→持久层依赖）。
-3. 跑契约里每条精确 `-Dtest=Class#method` 验收命令，写入 `acceptance-*.log`；不运行模块级或全量存量测试。
+1. 校验全部 Req 的 checkpoint、生产指纹和 implementation/test evidence hash。
+2. 检查统一 architecture gate（Service boundary 与 reuse enforcement）。
+3. 统一跑契约里每条精确 `-Dtest=Class#method` 验收命令一次，要求目标 testcase 执行并通过，写入 `acceptance-*.log`；不在 code-first verify 中重复重放同一 selector，也不运行模块级或全量存量测试。
 
 模型在 finalize 前只需确认：每个 Req 都有 implementation + test 证据，且当前生产指纹等于最后 test checkpoint（见 [Code-first evidence](code-first.md)）。
 

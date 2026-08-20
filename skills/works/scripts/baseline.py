@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -212,7 +213,25 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     """Create and verify one immutable baseline without changing Git history."""
     if not (Path(args.state_dir).resolve() / "baseline.json").exists():
         cmd_init(args)
-    return cmd_probe(args)
+    cmd_probe(args)
+    state, root, _ = state_paths(args)
+    build = getattr(args, "build", None) or (
+        str(root / ("mvnw.cmd" if os.name == "nt" else "mvnw"))
+        if (root / ("mvnw.cmd" if os.name == "nt" else "mvnw")).is_file()
+        else "mvn"
+    )
+    command = [build, "-DskipTests", "compile"]
+    proc = subprocess.run(windows_command(command), cwd=root, text=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    output = proc.stdout if isinstance(proc.stdout, str) else ""
+    log = state / "baseline-compile.log"
+    log.write_text(output)
+    atomic_json(state / "baseline-compile.json", {
+        "command": command, "exit": proc.returncode, "passed": proc.returncode == 0,
+        "failure_summary": output[-2000:] if proc.returncode else "", "log": str(log),
+        "recorded_at": time.time(),
+    })
+    return 0
 
 
 def parser() -> argparse.ArgumentParser:
@@ -228,6 +247,7 @@ def parser() -> argparse.ArgumentParser:
     preflight = sub.add_parser("preflight")
     preflight.add_argument("--project-root", required=True)
     preflight.add_argument("--state-dir", required=True)
+    preflight.add_argument("--build")
     preflight.set_defaults(func=cmd_preflight)
     return root
 

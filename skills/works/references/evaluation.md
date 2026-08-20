@@ -16,7 +16,7 @@
 - 每个 Req 都有独立 implementation、test 和最终 replay。
 - 每条验收标准至少被一条 acceptance command 覆盖。
 - `COMPLETE` 前全部契约命令真实退出 0。
-- 全程没有用户问题或人工确认；主 Agent编写契约，只有状态机声明的风险审查可使用 fresh 只读 reviewer，subagent 不得控制状态。
+- 全程没有用户问题或人工确认；主 Agent编写契约，状态只由确定性门禁推进。
 - 每轮遵循唯一 `next_action`，后 50% 不缩小测试或遗漏 Req。
 
 比较候选版本时记录完成率、错误完成率、遗漏 Req 数、工具调用数、token、耗时和后半段失败率。只有 held-out 仓库不退化时才替换稳定版本。

@@ -5,11 +5,9 @@
 ```text
 SETUP_REQUIRED -> preflight
 CONTRACT_REQUIRED -> 主 Agent 编写并校验 Req 契约
-CONTRACT_REVIEW_REQUIRED -> 仅高风险独立审查
 READY_FOR_IMPLEMENTATION -> 生产 checkpoint
-READY_FOR_TEST -> 定向测试证据
+READY_FOR_TEST -> 定向测试证据；生产修复需要时 rework -> READY_FOR_IMPLEMENTATION
 READY_FOR_ACCEPTANCE -> finalize；失败时追加 repair Req
-IMPLEMENTATION_REVIEW_REQUIRED -> 仅高风险独立审查
 COMPLETE
 ```
 
