@@ -213,18 +213,6 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     if not (Path(args.state_dir).resolve() / "baseline.json").exists():
         cmd_init(args)
     cmd_probe(args)
-    state, root, _ = state_paths(args)
-    command = ["mvn", "-DskipTests", "compile"]
-    proc = subprocess.run(windows_command(command), cwd=root, text=True,
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output = proc.stdout if isinstance(proc.stdout, str) else ""
-    log = state / "baseline-compile.log"
-    log.write_text(output)
-    atomic_json(state / "baseline-compile.json", {
-        "command": command, "exit": proc.returncode, "passed": proc.returncode == 0,
-        "failure_summary": output[-2000:] if proc.returncode else "", "log": str(log),
-        "recorded_at": time.time(),
-    })
     return 0
 
 

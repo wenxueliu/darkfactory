@@ -8,7 +8,7 @@
       "prompt": "/works。根据根目录 requirement.md 全自动完成，不要询问我。",
       "assertions": [
         "works 保持唯一流程控制；preflight 不修改 Git 历史",
-        "preflight 记录低成本 compile 基线及退出码，用于区分既有构建故障",
+        "preflight 冻结 baseline 和生产指纹，不运行 Maven 编译或测试",
         "主 Agent直接编写并校验 requirement contract，不启动 contract-author subagent",
         "不做风险分类或独立 reviewer 审查",
         "requirement-contract 覆盖文档中的全部独立行为，每个 Req 有唯一轻量来源",

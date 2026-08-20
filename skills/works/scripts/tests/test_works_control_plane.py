@@ -76,7 +76,7 @@ class BaselineProbeTest(unittest.TestCase):
             self.assertEqual(baseline_data["git_status"], [])
             self.assertNotIn("tests", baseline_data)
 
-    def test_preflight_combines_baseline_and_probe_without_git_writes(self):
+    def test_preflight_combines_baseline_and_probe_without_building(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             state = root / ".planning" / "evidence"
@@ -91,10 +91,9 @@ class BaselineProbeTest(unittest.TestCase):
             self.assertEqual(json.loads((state / "preflight.json").read_text())["baseline_mode"],
                              "fingerprint")
             self.assertTrue(all(call.args[0][-1] != "init" for call in run.call_args_list))
-            compile_call = next(call for call in run.call_args_list
-                                if call.args[0][-2:] == ["-DskipTests", "compile"])
-            self.assertEqual(compile_call.args[0][0], "mvn")
-            self.assertEqual(compile_call.kwargs["cwd"], root)
+            self.assertTrue(all(call.args[0][0] != "mvn" for call in run.call_args_list))
+            self.assertFalse((state / "baseline-compile.json").exists())
+            self.assertFalse((state / "baseline-compile.log").exists())
 
     def test_preflight_recovers_from_a_partial_attempt(self):
         with tempfile.TemporaryDirectory() as directory:

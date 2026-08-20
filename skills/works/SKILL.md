@@ -15,7 +15,7 @@ description: 面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实现
 
 ## 流程
 
-1. `init` 完成项目发现，随后执行唯一正常环境动作 `preflight`：在 Maven 项目目录固定运行 `mvn -DskipTests compile`，保存 dirty baseline、生产指纹、Service boundary，并记录编译命令、退出码和失败摘要；不运行测试。Windows 和 Linux 都使用系统已安装的 `mvn`，不选择 wrapper。`doctor` 仅用于人工排障，不属于正常状态机。
+1. `init` 完成项目发现，随后执行唯一正常环境动作 `preflight`：保存 dirty baseline、生产指纹和 Service boundary，不运行 Maven 编译或测试。`doctor` 仅用于人工排障，不属于正常状态机。
 2. 按 `references/exploration.md` 探索仓库，再依据 `references/requirement-contract.md` 一次性填写 Req、轻量 requirement 来源、入口、复用决策、测试目标和验收命令，随后运行 `contract-check`。`contract-init` 只是创建契约文件的内部准备动作，不代表业务阶段。不要创建独立 impact-map。
 3. 优先复用当前类已有方法，其次同层 Service API；只有新增持久层调用时才在 contract 中提交两级缺失证据。`contract-check` 通过后直接进入实现，不做实现前的独立审查。
 4. 最小实现当前 Req，运行 `implement` 冻结生产 checkpoint。随后添加只覆盖该行为的快速测试并运行 `test`。测试若表明生产代码需要修改，执行 `rework -- --req <REQ> --reason production-fix`：保留失败日志、归档旧 implementation evidence，并回到实现；不要创建 repair Req。有外部协作者时优先 Mockito；纯逻辑允许普通 JUnit。
