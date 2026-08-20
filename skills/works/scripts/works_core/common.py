@@ -72,3 +72,15 @@ def ordered_task_ids(task_ids: Iterable[str]) -> list[str]:
     over ASCII task ids is codepoint order and therefore identical on every OS.
     """
     return sorted(task_ids)
+
+
+def maven_modules(project: Path) -> list[str]:
+    """Return project-relative Maven module directories available to plans."""
+    modules: list[str] = []
+    for directory, dirnames, filenames in os.walk(project):
+        dirnames[:] = sorted(name for name in dirnames if name not in IGNORED_DIRS)
+        if "pom.xml" not in filenames:
+            continue
+        relative = Path(directory).resolve().relative_to(project.resolve()).as_posix()
+        modules.append(relative or ".")
+    return sorted(set(modules))

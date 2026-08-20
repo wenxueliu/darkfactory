@@ -1,6 +1,6 @@
 # Module-parallel execution
 
-在 `impact-check` 后把每个 Req 按 Maven module 拆成 `module-plan.json`。任务粒度固定为唯一的 `Req × module`，每项包含 `id`、`req`、`module`、`depends_on`、`write_scope`、`changed_behaviors` 和 `database_dependencies`。`module` 必须是项目内含 `pom.xml` 的相对路径，根模块统一写 `.`；禁止绝对路径、反斜杠和 `..`。
+在 `impact-check` 后把每个 Req 按 Maven module 拆成 `module-plan.json`。任务粒度固定为唯一的 `Req × module`，每项包含 `id`、`req`、`module`、`depends_on`、`write_scope`、`changed_behaviors` 和 `database_dependencies`。`module` 必须直接选自 `status.next_action.available_modules`：它表示项目内含 `pom.xml` 的相对目录（例如 `services/user-service`），根模块统一写 `.`。它不是 Maven `artifactId`、Java package、源码文件路径或绝对路径；禁止反斜杠和 `..`。
 
 `module-plan-check` 会把计划同时绑定到 `impact-map.json` 和 `requirement-contract.json`：每个 Req 必须覆盖 impact 证据、planned test 以及契约 `-pl` 所属的全部 Maven module。通过后控制面记录三份输入的 SHA-256；计划、impact 或契约任一文件变化都会自动退回 `MODULE_PLAN_REQUIRED`，必须重新检查。
 

@@ -105,10 +105,12 @@ class BaselineProbeTest(unittest.TestCase):
 
     def test_probe_initializes_and_commits_an_unmanaged_project(self):
         with tempfile.TemporaryDirectory() as directory:
-            state = Path(directory)
+            root = Path(directory)
+            state = root / ".planning" / "evidence"
+            state.mkdir(parents=True)
             baseline_file = state / "baseline.json"
             baseline_file.write_text(json.dumps({
-                "version": 1, "project_root": directory, "production": {}, "tests": {},
+                "version": 1, "project_root": str(root), "production": {}, "tests": {},
             }))
             (state / "baseline.sha256").write_text(tdd_slice.sha(baseline_file) + "\n")
             results = [mock.Mock(returncode=128), mock.Mock(returncode=0, stdout=""),
@@ -123,6 +125,7 @@ class BaselineProbeTest(unittest.TestCase):
             self.assertEqual(run.call_args_list[3].args[0][-4:], [
                 "user.email=works@example.invalid", "commit", "-m", "init commit",
             ])
+            self.assertIn("/.planning/", (root / ".git" / "info" / "exclude").read_text().splitlines())
             self.assertTrue(json.loads((state / "preflight.json").read_text())["git_initialized"])
 
     def test_probe_rejects_a_modified_baseline(self):
@@ -466,15 +469,23 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(review_gate["next_action"]["id"], "complete-contract-review")
             self.assertEqual(review_gate["next_action"]["kind"], "subagent-review")
             self.assertEqual(review_gate["next_action"]["skill"], "impl-validator")
-            self.assertEqual(review_gate["allowed_actions"], [])
+            self.assertEqual(review_gate["allowed_actions"], ["contract-review-submit"])
             with self.assertRaises(WorksError) as caught:
                 app.run(root, "contract-review-check", [])
             self.assertEqual(caught.exception.code, "E202_INVALID_STATE")
             review = plan / "contract-review.json"
             value = json.loads(review.read_text())
-            value.update({"result": "PASS"})
             value["requirements"][0]["status"] = "PASS"
-            review.write_text(json.dumps(value))
+            payload = root / "contract-review-payload.json"
+            payload.write_text(json.dumps({**value, "result": "APPROVED"}))
+            with self.assertRaises(WorksError) as caught:
+                app.run(root, "contract-review-submit", ["--input", str(payload)])
+            self.assertEqual(caught.exception.code, "E303_CONTRACT_REVIEW_FAILED")
+            self.assertEqual(json.loads(review.read_text())["result"], "")
+
+            payload.write_text(json.dumps({**value, "result": "PASS"}))
+            submitted = app.run(root, "contract-review-submit", ["--input", str(payload)])
+            self.assertEqual(submitted["next_action"]["id"], "contract-review-check")
             updated = app.run(root, "contract-review-check", [])
             self.assertEqual(updated["state"], "IMPACT_REQUIRED")
             self.assertEqual(updated["next_action"]["id"], "impact-init")
@@ -547,7 +558,7 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(review_gate["next_action"]["id"], "complete-implementation-review")
             self.assertEqual(review_gate["next_action"]["kind"], "subagent-review")
             self.assertEqual(review_gate["next_action"]["skill"], "impl-validator")
-            self.assertEqual(review_gate["allowed_actions"], [])
+            self.assertEqual(review_gate["allowed_actions"], ["implementation-review-submit"])
             with self.assertRaises(WorksError) as caught:
                 app.run(root, "implementation-review-check", [])
             self.assertEqual(caught.exception.code, "E202_INVALID_STATE")
@@ -563,7 +574,10 @@ class StateMachineTest(unittest.TestCase):
                 "tests": [{"path": "ATest.java", "line": 1, "symbol": "ATest",
                            "reason": "tests REQ-1"}],
             })
-            review.write_text(json.dumps(value))
+            payload = root / "implementation-review-payload.json"
+            payload.write_text(json.dumps(value))
+            submitted = app.run(root, "implementation-review-submit", ["--input", str(payload)])
+            self.assertEqual(submitted["next_action"]["id"], "implementation-review-check")
             updated = app.run(root, "implementation-review-check", [])
             self.assertEqual(updated["state"], "COMPLETE")
 
@@ -591,10 +605,12 @@ class StateMachineTest(unittest.TestCase):
             app.run(root, "contract-review-init", [])
             review = plan / "contract-review.json"
             failed = json.loads(review.read_text())
-            failed.update({"result": "CHANGES_REQUIRED", "missing": ["behavior"]})
-            review.write_text(json.dumps(failed))
-            with self.assertRaises(WorksError):
-                app.run(root, "contract-review-check", [])
+            failed.update({"result": "FAIL", "missing": ["behavior"]})
+            failed["requirements"][0].update({"status": "FAIL", "finding": "missing behavior"})
+            payload = root / "failed-contract-review.json"
+            payload.write_text(json.dumps(failed))
+            submitted = app.run(root, "contract-review-submit", ["--input", str(payload)])
+            self.assertEqual(submitted["next_action"]["id"], "revise-contract-and-rerun-review")
             contract["requirements"][0]["statement"] = "revised behavior"
             (plan / "requirement-contract.json").write_text(json.dumps(contract))
             app.run(root, "contract-check", [])
@@ -602,7 +618,9 @@ class StateMachineTest(unittest.TestCase):
             passed = json.loads(review.read_text())
             passed["result"] = "PASS"
             passed["requirements"][0]["status"] = "PASS"
-            review.write_text(json.dumps(passed))
+            passed_payload = root / "passed-contract-review.json"
+            passed_payload.write_text(json.dumps(passed))
+            app.run(root, "contract-review-submit", ["--input", str(passed_payload)])
             updated = app.run(root, "contract-review-check", [])
             self.assertEqual(updated["state"], "IMPACT_REQUIRED")
 
@@ -921,6 +939,54 @@ class ModulePlanTest(unittest.TestCase):
                     errors = module_plan.validate(plan, root, ["REQ-1"])
                     self.assertTrue(any("module" in error for error in errors), errors)
 
+    def test_module_plan_action_lists_valid_project_relative_module_choices(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "pom.xml").write_text("<project/>")
+            (root / "services/user-service").mkdir(parents=True)
+            (root / "services/user-service/pom.xml").write_text("<project/>")
+            (root / "target/generated").mkdir(parents=True)
+            (root / "target/generated/pom.xml").write_text("<project/>")
+
+            action = store.next_action("complete-module-plan-and-check", {
+                "state": "MODULE_PLAN_REQUIRED", "project_root": str(root),
+            })
+
+            self.assertEqual(action["available_modules"], [".", "services/user-service"])
+            self.assertIn("available_modules", action["module_rule"])
+            self.assertEqual(action["examples"]["nested_module"], "services/user-service")
+
+    def test_invalid_module_error_lists_available_module_choices(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "user").mkdir()
+            (root / "user/pom.xml").write_text("<project/>")
+            plan = self._plan([self._task(module="/absolute/user")])
+
+            errors = module_plan.validate(plan, root, ["REQ-1"])
+
+            self.assertTrue(any("['user']" in error for error in errors), errors)
+            self.assertTrue(any("project-relative Maven module directories" in error
+                                for error in errors), errors)
+
+    def test_clean_check_ignores_tracked_planning_state_but_not_source_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            state = root / ".planning" / "works-change" / "state.json"
+            state.parent.mkdir(parents=True)
+            state.write_text('{"state":"SETUP_REQUIRED"}')
+            subprocess.run(["git", "-C", str(root), "add", "pom.xml", "requirement.md", ".planning"],
+                           check=True)
+            subprocess.run(["git", "-C", str(root), "-c", "user.name=works", "-c",
+                            "user.email=works@example.invalid", "commit", "-qm", "baseline"], check=True)
+
+            state.write_text('{"state":"WAVE_EXECUTION_REQUIRED"}')
+            self.assertTrue(module_plan.controller_worktree_clean(root))
+
+            (root / "pom.xml").write_text("<project><version>2</version></project>")
+            self.assertFalse(module_plan.controller_worktree_clean(root))
+
     def test_rejects_duplicate_req_module_pair(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1169,7 +1235,7 @@ class ModulePlanTest(unittest.TestCase):
             def patch_check_git(command, **_kwargs):
                 if command[-2:] == ["patch-id", "--stable"]:
                     return mock.Mock(returncode=0, stdout=b"candidate-id 0000000\n")
-                if command[-3:] == ["status", "--porcelain", "--untracked-files=no"]:
+                if "status" in command and "--porcelain" in command:
                     return mock.Mock(returncode=0, stdout="")
                 return mock.Mock(returncode=0, stdout="base\n")
             with mock.patch.object(module_plan.subprocess, "run", side_effect=patch_check_git):

@@ -232,15 +232,17 @@ class Application:
             return [sys.executable, str(self.scripts / "requirement_contract.py"), "validate",
                     "--file", str(plan / "requirement-contract.json"),
                     "--requirement", current["requirement"]]
-        if operation in {"contract-review-init", "contract-review-check",
-                         "implementation-review-init", "implementation-review-check"}:
+        if operation in {"contract-review-init", "contract-review-submit", "contract-review-check",
+                         "implementation-review-init", "implementation-review-submit",
+                         "implementation-review-check"}:
             kind = "contract" if operation.startswith("contract-") else "implementation"
-            action = "init" if operation.endswith("-init") else "validate"
+            action = ("init" if operation.endswith("-init") else
+                      "submit" if operation.endswith("-submit") else "validate")
             option = "--output" if action == "init" else "--file"
             return [sys.executable, str(self.scripts / "review_evidence.py"), action,
                     "--type", kind, option, str(plan / f"{kind}-review.json"),
                     "--contract", str(plan / "requirement-contract.json"),
-                    "--project-root", current["project_root"]]
+                    "--project-root", current["project_root"], *raw]
         if operation == "impact-init":
             return [sys.executable, str(self.scripts / "impact_map.py"), "init",
                     "--output", str(plan / "impact-map.json"),
@@ -411,7 +413,7 @@ class Application:
                                ":(exclude).planning/**"], text=True,
                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout
         inputs = []
-        for option in ("--file", "--contract", "--impact-map"):
+        for option in ("--file", "--contract", "--impact-map", "--input"):
             if option in command and command.index(option) + 1 < len(command):
                 path = Path(command[command.index(option) + 1])
                 try:
@@ -447,6 +449,8 @@ class Application:
             return "E510_BOUNDARY_VIOLATION"
         return {"module-plan-check": "E305_INVALID_MODULE_PLAN", "wave-check": "E306_INVALID_WAVE",
                 "contract-check": "E302_INVALID_REQUIREMENT_CONTRACT",
+                "contract-review-submit": "E303_CONTRACT_REVIEW_FAILED",
                 "contract-review-check": "E303_CONTRACT_REVIEW_FAILED",
+                "implementation-review-submit": "E402_IMPLEMENTATION_REVIEW_FAILED",
                 "implementation-review-check": "E402_IMPLEMENTATION_REVIEW_FAILED",
                 "impact-check": "E301_INVALID_IMPACT_MAP"}.get(operation, "E900_COMMAND_FAILED")

@@ -10,7 +10,7 @@ from pathlib import Path, PureWindowsPath
 import re
 import subprocess
 
-from works_core.common import atomic_json, branch_token, ordered_task_ids, result_filename
+from works_core.common import atomic_json, branch_token, maven_modules, ordered_task_ids, result_filename
 from tdd_slice import require_test_flags, run_command
 
 ERROR = "E305_INVALID_MODULE_PLAN"
@@ -62,7 +62,7 @@ def maven_module(project: Path, relative: str) -> str | None:
     candidate = (project / path_value).resolve()
     if not candidate.is_relative_to(project.resolve()):
         return None
-    roots = [pom.parent.resolve() for pom in project.rglob("pom.xml")]
+    roots = [(project / module).resolve() for module in maven_modules(project)]
     matches = [root for root in roots if candidate.is_relative_to(root)]
     if not matches:
         return None
@@ -110,13 +110,19 @@ def stable_patch_id(content: bytes) -> str | None:
     return proc.stdout.decode(errors="replace").split()[0]
 
 
+def controller_worktree_clean(project: Path) -> bool:
+    """Check tracked project changes while excluding mutable Works metadata."""
+    status = subprocess.run(
+        ["git", "-C", str(project), "status", "--porcelain", "--untracked-files=no",
+         "--", ".", ":(exclude).planning/**"],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+    )
+    return status.returncode == 0 and not status.stdout.strip()
+
+
 def verify_patches(plan: dict, project: Path, results: Path, wave_number: int) -> list[str]:
     errors: list[str] = []
-    dirty = subprocess.run(
-        ["git", "-C", str(project), "status", "--porcelain", "--untracked-files=no"], text=True,
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-    )
-    if dirty.returncode != 0 or dirty.stdout.strip():
+    if not controller_worktree_clean(project):
         errors.append(f"wave {wave_number}: controller workspace must have no tracked changes before apply")
     task_map = {task["id"]: task for task in plan["tasks"]}
     ids = plan["waves"][wave_number - 1]["tasks"]
@@ -186,6 +192,7 @@ def validate(data: object, project: Path, reqs: list[str], impact: dict | None =
     if not isinstance(data, dict):
         return ["module plan must be an object"]
     errors: list[str] = []
+    available_modules = maven_modules(project)
     if data.get("requirements") != reqs:
         errors.append("top-level requirements must exactly match the requirement contract")
     tasks = data.get("tasks")
@@ -217,7 +224,10 @@ def validate(data: object, project: Path, reqs: list[str], impact: dict | None =
                         and inside_module(project, module, module_path(module, "pom.xml"))
                         and (project / module / "pom.xml").is_file())
         if not valid_module:
-            errors.append(f"{prefix}.module must identify a Maven module with pom.xml")
+            errors.append(
+                f"{prefix}.module {module!r} must be one of the project-relative Maven "
+                f"module directories: {available_modules!r}"
+            )
         elif req in reqs:
             key = (req, "." if module.rstrip("/") in {"", "."} else module.rstrip("/"))
             if key in by_req_module:

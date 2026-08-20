@@ -16,7 +16,7 @@ impl-validator check:
     - "报告末尾附加一个 JSON 代码块，内容是完整 review_payload，不得写文件"
 ```
 
-Works 主 agent 必须校验 payload 是单一 JSON 对象，`version`、`type` 和 Req ID/顺序与已初始化模板一致，且没有额外字段；随后用该对象整体覆盖 review JSON。若 payload 缺失、无法解析或 schema 不匹配，不要猜测修复，废弃该响应并启动新的 verifier。
+`review_payload.result` 和每个 `requirements[*].status` 只能是精确大写的 `PASS` 或 `FAIL`；禁止 `APPROVED`、`WARN`、`REJECTED`、`CHANGES_REQUIRED` 等其他值。Works 主 agent 将单一 JSON payload 保存到临时文件，再运行对应的 `contract-review-submit` 或 `implementation-review-submit`。提交命令会校验 `version`、`type`、字段集合、枚举及 Req ID/顺序，然后原子覆盖已初始化的 review JSON。若 payload 缺失、无法解析或 schema 不匹配，不要猜测修复或转换枚举，废弃该响应并启动新的 verifier。
 
 ## Contract review
 

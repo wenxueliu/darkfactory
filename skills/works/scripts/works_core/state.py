@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import time
 
-from .common import append_jsonl, atomic_json
+from .common import append_jsonl, atomic_json, maven_modules
 
 
 STATES = {
@@ -180,6 +180,22 @@ def next_action(action_id: str, state: dict) -> dict:
                 "acceptance_commands in requirement-contract.json before running contract-check."
             ),
         })
+    if action_id == "complete-module-plan-and-check":
+        available = maven_modules(Path(state["project_root"]))
+        result.update({
+            "kind": "workspace-edit",
+            "module_rule": (
+                "Each tasks[].module must be one value from available_modules: the "
+                "project-relative directory containing pom.xml. Use '.' for the root module; "
+                "do not use an absolute path, artifactId, Java package, or source-file path."
+            ),
+            "available_modules": available,
+            "examples": {
+                "root_module": ".",
+                "nested_module": next((module for module in available if module != "."),
+                                      "services/user-service"),
+            },
+        })
     if action_id in {"complete-contract-review", "complete-implementation-review"}:
         kind = "contract" if action_id == "complete-contract-review" else "implementation"
         result.update({
@@ -187,8 +203,10 @@ def next_action(action_id: str, state: dict) -> dict:
             "fresh_context": True,
             "read_only": True,
             "instruction": (
-                f"Start a fresh read-only {kind} verifier with impl-validator, then write its "
-                f"review_payload into {kind}-review.json before running {kind}-review-check."
+                f"Start a fresh read-only {kind} verifier with impl-validator. The review_payload "
+                "result and every requirement status must be exactly PASS or FAIL; APPROVED, "
+                "WARN, REJECTED, and CHANGES_REQUIRED are forbidden. Save the single JSON payload "
+                f"to a temporary file, then run {kind}-review-submit -- --input <path>."
             ),
         })
     if action_id in {"dispatch-subagents-and-check-patches", "apply-patches-and-verify-wave"}:
@@ -239,7 +257,7 @@ NEXT_ACTION_OP = {
     "complete-contract": None,
     "contract-check": "contract-check",
     "contract-review-init": "contract-review-init",
-    "complete-contract-review": None,
+    "complete-contract-review": "contract-review-submit",
     "contract-review-check": "contract-review-check",
     "revise-contract-and-rerun-review": "contract-check",
     "impact-init": "impact-init",
@@ -251,7 +269,7 @@ NEXT_ACTION_OP = {
     "finalize": "finalize",
     "diagnose-and-reopen-failing-requirement": "reopen",
     "implementation-review-init": "implementation-review-init",
-    "complete-implementation-review": None,
+    "complete-implementation-review": "implementation-review-submit",
     "implementation-review-check": "implementation-review-check",
     "diagnose-review-and-reopen-requirement": "reopen",
     "report": "report",
@@ -302,9 +320,9 @@ def _next_action_id(stage: str, plan: Path, evidence: Path, current_wave: int | 
             return "contract-review-init"
         if review_is_empty_template(review):
             return "complete-contract-review"
-        if result and result != "PASS":
+        if result == "FAIL":
             return "revise-contract-and-rerun-review"
-        return "contract-review-check"
+        return "contract-review-check" if result == "PASS" else "complete-contract-review"
     if stage == "IMPACT_REQUIRED":
         return "impact-init" if not (plan / "impact-map.json").exists() else "complete-impact-map-and-check"
     if stage == "MODULE_PLAN_REQUIRED":
@@ -324,9 +342,9 @@ def _next_action_id(stage: str, plan: Path, evidence: Path, current_wave: int | 
             return "implementation-review-init"
         if review_is_empty_template(review):
             return "complete-implementation-review"
-        if result and result != "PASS":
+        if result == "FAIL":
             return "diagnose-review-and-reopen-requirement"
-        return "implementation-review-check"
+        return "implementation-review-check" if result == "PASS" else "complete-implementation-review"
     return "report" if stage == "COMPLETE" else "inspect_evidence"
 
 

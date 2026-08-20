@@ -21,6 +21,17 @@ TRANSIENT_FILE_NAMES = {".classpath", ".project", ".factorypath"}
 TRANSIENT_SUFFIXES = (".iml",)
 
 
+def exclude_planning_metadata(root: Path) -> None:
+    """Keep Works control-plane state out of a newly initialized repository."""
+    exclude = root / ".git" / "info" / "exclude"
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    existing = exclude.read_text() if exclude.exists() else ""
+    if "/.planning/" in existing.splitlines():
+        return
+    separator = "" if not existing or existing.endswith("\n") else "\n"
+    exclude.write_text(existing + separator + "/.planning/\n")
+
+
 def is_transient_path(rel: str) -> bool:
     parts = tuple(part.lower() for part in Path(rel.replace("\\", "/")).parts)
     if not parts:
@@ -502,6 +513,8 @@ def cmd_probe(args: argparse.Namespace) -> int:
             proc = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             if proc.returncode:
                 raise SystemExit(f"Git initialization failed: {' '.join(command)}\n{proc.stdout}")
+            if command[-1] == "init":
+                exclude_planning_metadata(root)
         git_initialized = True
     result = {
         "passed": True,
