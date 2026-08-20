@@ -404,14 +404,14 @@ class RequirementContractTest(unittest.TestCase):
     def test_contract_paths_normalize_absolute_and_repository_prefixed_values(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = Path(directory) / "repository"
-            project = repository / "service"
-            project.mkdir(parents=True)
-            existing = project / "src/main/java/Service.java"
+            java_project = repository / "service"
+            java_project.mkdir(parents=True)
+            existing = java_project / "src/main/java/Service.java"
             existing.parent.mkdir(parents=True)
             existing.write_text("class Service { void existing() {} }\n")
             implementation = implementation_fixture()
             implementation["entrypoint"] = {
-                "path": str(project / "src/main/java/NewController.java"), "symbol": "create",
+                "path": str(java_project / "src/main/java/NewController.java"), "symbol": "create",
             }
             implementation["reuse"]["target"] = {
                 "path": "repository/service/src/main/java/Service.java", "symbol": "existing",
@@ -421,15 +421,15 @@ class RequirementContractTest(unittest.TestCase):
             )
             data = {"requirements": [{"implementation": implementation}]}
 
-            self.assertTrue(requirement_contract.normalize_project_paths(data, project))
+            self.assertTrue(requirement_contract.normalize_project_paths(data, repository))
             self.assertEqual(
-                implementation["entrypoint"]["path"], "src/main/java/NewController.java"
+                implementation["entrypoint"]["path"], "service/src/main/java/NewController.java"
             )
             self.assertEqual(
-                implementation["reuse"]["target"]["path"], "src/main/java/Service.java"
+                implementation["reuse"]["target"]["path"], "service/src/main/java/Service.java"
             )
             self.assertEqual(
-                implementation["test_target"]["file"], "src/test/java/NewControllerTest.java"
+                implementation["test_target"]["file"], "service/src/test/java/NewControllerTest.java"
             )
 
     def test_contract_recognizes_windows_maven_absolute_path(self):
@@ -867,7 +867,7 @@ class DiscoveryTest(unittest.TestCase):
             self.assertEqual(Path(result["project"]), root)
             self.assertEqual(Path(result["requirement"]), root / "requirement.md")
 
-    def test_nested_maven_project_is_used_as_preflight_working_directory(self):
+    def test_current_directory_remains_project_root_with_nested_maven_project(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             subprocess.run(["git", "init", "-q", str(root)], check=True)
@@ -878,8 +878,10 @@ class DiscoveryTest(unittest.TestCase):
 
             result = discover(root)
 
-            self.assertEqual(Path(result["project"]), module)
+            self.assertEqual(Path(result["project"]), root)
+            self.assertEqual(Path(result["maven_project"]), module)
             self.assertEqual(Path(result["pom"]), module / "pom.xml")
+            self.assertEqual(result["pom_relative"], "service/pom.xml")
 
     def test_prefers_windows_maven_wrapper_on_windows(self):
         with tempfile.TemporaryDirectory() as directory:

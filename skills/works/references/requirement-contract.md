@@ -41,13 +41,13 @@
 - 验收标准必须是可观察行为，不写“代码已修改”“实现合理”等内部描述。
 - 每个 Req 的 `implementation` 同时保存入口、编码前冻结的复用决策和测试目标；不创建第二份 impact-map，也不维护风险分类。
 - `entrypoint` 和 `reuse.target` 使用稳定的项目相对 `path + symbol`，不保存容易随编辑漂移的行号。
-- 路径基准是 discovery 返回的 Maven 项目目录，不是 `requirement.md` 所在目录。若输入为项目内绝对路径，或误带仓库/项目目录前缀（如 `repo/service/src/main/...`），`contract-check` 会规范化为 `src/main/...` 后再保存；项目外绝对路径仍会拒绝。
+- 路径基准是启动 Works 时的当前工作目录（`project_root`），不是 discovery 找到的 Maven 子项目目录。若 Java 项目位于 `service/`，代码路径必须保留为 `service/src/main/...`。项目内绝对路径或误带工作目录名前缀的路径会规范化为相对 `project_root` 的路径；项目外绝对路径仍会拒绝。
 - Contract 阶段允许 `entrypoint` 文件或 symbol 尚不存在，因为它可以是计划新增的 Controller/API/handler；此时只校验路径不越界且 symbol 非空。`implement` checkpoint 再强制验证入口文件和 symbol 已真实创建。
 - `reuse.target` 是复用决策的现有证据，Contract 阶段必须已经存在，不能引用计划新增的文件或 symbol。
 - `reuse.kind` 只能为 `existing_method`、`service_api`、`persistence` 或 `architecture_exception`。选择 `persistence` 时，`absence_evidence` 必须同时包含 `current_class` 和 `same_layer_service`；其他类型必须为空。
 - `test_target.selector` 必须与该 Req 唯一验收命令的 `-Dtest=Class#method` 一致。测试文件可以在契约阶段尚不存在。
 - `acceptance_commands` 使用 argv 数组，不使用 shell 字符串。
-- Maven argv 的首项使用 discovery 返回的平台入口：优先取 `M2_HOME/bin/mvn`（Windows 为 `mvn.cmd`）；入口不存在时再取平台对应的项目 wrapper，没有 wrapper 时为 `mvn`。
+- Maven argv 的首项使用 discovery 返回的平台入口：优先取 `M2_HOME/bin/mvn`（Windows 为 `mvn.cmd`）；入口不存在时再取平台对应的项目 wrapper，没有 wrapper 时为 `mvn`。命令从 `project_root` 执行；若 POM 位于子目录，argv 必须包含 `-f <discovery.pom_relative>`。
 - 每个 Req 至少由一条精确定向验收命令覆盖；每条 Maven 命令必须包含唯一 `-Dtest=Class#method`，只执行当前 Req 的新实现行为，禁止模块级、依赖模块或全量存量测试。
 - `acceptance_commands` 是前瞻性测试契约：目标测试类和方法允许尚不存在。`contract-check` 只验证命令结构、行为可测试性和 Req 覆盖，不执行命令。
 - 当前 Req 进入 test checkpoint 后，实际 `--testcase` 和 Maven `-Dtest` 必须匹配该 Req 契约中声明的 selector；repair Req 回溯匹配其原始 Req。测试文件和方法此时必须真实存在并执行通过。

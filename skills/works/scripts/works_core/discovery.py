@@ -35,7 +35,7 @@ def discover_maven_command(project: Path, platform: str | None = None,
 def discover(start: Path) -> dict:
     start = start.resolve()
     discovered_git_root = git_root(start)
-    root = discovered_git_root or start
+    root = start
     requirements = sorted(
         (path for path in root.rglob("*.md") if "requirement" in path.name.lower()),
         key=lambda path: (len(path.relative_to(root).parts), str(path)),
@@ -45,24 +45,26 @@ def discover(start: Path) -> dict:
         return {"error": "E102_NO_REQUIREMENT", "root": str(root)}
     if not poms:
         return {"error": "E103_NO_MAVEN", "root": str(root)}
-    projects = [pom.parent for pom in poms]
-    containing_start = [project for project in projects if start.is_relative_to(project)]
+    maven_projects = [pom.parent for pom in poms]
+    containing_start = [candidate for candidate in maven_projects if start.is_relative_to(candidate)]
     if containing_start:
-        project = max(containing_start, key=lambda path: len(path.parts))
+        maven_project = max(containing_start, key=lambda path: len(path.parts))
     else:
-        pairs = [(candidate, path) for candidate in projects for path in requirements
+        pairs = [(candidate, path) for candidate in maven_projects for path in requirements
                  if path.is_relative_to(candidate)]
-        project = min(pairs, key=lambda pair: (
+        maven_project = min(pairs, key=lambda pair: (
             len(pair[1].relative_to(pair[0]).parts), str(pair[0]),
-        ))[0] if pairs else projects[0]
-    local_requirements = [path for path in requirements if path.is_relative_to(project)]
+        ))[0] if pairs else maven_projects[0]
+    local_requirements = [path for path in requirements if path.is_relative_to(maven_project)]
     requirement = (min(local_requirements,
-                       key=lambda path: (len(path.relative_to(project).parts), str(path)))
+                       key=lambda path: (len(path.relative_to(maven_project).parts), str(path)))
                    if local_requirements else requirements[0])
-    pom = next(candidate for candidate in poms if candidate.parent == project)
+    pom = next(candidate for candidate in poms if candidate.parent == maven_project)
     return {
-        "root": str(root), "project": str(project), "requirement": str(requirement),
-        "pom": str(pom), "build": discover_maven_command(project),
+        "root": str(root), "project": str(root), "maven_project": str(maven_project),
+        "requirement": str(requirement), "pom": str(pom),
+        "pom_relative": pom.relative_to(root).as_posix(),
+        "build": discover_maven_command(maven_project),
         "git_managed": discovered_git_root is not None,
         "candidates": {"requirements": len(requirements), "poms": len(poms)},
     }
