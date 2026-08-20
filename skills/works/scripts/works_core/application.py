@@ -402,7 +402,8 @@ class Application:
         store.activity(plan, current, operation, "failed", error=error, attempt=count, evidence=evidence)
 
     @staticmethod
-    def _signature(project: Path, command: list[str]) -> str:
+    def _signature(project: Path, command: list[str | os.PathLike[str]]) -> str:
+        command = [os.fspath(argument) for argument in command]
         status = subprocess.run(["git", "-C", str(project), "status", "--porcelain"], text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout
         status = "\n".join(line for line in status.splitlines() if ".planning/" not in line)
@@ -425,7 +426,7 @@ class Application:
                     inputs.append(hashlib.sha256(path.read_bytes()).hexdigest())
             except OSError:
                 inputs.append("<invalid-results-dir>")
-        payload = (json.dumps(command, ensure_ascii=False, default=os.fspath)
+        payload = (json.dumps(command, ensure_ascii=False)
                    + "\n" + status + "\n" + diff + "\n".join(inputs))
         return hashlib.sha256(payload.encode()).hexdigest()
 
