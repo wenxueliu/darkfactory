@@ -438,6 +438,34 @@ class RequirementContractTest(unittest.TestCase):
             "mvn.cmd",
         )
 
+    def test_contract_replaces_maven_placeholder_with_discovered_executable(self):
+        data = {"acceptance_commands": [
+            {"command": ["$M2_HOME/bin/mvn", "-Dtest=ATest#works", "test"]},
+            {"command": ["./mvnw", "-Dtest=BTest#works", "test"]},
+        ]}
+        executable = "/opt/apache-maven/bin/mvn"
+
+        self.assertTrue(requirement_contract.normalize_maven_commands(data, executable))
+        self.assertEqual(data["acceptance_commands"][0]["command"][0], executable)
+        self.assertEqual(data["acceptance_commands"][1]["command"][0], executable)
+
+    def test_contract_check_receives_discovered_maven_executable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plan = root / ".planning" / "works-requirement"
+            plan.mkdir(parents=True)
+            executable = root / "apache-maven/bin/mvn"
+            current = {
+                "project_root": str(root),
+                "requirement": str(root / "requirement.md"),
+                "evidence_dir": str(plan / "evidence"),
+                "discovery": {"maven_project": str(root), "build": str(executable)},
+            }
+
+            command = Application(SCRIPTS)._command(plan, current, "contract-check", [])
+
+            self.assertEqual(command[command.index("--maven-command") + 1], str(executable))
+
     def test_allows_a_planned_entrypoint_but_requires_existing_reuse_target(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -163,7 +163,8 @@ class Application:
             return [sys.executable, str(self.scripts / "requirement_contract.py"), "validate",
                     "--file", str(plan / "requirement-contract.json"),
                     "--requirement", current["requirement"],
-                    "--project-root", self._maven_project(current)]
+                    "--project-root", self._maven_project(current),
+                    "--maven-command", current.get("discovery", {}).get("build", "mvn")]
         if operation == "finalize":
             return []
         action = operation
