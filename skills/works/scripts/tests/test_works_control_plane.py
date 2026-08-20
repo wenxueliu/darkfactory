@@ -171,6 +171,19 @@ class ProductionFingerprintTest(unittest.TestCase):
 
 
 class StateMachineTest(unittest.TestCase):
+    def test_command_converts_evidence_path_to_string(self):
+        app = Application(SCRIPTS)
+        evidence = Path("plan") / "evidence"
+
+        command = app._command(Path("plan"), {
+            "evidence_dir": str(evidence),
+            "project_root": "project",
+            "state": "SETUP_REQUIRED",
+        }, "probe", [])
+
+        self.assertEqual(command[-2:], ["--state-dir", str(evidence)])
+        self.assertTrue(all(isinstance(argument, str) for argument in command))
+
     def _ready_for_finalize(self, root: Path, command: list[str],
                             task_command: list[str] | None = None) -> tuple[Application, Path, Path]:
         app = Application(SCRIPTS)

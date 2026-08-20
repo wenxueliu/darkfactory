@@ -280,7 +280,7 @@ class Application:
         command = [sys.executable, str(self.scripts / "tdd_slice.py"), action]
         if operation == "baseline-init":
             command.extend(["--project-root", current["project_root"]])
-        command.extend(["--state-dir", evidence, *raw])
+        command.extend(["--state-dir", str(evidence), *raw])
         return command
 
     def _finalize(self, plan: Path, current: dict) -> dict:
