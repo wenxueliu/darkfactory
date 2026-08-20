@@ -20,7 +20,7 @@
 - 指定 testcase 确实执行且通过；
 - 生成新鲜的 Surefire/Failsafe JUnit XML 证据。
 
-实现前必须读取 `status.next_action.reuse_decision`，并严格使用其中选定的复用目标。`contract-check` 冻结持久层调用基线；`implement` 重新读取 `requirement-contract.json`，校验复用目标仍有效，并确认 contract 中计划的入口文件和 symbol 已真实存在，再把入口、复用决策及 contract 哈希写入 implementation evidence。选择 `existing_method` 或 `service_api` 时，变更后的生产文件必须实际引用该目标，且相对基线不得新增 Mapper/DAO/Repository 或直接数据访问调用。repair Req 使用原始 Req 的复用决策。不得在实现后反向修改 contract 为已经写出的代码辩护。
+实现前必须读取 `status.next_action.reuse_decision`，并严格使用其中选定的复用目标。`contract-check` 冻结持久层调用基线；`implement` 重新读取 `requirement-contract.json`，校验复用目标仍有效，并确认 contract 中计划的入口文件和 symbol 已真实存在，再把入口、复用决策及 contract 哈希写入 implementation evidence。`existing_method` 允许两种形式：当入口与复用目标是同一 `path + symbol` 时原地修改该已有方法，其他情况必须在变更代码中调用目标方法；`service_api` 必须由变更代码实际调用。两者相对基线都不得新增 Mapper/DAO/Repository 或直接数据访问调用。repair Req 使用原始 Req 的复用决策。不得在实现后反向修改 contract 为已经写出的代码辩护。
 
 若测试失败且只需修测试/fixture，修改测试后重试。若失败证明生产代码需要修改，运行：
 

@@ -607,6 +607,52 @@ class CodeFirstEvidenceTest(unittest.TestCase):
                     contract, "REQ-1", root, ["Service.java"], reuse_baseline
                 )
 
+    def test_existing_method_can_be_modified_in_place(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "Controller.java"
+            source.write_text("class Controller { void update() { changed(); } void changed() {} }\n")
+            contract = root / "requirement-contract.json"
+            target = {"path": "Controller.java", "symbol": "update"}
+            contract.write_text(json.dumps({"requirements": [{
+                "id": "REQ-1", "implementation": {
+                    "entrypoint": target,
+                    "reuse": {"kind": "existing_method", "target": target,
+                              "reason": "extend the existing endpoint method",
+                              "absence_evidence": []},
+                },
+            }]}))
+            reuse_baseline = root / "reuse-baseline.json"
+            reuse_baseline.write_text(json.dumps({"persistence_invocations": {}}))
+
+            decision = code_first.require_reuse_decision(
+                contract, "REQ-1", root, ["Controller.java"], reuse_baseline
+            )
+
+            self.assertEqual(decision["kind"], "existing_method")
+
+    def test_existing_method_in_same_file_still_requires_call_when_not_entrypoint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "Controller.java"
+            source.write_text("class Controller { void entry() {} void helper() {} }\n")
+            contract = root / "requirement-contract.json"
+            contract.write_text(json.dumps({"requirements": [{
+                "id": "REQ-1", "implementation": {
+                    "entrypoint": {"path": "Controller.java", "symbol": "entry"},
+                    "reuse": {"kind": "existing_method",
+                              "target": {"path": "Controller.java", "symbol": "helper"},
+                              "reason": "reuse helper", "absence_evidence": []},
+                },
+            }]}))
+            reuse_baseline = root / "reuse-baseline.json"
+            reuse_baseline.write_text(json.dumps({"persistence_invocations": {}}))
+
+            with self.assertRaisesRegex(SystemExit, "does not use selected existing_method"):
+                code_first.require_reuse_decision(
+                    contract, "REQ-1", root, ["Controller.java"], reuse_baseline
+                )
+
     def test_reuse_target_in_comment_does_not_satisfy_checkpoint(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

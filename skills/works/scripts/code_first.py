@@ -154,12 +154,19 @@ def require_reuse_decision(contract_path: Path, req: str, root: Path,
     if not re.search(rf"\b{re.escape(target_symbol)}\b", source):
         raise SystemExit(f"reuse policy violation: reuse target is stale for {req}: {target_symbol}")
     if decision.get("kind") in {"existing_method", "service_api"}:
+        entrypoint = (row.get("implementation", {}).get("entrypoint", {})
+                      if isinstance(row, dict) else {})
+        modifies_selected_method = (
+            decision.get("kind") == "existing_method"
+            and entrypoint == target
+            and target_path in production_changes
+        )
         changed_sources = java_code_only("\n".join(
             (root / path).read_text(encoding="utf-8", errors="replace")
             for path in production_changes
             if (root / path).is_file()
         ))
-        if not invokes_symbol(changed_sources, target_symbol):
+        if not modifies_selected_method and not invokes_symbol(changed_sources, target_symbol):
             raise SystemExit(
                 f"reuse policy violation: implementation does not use selected "
                 f"{decision['kind']} target {target_symbol} for {req}"
