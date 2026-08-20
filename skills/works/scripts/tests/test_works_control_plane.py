@@ -462,7 +462,14 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(updated["state"], "CONTRACT_REVIEW_REQUIRED")
             self.assertEqual(updated["requirements"], ["REQ-1"])
             self.assertEqual(updated["next_action"]["id"], "contract-review-init")
-            app.run(root, "contract-review-init", [])
+            review_gate = app.run(root, "contract-review-init", [])
+            self.assertEqual(review_gate["next_action"]["id"], "complete-contract-review")
+            self.assertEqual(review_gate["next_action"]["kind"], "subagent-review")
+            self.assertEqual(review_gate["next_action"]["skill"], "impl-validator")
+            self.assertEqual(review_gate["allowed_actions"], [])
+            with self.assertRaises(WorksError) as caught:
+                app.run(root, "contract-review-check", [])
+            self.assertEqual(caught.exception.code, "E202_INVALID_STATE")
             review = plan / "contract-review.json"
             value = json.loads(review.read_text())
             value.update({"result": "PASS"})
@@ -536,7 +543,14 @@ class StateMachineTest(unittest.TestCase):
             store.save(plan, current)
             updated = app.status(root)
             self.assertEqual(updated["state"], "IMPLEMENTATION_REVIEW_REQUIRED")
-            app.run(root, "implementation-review-init", [])
+            review_gate = app.run(root, "implementation-review-init", [])
+            self.assertEqual(review_gate["next_action"]["id"], "complete-implementation-review")
+            self.assertEqual(review_gate["next_action"]["kind"], "subagent-review")
+            self.assertEqual(review_gate["next_action"]["skill"], "impl-validator")
+            self.assertEqual(review_gate["allowed_actions"], [])
+            with self.assertRaises(WorksError) as caught:
+                app.run(root, "implementation-review-check", [])
+            self.assertEqual(caught.exception.code, "E202_INVALID_STATE")
             review = plan / "implementation-review.json"
             (root / "A.java").write_text("class A {}\n")
             (root / "ATest.java").write_text("class ATest {}\n")
@@ -604,7 +618,7 @@ class StateMachineTest(unittest.TestCase):
             self.assertEqual(recovered["last_activity"]["action"], "note")
             self.assertTrue(Path(recovered["memory"]["findings"]).is_file())
 
-    def test_blocks_identical_failed_action(self):
+    def test_empty_contract_requires_completion_before_check(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             project_fixture(root)
@@ -616,16 +630,32 @@ class StateMachineTest(unittest.TestCase):
             evidence.mkdir()
             (evidence / "baseline.json").write_text("{}")
             (evidence / "preflight.json").write_text('{"passed": true}')
-            app.run(root, "contract-init", [])
-            with self.assertRaises(WorksError):
-                app.run(root, "contract-check", [])
+            initialized = app.run(root, "contract-init", [])
+
+            self.assertEqual(initialized["next_action"]["id"], "complete-contract")
+            self.assertEqual(initialized["next_action"]["kind"], "workspace-edit")
+            self.assertEqual(initialized["allowed_actions"], [])
             with self.assertRaises(WorksError) as caught:
                 app.run(root, "contract-check", [])
-            self.assertEqual(caught.exception.code, "E901_REPEAT_FAILURE")
-            state = store.load(plan)
-            self.assertEqual(state["attempts"]["contract-check:-"]["count"], 1)
-            activity = [json.loads(line) for line in (plan / "activity.jsonl").read_text().splitlines()]
-            self.assertEqual([row["result"] for row in activity[-2:]], ["failed", "blocked"])
+            self.assertEqual(caught.exception.code, "E202_INVALID_STATE")
+
+            (plan / "requirement-contract.json").write_text(json.dumps({
+                "version": 1,
+                "requirement": str((root / "requirement.md").resolve()),
+                "requirements": [{"id": "REQ-1", "statement": "behavior",
+                                  "acceptance_criteria": ["observable result"]}],
+                "acceptance_commands": [{
+                    "id": "module-tests", "covers": ["REQ-1"],
+                    "command": ["mvn", "-pl", "module", "-Dtest=WorksTest#behavior",
+                                "-DskipTests=false", "-Dmaven.test.skip=false", "test"],
+                }],
+            }))
+
+            ready = app.status(root)
+            self.assertEqual(ready["next_action"]["id"], "contract-check")
+            self.assertEqual(ready["allowed_actions"], ["contract-check"])
+            checked = app.run(root, "contract-check", [])
+            self.assertEqual(checked["state"], "CONTRACT_REVIEW_REQUIRED")
 
 
 class ImpactMapTest(unittest.TestCase):

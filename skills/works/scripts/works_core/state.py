@@ -115,7 +115,8 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
     current_wave = state.get("current_wave")
     wave_tasks = set(state.get("waves", [])[current_wave - 1]["tasks"]) if current_wave else set()
     action_id = _next_action_id(stage, plan, evidence, current_wave, wave_tasks)
-    state["allowed_actions"] = [NEXT_ACTION_OP[action_id]]
+    operation = NEXT_ACTION_OP[action_id]
+    state["allowed_actions"] = [operation] if operation else []
     state["forbidden_actions"] = [] if stage == "WAVE_EXECUTION_REQUIRED" else ["edit_production"]
     state["next_action_id"] = action_id
     state["next_action"] = next_action(action_id, state)
@@ -142,13 +143,13 @@ def module_plan_is_current(plan: Path, state: dict) -> bool:
 
 def next_action(action_id: str, state: dict) -> dict:
     skills = {
-        "run-fresh-contract-verifier-and-check": "impl-validator",
+        "complete-contract-review": "impl-validator",
         "revise-contract-and-rerun-review": "impl-validator",
-        "run-fresh-implementation-verifier-and-check": "impl-validator",
+        "complete-implementation-review": "impl-validator",
         "diagnose-review-and-reopen-requirement": "impl-validator",
     }
     references = {
-        "complete-contract-and-check": "references/exploration.md",
+        "complete-contract": "references/exploration.md",
         "complete-impact-map-and-check": "references/exploration.md",
         "complete-module-plan-and-check": "references/module-parallel.md",
         "apply-patches-and-verify-wave": "references/module-parallel.md",
@@ -157,20 +158,39 @@ def next_action(action_id: str, state: dict) -> dict:
         "finalize": "references/verification.md",
     }
     evidence = {
-        "complete-contract-and-check": "requirement-contract.json",
-        "run-fresh-contract-verifier-and-check": "contract-review.json",
+        "complete-contract": "requirement-contract.json",
+        "complete-contract-review": "contract-review.json",
         "complete-impact-map-and-check": "impact-map.json",
         "complete-module-plan-and-check": "module-plan.json",
         "apply-patches-and-verify-wave": f"evidence/wave-{state.get('current_wave')}.json",
         "dispatch-subagents-and-check-patches": f"evidence/patch-set-{state.get('current_wave')}.json",
         "finalize": "evidence/final-verification.json",
-        "run-fresh-implementation-verifier-and-check": "implementation-review.json",
+        "complete-implementation-review": "implementation-review.json",
     }
     result = {
         "id": action_id, "state": state.get("state"), "req": state.get("current_req"),
         "skill": skills.get(action_id), "reference": references.get(action_id),
         "success_evidence": evidence.get(action_id),
     }
+    if action_id == "complete-contract":
+        result.update({
+            "kind": "workspace-edit",
+            "instruction": (
+                "Read the requirement and repository, then populate requirements and "
+                "acceptance_commands in requirement-contract.json before running contract-check."
+            ),
+        })
+    if action_id in {"complete-contract-review", "complete-implementation-review"}:
+        kind = "contract" if action_id == "complete-contract-review" else "implementation"
+        result.update({
+            "kind": "subagent-review",
+            "fresh_context": True,
+            "read_only": True,
+            "instruction": (
+                f"Start a fresh read-only {kind} verifier with impl-validator, then write its "
+                f"review_payload into {kind}-review.json before running {kind}-review-check."
+            ),
+        })
     if action_id in {"dispatch-subagents-and-check-patches", "apply-patches-and-verify-wave"}:
         wave = state["current_wave"]
         task_ids = state["waves"][wave - 1]["tasks"]
@@ -211,14 +231,16 @@ def patch_marker_valid(evidence: Path, wave: int | None, expected_tasks: set[str
         return False
 
 
-# logical next-action id -> the single CLI operation that completes it
+# Logical next-action id -> its CLI operation, or None for a workspace-edit gate.
 NEXT_ACTION_OP = {
     "baseline-init": "baseline-init",
     "probe": "probe",
     "contract-init": "contract-init",
-    "complete-contract-and-check": "contract-check",
+    "complete-contract": None,
+    "contract-check": "contract-check",
     "contract-review-init": "contract-review-init",
-    "run-fresh-contract-verifier-and-check": "contract-review-check",
+    "complete-contract-review": None,
+    "contract-review-check": "contract-review-check",
     "revise-contract-and-rerun-review": "contract-check",
     "impact-init": "impact-init",
     "complete-impact-map-and-check": "impact-check",
@@ -229,11 +251,37 @@ NEXT_ACTION_OP = {
     "finalize": "finalize",
     "diagnose-and-reopen-failing-requirement": "reopen",
     "implementation-review-init": "implementation-review-init",
-    "run-fresh-implementation-verifier-and-check": "implementation-review-check",
+    "complete-implementation-review": None,
+    "implementation-review-check": "implementation-review-check",
     "diagnose-review-and-reopen-requirement": "reopen",
     "report": "report",
     "inspect_evidence": "inspect_evidence",
 }
+
+
+def contract_is_empty_template(path: Path) -> bool:
+    """Return true only for the untouched template created by contract-init."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (isinstance(data, dict)
+            and data.get("requirements") == []
+            and data.get("acceptance_commands") == [])
+
+
+def review_is_empty_template(path: Path) -> bool:
+    """Return true only for an untouched contract or implementation review template."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    rows = data.get("requirements") if isinstance(data, dict) else None
+    return (data.get("result") == ""
+            and isinstance(rows, list)
+            and all(isinstance(row, dict)
+                    and row.get("status") == ""
+                    and row.get("finding") == "" for row in rows))
 
 
 def _next_action_id(stage: str, plan: Path, evidence: Path, current_wave: int | None = None,
@@ -241,15 +289,22 @@ def _next_action_id(stage: str, plan: Path, evidence: Path, current_wave: int | 
     if stage == "SETUP_REQUIRED":
         return "baseline-init" if not (evidence / "baseline.json").exists() else "probe"
     if stage == "CONTRACT_REQUIRED":
-        return "contract-init" if not (plan / "requirement-contract.json").exists() else "complete-contract-and-check"
+        contract = plan / "requirement-contract.json"
+        if not contract.exists():
+            return "contract-init"
+        if contract_is_empty_template(contract):
+            return "complete-contract"
+        return "contract-check"
     if stage == "CONTRACT_REVIEW_REQUIRED":
         review = plan / "contract-review.json"
         result = review_result(review)
         if not review.exists():
             return "contract-review-init"
+        if review_is_empty_template(review):
+            return "complete-contract-review"
         if result and result != "PASS":
             return "revise-contract-and-rerun-review"
-        return "run-fresh-contract-verifier-and-check"
+        return "contract-review-check"
     if stage == "IMPACT_REQUIRED":
         return "impact-init" if not (plan / "impact-map.json").exists() else "complete-impact-map-and-check"
     if stage == "MODULE_PLAN_REQUIRED":
@@ -267,9 +322,11 @@ def _next_action_id(stage: str, plan: Path, evidence: Path, current_wave: int | 
         result = review_result(review)
         if not review.exists():
             return "implementation-review-init"
+        if review_is_empty_template(review):
+            return "complete-implementation-review"
         if result and result != "PASS":
             return "diagnose-review-and-reopen-requirement"
-        return "run-fresh-implementation-verifier-and-check"
+        return "implementation-review-check"
     return "report" if stage == "COMPLETE" else "inspect_evidence"
 
 
