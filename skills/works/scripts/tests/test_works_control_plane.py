@@ -528,11 +528,16 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             (state / "baseline.json").write_text(json.dumps({
                 "project_root": str(root), "production": {}, "tests": {},
             }))
+            contract = root / "requirement-contract.json"
+            contract.write_text(json.dumps({"acceptance_commands": [{
+                "covers": ["REQ-1"], "command": ["mvn", "-Dtest=ATest#works", "test"]
+            }]}))
             args = type("Args", (), {
                 "state_dir": str(state), "req": "REQ-1", "test_file": "src/test/java/ATest.java",
                 "testcase": "ATest#works", "command": ["mvn", "-DskipTests=false",
                                                          "-Dmaven.test.skip=false",
                                                          "-Dtest=ATest#works", "test"],
+                "contract": str(contract), "contract_req": "REQ-1",
             })()
             with self.assertRaisesRegex(SystemExit, "missing evidence"):
                 code_first.cmd_test(args)
@@ -557,13 +562,18 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             (state / "checkpoint.json").write_text(json.dumps({
                 "sequence": 0, "production": {}, "previous_req": None,
             }))
+            contract = root / "requirement-contract.json"
+            contract.write_text(json.dumps({"acceptance_commands": [{
+                "covers": ["REQ-1"], "command": ["mvn", "-Dtest=ATest#works", "test"]
+            }]}))
             implement = type("Args", (), {"state_dir": str(state), "req": "REQ-1"})()
             self.assertEqual(code_first.cmd_implement(implement), 0)
             command = ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
                        "-Dtest=ATest#works", "test"]
             test_args = type("Args", (), {"state_dir": str(state), "req": "REQ-1",
                                            "test_file": "src/test/java/ATest.java",
-                                           "testcase": "ATest#works", "command": command})()
+                                           "testcase": "ATest#works", "command": command,
+                                           "contract": str(contract), "contract_req": "REQ-1"})()
             junit = {"target": {"executed": 1, "failures": 0, "errors": 0}, "files": []}
             def passing_run(_root, _command, log, _reports, _testcase):
                 log.write_text("passed\n")
@@ -572,6 +582,26 @@ class CodeFirstEvidenceTest(unittest.TestCase):
                 self.assertEqual(code_first.cmd_test(test_args), 0)
             self.assertTrue((state / "slices" / "REQ-1" / "implementation.json").is_file())
             self.assertTrue((state / "slices" / "REQ-1" / "test.json").is_file())
+
+    def test_rejects_testcase_that_drifted_from_requirement_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            contract = Path(directory) / "requirement-contract.json"
+            contract.write_text(json.dumps({"acceptance_commands": [{
+                "covers": ["REQ-1"], "command": ["mvn", "-Dtest=ATest#expected", "test"]
+            }]}))
+            with self.assertRaisesRegex(SystemExit, "does not match contract selectors"):
+                code_first.require_contract_testcase(contract, "REQ-1", "ATest#actual")
+
+    def test_accepts_testcase_declared_for_requirement_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            contract = Path(directory) / "requirement-contract.json"
+            contract.write_text(json.dumps({"acceptance_commands": [{
+                "covers": ["REQ-1"], "command": ["mvn", "-Dtest=ATest#expected", "test"]
+            }]}))
+            self.assertEqual(
+                code_first.require_contract_testcase(contract, "REQ-1", "pkg.ATest#expected"),
+                ["ATest#expected"],
+            )
 
     def test_policy_rejects_spring_boot_test(self):
         with tempfile.TemporaryDirectory() as directory:

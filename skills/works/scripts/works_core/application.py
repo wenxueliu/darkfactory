@@ -200,6 +200,12 @@ class Application:
         command = [sys.executable, str(self.scripts / runner), action]
         if operation == "baseline-init":
             command.extend(["--project-root", current["project_root"]])
+        elif operation == "test":
+            current_req = current["current_req"]
+            repair = next((row for row in current.get("repairs", []) if row.get("id") == current_req), None)
+            contract_req = repair["of"] if repair else current_req
+            command.extend(["--contract", str(plan / "requirement-contract.json"),
+                            "--contract-req", contract_req])
         command.extend(["--state-dir", evidence, *raw])
         return command
 

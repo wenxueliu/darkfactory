@@ -27,7 +27,7 @@
 }
 ```
 
-禁止返回 patch、文件写入命令、状态结论或省略字段。每个 requirement 行为必须映射为有序 Req，每个 Req 必须有可观察验收标准并由真实、精确的 Maven `-Dtest=Class#method` 命令覆盖。不要生成模块级、依赖模块或全量存量测试命令。测试设计必须是 Mockito 单元测试，禁止 `@SpringBootTest`，第三方及外部依赖直接 mock。
+禁止返回 patch、文件写入命令、状态结论或省略字段。每个 requirement 行为必须映射为有序 Req，每个 Req 必须有可观察验收标准并由精确、可在后续实现的 Maven `-Dtest=Class#method` 计划命令覆盖。目标测试类和方法在本阶段允许尚不存在；不要检查其存在性或运行命令。不要生成模块级、依赖模块或全量存量测试命令。测试设计必须是 Mockito 单元测试，禁止 `@SpringBootTest`，第三方及外部依赖直接 mock。
 
 ## Works 主 Agent职责
 

@@ -29,7 +29,7 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实
 4. 运行 `contract-review-init`，启动一个全新上下文、只读的校验 subagent，并加载 `impl-validator`。它只读取 requirement 和 requirement contract，返回带 `review_payload` 的审查报告；Works 主 agent 仅将该 payload 写入已初始化的 `contract-review.json`，再运行 `contract-review-check`。失败则修订契约并重新审查。
 5. `impact-init` 后从仓库填写 `impact-map.json`，运行 `impact-check`。
 6. 最小实现当前 Req：先复用当前类已有的等价方法，再考虑同层 Service API，只有都不能满足时才新增对 Mapper/Repository 的调用；运行 `implement` 冻结实现 checkpoint。
-7. 只为当前 Req 新实现或修改的行为添加 Mockito 单元测试：禁止 `@SpringBootTest`，第三方和外部依赖直接 mock，不测试或运行无关存量功能。用唯一且精确的 `-Dtest=Class#method` 运行 `test`；只接受指定 testcase 确实执行并通过。继续下一 Req，不暂停。证据规则见 `references/code-first.md`。
+7. 只为当前 Req 新实现或修改的行为添加 Mockito 单元测试：禁止 `@SpringBootTest`，第三方和外部依赖直接 mock，不测试或运行无关存量功能。用唯一且精确的 `-Dtest=Class#method` 运行 `test`；实际 testcase 必须匹配该 Req 在契约中声明的 selector（repair Req 回溯原始 Req），且只接受指定 testcase 确实执行并通过。继续下一 Req，不暂停。证据规则见 `references/code-first.md`。
 8. 所有 Req 测试通过后运行一次 `finalize`。它重放全部 Req 测试、检查 Service 边界，并自动运行契约中的每条验收命令。
 9. 若 finalize 失败，诊断受影响 Req，运行 `reopen -- --req <REQ>`。CLI 会追加一个 repair Req；重新执行实现 checkpoint→测试修复切片，再次 finalize。
 10. finalize 通过后运行 `implementation-review-init`，由另一个全新上下文、只读的 `impl-validator` subagent 对照 requirement、契约、diff 和测试证据返回 `review_payload`；Works 主 agent 将 payload 写入 `implementation-review.json`，再运行 `implementation-review-check`。失败则对受影响 Req 执行 `reopen` 并修复。

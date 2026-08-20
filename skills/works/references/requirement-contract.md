@@ -30,5 +30,7 @@
 - `acceptance_commands` 使用 argv 数组，不使用 shell 字符串。
 - Maven argv 的首项使用 discovery 返回的平台入口：Windows 为 `mvnw.cmd`，Linux 为 `./mvnw`，没有 wrapper 时为 `mvn`。
 - 每个 Req 至少由一条精确定向验收命令覆盖；每条 Maven 命令必须包含唯一 `-Dtest=Class#method`，只执行当前 Req 的新实现行为，禁止模块级、依赖模块或全量存量测试。
+- Contract review 阶段的 `acceptance_commands` 是前瞻性测试契约：目标测试类和方法允许尚不存在。此阶段只验证命令结构、行为可测试性和 Req 覆盖，不检查文件/方法存在性，也不执行命令。
+- 当前 Req 进入 test checkpoint 后，实际 `--testcase` 和 Maven `-Dtest` 必须匹配该 Req 契约中声明的 selector；repair Req 回溯匹配其原始 Req。测试文件和方法此时必须真实存在并执行通过。
 - 测试使用 Mockito 单元测试，禁止 `@SpringBootTest`；第三方与外部依赖直接 mock。
 - 契约通过后，严格按固定 Req 顺序执行。失败由模型自主诊断、修改并重试。

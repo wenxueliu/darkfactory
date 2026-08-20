@@ -41,6 +41,28 @@ def require_targeted_mockito_test(test: Path, testcase: str, command: list[str])
             "spring_boot_test": False, "third_party_policy": "mock"}
 
 
+def require_contract_testcase(contract_path: Path, req: str, testcase: str) -> list[str]:
+    contract = load(contract_path)
+    selectors = []
+    for row in contract.get("acceptance_commands", []):
+        if req not in row.get("covers", []):
+            continue
+        selectors.extend(
+            part.split("=", 1)[1]
+            for part in row.get("command", [])
+            if isinstance(part, str) and part.startswith("-Dtest=")
+        )
+    expected = testcase.rsplit(".", 1)[-1]
+    if not selectors:
+        raise SystemExit(f"test policy violation: contract has no -Dtest selector covering {req}")
+    if expected not in selectors:
+        raise SystemExit(
+            f"test policy violation: testcase {expected} does not match contract selectors for "
+            f"{req}: {selectors!r}"
+        )
+    return selectors
+
+
 def cmd_implement(args: argparse.Namespace) -> int:
     req = req_id(args.req)
     state, root, _ = state_paths(args)
@@ -80,7 +102,10 @@ def cmd_test(args: argparse.Namespace) -> int:
     test = (root / args.test_file).resolve()
     if not test.is_relative_to(root) or not test.is_file() or not is_test(test.relative_to(root).as_posix()):
         raise SystemExit("--test-file must name an existing Maven test file inside the project")
+    contract_selectors = require_contract_testcase(Path(args.contract), args.contract_req, args.testcase)
     test_policy = require_targeted_mockito_test(test, args.testcase, args.command)
+    test_policy["contract_req"] = args.contract_req
+    test_policy["contract_selectors"] = contract_selectors
     production = fingerprints(root, production=True)
     if production != implementation["production"]:
         raise SystemExit("production changed after implementation checkpoint")
@@ -195,6 +220,8 @@ def parser() -> argparse.ArgumentParser:
     test.add_argument("--req", required=True)
     test.add_argument("--test-file", required=True)
     test.add_argument("--testcase", required=True)
+    test.add_argument("--contract", required=True)
+    test.add_argument("--contract-req", required=True)
     test.add_argument("command", nargs=argparse.REMAINDER)
     test.set_defaults(func=cmd_test)
     verify = sub.add_parser("verify")

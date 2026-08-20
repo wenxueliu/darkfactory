@@ -20,7 +20,7 @@ Works 主 agent 必须校验 payload 是单一 JSON 对象，`version`、`type` 
 
 ## Contract review
 
-只提供 `requirement.md` 和 `requirement-contract.json`。逐项检查：原始行为是否遗漏或多出、描述是否歧义、验收标准是否可观察、验收命令是否覆盖全部 Req。`review_payload` 必须与 `contract-review-init` 生成的 schema 一致。所有 Req 为 `PASS` 且 `missing`、`extra`、`ambiguous`、`invalid_acceptance` 为空时，顶层 `result` 才能为 `PASS`。
+只提供 `requirement.md` 和 `requirement-contract.json`。逐项检查：原始行为是否遗漏或多出、描述是否歧义、验收标准是否可观察、计划中的验收命令是否具备合法结构、可测试性并覆盖全部 Req。此时验收命令是前瞻性测试契约，不检查目标测试文件或方法是否已存在，不执行命令；不得仅因计划中的测试尚未创建而标记 `invalid_acceptance`。`review_payload` 必须与 `contract-review-init` 生成的 schema 一致。所有 Req 为 `PASS` 且 `missing`、`extra`、`ambiguous`、`invalid_acceptance` 为空时，顶层 `result` 才能为 `PASS`。
 
 若失败，works 根据 finding 修订契约，重新运行 `contract-check`，删除旧审查并启动新的 verifier。不得由原实现上下文自我批准。
 
