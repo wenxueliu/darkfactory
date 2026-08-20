@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 import time
 
 from works_core.common import atomic_json, sha
@@ -20,6 +21,24 @@ from baseline import (
     run_command,
     state_paths,
 )
+
+
+def require_targeted_mockito_test(test: Path, testcase: str, command: list[str]) -> dict:
+    source = test.read_text(encoding="utf-8", errors="replace")
+    if re.search(r"\bSpringBootTest\b", source):
+        raise SystemExit("test policy violation: @SpringBootTest is forbidden; use a Mockito unit test")
+    if not re.search(r"\bMockito\s*\.|\bmock\s*\(|@Mock\b|@InjectMocks\b", source):
+        raise SystemExit("test policy violation: the target test must use Mockito")
+    if "#" not in testcase:
+        raise SystemExit("test policy violation: --testcase must use Class#method")
+    selectors = [part.split("=", 1)[1] for part in command if part.startswith("-Dtest=")]
+    if len(selectors) != 1:
+        raise SystemExit("test policy violation: command must contain exactly one -Dtest=Class#method selector")
+    expected = testcase.rsplit(".", 1)[-1]
+    if "#" not in selectors[0] or selectors[0] != expected:
+        raise SystemExit(f"test policy violation: -Dtest selector must exactly match {expected}")
+    return {"framework": "Mockito", "targeted_selector": selectors[0],
+            "spring_boot_test": False, "third_party_policy": "mock"}
 
 
 def cmd_implement(args: argparse.Namespace) -> int:
@@ -61,6 +80,7 @@ def cmd_test(args: argparse.Namespace) -> int:
     test = (root / args.test_file).resolve()
     if not test.is_relative_to(root) or not test.is_file() or not is_test(test.relative_to(root).as_posix()):
         raise SystemExit("--test-file must name an existing Maven test file inside the project")
+    test_policy = require_targeted_mockito_test(test, args.testcase, args.command)
     production = fingerprints(root, production=True)
     if production != implementation["production"]:
         raise SystemExit("production changed after implementation checkpoint")
@@ -79,6 +99,7 @@ def cmd_test(args: argparse.Namespace) -> int:
         "test_sha256": sha(test),
         "testcase": args.testcase,
         "command": args.command,
+        "test_policy": test_policy,
         "exit": code,
         "junit": junit,
         "log": str(log),

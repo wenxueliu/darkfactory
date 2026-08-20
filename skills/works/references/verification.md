@@ -13,7 +13,7 @@
 
 1. 重放全部 Req 的精确测试命令，要求目标 testcase 执行并通过。
 2. 检查 Service 边界（无新增入口→持久层依赖）。
-3. 跑契约里每条验收命令，写入 `acceptance-*.log`。
+3. 跑契约里每条精确 `-Dtest=Class#method` 验收命令，写入 `acceptance-*.log`；不运行模块级或全量存量测试。
 
 模型在 finalize 前只需确认：每个 Req 都有 implementation + test 证据，且当前生产指纹等于最后 test checkpoint（见 [Code-first evidence](code-first.md)）。
 

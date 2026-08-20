@@ -183,7 +183,8 @@ class StateMachineTest(unittest.TestCase):
                                   "acceptance_criteria": ["observable result"]}],
                 "acceptance_commands": [{"id": "module-tests", "covers": ["REQ-1"],
                                          "command": ["mvn", "-DskipTests=false",
-                                                     "-Dmaven.test.skip=false", "test"]}],
+                                                     "-Dmaven.test.skip=false",
+                                                     "-Dtest=ATest#works", "test"]}],
             }))
             updated = app.run(root, "contract-check", [])
             self.assertEqual(updated["state"], "CONTRACT_REVIEW_REQUIRED")
@@ -291,7 +292,8 @@ class StateMachineTest(unittest.TestCase):
                                           "acceptance_criteria": ["result"]}],
                         "acceptance_commands": [{"id": "tests", "covers": ["REQ-1"],
                                                  "command": ["mvn", "-DskipTests=false",
-                                                             "-Dmaven.test.skip=false", "test"]}]}
+                                                             "-Dmaven.test.skip=false",
+                                                             "-Dtest=ATest#works", "test"]}]}
             (plan / "requirement-contract.json").write_text(json.dumps(contract))
             app.run(root, "contract-check", [])
             app.run(root, "contract-review-init", [])
@@ -413,8 +415,22 @@ class RequirementContractTest(unittest.TestCase):
             self.assertTrue(requirement_contract.validate(data, requirement))
             data["acceptance_commands"] = [{"id": "tests", "covers": ["REQ-1"],
                                             "command": ["mvn", "-DskipTests=false",
-                                                        "-Dmaven.test.skip=false", "test"]}]
+                                                        "-Dmaven.test.skip=false",
+                                                        "-Dtest=ATest#works", "test"]}]
             self.assertEqual(requirement_contract.validate(data, requirement), [])
+
+    def test_rejects_module_wide_test_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            requirement = Path(directory) / "requirement.md"
+            requirement.write_text("# Requirement")
+            data = requirement_contract.template(requirement)
+            data["requirements"] = [{"id": "REQ-1", "statement": "behavior",
+                                     "acceptance_criteria": ["result"]}]
+            data["acceptance_commands"] = [{"id": "tests", "covers": ["REQ-1"],
+                                            "command": ["mvn", "-DskipTests=false",
+                                                        "-Dmaven.test.skip=false", "test"]}]
+            errors = requirement_contract.validate(data, requirement)
+            self.assertTrue(any("-Dtest=Class#method" in error for error in errors))
 
     def test_rejects_trivial_success_command(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -515,7 +531,8 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             args = type("Args", (), {
                 "state_dir": str(state), "req": "REQ-1", "test_file": "src/test/java/ATest.java",
                 "testcase": "ATest#works", "command": ["mvn", "-DskipTests=false",
-                                                         "-Dmaven.test.skip=false", "test"],
+                                                         "-Dmaven.test.skip=false",
+                                                         "-Dtest=ATest#works", "test"],
             })()
             with self.assertRaisesRegex(SystemExit, "missing evidence"):
                 code_first.cmd_test(args)
@@ -530,7 +547,10 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             source.write_text("class A {}\n")
             test = root / "src/test/java/ATest.java"
             test.parent.mkdir(parents=True)
-            test.write_text("class ATest { void works() {} }\n")
+            test.write_text(
+                "import static org.mockito.Mockito.mock;\n"
+                "class ATest { void works() { Object dependency = mock(Object.class); } }\n"
+            )
             (state / "baseline.json").write_text(json.dumps({
                 "project_root": str(root), "production": {}, "tests": {},
             }))
@@ -539,7 +559,8 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             }))
             implement = type("Args", (), {"state_dir": str(state), "req": "REQ-1"})()
             self.assertEqual(code_first.cmd_implement(implement), 0)
-            command = ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+            command = ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
+                       "-Dtest=ATest#works", "test"]
             test_args = type("Args", (), {"state_dir": str(state), "req": "REQ-1",
                                            "test_file": "src/test/java/ATest.java",
                                            "testcase": "ATest#works", "command": command})()
@@ -551,6 +572,24 @@ class CodeFirstEvidenceTest(unittest.TestCase):
                 self.assertEqual(code_first.cmd_test(test_args), 0)
             self.assertTrue((state / "slices" / "REQ-1" / "implementation.json").is_file())
             self.assertTrue((state / "slices" / "REQ-1" / "test.json").is_file())
+
+    def test_policy_rejects_spring_boot_test(self):
+        with tempfile.TemporaryDirectory() as directory:
+            test = Path(directory) / "ATest.java"
+            test.write_text("import org.mockito.Mock; @SpringBootTest class ATest { @Mock Object dep; }")
+            with self.assertRaisesRegex(SystemExit, "SpringBootTest is forbidden"):
+                code_first.require_targeted_mockito_test(
+                    test, "ATest#works", ["mvn", "-Dtest=ATest#works", "test"])
+
+    def test_policy_rejects_full_suite_and_non_mockito_test(self):
+        with tempfile.TemporaryDirectory() as directory:
+            test = Path(directory) / "ATest.java"
+            test.write_text("class ATest { void works() {} }")
+            with self.assertRaisesRegex(SystemExit, "must use Mockito"):
+                code_first.require_targeted_mockito_test(test, "ATest#works", ["mvn", "test"])
+            test.write_text("import org.mockito.Mock; class ATest { @Mock Object dep; }")
+            with self.assertRaisesRegex(SystemExit, "exactly one -Dtest"):
+                code_first.require_targeted_mockito_test(test, "ATest#works", ["mvn", "test"])
 
 
 class DiscoveryTest(unittest.TestCase):

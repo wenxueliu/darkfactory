@@ -17,10 +17,10 @@
     },
     {
       "id": 2,
-      "prompt": "/works。三个 Req 位于多模块 Maven 项目，请无人值守实现并验证依赖模块。",
+      "prompt": "/works。三个 Req 位于多模块 Maven 项目，请无人值守实现，只运行对应新行为的定向 Mockito 测试。",
       "assertions": [
         "契约保存三个有序 Req",
-        "验收命令包含受影响模块和依赖模块",
+        "验收命令选择正确受影响模块，但只执行当前 Req 的 Class#method",
         "每个 Req 测试 checkpoint 后自动进入下一 Req",
         "中途没有请求人工确认"
       ]
@@ -48,10 +48,10 @@
     },
     {
       "id": 5,
-      "prompt": "/works。请完成 requirement.md；单个定向测试不足以代表验收。",
+      "prompt": "/works。请完成 requirement.md；只测试本次实现行为，使用 Mockito，不要使用 SpringBootTest，第三方依赖直接 mock。",
       "assertions": [
-        "requirement-contract 至少包含完整模块测试命令",
-        "不能通过任意临时 accept 命令进入 COMPLETE",
+        "每条验收命令使用唯一且精确的 -Dtest=Class#method，不运行存量测试",
+        "测试使用 Mockito 且不含 SpringBootTest，第三方依赖全部直接 mock",
         "final-verification 逐条记录契约命令和退出码"
       ]
     },

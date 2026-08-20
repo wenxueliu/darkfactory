@@ -17,7 +17,7 @@
     {
       "id": "module-tests",
       "covers": ["REQ-1"],
-      "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false", "test"]
+      "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false", "-Dtest=ServiceTest#newBehavior", "test"]
     }
   ]
 }
@@ -29,5 +29,6 @@
 - 验收标准必须是可观察行为，不写“代码已修改”“实现合理”等内部描述。
 - `acceptance_commands` 使用 argv 数组，不使用 shell 字符串。
 - Maven argv 的首项使用 discovery 返回的平台入口：Windows 为 `mvnw.cmd`，Linux 为 `./mvnw`，没有 wrapper 时为 `mvn`。
-- 每个 Req 至少由一条验收命令覆盖；命令集合应包含受影响模块及依赖模块的完整测试或 package 验证。
+- 每个 Req 至少由一条精确定向验收命令覆盖；每条 Maven 命令必须包含唯一 `-Dtest=Class#method`，只执行当前 Req 的新实现行为，禁止模块级、依赖模块或全量存量测试。
+- 测试使用 Mockito 单元测试，禁止 `@SpringBootTest`；第三方与外部依赖直接 mock。
 - 契约通过后，严格按固定 Req 顺序执行。失败由模型自主诊断、修改并重试。

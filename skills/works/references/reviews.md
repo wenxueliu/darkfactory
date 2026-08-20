@@ -30,4 +30,6 @@ Works 主 agent 必须校验 payload 是单一 JSON 对象，`version`、`type` 
 
 每个 Req 还必须检查复用顺序：对 diff 中每个新增 Mapper/Repository 调用，先阅读所在类的已有方法，再查同层 Service API。若已有方法能以相同输入输出、过滤条件和副作用满足需求，直接调用持久层必须将该 Req 标为 `FAIL`，finding 指出应复用的类和方法。只有本类和同层 Service 都没有等价能力时，新增 Mapper/Repository 调用才可通过此项审查。
 
+同时检查测试隔离：每个 Req 的测试只能断言本次实现或修改的行为，必须使用 Mockito，禁止 `@SpringBootTest`；第三方 SDK、HTTP/RPC client、数据库、消息、缓存、文件、时钟及其他外部协作者必须直接 mock。发现真实外部调用、Spring context、模块级/全量命令或无关存量行为断言时，将对应 Req 标为 `FAIL`。
+
 若失败，works 对失败 Req 执行 `reopen`，完成新的 implementation→test 和 finalize 后，再启动新的 verifier。只有该审查通过，状态才能进入 `COMPLETE`。
