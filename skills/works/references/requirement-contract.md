@@ -47,7 +47,7 @@
 - `reuse.kind` 只能为 `existing_method`、`service_api`、`persistence` 或 `architecture_exception`。选择 `persistence` 时，`absence_evidence` 必须同时包含 `current_class` 和 `same_layer_service`；其他类型必须为空。
 - `test_target.selector` 必须与该 Req 唯一验收命令的 `-Dtest=Class#method` 一致。测试文件可以在契约阶段尚不存在。
 - `acceptance_commands` 使用 argv 数组，不使用 shell 字符串。
-- Maven argv 的首项使用 discovery 返回的平台入口：Windows 为 `mvnw.cmd`，Linux 为 `./mvnw`，没有 wrapper 时为 `mvn`。
+- Maven argv 的首项使用 discovery 返回的平台入口：优先取 `M2_HOME/bin/mvn`（Windows 为 `mvn.cmd`）；入口不存在时再取平台对应的项目 wrapper，没有 wrapper 时为 `mvn`。
 - 每个 Req 至少由一条精确定向验收命令覆盖；每条 Maven 命令必须包含唯一 `-Dtest=Class#method`，只执行当前 Req 的新实现行为，禁止模块级、依赖模块或全量存量测试。
 - `acceptance_commands` 是前瞻性测试契约：目标测试类和方法允许尚不存在。`contract-check` 只验证命令结构、行为可测试性和 Req 覆盖，不执行命令。
 - 当前 Req 进入 test checkpoint 后，实际 `--testcase` 和 Maven `-Dtest` 必须匹配该 Req 契约中声明的 selector；repair Req 回溯匹配其原始 Req。测试文件和方法此时必须真实存在并执行通过。

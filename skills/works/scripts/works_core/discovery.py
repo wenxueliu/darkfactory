@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import os
 import subprocess
+from collections.abc import Mapping
 
 
 def git_root(start: Path) -> Path | None:
@@ -13,9 +14,16 @@ def git_root(start: Path) -> Path | None:
     return Path(proc.stdout.strip()).resolve() if proc.returncode == 0 else None
 
 
-def discover_maven_command(project: Path, platform: str | None = None) -> str:
-    """Return the platform-native Maven wrapper, falling back to system Maven."""
+def discover_maven_command(project: Path, platform: str | None = None,
+                           env: Mapping[str, str] | None = None) -> str:
+    """Resolve Maven from M2_HOME, then the project wrapper, then PATH."""
     platform = platform or os.name
+    env = os.environ if env is None else env
+    maven_home = env.get("M2_HOME")
+    if maven_home:
+        executable = Path(maven_home) / "bin" / ("mvn.cmd" if platform == "nt" else "mvn")
+        if executable.is_file():
+            return str(executable)
     candidates = ("mvnw.cmd",) if platform == "nt" else ("mvnw",)
     for name in candidates:
         wrapper = project / name

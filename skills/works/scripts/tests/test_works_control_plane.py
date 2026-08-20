@@ -784,6 +784,44 @@ class CodeFirstEvidenceTest(unittest.TestCase):
 
 
 class DiscoveryTest(unittest.TestCase):
+    def test_prefers_m2_home_maven_over_project_wrapper(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            maven_home = root / "apache-maven"
+            executable = maven_home / "bin" / "mvn"
+            executable.parent.mkdir(parents=True)
+            executable.write_text("#!/bin/sh\n")
+            (root / "mvnw").write_text("#!/bin/sh\n")
+
+            self.assertEqual(
+                discover_maven_command(root, "posix", {"M2_HOME": str(maven_home)}),
+                str(executable),
+            )
+
+    def test_uses_windows_maven_from_m2_home(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            maven_home = root / "apache-maven"
+            executable = maven_home / "bin" / "mvn.cmd"
+            executable.parent.mkdir(parents=True)
+            executable.write_text("@echo off\r\n")
+
+            self.assertEqual(
+                discover_maven_command(root, "nt", {"M2_HOME": str(maven_home)}),
+                str(executable),
+            )
+
+    def test_invalid_m2_home_falls_back_to_project_wrapper(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            wrapper = root / "mvnw"
+            wrapper.write_text("#!/bin/sh\n")
+
+            self.assertEqual(
+                discover_maven_command(root, "posix", {"M2_HOME": str(root / "missing")}),
+                str(wrapper),
+            )
+
     def test_discovers_current_maven_project(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -811,13 +849,13 @@ class DiscoveryTest(unittest.TestCase):
             root = Path(directory)
             (root / "mvnw").write_text("#!/bin/sh\n")
             (root / "mvnw.cmd").write_text("@echo off\r\n")
-            self.assertEqual(discover_maven_command(root, "nt"), str(root / "mvnw.cmd"))
+            self.assertEqual(discover_maven_command(root, "nt", {}), str(root / "mvnw.cmd"))
 
     def test_windows_ignores_unix_wrapper_and_falls_back_to_maven(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "mvnw").write_text("#!/bin/sh\n")
-            self.assertEqual(discover_maven_command(root, "nt"), "mvn")
+            self.assertEqual(discover_maven_command(root, "nt", {}), "mvn")
 
 
 if __name__ == "__main__":

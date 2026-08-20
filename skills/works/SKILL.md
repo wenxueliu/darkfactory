@@ -44,6 +44,6 @@ description: 面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实现
 <python> <skill-dir>/scripts/works.py --project . reopen -- --req <REQ>
 ```
 
-Windows 使用 `py -3`，Linux 使用 `python3`，不可用时使用 `python`。Maven 优先使用 discovery 返回的 wrapper。定向测试命令必须覆盖 POM 中为 true 的测试跳过属性，并确保指定 testcase 在新鲜 JUnit XML 中真实执行通过。
+Windows 使用 `py -3`，Linux 使用 `python3`，不可用时使用 `python`。Maven 入口由 discovery 统一解析：优先使用 `M2_HOME/bin/mvn`（Windows 为 `mvn.cmd`），无有效入口时依次回退项目 wrapper 和系统 `mvn`。定向测试命令必须覆盖 POM 中为 true 的测试跳过属性，并确保指定 testcase 在新鲜 JUnit XML 中真实执行通过。
 
 按阶段读取：探索见 `references/exploration.md`，契约见 `references/requirement-contract.md`，实现与测试证据见 `references/code-first.md`，恢复见 `references/persistent-memory.md`。
