@@ -47,6 +47,10 @@ class Application:
             raise WorksError("E201_NO_PLAN", "no active works state", {"project": str(project)})
         return plan, store.load(plan)
 
+    @staticmethod
+    def _maven_project(current: dict) -> str:
+        return current.get("discovery", {}).get("maven_project", current["project_root"])
+
     def status(self, project: Path) -> dict:
         plan, current = self.context(project)
         return {"ok": True, **store.refresh(plan, current, persist=False)}
@@ -87,7 +91,8 @@ class Application:
             boundary = evidence / "service-boundary-baseline.json"
             if not boundary.exists():
                 self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
-                               "--project-root", current["project_root"], "--state-dir", str(evidence)], operation)
+                               "--project-root", self._maven_project(current),
+                               "--state-dir", str(evidence)], operation)
             return {"ok": True, "operation": operation, "output": "preflight already completed",
                     **store.refresh(plan, current)}
         if operation == "reopen":
@@ -130,7 +135,8 @@ class Application:
             raise WorksError(code, f"{operation} failed", details)
         if operation == "preflight":
             self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
-                           "--project-root", current["project_root"], "--state-dir", str(evidence)], operation)
+                           "--project-root", self._maven_project(current),
+                           "--state-dir", str(evidence)], operation)
         elif operation == "contract-check":
             contract = json.loads((plan / "requirement-contract.json").read_text())
             self._checked([sys.executable, str(self.scripts / "code_first.py"), "reuse-init",
@@ -157,14 +163,14 @@ class Application:
             return [sys.executable, str(self.scripts / "requirement_contract.py"), "validate",
                     "--file", str(plan / "requirement-contract.json"),
                     "--requirement", current["requirement"],
-                    "--project-root", current["project_root"]]
+                    "--project-root", self._maven_project(current)]
         if operation == "finalize":
             return []
         action = operation
         runner = "code_first.py" if operation in {"implement", "test"} else "baseline.py"
         command = [sys.executable, str(self.scripts / runner), action]
         if operation == "preflight":
-            command.extend(["--project-root", current["project_root"]])
+            command.extend(["--project-root", self._maven_project(current)])
         elif operation == "implement":
             current_req = current["current_req"]
             repair = next((row for row in current.get("repairs", []) if row.get("id") == current_req), None)
@@ -188,7 +194,8 @@ class Application:
         logs = plan / "logs"
         logs.mkdir(parents=True, exist_ok=True)
         for row in contract["acceptance_commands"]:
-            proc = subprocess.run(windows_command(row["command"]), cwd=Path(current["project_root"]), text=True,
+            proc = subprocess.run(windows_command(row["command"]),
+                                  cwd=Path(self._maven_project(current)), text=True,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             log = logs / f"acceptance-{row['id']}.log"
             log.write_text(proc.stdout)

@@ -883,6 +883,39 @@ class DiscoveryTest(unittest.TestCase):
             self.assertEqual(Path(result["pom"]), module / "pom.xml")
             self.assertEqual(result["pom_relative"], "service/pom.xml")
 
+    def test_contract_check_uses_nested_maven_project_as_code_path_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            module = root / "service"
+            module.mkdir()
+            plan = root / ".planning" / "works-requirement"
+            plan.mkdir(parents=True)
+            current = {
+                "project_root": str(root),
+                "requirement": str(root / "requirement.md"),
+                "evidence_dir": str(plan / "evidence"),
+                "discovery": {"maven_project": str(module)},
+            }
+
+            command = Application(SCRIPTS)._command(plan, current, "contract-check", [])
+
+            self.assertEqual(command[command.index("--project-root") + 1], str(module))
+
+    def test_preflight_uses_nested_maven_project_as_code_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            module = root / "service"
+            module.mkdir()
+            current = {
+                "project_root": str(root),
+                "evidence_dir": str(root / ".planning/evidence"),
+                "discovery": {"maven_project": str(module)},
+            }
+
+            command = Application(SCRIPTS)._command(root, current, "preflight", [])
+
+            self.assertEqual(command[command.index("--project-root") + 1], str(module))
+
     def test_prefers_windows_maven_wrapper_on_windows(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
