@@ -9,6 +9,7 @@
       "assertions": [
         "works 保持唯一流程控制；审查使用全新只读 subagent，subagent 返回 payload 而 Works 负责落盘",
         "contract-init 后由全新只读 contract-author subagent 返回完整 payload，Works 负责校验和写入",
+        "contract-author 已注册为 OpenCode subagent，主 Agent 通过 Task 调用并等待非空 task result 后才运行 contract-check",
         "requirement-contract 覆盖文档中的全部独立行为",
         "每个 Req 都有 implementation、test 和 replay 证据",
         "契约验收和独立实现审查都通过后才进入 COMPLETE"

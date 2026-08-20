@@ -25,7 +25,7 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实
 
 1. `doctor`、`init`、`baseline-init`。
 2. 运行 `probe` 加载并校验 baseline；若项目尚未由 Git 管理，先执行 `git init`、`git add .`和 `git commit -m "init commit"`。此阶段不执行任何测试。
-3. `contract-init` 后按 [Contract author handoff](references/contract-author.md) 启动一个全新上下文、只读的 `contract-author` subagent。它读取完整 requirement 和仓库，只返回完整 `contract_payload`；Works 主 agent 校验后整体写入 `requirement-contract.json`，再运行 `contract-check`。失败则启动新的 author，不在原上下文中修补。
+3. `contract-init` 后按 [Contract author handoff](references/contract-author.md) 用 OpenCode Task 工具调用已注册的 `contract-author` subagent，并同步等待 Task result。它读取完整 requirement 和仓库，只向父会话返回完整 `contract_payload`；Works 主 agent 收到并校验非空结果后整体写入 `requirement-contract.json`，再运行 `contract-check`。未收到 payload、Task 失败或格式错误都必须启动新的 author，禁止主 Agent代写。
 4. 运行 `contract-review-init`，启动一个全新上下文、只读的校验 subagent，并加载 `impl-validator`。它只读取 requirement 和 requirement contract，返回带 `review_payload` 的审查报告；Works 主 agent 仅将该 payload 写入已初始化的 `contract-review.json`，再运行 `contract-review-check`。失败则修订契约并重新审查。
 5. `impact-init` 后从仓库填写 `impact-map.json`，运行 `impact-check`。
 6. 最小实现当前 Req：先复用当前类已有的等价方法，再考虑同层 Service API，只有都不能满足时才新增对 Mapper/Repository 的调用；运行 `implement` 冻结实现 checkpoint。

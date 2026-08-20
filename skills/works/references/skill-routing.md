@@ -22,7 +22,7 @@ Works 是唯一 orchestrator。审查门需要一个辅助 Skill（`impl-validat
 ## 规则
 
 - `skill` 非空 → 加载 `impl-validator`，行为见 [Independent reviews](reviews.md)；只读 reviewer 只返回 report + `review_payload`，Works 主 agent 校验后落盘 review JSON，两者都不改代码/契约/状态。
-- `subagent == contract-author` → 启动 fresh 只读作者并读取 [Contract author handoff](contract-author.md)；作者只返回 `contract_payload`，Works 主 agent 是唯一契约写入者。
+- `subagent == contract-author` → 用 OpenCode Task 工具调用 `.opencode/agents/contract-author.md` 注册的 fresh 只读作者并同步等待结果，具体见 [Contract author handoff](contract-author.md)；作者只向 Task result 返回 `contract_payload`，Works 主 agent 是唯一契约写入者。没有收到非空 payload 时禁止继续。
 - `reference` 非空 → 读该内置文件，按其方法论完成当前 `next_action`，然后立即重新运行 `works status`。
 - 全程无人：不向用户提问、不请求确认、不 commit、不发布、不等批准。
 - 辅助方法的文字结论不是证据；只有 works CLI 记录的退出码、JUnit 和 final verification 能推进状态。
