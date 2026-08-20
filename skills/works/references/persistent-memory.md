@@ -29,4 +29,4 @@ evidence/        测试和验收事实
 
 ## 失败策略
 
-失败会写入 `activity.jsonl` 和 `state.json.attempts`，记录次数、错误和下一步策略。CLI 不计算工作区签名，也不阻止相同命令重试；Agent 根据错误判断应直接重试还是先修改实现、测试、fixture 或环境。
+失败会写入 `activity.jsonl` 和 `state.json.attempts`，记录次数、错误和下一步策略。同一 Req 连续三次定向测试失败时，CLI 写入 `evidence/skipped/<REQ>.json`（包含三次证据和最后错误），标记 `SKIPPED` 并继续下一 Req；最终状态为 `PARTIAL`。实现 checkpoint 失败不自动跳过，因为没有可靠生产快照可供后续 Req 接续。

@@ -55,4 +55,4 @@
 - 当前 Req 进入 test checkpoint 后，实际 `--testcase` 和 Maven `-Dtest` 必须匹配该 Req 契约中声明的 selector；repair Req 回溯匹配其原始 Req。测试文件和方法此时必须真实存在并执行通过。
 - Test CLI 不从 shell 命令行重新解析 Maven 命令，而是按 Req + testcase 从本文件解析唯一 argv；因此同一契约可分别保存 Linux 的 `mvn`/wrapper argv 或 Windows 的 `mvnw.cmd` argv，避免 Bash 与 PowerShell 引号和拆词差异。
 - 优先快速定向测试；有外部协作者时使用 Mockito 或项目既有 fake，纯逻辑允许普通 JUnit。禁止无必要的 `@SpringBootTest`。
-- 契约通过后，严格按固定 Req 顺序执行。失败由模型自主诊断、修改并重试。
+- 契约通过后，严格按固定 Req 顺序执行。失败由模型自主诊断、修改并重试；同一 Req 第三次连续定向测试失败后保存证据并跳过，继续下一 Req。

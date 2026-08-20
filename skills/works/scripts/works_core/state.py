@@ -11,7 +11,7 @@ from .common import append_jsonl, atomic_json
 STATES = {
     "SETUP_REQUIRED", "CONTRACT_REQUIRED",
     "READY_FOR_IMPLEMENTATION", "READY_FOR_TEST", "READY_FOR_ACCEPTANCE",
-    "COMPLETE", "BLOCKED",
+    "COMPLETE", "PARTIAL", "BLOCKED",
 }
 
 
@@ -81,7 +81,10 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
     else:
         current = None
         implementation_checkpointed = False
+        skipped = set(state.get("skipped_requirements", {}))
         for req in state["requirements"]:
+            if req in skipped:
+                continue
             slice_dir = evidence / "slices" / req
             if not (slice_dir / "test.json").exists():
                 current = req
@@ -96,7 +99,7 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
             final = evidence / "final-verification.json"
             finalized = final.exists() and json.loads(final.read_text()).get("passed")
             if verified and finalized:
-                stage = "COMPLETE"
+                stage = "PARTIAL" if skipped else "COMPLETE"
             else:
                 stage = "READY_FOR_ACCEPTANCE"
     state["state"] = stage
@@ -170,7 +173,7 @@ def _next_action_id(stage: str, plan: Path, evidence: Path, state: dict) -> str:
     if stage == "READY_FOR_IMPLEMENTATION":
         return "checkpoint-current-implementation"
     if stage == "READY_FOR_TEST":
-        req = _current_req_from_evidence(evidence)
+        req = state.get("current_req")
         attempt = state.get("attempts", {}).get(f"test:{req}", {})
         if attempt.get("result") == "failed":
             return "rework-current-implementation"
@@ -179,15 +182,4 @@ def _next_action_id(stage: str, plan: Path, evidence: Path, state: dict) -> str:
         final = evidence / "final-verification.json"
         failed = final.exists() and not json.loads(final.read_text()).get("passed")
         return "diagnose-and-reopen-failing-requirement" if failed else "finalize"
-    return "report" if stage == "COMPLETE" else "inspect_evidence"
-
-
-def _current_req_from_evidence(evidence: Path) -> str | None:
-    """Return the first implementation slice that does not yet have passing test evidence."""
-    slices = evidence / "slices"
-    if not slices.is_dir():
-        return None
-    for path in slices.iterdir():
-        if path.is_dir() and (path / "implementation.json").exists() and not (path / "test.json").exists():
-            return path.name
-    return None
+    return "report" if stage in {"COMPLETE", "PARTIAL"} else "inspect_evidence"

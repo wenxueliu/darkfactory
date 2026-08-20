@@ -12,8 +12,8 @@
         "主 Agent直接编写并校验 requirement contract，不启动 contract-author subagent",
         "不做风险分类或独立 reviewer 审查",
         "requirement-contract 覆盖文档中的全部独立行为，每个 Req 有唯一轻量来源",
-        "每个 Req 都有 implementation、test 和 replay 证据",
-        "全部确定性门禁和契约验收通过后进入 COMPLETE"
+        "完成的 Req 有 implementation、test 和 replay 证据；跳过的 Req 有 implementation 和三次失败证据",
+        "无跳过项时进入 COMPLETE；存在 SKIPPED Req 时进入 PARTIAL"
       ]
     },
     {
@@ -56,6 +56,17 @@
         "rework 保留失败日志并归档旧 implementation evidence",
         "状态回到 READY_FOR_IMPLEMENTATION，原 Req ID 不变且不新增 repair Req",
         "重新 implement 和 test 后目标 testcase 真实执行通过"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "/works。REQ-1 的定向测试连续三次仍失败时保留证据并继续后续需求，不要报告全部完成。",
+      "assertions": [
+        "REQ-1 前两次测试失败后进入 rework，第三次失败后标记 SKIPPED",
+        "evidence/skipped/REQ-1.json 保存三次失败证据和最后错误",
+        "状态机继续执行下一个 Req",
+        "finalize 不执行只覆盖 SKIPPED Req 的验收命令",
+        "最终状态为 PARTIAL 而不是 COMPLETE"
       ]
     },
     {

@@ -325,6 +325,22 @@ def cmd_verify(args: argparse.Namespace) -> int:
         slice_dir = state / "slices" / req
         try:
             implementation = load(slice_dir / "implementation.json")
+            if req in getattr(args, "skipped", []):
+                skipped = load(state / "skipped" / f"{req}.json")
+                if skipped.get("status") != "SKIPPED" or len(skipped.get("failures", [])) != 3:
+                    failures.append(f"{req}: invalid skipped evidence")
+                if skipped.get("implementation_sha256") != sha(slice_dir / "implementation.json"):
+                    failures.append(f"{req}: skipped implementation evidence changed")
+                before = normalized_production(implementation["production_before"])
+                after = normalized_production(implementation["production"])
+                if before != expected_production or after == before:
+                    failures.append(f"{req}: invalid skipped production transition")
+                if (implementation["checkpoint_sequence"] != sequence
+                        or implementation["previous_req"] != previous_req):
+                    failures.append(f"{req}: skipped checkpoint sequence/predecessor mismatch")
+                expected_production = after
+                previous_req = req
+                continue
             test = load(slice_dir / "test.json")
             if test["implementation_sha256"] != sha(slice_dir / "implementation.json"):
                 failures.append(f"{req}: implementation evidence changed after test")
@@ -400,6 +416,7 @@ def parser() -> argparse.ArgumentParser:
     verify = sub.add_parser("verify")
     verify.add_argument("--state-dir", required=True)
     verify.add_argument("--req", action="append", default=[])
+    verify.add_argument("--skipped", action="append", default=[])
     verify.add_argument("--no-replay", action="store_true")
     verify.set_defaults(func=cmd_verify)
     return root

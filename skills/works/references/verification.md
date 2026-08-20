@@ -11,7 +11,7 @@
 
 `finalize` 命令会：
 
-1. 校验全部 Req 的 checkpoint、生产指纹和 implementation/test evidence hash。
+1. 校验全部 Req 的 checkpoint、生产指纹和 implementation/test evidence hash；`SKIPPED` Req 改为校验 implementation hash、连续三次失败证据和 checkpoint 转换。
 2. 检查统一 architecture gate（Service boundary 与 reuse enforcement）。
 3. 统一跑契约里每条精确 `-Dtest=Class#method` 验收命令一次，要求目标 testcase 执行并通过，写入 `acceptance-*.log`；不在 code-first verify 中重复重放同一 selector，也不运行模块级或全量存量测试。
 

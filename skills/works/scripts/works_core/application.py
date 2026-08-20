@@ -9,7 +9,7 @@ import time
 
 from . import discovery
 from . import state as store
-from .common import windows_command
+from .common import sha, windows_command
 
 
 class WorksError(RuntimeError):
@@ -113,7 +113,9 @@ class Application:
                 self._checked(
                     [sys.executable, str(self.scripts / "code_first.py"), "verify",
                      "--state-dir", str(evidence), "--no-replay",
-                     *[item for req in current["requirements"] for item in ("--req", req)]],
+                     *[item for req in current["requirements"] for item in ("--req", req)],
+                     *[item for req in current.get("skipped_requirements", {})
+                       for item in ("--skipped", req)]],
                     operation,
                 )
                 self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
@@ -194,7 +196,11 @@ class Application:
         passed = True
         logs = plan / "logs"
         logs.mkdir(parents=True, exist_ok=True)
+        skipped = set(current.get("skipped_requirements", {}))
         for row in contract["acceptance_commands"]:
+            if row.get("covers") and set(row["covers"]).issubset(skipped):
+                results.append({"id": row["id"], "covers": row["covers"], "skipped": True})
+                continue
             proc = subprocess.run(windows_command(row["command"]),
                                   cwd=Path(self._maven_project(current)), text=True,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -205,6 +211,7 @@ class Application:
             passed = passed and proc.returncode == 0
         store.atomic_json(evidence / "final-verification.json", {
             "passed": passed, "requirements": current["requirements"],
+            "skipped_requirements": current.get("skipped_requirements", {}),
             "acceptance": results, "recorded_at": time.time(),
         })
         if not passed:
@@ -294,8 +301,41 @@ class Application:
             "count": count, "result": "failed", "error": error,
             "required_strategy": "diagnose" if count == 1 else "alternative",
         }
+        req = current.get("current_req")
+        if operation == "test" and req:
+            failures = current.setdefault("req_failures", {}).setdefault(req, [])
+            failures.append({
+                "attempt": len(failures) + 1, "operation": operation, "error": error,
+                "evidence": evidence, "recorded_at": time.time(),
+            })
+            if len(failures) == 3:
+                self._skip_requirement(plan, current, req, failures)
         store.save(plan, current)
         store.activity(plan, current, operation, "failed", error=error, attempt=count, evidence=evidence)
+
+    def _skip_requirement(self, plan: Path, current: dict, req: str,
+                          failures: list[dict]) -> None:
+        evidence_dir = Path(current["evidence_dir"])
+        implementation_file = evidence_dir / "slices" / req / "implementation.json"
+        implementation = json.loads(implementation_file.read_text())
+        record = {
+            "req": req, "status": "SKIPPED", "failure_limit": 3,
+            "failures": failures[-3:], "last_error": failures[-1]["error"],
+            "implementation_sha256": sha(implementation_file),
+            "recorded_at": time.time(),
+        }
+        skipped_file = evidence_dir / "skipped" / f"{req}.json"
+        store.atomic_json(skipped_file, record)
+        current.setdefault("skipped_requirements", {})[req] = {
+            "status": "SKIPPED", "last_error": record["last_error"],
+            "evidence": str(skipped_file), "failure_count": 3,
+        }
+        store.atomic_json(evidence_dir / "checkpoint.json", {
+            "sequence": implementation["checkpoint_sequence"] + 1,
+            "production": implementation["production"], "previous_req": req,
+        })
+        store.activity(plan, current, "skip", "passed", req=req,
+                       reason="three_consecutive_test_failures", evidence=str(skipped_file))
 
     def _checked(self, command: list[str], operation: str) -> None:
         proc = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

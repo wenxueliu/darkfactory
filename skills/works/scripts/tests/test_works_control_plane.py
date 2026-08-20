@@ -330,6 +330,122 @@ class StateMachineTest(unittest.TestCase):
             updated = app.status(root)
             self.assertEqual(updated["state"], "COMPLETE")
 
+    def test_third_req_test_failure_skips_req_and_continues(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            app = Application(SCRIPTS)
+            initialized = app.init(root)
+            plan = Path(initialized["plan_dir"])
+            current = store.load(plan)
+            evidence = Path(current["evidence_dir"])
+            slice_dir = evidence / "slices" / "REQ-1"
+            slice_dir.mkdir(parents=True)
+            (evidence / "baseline.json").write_text(json.dumps({
+                "project_root": str(root), "production": {},
+            }))
+            (evidence / "preflight.json").write_text('{"passed": true}')
+            (slice_dir / "implementation.json").write_text(json.dumps({
+                "checkpoint_sequence": 0, "production": {"Main.java": "changed"},
+                "production_before": {}, "previous_req": None,
+            }))
+            current.update({
+                "contract_valid": True, "requirements": ["REQ-1", "REQ-2"],
+                "current_req": "REQ-1", "state": "READY_FOR_TEST",
+            })
+            store.save(plan, current)
+
+            for attempt in range(1, 4):
+                app._record_failure(
+                    plan, current, "test:REQ-1", "test", "E315_INVALID_TEST",
+                    {"exit": 1, "output": f"failure {attempt}"},
+                )
+
+            skipped_file = evidence / "skipped" / "REQ-1.json"
+            skipped = json.loads(skipped_file.read_text())
+            self.assertEqual(skipped["status"], "SKIPPED")
+            self.assertEqual(len(skipped["failures"]), 3)
+            self.assertEqual(skipped["last_error"], "E315_INVALID_TEST")
+            status = app.status(root)
+            self.assertEqual(status["state"], "READY_FOR_IMPLEMENTATION")
+            self.assertEqual(status["current_req"], "REQ-2")
+            req2_slice = evidence / "slices" / "REQ-2"
+            req2_slice.mkdir()
+            (req2_slice / "implementation.json").write_text("{}")
+            status = app.status(root)
+            self.assertEqual(status["state"], "READY_FOR_TEST")
+            self.assertEqual(status["current_req"], "REQ-2")
+            self.assertEqual(status["next_action"]["id"], "test-current-implementation")
+
+    def test_finished_run_with_skipped_req_is_partial(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            app = Application(SCRIPTS)
+            initialized = app.init(root)
+            plan = Path(initialized["plan_dir"])
+            current = store.load(plan)
+            evidence = Path(current["evidence_dir"])
+            (evidence / "slices" / "REQ-2").mkdir(parents=True)
+            for name, value in (("baseline.json", {}), ("preflight.json", {"passed": True}),
+                                ("code-first-verify.json", {"passed": True}),
+                                ("final-verification.json", {"passed": True})):
+                (evidence / name).write_text(json.dumps(value))
+            (evidence / "slices" / "REQ-2" / "test.json").write_text("{}")
+            current.update({
+                "contract_valid": True, "requirements": ["REQ-1", "REQ-2"],
+                "skipped_requirements": {"REQ-1": {
+                    "status": "SKIPPED", "last_error": "E315_INVALID_TEST",
+                    "failure_count": 3,
+                }},
+            })
+            store.save(plan, current)
+
+            updated = app.status(root)
+
+            self.assertEqual(updated["state"], "PARTIAL")
+            self.assertEqual(updated["next_action"]["id"], "report")
+
+    def test_skipped_req_evidence_remains_in_checkpoint_verification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state = root / ".planning" / "evidence"
+            slice_dir = state / "slices" / "REQ-1"
+            slice_dir.mkdir(parents=True)
+            source = root / "Main.java"
+            source.write_text("class Main { int value = 1; }\n")
+            before = baseline.fingerprints(root, production=True)
+            source.write_text("class Main { int value = 2; }\n")
+            after = baseline.fingerprints(root, production=True)
+            baseline_file = state / "baseline.json"
+            baseline_file.write_text(json.dumps({
+                "project_root": str(root), "production": before,
+            }))
+            (state / "baseline.sha256").write_text(baseline.sha(baseline_file) + "\n")
+            (state / "preflight.json").write_text('{"passed": true}')
+            implementation_file = slice_dir / "implementation.json"
+            implementation_file.write_text(json.dumps({
+                "production_before": before, "production": after,
+                "checkpoint_sequence": 0, "previous_req": None,
+            }))
+            skipped_dir = state / "skipped"
+            skipped_dir.mkdir()
+            (skipped_dir / "REQ-1.json").write_text(json.dumps({
+                "status": "SKIPPED", "failures": [{}, {}, {}],
+                "implementation_sha256": baseline.sha(implementation_file),
+            }))
+            (state / "checkpoint.json").write_text(json.dumps({
+                "sequence": 1, "production": after, "previous_req": "REQ-1",
+            }))
+
+            result = code_first.cmd_verify(type("Args", (), {
+                "state_dir": str(state), "req": ["REQ-1"],
+                "skipped": ["REQ-1"], "no_replay": True,
+            })())
+
+            self.assertEqual(result, 0)
+            self.assertTrue(json.loads((state / "code-first-verify.json").read_text())["passed"])
+
     def test_records_notes_and_recovers_last_activity(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

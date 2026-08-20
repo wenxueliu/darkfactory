@@ -15,7 +15,7 @@
 - requirement-contract 中的 Req 覆盖 requirement 的全部独立行为。
 - 每个 Req 都有独立 implementation、test 和最终 replay。
 - 每条验收标准至少被一条 acceptance command 覆盖。
-- `COMPLETE` 前全部契约命令真实退出 0。
+- `COMPLETE` 前全部契约命令真实退出 0；存在三次测试失败的 Req 时保存跳过证据、继续后续 Req，并最终进入 `PARTIAL`。
 - 全程没有用户问题或人工确认；主 Agent编写契约，状态只由确定性门禁推进。
 - 每轮遵循唯一 `next_action`，后 50% 不缩小测试或遗漏 Req。
 

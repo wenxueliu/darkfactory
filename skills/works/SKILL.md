@@ -18,9 +18,9 @@ description: 面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实现
 1. `init` 完成项目发现，随后执行唯一正常环境动作 `preflight`：保存 dirty baseline、生产指纹和 Service boundary，不运行 Maven 编译或测试。`doctor` 仅用于人工排障，不属于正常状态机。
 2. 把启动命令时的当前工作目录固定为 `project_root`，用于状态与 requirement；把 Java 路径校验、代码扫描和 Maven 执行的根固定为 `discovery.maven_project`，两者不得混用。按 `references/exploration.md` 探索仓库，再依据 `references/requirement-contract.md` 一次性填写 Req、轻量 requirement 来源、入口、复用决策、测试目标和验收命令，随后运行 `contract-check`。`contract-init` 只是创建契约文件的内部准备动作，不代表业务阶段。不要创建独立 impact-map。
 3. 优先复用当前类已有方法，其次同层 Service API；只有新增持久层调用时才在 contract 中提交两级缺失证据。`contract-check` 通过后直接进入实现，不做实现前的独立审查。
-4. 最小实现当前 Req，运行 `implement` 冻结生产 checkpoint。随后添加只覆盖该行为的快速测试并运行 `test`。测试若表明生产代码需要修改，执行 `rework -- --req <REQ> --reason production-fix`：保留失败日志、归档旧 implementation evidence，并回到实现；不要创建 repair Req。有外部协作者时优先 Mockito；纯逻辑允许普通 JUnit。
+4. 最小实现当前 Req，运行 `implement` 冻结生产 checkpoint。随后添加只覆盖该行为的快速测试并运行 `test`。前两次测试失败执行 `rework -- --req <REQ> --reason production-fix`：保留失败日志、归档旧 implementation evidence，并回到实现。同一 Req 第三次连续测试失败后自动记录三次失败证据并标记 `SKIPPED`，随后继续下一 Req；不要创建 repair Req。有外部协作者时优先 Mockito；纯逻辑允许普通 JUnit。
 5. 所有 Req 完成后运行 `finalize`，统一重放 contract commands，并校验 checkpoint、evidence hash 与 architecture gate，避免对同一 selector 分层重复验收。finalize 重新打开已完成行为时，才用 `reopen -- --req <REQ>` 创建 repair Req。
-6. 确定性门禁全部通过后直接进入 `COMPLETE`，不做风险分类或独立 reviewer 审查。只有 `status.state == COMPLETE` 才报告完成。
+6. 确定性门禁全部通过且没有跳过项时进入 `COMPLETE`；存在 `SKIPPED` Req 时进入 `PARTIAL`，必须报告跳过项及最后错误，不得报告全部完成。不做风险分类或独立 reviewer 审查。
 
 ## 无人值守决策
 
