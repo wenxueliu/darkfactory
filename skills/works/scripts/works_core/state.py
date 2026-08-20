@@ -114,7 +114,7 @@ def refresh(plan: Path, state: dict, persist: bool = True) -> dict:
     state["state"] = stage
     current_wave = state.get("current_wave")
     wave_tasks = set(state.get("waves", [])[current_wave - 1]["tasks"]) if current_wave else set()
-    action_id = _next_action_id(stage, plan, evidence, current_wave, wave_tasks)
+    action_id = _next_action_id(stage, plan, evidence, current_wave, wave_tasks, state)
     operation = NEXT_ACTION_OP[action_id]
     state["allowed_actions"] = [operation] if operation else []
     state["forbidden_actions"] = [] if stage == "WAVE_EXECUTION_REQUIRED" else ["edit_production"]
@@ -150,8 +150,8 @@ def next_action(action_id: str, state: dict) -> dict:
     }
     references = {
         "complete-contract": "references/exploration.md",
-        "complete-impact-map-and-check": "references/exploration.md",
-        "complete-module-plan-and-check": "references/module-parallel.md",
+        "complete-impact-map": "references/exploration.md",
+        "complete-module-plan": "references/module-parallel.md",
         "apply-patches-and-verify-wave": "references/module-parallel.md",
         "dispatch-subagents-and-check-patches": "references/module-parallel.md",
         "diagnose-and-reopen-failing-requirement": "references/diagnosis.md",
@@ -160,8 +160,8 @@ def next_action(action_id: str, state: dict) -> dict:
     evidence = {
         "complete-contract": "requirement-contract.json",
         "complete-contract-review": "contract-review.json",
-        "complete-impact-map-and-check": "impact-map.json",
-        "complete-module-plan-and-check": "module-plan.json",
+        "complete-impact-map": "impact-map.json",
+        "complete-module-plan": "module-plan.json",
         "apply-patches-and-verify-wave": f"evidence/wave-{state.get('current_wave')}.json",
         "dispatch-subagents-and-check-patches": f"evidence/patch-set-{state.get('current_wave')}.json",
         "finalize": "evidence/final-verification.json",
@@ -180,10 +180,22 @@ def next_action(action_id: str, state: dict) -> dict:
                 "acceptance_commands in requirement-contract.json before running contract-check."
             ),
         })
-    if action_id == "complete-module-plan-and-check":
+    if action_id == "complete-impact-map":
+        result.update({
+            "kind": "workspace-edit",
+            "instruction": (
+                "Explore the repository and populate every requirement row in impact-map.json. "
+                "After the artifact changes, status will expose impact-check."
+            ),
+        })
+    if action_id == "complete-module-plan":
         available = maven_modules(Path(state["project_root"]))
         result.update({
             "kind": "workspace-edit",
+            "instruction": (
+                "Populate tasks and waves in module-plan.json. After the artifact changes, "
+                "status will expose module-plan-check."
+            ),
             "module_rule": (
                 "Each tasks[].module must be one value from available_modules: the "
                 "project-relative directory containing pom.xml. Use '.' for the root module; "
@@ -196,6 +208,14 @@ def next_action(action_id: str, state: dict) -> dict:
                                       "services/user-service"),
             },
         })
+    validation_operation = {
+        "complete-impact-map": "impact-check:-",
+        "complete-module-plan": "module-plan-check:-",
+    }.get(action_id)
+    if validation_operation:
+        previous = state.get("attempts", {}).get(validation_operation)
+        if isinstance(previous, dict) and previous.get("result") == "failed":
+            result["previous_validation"] = previous.get("evidence")
     if action_id in {"complete-contract-review", "complete-implementation-review"}:
         kind = "contract" if action_id == "complete-contract-review" else "implementation"
         result.update({
@@ -261,9 +281,11 @@ NEXT_ACTION_OP = {
     "contract-review-check": "contract-review-check",
     "revise-contract-and-rerun-review": "contract-check",
     "impact-init": "impact-init",
-    "complete-impact-map-and-check": "impact-check",
+    "complete-impact-map": None,
+    "impact-check": "impact-check",
     "module-plan-init": "module-plan-init",
-    "complete-module-plan-and-check": "module-plan-check",
+    "complete-module-plan": None,
+    "module-plan-check": "module-plan-check",
     "apply-patches-and-verify-wave": "wave-check",
     "dispatch-subagents-and-check-patches": "patch-check",
     "finalize": "finalize",
@@ -302,8 +324,41 @@ def review_is_empty_template(path: Path) -> bool:
                     and row.get("finding") == "" for row in rows))
 
 
+def impact_is_empty_template(path: Path) -> bool:
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    rows = data.get("requirements") if isinstance(data, dict) else None
+    return (isinstance(rows, list) and bool(rows)
+            and all(isinstance(row, dict) and row.get("behavior") == ""
+                    and all(row.get(field) == [] for field in (
+                        "entrypoints", "service_apis", "persistence", "callers",
+                        "config_data_impact", "test_seams", "risks"))
+                    and row.get("architecture_exception") is None for row in rows))
+
+
+def module_plan_is_empty_template(path: Path) -> bool:
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (isinstance(data, dict) and data.get("tasks") == [] and data.get("waves") == [])
+
+
+def failed_artifact_is_unchanged(path: Path, state: dict, operation: str) -> bool:
+    attempt = state.get("attempts", {}).get(f"{operation}:-")
+    expected = attempt.get("artifact_sha256") if isinstance(attempt, dict) else None
+    try:
+        return (attempt.get("result") == "failed" and isinstance(expected, str)
+                and hashlib.sha256(path.read_bytes()).hexdigest() == expected)
+    except (AttributeError, OSError):
+        return False
+
+
 def _next_action_id(stage: str, plan: Path, evidence: Path, current_wave: int | None = None,
-                    wave_tasks: set[str] | None = None) -> str:
+                    wave_tasks: set[str] | None = None, state: dict | None = None) -> str:
+    state = state or {}
     if stage == "SETUP_REQUIRED":
         return "baseline-init" if not (evidence / "baseline.json").exists() else "probe"
     if stage == "CONTRACT_REQUIRED":
@@ -324,9 +379,21 @@ def _next_action_id(stage: str, plan: Path, evidence: Path, current_wave: int | 
             return "revise-contract-and-rerun-review"
         return "contract-review-check" if result == "PASS" else "complete-contract-review"
     if stage == "IMPACT_REQUIRED":
-        return "impact-init" if not (plan / "impact-map.json").exists() else "complete-impact-map-and-check"
+        artifact = plan / "impact-map.json"
+        if not artifact.exists():
+            return "impact-init"
+        if impact_is_empty_template(artifact) or failed_artifact_is_unchanged(
+                artifact, state, "impact-check"):
+            return "complete-impact-map"
+        return "impact-check"
     if stage == "MODULE_PLAN_REQUIRED":
-        return "module-plan-init" if not (plan / "module-plan.json").exists() else "complete-module-plan-and-check"
+        artifact = plan / "module-plan.json"
+        if not artifact.exists():
+            return "module-plan-init"
+        if module_plan_is_empty_template(artifact) or failed_artifact_is_unchanged(
+                artifact, state, "module-plan-check"):
+            return "complete-module-plan"
+        return "module-plan-check"
     if stage == "WAVE_EXECUTION_REQUIRED":
         return ("apply-patches-and-verify-wave" if patch_marker_valid(
                     evidence, current_wave, wave_tasks or set())

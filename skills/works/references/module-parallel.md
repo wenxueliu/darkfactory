@@ -2,6 +2,8 @@
 
 在 `impact-check` 后把每个 Req 按 Maven module 拆成 `module-plan.json`。任务粒度固定为唯一的 `Req × module`，每项包含 `id`、`req`、`module`、`depends_on`、`write_scope`、`changed_behaviors` 和 `database_dependencies`。`module` 必须直接选自 `status.next_action.available_modules`：它表示项目内含 `pom.xml` 的相对目录（例如 `services/user-service`），根模块统一写 `.`。它不是 Maven `artifactId`、Java package、源码文件路径或绝对路径；禁止反斜杠和 `..`。
 
+`module-plan-init` 只创建空模板，随后控制面进入无 CLI 操作的 `complete-module-plan` 编辑门。填写 `tasks` 和 `waves` 并再次读取 status 后，才会开放 `module-plan-check`。如果校验失败，控制面保存 violations 并退回编辑门；修改文件后才允许重新检查，避免原样重放失败。
+
 `module-plan-check` 会把计划同时绑定到 `impact-map.json` 和 `requirement-contract.json`：每个 Req 必须覆盖 impact 证据、planned test 以及契约 `-pl` 所属的全部 Maven module。通过后控制面记录三份输入的 SHA-256；计划、impact 或契约任一文件变化都会自动退回 `MODULE_PLAN_REQUIRED`，必须重新检查。
 
 对 DAG 做拓扑分 Wave。同一 Wave 的任务必须写入范围互不重叠，并受 `max_parallel` 限制。公共模块、父 POM、共享生成物或 migration 冲突必须建成前置独占任务，不能放入并行 Wave。

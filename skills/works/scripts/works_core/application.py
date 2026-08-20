@@ -396,10 +396,22 @@ class Application:
                         operation: str, error: str, evidence: object) -> None:
         previous = current.setdefault("attempts", {}).get(key, {})
         count = previous.get("count", 0) + 1
-        current["attempts"][key] = {
+        attempt = {
             "count": count, "signature": signature, "result": "failed", "error": error,
             "required_strategy": "diagnose" if count == 1 else "alternative",
         }
+        artifact_name = {
+            "impact-check": "impact-map.json",
+            "module-plan-check": "module-plan.json",
+        }.get(operation)
+        if artifact_name:
+            attempt["evidence"] = evidence
+            try:
+                attempt["artifact_sha256"] = hashlib.sha256(
+                    (plan / artifact_name).read_bytes()).hexdigest()
+            except OSError:
+                pass
+        current["attempts"][key] = attempt
         store.save(plan, current)
         store.activity(plan, current, operation, "failed", error=error, attempt=count, evidence=evidence)
 

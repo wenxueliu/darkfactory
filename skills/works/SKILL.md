@@ -27,8 +27,8 @@ description: 仅面向 OpenCode + MiniMax M2.7 的全自动存量多模块 Java/
 2. 运行 `probe` 加载并校验 baseline；若项目尚未由 Git 管理，先执行 `git init`、`git add .`和 `git commit -m "init commit"`。此阶段不执行任何测试。
 3. `contract-init` 后读取完整 requirement 和仓库，把所有独立行为写入 `requirement-contract.json`；为每个 Req 写可观察验收标准，并给出覆盖全部 Req 的真实验收命令；运行 `contract-check`。
 4. 运行 `contract-review-init`，启动一个全新上下文、只读的校验 subagent，并加载 `impl-validator`。它只读取 requirement 和 requirement contract，返回带 `review_payload` 的审查报告；Works 主 agent 将该 payload 保存到临时 JSON，通过 `contract-review-submit` 校验并原子写入，再运行 `contract-review-check`。失败则修订契约并重新审查。
-5. `impact-init` 后从仓库填写 `impact-map.json`，运行 `impact-check`。
-6. `module-plan-init` 后按 `Req × Maven module` 填写 DAG 和 Wave，运行 `module-plan-check`。
+5. `impact-init` 后停在 `complete-impact-map` 编辑门：从仓库填写 `impact-map.json`；内容变化后状态才开放 `impact-check`。
+6. `module-plan-init` 后停在 `complete-module-plan` 编辑门：按 `Req × Maven module` 填写 DAG 和 Wave；内容变化后状态才开放 `module-plan-check`。
 7. 锁定 Wave 的共同 base commit，同时启动只读 Subagent 生成互不重叠的补丁；主 Agent 按 task id 稳定排序校验、应用并逐项提交，再运行 `wave-check`。禁止 Subagent 写共享工作区，不创建 worktree。细节见 [Module-parallel execution](references/module-parallel.md)。
 8. 所有 Wave 通过后运行 `finalize`。只接受已经由主控制面重放的修改代码定向测试，不运行其他模块或未修改代码测试。
 9. 若 Wave 或 finalize 失败，诊断受影响模块任务；修订 DAG 或重新派发该任务，不推进依赖 Wave。

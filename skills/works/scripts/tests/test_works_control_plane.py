@@ -675,6 +675,85 @@ class StateMachineTest(unittest.TestCase):
             checked = app.run(root, "contract-check", [])
             self.assertEqual(checked["state"], "CONTRACT_REVIEW_REQUIRED")
 
+    def test_impact_template_requires_edit_and_failed_validation_returns_to_edit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            app = Application(SCRIPTS)
+            initialized = app.init(root)
+            plan = Path(initialized["plan_dir"])
+            current = store.load(plan)
+            evidence = Path(current["evidence_dir"])
+            evidence.mkdir()
+            (evidence / "baseline.json").write_text("{}")
+            (evidence / "preflight.json").write_text('{"passed": true}')
+            current.update({"contract_valid": True, "contract_review_valid": True,
+                            "requirements": ["REQ-1"]})
+            store.save(plan, current)
+
+            initialized = app.run(root, "impact-init", [])
+            self.assertEqual(initialized["next_action"]["id"], "complete-impact-map")
+            self.assertEqual(initialized["allowed_actions"], [])
+
+            artifact = plan / "impact-map.json"
+            value = json.loads(artifact.read_text())
+            value["requirements"][0]["behavior"] = "incomplete"
+            artifact.write_text(json.dumps(value))
+            ready = app.status(root)
+            self.assertEqual(ready["next_action"]["id"], "impact-check")
+            with self.assertRaises(WorksError) as caught:
+                app.run(root, "impact-check", [])
+            self.assertEqual(caught.exception.code, "E301_INVALID_IMPACT_MAP")
+
+            repair = app.status(root)
+            self.assertEqual(repair["next_action"]["id"], "complete-impact-map")
+            self.assertEqual(repair["allowed_actions"], [])
+            self.assertIn("violations", repair["next_action"]["previous_validation"]["output"])
+            artifact.write_text(json.dumps(value, indent=2))
+            self.assertEqual(app.status(root)["next_action"]["id"], "impact-check")
+
+    def test_module_plan_template_requires_edit_and_failed_validation_returns_to_edit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_fixture(root)
+            app = Application(SCRIPTS)
+            initialized = app.init(root)
+            plan = Path(initialized["plan_dir"])
+            current = store.load(plan)
+            evidence = Path(current["evidence_dir"])
+            evidence.mkdir()
+            (evidence / "baseline.json").write_text("{}")
+            (evidence / "preflight.json").write_text('{"passed": true}')
+            current.update({"contract_valid": True, "contract_review_valid": True,
+                            "impact_valid": True, "requirements": ["REQ-1"]})
+            store.save(plan, current)
+            (plan / "impact-map.json").write_text(json.dumps({
+                "version": 1, "requirements": [],
+            }))
+            (plan / "requirement-contract.json").write_text(json.dumps({
+                "version": 1, "requirements": [], "acceptance_commands": [],
+            }))
+
+            initialized = app.run(root, "module-plan-init", [])
+            self.assertEqual(initialized["next_action"]["id"], "complete-module-plan")
+            self.assertEqual(initialized["allowed_actions"], [])
+
+            artifact = plan / "module-plan.json"
+            value = json.loads(artifact.read_text())
+            value["tasks"] = [{}]
+            artifact.write_text(json.dumps(value))
+            self.assertEqual(app.status(root)["next_action"]["id"], "module-plan-check")
+            with self.assertRaises(WorksError) as caught:
+                app.run(root, "module-plan-check", [])
+            self.assertEqual(caught.exception.code, "E305_INVALID_MODULE_PLAN")
+
+            repair = app.status(root)
+            self.assertEqual(repair["next_action"]["id"], "complete-module-plan")
+            self.assertEqual(repair["allowed_actions"], [])
+            self.assertIn("violations", repair["next_action"]["previous_validation"]["output"])
+            artifact.write_text(json.dumps(value, indent=2))
+            self.assertEqual(app.status(root)["next_action"]["id"], "module-plan-check")
+
 
 class ImpactMapTest(unittest.TestCase):
     def test_allows_no_identified_risks_but_rejects_invalid_risk_entries(self):
@@ -948,7 +1027,7 @@ class ModulePlanTest(unittest.TestCase):
             (root / "target/generated").mkdir(parents=True)
             (root / "target/generated/pom.xml").write_text("<project/>")
 
-            action = store.next_action("complete-module-plan-and-check", {
+            action = store.next_action("complete-module-plan", {
                 "state": "MODULE_PLAN_REQUIRED", "project_root": str(root),
             })
 

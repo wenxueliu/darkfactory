@@ -2,6 +2,8 @@
 
 填 `requirement-contract.json` 和 `impact-map.json` 之前，在仓库里定位证据。这是内置 reference，不加载外部 Skill。
 
+`impact-init` 只创建空模板，随后进入无 CLI 操作的 `complete-impact-map` 编辑门。填写证据并再次读取 status 后才开放 `impact-check`。校验失败时，status 会携带上一次 violations 并退回编辑门；必须修改 artifact 后才能重新检查。
+
 ## 要定位什么
 
 - **入口点**：`@Controller`/`@RestController`/`Job`/`Listener`/`Command`/`Handler` 等，需求从哪个入口进来。
