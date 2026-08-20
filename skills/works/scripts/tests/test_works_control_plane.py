@@ -91,6 +91,9 @@ class BaselineProbeTest(unittest.TestCase):
             self.assertEqual(json.loads((state / "preflight.json").read_text())["baseline_mode"],
                              "fingerprint")
             self.assertTrue(all(call.args[0][-1] != "init" for call in run.call_args_list))
+            compile_call = next(call for call in run.call_args_list
+                                if call.args[0][-2:] == ["-DskipTests", "compile"])
+            self.assertEqual(compile_call.kwargs["cwd"], root)
 
     def test_preflight_recovers_from_a_partial_attempt(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -707,6 +710,20 @@ class DiscoveryTest(unittest.TestCase):
             result = discover(root)
             self.assertEqual(Path(result["project"]), root)
             self.assertEqual(Path(result["requirement"]), root / "requirement.md")
+
+    def test_nested_maven_project_is_used_as_preflight_working_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / "requirement.md").write_text("# Requirement")
+            module = root / "service"
+            module.mkdir()
+            (module / "pom.xml").write_text("<project/>")
+
+            result = discover(root)
+
+            self.assertEqual(Path(result["project"]), module)
+            self.assertEqual(Path(result["pom"]), module / "pom.xml")
 
     def test_prefers_windows_maven_wrapper_on_windows(self):
         with tempfile.TemporaryDirectory() as directory:

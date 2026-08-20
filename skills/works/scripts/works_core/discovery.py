@@ -39,21 +39,19 @@ def discover(start: Path) -> dict:
         return {"error": "E103_NO_MAVEN", "root": str(root)}
     projects = [pom.parent for pom in poms]
     containing_start = [project for project in projects if start.is_relative_to(project)]
-    project = max(containing_start, key=lambda path: len(path.parts)) if containing_start else root
-    local_requirements = [path for path in requirements if path.is_relative_to(project)]
-    if local_requirements:
-        requirement = min(local_requirements, key=lambda path: (len(path.relative_to(project).parts), str(path)))
+    if containing_start:
+        project = max(containing_start, key=lambda path: len(path.parts))
     else:
-        pairs = [(candidate, path) for candidate in projects for path in requirements if path.is_relative_to(candidate)]
-        if pairs:
-            project, requirement = min(
-                pairs,
-                key=lambda pair: (0 if start.is_relative_to(pair[0]) else 1,
-                                  len(pair[1].relative_to(pair[0]).parts), str(pair[0])),
-            )
-        else:
-            project, requirement = projects[0], requirements[0]
-    pom = next((candidate for candidate in poms if candidate.parent == project), poms[0])
+        pairs = [(candidate, path) for candidate in projects for path in requirements
+                 if path.is_relative_to(candidate)]
+        project = min(pairs, key=lambda pair: (
+            len(pair[1].relative_to(pair[0]).parts), str(pair[0]),
+        ))[0] if pairs else projects[0]
+    local_requirements = [path for path in requirements if path.is_relative_to(project)]
+    requirement = (min(local_requirements,
+                       key=lambda path: (len(path.relative_to(project).parts), str(path)))
+                   if local_requirements else requirements[0])
+    pom = next(candidate for candidate in poms if candidate.parent == project)
     return {
         "root": str(root), "project": str(project), "requirement": str(requirement),
         "pom": str(pom), "build": discover_maven_command(project),
