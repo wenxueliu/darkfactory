@@ -13,7 +13,7 @@
 
 - 实现 checkpoint 后生产代码没有继续变化；
 - 契约命令显式覆盖 Maven 的测试跳过配置；
-- 命令必须且只能包含一个与 `--testcase` 完全一致的 `-Dtest=Class#method`，禁止模块级或全量测试；
+- 命令生命周期必须且只能是 `test`，并包含一个与 `--testcase` 完全一致的 `-Dtest=Class#method`；禁止 `verify`、`package`、模块级或全量测试；
 - 禁止无必要的 `@SpringBootTest`；外部协作者必须隔离，纯逻辑测试无需为了形式引入 Mockito；
 - 被测类的第三方依赖、远程客户端、数据库、消息、缓存、时钟及其他外部协作者直接 mock，不启动 Spring context，不访问真实基础设施；
 - 断言只覆盖当前 Req 新实现或修改的行为，不借机验证无关存量功能；

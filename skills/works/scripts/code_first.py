@@ -42,6 +42,9 @@ def require_targeted_test(test: Path, testcase: str, command: list[str]) -> dict
         raise SystemExit("test policy violation: @SpringBootTest is forbidden; use a focused test")
     if "#" not in testcase:
         raise SystemExit("test policy violation: --testcase must use Class#method")
+    lifecycle = {"test", "verify", "package"} & set(command)
+    if lifecycle != {"test"}:
+        raise SystemExit("test policy violation: Maven lifecycle must be exactly test")
     selectors = [part.split("=", 1)[1] for part in command if part.startswith("-Dtest=")]
     if len(selectors) != 1:
         raise SystemExit("test policy violation: command must contain exactly one -Dtest=Class#method selector")

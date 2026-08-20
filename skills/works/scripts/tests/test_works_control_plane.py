@@ -679,6 +679,34 @@ class RequirementContractTest(unittest.TestCase):
             errors = requirement_contract.validate(data, requirement)
             self.assertTrue(any("-Dtest=Class#method" in error for error in errors))
 
+    def test_rejects_verify_and_package_lifecycles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            requirement = root / "requirement.md"
+            requirement.write_text("# Requirement")
+            (root / "Controller.java").write_text(
+                "class Controller { void existing() {} }\n")
+            for lifecycle in ("verify", "package"):
+                data = requirement_contract.template(requirement)
+                data["requirements"] = [{
+                    "id": "REQ-1", "statement": "behavior",
+                    "source": {"heading": "Requirement", "item": "behavior"},
+                    "acceptance_criteria": ["result"],
+                    "implementation": implementation_fixture(),
+                }]
+                data["acceptance_commands"] = [{
+                    "id": "tests", "covers": ["REQ-1"],
+                    "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
+                                "-Dtest=ATest#works", lifecycle],
+                }]
+
+                errors = requirement_contract.validate(data, requirement)
+
+                self.assertTrue(any("lifecycle must be exactly test" in error
+                                    for error in errors))
+                self.assertTrue(any("one targeted Maven test command" in error
+                                    for error in errors))
+
     def test_rejects_trivial_success_command(self):
         with tempfile.TemporaryDirectory() as directory:
             requirement = Path(directory) / "requirement.md"
@@ -692,7 +720,7 @@ class RequirementContractTest(unittest.TestCase):
             data["acceptance_commands"] = [{"id": "done", "covers": ["REQ-1"],
                                             "command": ["true"]}]
             errors = requirement_contract.validate(data, requirement)
-            self.assertTrue(any("Maven" in error for error in errors))
+            self.assertTrue(any("one targeted Maven test command" in error for error in errors))
 
 
 class ServiceBoundaryTest(unittest.TestCase):
@@ -963,6 +991,17 @@ class CodeFirstEvidenceTest(unittest.TestCase):
             self.assertEqual(policy["framework"], "JUnit")
             with self.assertRaisesRegex(SystemExit, "exactly one -Dtest"):
                 code_first.require_targeted_test(test, "ATest#works", ["mvn", "test"])
+
+    def test_policy_rejects_verify_and_package_at_runtime(self):
+        with tempfile.TemporaryDirectory() as directory:
+            test = Path(directory) / "ATest.java"
+            test.write_text("class ATest { void works() {} }")
+            for lifecycle in ("verify", "package"):
+                with self.assertRaisesRegex(SystemExit, "lifecycle must be exactly test"):
+                    code_first.require_targeted_test(
+                        test, "ATest#works",
+                        ["mvn", "-Dtest=ATest#works", lifecycle],
+                    )
 
 
 class DiscoveryTest(unittest.TestCase):

@@ -201,7 +201,7 @@ def validate(data: object, requirement: Path, project_root: Path | None = None) 
         commands = []
     command_ids: list[str] = []
     covered: set[str] = set()
-    maven_covered: set[str] = set()
+    targeted_test_covered: set[str] = set()
     selectors_by_req: dict[str, set[str]] = {req: set() for req in ids}
     for index, row in enumerate(commands):
         prefix = f"acceptance_commands[{index}]"
@@ -229,14 +229,17 @@ def validate(data: object, requirement: Path, project_root: Path | None = None) 
             covered.update(req for req in coverage if req in ids)
             executable = executable_name(command[0]) if command else ""
             lifecycle = {"test", "verify", "package"} & set(command)
-            if executable in {"mvn", "mvnw", "mvnw.cmd"} and lifecycle:
+            if executable in {"mvn", "mvnw", "mvnw.cmd"}:
+                if lifecycle != {"test"}:
+                    errors.append(f"{prefix}.command Maven lifecycle must be exactly test")
+                    continue
                 if "-DskipTests=false" not in command or "-Dmaven.test.skip=false" not in command:
                     errors.append(f"{prefix}.command must explicitly enable Maven tests")
                 targeted = [part for part in command if part.startswith("-Dtest=")]
                 if len(targeted) != 1 or "#" not in targeted[0]:
                     errors.append(f"{prefix}.command must target exactly one implemented behavior with -Dtest=Class#method")
                 else:
-                    maven_covered.update(req for req in coverage if req in ids)
+                    targeted_test_covered.update(req for req in coverage if req in ids)
                     for req in coverage:
                         if req in selectors_by_req:
                             selectors_by_req[req].add(targeted[0].split("=", 1)[1])
@@ -245,9 +248,12 @@ def validate(data: object, requirement: Path, project_root: Path | None = None) 
     missing = [req for req in ids if req not in covered]
     if missing:
         errors.append(f"requirements missing acceptance command coverage: {missing!r}")
-    missing_maven = [req for req in ids if req not in maven_covered]
-    if missing_maven:
-        errors.append(f"requirements missing Maven test/verify/package coverage: {missing_maven!r}")
+    missing_targeted_test = [req for req in ids if req not in targeted_test_covered]
+    if missing_targeted_test:
+        errors.append(
+            "each requirement must have one targeted Maven test command; missing: "
+            f"{missing_targeted_test!r}"
+        )
     for row in rows:
         if not isinstance(row, dict) or row.get("id") not in selectors_by_req:
             continue

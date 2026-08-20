@@ -73,7 +73,7 @@
       "id": 5,
       "prompt": "/works。请完成 requirement.md；只测试本次实现行为，使用 Mockito，不要使用 SpringBootTest，第三方依赖直接 mock。",
       "assertions": [
-        "每条验收命令使用唯一且精确的 -Dtest=Class#method，不运行存量测试",
+        "每条验收命令只使用 test 生命周期和唯一精确的 -Dtest=Class#method，拒绝 verify/package 且不运行存量测试",
         "测试使用 Mockito 且不含 SpringBootTest，第三方依赖全部直接 mock",
         "final-verification 逐条记录契约命令和退出码"
       ]
