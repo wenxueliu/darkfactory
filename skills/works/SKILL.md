@@ -43,7 +43,5 @@ python <skill-dir>/scripts/works.py --project . rework -- --req <REQ> --reason p
 python <skill-dir>/scripts/works.py --project . finalize
 python <skill-dir>/scripts/works.py --project . reopen -- --req <REQ>
 ```
-
-Windows 和 Linux 均使用 `python` 启动 Works，使用 `mvn` 启动 Maven；不解析 `M2_HOME`，不使用 `py -3`、`python3`、`mvnw` 或 `mvn.cmd`。定向测试命令只允许 `test` 生命周期，禁止 `verify/package`；必须覆盖 POM 中为 true 的测试跳过属性，并确保指定 testcase 在新鲜 JUnit XML 中真实执行通过。
-
+Windows 和 Linux 均使用 `python` 运行python脚本，使用 `mvn` 进行maven项目构建。定向测试命令只允许 `test` 生命周期；必须覆盖 POM 中为 true 的测试跳过属性，并确保指定 testcase 在新鲜 JUnit XML 中真实执行通过。:
 按阶段读取：探索见 `references/exploration.md`，契约见 `references/requirement-contract.md`，实现与测试证据见 `references/code-first.md`，恢复见 `references/persistent-memory.md`。
