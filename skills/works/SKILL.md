@@ -24,7 +24,7 @@ description: 按可定制的多步骤流程持续执行开发、测试、审查�
 6. 调用一次 `check` 提交本步骤结果，并立即解析它返回的新 JSON。未调用 `check` 不得自行宣布步骤通过或切换步骤。
 7. 若新响应未完成，从第 3 步继续；不得沿用上一次响应中的 `next_action`。检查失败时服从响应给出的重试或跳转结果，不自行选择状态。
 
-只要 `next_action` 存在，就表示流程已确定下一步。立即执行，不询问用户是否继续，不提供跳过当前步骤或直接进入后续步骤的选项。`unit_test` 和 `regression_test` 都是不可跳过的强制门禁：前者完成测试编写和有效红灯检查后才能进入 `implementation`；后者必须执行本次修改的最小相关测试，外部依赖与修改无关时忽略，确实涉及时使用 mock、stub 或 fixture 隔离，不得因 Nacos、MySQL、Redis 等服务不可用而停止。
+只要 `next_action` 存在，就表示流程已确定下一步。立即执行，不询问用户是否继续，不提供跳过当前步骤或直接进入后续步骤的选项。`test_case_design` 在实现前只设计用例，不编写或运行测试；`regression_test` 在功能实现和编译之后编写并执行本次修改的最小相关测试。外部依赖与修改无关时忽略，确实涉及时使用 mock、stub 或 fixture 隔离，不得因 Nacos、MySQL、Redis 等服务不可用而停止。
 
 首次初始化命令：
 
@@ -77,14 +77,14 @@ python <skill-dir>/scripts/works.py --project <project_root> status
 - 需求：每个功能点都有约束和可验证验收条件。
 - 项目定位：已确定构建入口、受影响模块、已有类/方法、直接调用方或最近测试，以及潜在回归面。
 - API 复用：每个功能点都有通过控制面校验的 `reuse_decisions`；选择 T1/T2 时已穷尽更高优先层，选择 fallback 时已穷尽 T0/T1/T2。
-- 单元测试：每个功能点已映射到具体测试，且真实命令产生目标行为导致的有效红灯。
+- 用例设计：每个功能点已映射到待实现后的测试场景、输入、预期结果和边界条件，且未修改测试代码。
 - 实现：每个功能点已落到目标存量方法，diff 中没有无关改动，并保留既有调用约定。
 - 编译与回归：当前修改版本已有退出码、测试统计和实际选择范围明确的新鲜命令证据。
 
 参考路径相对于本 skill 目录。未被 `next_action.references_to_read` 列出的参考资料不要预加载：
 
 - Java 项目与模块定位：见 [references/java-project-discovery.md](references/java-project-discovery.md)。
-- Java 存量开发、API 复用与测试先行：见 [references/java-brownfield-development.md](references/java-brownfield-development.md)。
+- Java 存量开发、API 复用与实现后测试：见 [references/java-brownfield-development.md](references/java-brownfield-development.md)。
 - Maven/Gradle 编译和相关测试命令：见 [references/build-and-test.md](references/build-and-test.md)。
 
 自定义 workflow 可在步骤中声明 `references` 字符串数组。每项必须是本 skill 内的正斜杠相对路径，不得引用其他 skill 或平台专属目录。

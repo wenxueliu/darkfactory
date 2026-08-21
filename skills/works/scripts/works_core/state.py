@@ -7,7 +7,7 @@ import tempfile
 import time
 
 
-VERSION = 3
+VERSION = 4
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -98,7 +98,7 @@ def load(project: Path) -> dict:
     if not path.is_file():
         raise FileNotFoundError(path)
     state = json.loads(path.read_text(encoding="utf-8"))
-    if state.get("version") == 2:
+    if state.get("version") in (2, 3):
         state = _migrate_v2(project, state)
     if state.get("version") != VERSION:
         raise ValueError("unsupported works state version")
@@ -109,8 +109,10 @@ def load(project: Path) -> dict:
 
 
 def _migrate_v2(project: Path, state: dict) -> dict:
+    previous_version = state.get("version")
     state["version"] = VERSION
-    state["reuse_decisions"] = {}
+    if "reuse_decisions" not in state:
+        state["reuse_decisions"] = {}
     workflow = state.get("workflow", {})
     if (workflow.get("name") == "java-brownfield-development"
             and not state.get("completed")):
@@ -118,7 +120,14 @@ def _migrate_v2(project: Path, state: dict) -> dict:
             (SKILL_ROOT / "assets" / "workflows" / "development.json").read_text(encoding="utf-8")
         )
         state["workflow"] = validate_workflow(current_workflow)
-        if state.get("current_step") not in {"requirements", "exploration", "reuse_analysis"}:
+        if previous_version == 2 and state.get("current_step") not in {
+                "requirements", "exploration", "reuse_analysis"}:
+            state["current_step"] = "reuse_analysis"
+        elif state.get("current_step") == "unit_test":
+            state["current_step"] = "test_case_design"
+        elif state.get("current_step") not in {
+                "requirements", "exploration", "reuse_analysis", "test_case_design",
+                "implementation", "compile", "regression_test", "build_test_fix"}:
             state["current_step"] = "reuse_analysis"
     save(project, state)
     return state

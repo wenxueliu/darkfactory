@@ -67,18 +67,18 @@ class WorksStateFlowTest(unittest.TestCase):
         step_ids = [step["id"] for step in default["steps"]]
         self.assertEqual(
             step_ids,
-            ["requirements", "exploration", "reuse_analysis", "unit_test", "implementation",
+            ["requirements", "exploration", "reuse_analysis", "test_case_design", "implementation",
              "compile", "regression_test", "build_test_fix"],
         )
         self.assertEqual(default["initial_step"], "requirements")
         self.assertIn("requirement.md", default["steps"][0]["do"])
         self.assertIn("Service", default["steps"][2]["do"])
-        self.assertIn("JUnit", default["steps"][3]["do"])
-        self.assertIn("失败", default["steps"][3]["check"])
+        self.assertIn("不编写或修改任何 UT/测试代码", default["steps"][3]["do"])
+        self.assertIn("没有创建或修改测试文件", default["steps"][3]["check"])
         self.assertIn("已有类和已有方法", default["steps"][4]["do"])
         self.assertEqual(default["steps"][5]["on_failure"]["goto"], "build_test_fix")
         self.assertEqual(default["steps"][6]["on_failure"]["goto"], "build_test_fix")
-        self.assertIn("仅运行", default["steps"][6]["do"])
+        self.assertIn("本次功能直接相关", default["steps"][6]["do"])
         self.assertIsNone(default["steps"][6]["on_success"])
         self.assertEqual(
             default["steps"][3]["references"],
@@ -192,7 +192,7 @@ class WorksStateFlowTest(unittest.TestCase):
             with self.assertRaises(WorksError):
                 Application().init(Path(directory), custom)
 
-    def test_reuse_decision_is_validated_and_survives_unit_test(self):
+    def test_reuse_decision_is_validated_and_survives_test_case_design(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             app = Application()
@@ -200,8 +200,8 @@ class WorksStateFlowTest(unittest.TestCase):
             app.check(root, True, "requirements")
             app.check(root, True, "exploration")
 
-            unit_test = app.check(root, True, development_evidence())
-            implementation = app.check(root, True, "valid red test")
+            test_case_design = app.check(root, True, development_evidence())
+            implementation = app.check(root, True, "test cases designed")
             (root / "CurrentService.java").write_text(
                 "sameLayerService.call();\n", encoding="utf-8"
             )
@@ -211,7 +211,7 @@ class WorksStateFlowTest(unittest.TestCase):
             }]})
             compile_step = app.check(root, True, implementation_evidence)
 
-            self.assertEqual(unit_test["reuse_decisions"]["feature-a"]["selected"],
+            self.assertEqual(test_case_design["reuse_decisions"]["feature-a"]["selected"],
                              "SameLayerService.call")
             self.assertEqual(implementation["current_step"], "implementation")
             self.assertIn("feature-a", implementation["reuse_decisions"])
@@ -283,10 +283,28 @@ class WorksStateFlowTest(unittest.TestCase):
 
             migrated = app.status(root)
 
-            self.assertEqual(migrated["version"], 3)
+            self.assertEqual(migrated["version"], 4)
             self.assertEqual(migrated["current_step"], "reuse_analysis")
             self.assertEqual(migrated["reuse_decisions"], {})
             self.assertEqual(migrated["next_action"]["step"], "reuse_analysis")
+
+    def test_v3_unit_test_state_migrates_to_test_case_design(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
+            app.init(root, default)
+            state_path = root / ".works/state.json"
+            state = json.loads(state_path.read_text())
+            state["version"] = 3
+            state["current_step"] = "unit_test"
+            state_path.write_text(json.dumps(state), encoding="utf-8")
+
+            migrated = app.status(root)
+
+            self.assertEqual(migrated["version"], 4)
+            self.assertEqual(migrated["current_step"], "test_case_design")
+            self.assertEqual(migrated["next_action"]["step"], "test_case_design")
 
     def test_implementation_evidence_must_match_selected_symbol(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -297,7 +315,7 @@ class WorksStateFlowTest(unittest.TestCase):
             app.check(root, True, "requirements")
             app.check(root, True, "exploration")
             app.check(root, True, development_evidence())
-            app.check(root, True, "valid red test")
+            app.check(root, True, "test cases designed")
             mismatch = json.dumps({"implementation_reuse": [{
                 "feature": "feature-a", "action": "invoke",
                 "symbol": "WrongService.call", "call_site": "CurrentService.java:42",
@@ -315,7 +333,7 @@ class WorksStateFlowTest(unittest.TestCase):
             app.check(root, True, "requirements")
             app.check(root, True, "exploration")
             app.check(root, True, development_evidence())
-            app.check(root, True, "valid red test")
+            app.check(root, True, "test cases designed")
             forged = json.dumps({"implementation_reuse": [{
                 "feature": "feature-a", "action": "invoke",
                 "symbol": "SameLayerService.call", "call_site": "missing.java:1",
