@@ -8,6 +8,7 @@ import time
 
 
 VERSION = 2
+SKILL_ROOT = Path(__file__).resolve().parents[2]
 
 
 def state_file(project: Path) -> Path:
@@ -34,6 +35,25 @@ def validate_workflow(workflow: dict) -> dict:
             raise ValueError(f"step {row['id']} requires a non-empty do prompt")
         if not isinstance(row.get("check"), str) or not row["check"].strip():
             raise ValueError(f"step {row['id']} requires a non-empty check prompt")
+        references = row.get("references", [])
+        if (not isinstance(references, list)
+                or any(not isinstance(value, str) or not value.strip()
+                       for value in references)):
+            raise ValueError(
+                f"step {row['id']}.references must be a list of non-empty strings"
+            )
+        if len(set(references)) != len(references):
+            raise ValueError(f"step {row['id']}.references must not contain duplicates")
+        for value in references:
+            reference = Path(value)
+            if (reference.is_absolute() or "\\" in value
+                    or reference.parts[:1] != ("references",)
+                    or ".." in reference.parts):
+                raise ValueError(
+                    f"step {row['id']} reference must be a forward-slash path under references/"
+                )
+            if not (SKILL_ROOT / reference).is_file():
+                raise ValueError(f"step {row['id']} reference does not exist: {value}")
         success = row.get("on_success")
         if success is not None and success not in known:
             raise ValueError(f"step {row['id']} has an unknown on_success target")
@@ -110,6 +130,7 @@ def response(state: dict) -> dict:
             "step": current["id"],
             "do": current["do"],
             "check": current["check"],
+            "references_to_read": current.get("references", []),
             "command": "check",
         },
         **state,

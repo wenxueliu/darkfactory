@@ -4,6 +4,7 @@
   "steps": [
     {
       "id": "requirements",
+      "references": [],
       "do": "从 --project 指定的根目录读取 requirement.md。逐条提取功能点、验收条件、约束、兼容性要求以及明确或隐含的待复用 API；建立功能点到验收条件的对应关系。需求明确时直接继续，不请求阶段确认。仅在 requirement.md 缺失、互相矛盾或无法安全推断关键行为时才报告阻塞。",
       "check": "提供具体证据确认 requirement.md 已读取，且每个功能点都有约束、复用候选或待探查项及可验证的验收条件；不得用笼统总结代替逐项覆盖。",
       "on_success": "exploration",
@@ -11,6 +12,7 @@
     },
     {
       "id": "exploration",
+      "references": ["references/java-project-discovery.md"],
       "do": "在根目录及其直接/合理深度的子目录中自动定位 Java 项目，不假定目录名（mall-swarm/ 仅为示例）。依据 pom.xml、build.gradle、build.gradle.kts、mvnw、gradlew、src/main/java 和多模块声明确定实际项目与模块边界；排除 build、target、.git、生成代码和依赖缓存。读取适用的项目指令。搜索调用链、接口、实现类、测试和配置，为每个功能点精确定位必须修改的已有类、已有方法与代码位置，并分析原有调用方和行为。",
       "check": "逐项给出功能点到 Java 模块、已有类、已有方法及相关测试/调用方的定位证据；确认目标不是仅靠新增类实现，并说明现有行为与潜在回归面。",
       "on_success": "reuse_analysis",
@@ -18,20 +20,31 @@
     },
     {
       "id": "reuse_analysis",
+      "references": ["references/java-brownfield-development.md"],
       "do": "为每个功能点搜索可直接调用的现有 API，重点检查 Service 接口、ServiceImpl 及当前类已有方法。按同类复用 > 同层复用 > 跨层复用排序；Service 场景优先调用当前类或其他 Service 的既有方法，不因方便绕到 Mapper。核对实际调用点的参数格式、返回值处理、事务边界、异常类型、统一响应格式和已有调用约定。禁止复制已有 API 实现后改写，禁止把代码复制称为复用。",
       "check": "形成逐功能点的复用决策证据：选定 API 的声明与既有调用位置、为何符合复用优先级、参数/返回值/异常/事务约定；若确无可复用 API，必须给出搜索范围和证据后才能采用最小新增实现。",
-      "on_success": "implementation",
+      "on_success": "unit_test",
       "on_failure": {"retries": 1, "goto": "exploration"}
     },
     {
+      "id": "unit_test",
+      "references": ["references/java-brownfield-development.md", "references/build-and-test.md"],
+      "do": "在修改任何生产代码前，为 requirement.md 的每个功能点编写或调整单元测试。测试优先使用项目现有 JUnit 版本、扩展和断言库；优先扩展离目标类最近的已有测试类。只覆盖本功能的目标行为、边界条件和明确兼容性要求，不加入无关模块、全量回归或端到端场景。使用项目既有 mock、stub 或 fixture 隔离外部依赖。随后仅运行新增或修改的相关测试类/方法，确认它因尚未实现的目标行为而失败。若项目明确使用非 JUnit 框架且引入 JUnit 会破坏现有构建，则沿用已有框架并记录依据。",
+      "check": "提供测试 diff、功能点到测试用例的逐项映射及真实测试命令证据。有效红灯必须来自目标行为尚未实现的断言失败；编译错误、依赖缺失、环境错误、无关测试失败或人为制造失败均不通过。确认此步骤没有修改生产代码，且执行范围仅包含新增/修改测试及其最小必要测试依赖。",
+      "on_success": "implementation",
+      "on_failure": {"retries": 1, "goto": "unit_test"}
+    },
+    {
       "id": "implementation",
-      "do": "在已定位的已有类和已有方法中完成全部功能增强，直接调用选定的现有 Service API。保持项目现有 Controller -> Service -> ServiceImpl 等分层、命名、格式、依赖注入、事务和统一返回/异常处理风格。保留原方法签名和既有语义以兼容所有调用方；新增类只能作为必要辅助，不能替代对存量方法的修改。补充或调整能覆盖新行为和原行为的 Java 测试。避免无关重构和无关格式化。",
-      "check": "逐项审查 diff 与调用链：每个功能点落在已有方法中；复用为真实方法调用而非复制实现；调用约定一致；原签名和原行为兼容；异常使用项目统一格式；测试同时覆盖增强路径与关键存量路径。",
+      "references": ["references/java-brownfield-development.md"],
+      "do": "在已定位的已有类和已有方法中，以 unit_test 步骤建立的失败测试为驱动完成最小生产代码修改，并直接调用选定的现有 Service API。保持项目现有 Controller -> Service -> ServiceImpl 等分层、命名、格式、依赖注入、事务和统一返回/异常处理风格。保留原方法签名和既有语义以兼容所有调用方；新增类只能作为必要辅助，不能替代对存量方法的修改。避免与本功能无关的重构、格式化或测试改动。",
+      "check": "逐项审查 diff 与调用链：生产代码修改发生在失败测试之后；每个功能点落在已有方法中；复用为真实方法调用而非复制实现；调用约定一致；原签名和原行为兼容；异常使用项目统一格式；没有加入与本功能无关的实现或测试。",
       "on_success": "compile",
       "on_failure": {"retries": 1, "goto": "implementation"}
     },
     {
       "id": "compile",
+      "references": ["references/build-and-test.md"],
       "do": "在已定位的 Java 项目或受影响模块执行真实编译。优先使用仓库自带 Maven/Gradle Wrapper，并按当前操作系统选择 mvnw 或 mvnw.cmd、gradlew 或 gradlew.bat；否则使用已安装的 mvn 或 gradle。多模块项目应覆盖受影响模块及必要依赖模块。不得用静态阅读代替编译。",
       "check": "通过 `works.py --project <root> check -- <构建程序> <参数...>` 提交真实编译命令，以退出码 0 和构建输出为通过依据。Linux/macOS 使用可用的 ./mvnw 或 ./gradlew，Windows 使用 mvnw.cmd 或 gradlew.bat；命令参数不得依赖 Bash 专属语法。",
       "on_success": "regression_test",
@@ -39,13 +52,15 @@
     },
     {
       "id": "regression_test",
-      "do": "运行受影响模块的真实 Java 测试，至少包含新增/修改测试与相关存量回归测试；能承受成本时运行项目完整测试套件。沿用项目已有 Maven/Gradle 测试约定，不跳过测试，不以仅编译成功代替回归测试。",
-      "check": "通过 `works.py --project <root> check -- <测试程序> <参数...>` 提交真实测试命令，以退出码 0、无失败测试和输出中的测试统计为通过依据。仅当编译与回归测试均已有当前修改版本的新鲜通过证据时完成流程。",
+      "references": ["references/build-and-test.md"],
+      "do": "仅运行本次功能直接相关的真实 Java 测试：新增/修改的单元测试类或方法，以及与被修改类、方法和兼容行为直接相关的已有回归测试。优先使用 JUnit 对应的 Maven/Gradle 测试选择参数。不要运行完整项目测试套件、无关模块测试或无关端到端测试；若构建工具无法选择单个测试方法，逐级扩大到最小相关测试类或模块并记录原因。不跳过测试，不以仅编译成功代替相关回归测试。",
+      "check": "通过 `works.py --project <root> check -- <测试程序> <参数...>` 提交真实测试命令，以退出码 0、无失败测试和输出中的测试统计为通过依据。证据必须列出命令实际选择的测试类/方法及其与功能点的关系，并确认未包含无关测试。仅当编译与功能相关测试均有当前修改版本的新鲜通过证据时完成流程。",
       "on_success": null,
       "on_failure": {"retries": 0, "goto": "build_test_fix"}
     },
     {
       "id": "build_test_fix",
+      "references": ["references/java-brownfield-development.md", "references/build-and-test.md"],
       "do": "读取 state.json.last_check 的命令、退出码和输出，定位编译或测试失败根因并做最小修复。若失败暴露复用 API 的参数、返回值、异常、事务或兼容性理解错误，回查实际声明和既有调用点；不得通过删除断言、跳过测试、吞异常或绕开既有 Service API 让检查变绿。",
       "check": "提供针对 last_check 失败根因的代码 diff 与证据，确认未削弱测试、未改变验收标准且已具备重新编译条件。",
       "on_success": "compile",

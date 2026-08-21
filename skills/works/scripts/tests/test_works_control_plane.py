@@ -36,16 +36,23 @@ class WorksStateFlowTest(unittest.TestCase):
         step_ids = [step["id"] for step in default["steps"]]
         self.assertEqual(
             step_ids,
-            ["requirements", "exploration", "reuse_analysis", "implementation",
+            ["requirements", "exploration", "reuse_analysis", "unit_test", "implementation",
              "compile", "regression_test", "build_test_fix"],
         )
         self.assertEqual(default["initial_step"], "requirements")
         self.assertIn("requirement.md", default["steps"][0]["do"])
         self.assertIn("Service", default["steps"][2]["do"])
-        self.assertIn("已有类和已有方法", default["steps"][3]["do"])
-        self.assertEqual(default["steps"][4]["on_failure"]["goto"], "build_test_fix")
+        self.assertIn("JUnit", default["steps"][3]["do"])
+        self.assertIn("失败", default["steps"][3]["check"])
+        self.assertIn("已有类和已有方法", default["steps"][4]["do"])
         self.assertEqual(default["steps"][5]["on_failure"]["goto"], "build_test_fix")
-        self.assertIsNone(default["steps"][5]["on_success"])
+        self.assertEqual(default["steps"][6]["on_failure"]["goto"], "build_test_fix")
+        self.assertIn("仅运行", default["steps"][6]["do"])
+        self.assertIsNone(default["steps"][6]["on_success"])
+        self.assertEqual(
+            default["steps"][3]["references"],
+            ["references/java-brownfield-development.md", "references/build-and-test.md"],
+        )
 
     def test_init_embeds_workflow_in_the_only_state_file(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -55,6 +62,7 @@ class WorksStateFlowTest(unittest.TestCase):
             self.assertEqual(result["current_step"], "build")
             self.assertEqual(result["next_action"]["do"], "build it")
             self.assertEqual(result["next_action"]["check"], "inspect build")
+            self.assertEqual(result["next_action"]["references_to_read"], [])
             self.assertEqual(
                 [path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()],
                 [".works/state.json"],
@@ -132,6 +140,26 @@ class WorksStateFlowTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(WorksError):
                 Application().init(Path(directory), invalid)
+
+    def test_exposes_step_references_and_rejects_invalid_values(self):
+        custom = workflow()
+        custom["steps"][0]["references"] = ["references/build-and-test.md"]
+        with tempfile.TemporaryDirectory() as directory:
+            result = Application().init(Path(directory), custom)
+            self.assertEqual(
+                result["next_action"]["references_to_read"],
+                ["references/build-and-test.md"],
+            )
+
+        custom["steps"][0]["references"] = ["references/build-and-test.md", ""]
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(WorksError):
+                Application().init(Path(directory), custom)
+
+        custom["steps"][0]["references"] = ["../outside.md"]
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(WorksError):
+                Application().init(Path(directory), custom)
 
 
 if __name__ == "__main__":

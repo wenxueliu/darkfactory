@@ -18,6 +18,16 @@ python <skill-dir>/scripts/works.py --project <project-root> init --workflow <wo
 
 初始化后，完整流程定义写入 `.works/state.json`。它是唯一运行时状态；不要创建第二套计划、日志、清单或证据文件。需求映射、代码定位、复用决策和检查证据均通过当前步骤的工作上下文与 `check` evidence 推进。
 
+## 按需读取参考资料
+
+每次执行步骤前，读取响应中 `next_action.references_to_read` 列出的文件；未列出的参考资料不要预加载。路径相对于本 skill 目录：
+
+- Java 项目与模块定位：见 [references/java-project-discovery.md](references/java-project-discovery.md)。
+- Java 存量开发、API 复用与测试先行：见 [references/java-brownfield-development.md](references/java-brownfield-development.md)。
+- Maven/Gradle 编译和相关测试命令：见 [references/build-and-test.md](references/build-and-test.md)。
+
+自定义 workflow 可在步骤中声明 `references` 字符串数组。每项必须是本 skill 内的正斜杠相对路径，不得引用其他 skill 或平台专属目录。
+
 ## 连续执行
 
 初始化后持续循环，直到响应中 `completed` 为 `true`：
@@ -44,24 +54,6 @@ python <skill-dir>/scripts/works.py --project <project-root> check -- <program> 
 
 命令由参数列表直接执行，因此不要加入 `cd`、管道、`&&`、通配符或其他 shell 语法。命令工作目录始终为 `<project-root>`；若 Java 项目位于子目录，使用构建工具的项目文件参数或项目支持的等价参数定位它。
 
-## Java 存量开发约束
-
-- 逐功能点定位并修改已有类的已有方法；新增辅助类不能代替存量修改。
-- 按同类复用、同层复用、跨层复用的顺序搜索，Service 逻辑优先直接调用当前类或已有 Service 方法。
-- 真实复用已有 API；不得复制其实现再修改，不得为了省事从 Service 绕到 Mapper。
-- 在复用前从声明和既有调用点核对参数、返回值、异常、事务和统一响应约定。
-- 保留已有公开方法签名、既有调用方语义和项目分层/代码风格。
-- 编译失败或回归失败时依据 `.works/state.json` 的 `last_check` 修复并重新执行编译和测试，禁止跳过或削弱测试。
-
-## 跨平台构建
-
-优先使用仓库 Wrapper。根据运行环境直接选择现有文件：
-
-- Linux/macOS：`./mvnw`、`./gradlew`，或已安装的 `mvn`、`gradle`。
-- Windows：`mvnw.cmd`、`gradlew.bat`，或已安装的 `mvn`、`gradle`。
-
-使用正斜杠描述路径，检查文件是否存在后再选择命令；不要假设文件系统区分大小写，不要把 Bash 或 PowerShell 专属语法写入工作流。
-
 ## 流程语义
 
-每个步骤必须有唯一 `id` 和非空 `do/check`，所有跳转目标必须存在。检查成功进入 `on_success`，值为 `null` 时完成；检查失败先按 `on_failure.retries` 原地重试，超过次数后进入 `on_failure.goto`。`retries: 0` 表示第一次失败立即跳转。
+每个步骤必须有唯一 `id` 和非空 `do/check`；可选 `references` 必须是不含空值和重复项的字符串数组。所有跳转目标必须存在。检查成功进入 `on_success`，值为 `null` 时完成；检查失败先按 `on_failure.retries` 原地重试，超过次数后进入 `on_failure.goto`。`retries: 0` 表示第一次失败立即跳转。
