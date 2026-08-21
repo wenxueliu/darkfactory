@@ -1,27 +1,55 @@
 {
-  "name": "development-test-fix",
-  "initial_step": "development",
+  "name": "java-brownfield-development",
+  "initial_step": "requirements",
   "steps": [
     {
-      "id": "development",
-      "do": "理解需求并完成最小、安全的代码修改。",
-      "check": "确认需求相关代码已经实现，且不存在明显的语法或静态检查错误。",
-      "on_success": "test",
-      "on_failure": {"retries": 1, "goto": "development"}
+      "id": "requirements",
+      "do": "从 --project 指定的根目录读取 requirement.md。逐条提取功能点、验收条件、约束、兼容性要求以及明确或隐含的待复用 API；建立功能点到验收条件的对应关系。需求明确时直接继续，不请求阶段确认。仅在 requirement.md 缺失、互相矛盾或无法安全推断关键行为时才报告阻塞。",
+      "check": "提供具体证据确认 requirement.md 已读取，且每个功能点都有约束、复用候选或待探查项及可验证的验收条件；不得用笼统总结代替逐项覆盖。",
+      "on_success": "exploration",
+      "on_failure": {"retries": 1, "goto": "requirements"}
     },
     {
-      "id": "test",
-      "do": "运行能证明需求成立的真实测试。",
-      "check": "以真实测试命令的退出码和输出判断测试是否通过。",
+      "id": "exploration",
+      "do": "在根目录及其直接/合理深度的子目录中自动定位 Java 项目，不假定目录名（mall-swarm/ 仅为示例）。依据 pom.xml、build.gradle、build.gradle.kts、mvnw、gradlew、src/main/java 和多模块声明确定实际项目与模块边界；排除 build、target、.git、生成代码和依赖缓存。读取适用的项目指令。搜索调用链、接口、实现类、测试和配置，为每个功能点精确定位必须修改的已有类、已有方法与代码位置，并分析原有调用方和行为。",
+      "check": "逐项给出功能点到 Java 模块、已有类、已有方法及相关测试/调用方的定位证据；确认目标不是仅靠新增类实现，并说明现有行为与潜在回归面。",
+      "on_success": "reuse_analysis",
+      "on_failure": {"retries": 1, "goto": "exploration"}
+    },
+    {
+      "id": "reuse_analysis",
+      "do": "为每个功能点搜索可直接调用的现有 API，重点检查 Service 接口、ServiceImpl 及当前类已有方法。按同类复用 > 同层复用 > 跨层复用排序；Service 场景优先调用当前类或其他 Service 的既有方法，不因方便绕到 Mapper。核对实际调用点的参数格式、返回值处理、事务边界、异常类型、统一响应格式和已有调用约定。禁止复制已有 API 实现后改写，禁止把代码复制称为复用。",
+      "check": "形成逐功能点的复用决策证据：选定 API 的声明与既有调用位置、为何符合复用优先级、参数/返回值/异常/事务约定；若确无可复用 API，必须给出搜索范围和证据后才能采用最小新增实现。",
+      "on_success": "implementation",
+      "on_failure": {"retries": 1, "goto": "exploration"}
+    },
+    {
+      "id": "implementation",
+      "do": "在已定位的已有类和已有方法中完成全部功能增强，直接调用选定的现有 Service API。保持项目现有 Controller -> Service -> ServiceImpl 等分层、命名、格式、依赖注入、事务和统一返回/异常处理风格。保留原方法签名和既有语义以兼容所有调用方；新增类只能作为必要辅助，不能替代对存量方法的修改。补充或调整能覆盖新行为和原行为的 Java 测试。避免无关重构和无关格式化。",
+      "check": "逐项审查 diff 与调用链：每个功能点落在已有方法中；复用为真实方法调用而非复制实现；调用约定一致；原签名和原行为兼容；异常使用项目统一格式；测试同时覆盖增强路径与关键存量路径。",
+      "on_success": "compile",
+      "on_failure": {"retries": 1, "goto": "implementation"}
+    },
+    {
+      "id": "compile",
+      "do": "在已定位的 Java 项目或受影响模块执行真实编译。优先使用仓库自带 Maven/Gradle Wrapper，并按当前操作系统选择 mvnw 或 mvnw.cmd、gradlew 或 gradlew.bat；否则使用已安装的 mvn 或 gradle。多模块项目应覆盖受影响模块及必要依赖模块。不得用静态阅读代替编译。",
+      "check": "通过 `works.py --project <root> check -- <构建程序> <参数...>` 提交真实编译命令，以退出码 0 和构建输出为通过依据。Linux/macOS 使用可用的 ./mvnw 或 ./gradlew，Windows 使用 mvnw.cmd 或 gradlew.bat；命令参数不得依赖 Bash 专属语法。",
+      "on_success": "regression_test",
+      "on_failure": {"retries": 0, "goto": "build_test_fix"}
+    },
+    {
+      "id": "regression_test",
+      "do": "运行受影响模块的真实 Java 测试，至少包含新增/修改测试与相关存量回归测试；能承受成本时运行项目完整测试套件。沿用项目已有 Maven/Gradle 测试约定，不跳过测试，不以仅编译成功代替回归测试。",
+      "check": "通过 `works.py --project <root> check -- <测试程序> <参数...>` 提交真实测试命令，以退出码 0、无失败测试和输出中的测试统计为通过依据。仅当编译与回归测试均已有当前修改版本的新鲜通过证据时完成流程。",
       "on_success": null,
-      "on_failure": {"retries": 0, "goto": "test_fix"}
+      "on_failure": {"retries": 0, "goto": "build_test_fix"}
     },
     {
-      "id": "test_fix",
-      "do": "根据 state.json.last_check 中的失败证据修复代码或测试。",
-      "check": "确认失败原因已被针对性修复，可以重新运行原测试。",
-      "on_success": "test",
-      "on_failure": {"retries": 1, "goto": "development"}
+      "id": "build_test_fix",
+      "do": "读取 state.json.last_check 的命令、退出码和输出，定位编译或测试失败根因并做最小修复。若失败暴露复用 API 的参数、返回值、异常、事务或兼容性理解错误，回查实际声明和既有调用点；不得通过删除断言、跳过测试、吞异常或绕开既有 Service API 让检查变绿。",
+      "check": "提供针对 last_check 失败根因的代码 diff 与证据，确认未削弱测试、未改变验收标准且已具备重新编译条件。",
+      "on_success": "compile",
+      "on_failure": {"retries": 1, "goto": "exploration"}
     }
   ]
 }
