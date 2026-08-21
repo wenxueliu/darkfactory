@@ -8,7 +8,7 @@ description: 面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实现
 从明确的 `requirement.md` 持续执行到实现和验收通过。不要等待阶段确认。先读 `references/opencode.md`，再运行：
 
 ```text
-<python> <skill-dir>/scripts/works.py --project <project> init
+python <skill-dir>/scripts/works.py --project <project> init
 ```
 
 每次只完成响应中的 `next_action`，并直接使用动作响应刷新后的 `state/current_req/next_action`；不要在每个成功动作后重复运行 `status`。只有恢复、响应丢失或人工检查时运行 `recover/status`。命令失败时记录真实输出和次数，再由 Agent 诊断或重试；不要维护工作区签名。`state.json` 是唯一流程状态，不建立第二套计划。
@@ -31,19 +31,19 @@ description: 面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实现
 ## 核心命令
 
 ```text
-<python> <skill-dir>/scripts/works.py --project . doctor
-<python> <skill-dir>/scripts/works.py --project . init
-<python> <skill-dir>/scripts/works.py --project . preflight
-<python> <skill-dir>/scripts/works.py --project . recover
-<python> <skill-dir>/scripts/works.py --project . contract-init
-<python> <skill-dir>/scripts/works.py --project . contract-check
-<python> <skill-dir>/scripts/works.py --project . implement -- --req <REQ>
-<python> <skill-dir>/scripts/works.py --project . test -- --req <REQ> --test-file <file> --testcase <Class#method>
-<python> <skill-dir>/scripts/works.py --project . rework -- --req <REQ> --reason production-fix
-<python> <skill-dir>/scripts/works.py --project . finalize
-<python> <skill-dir>/scripts/works.py --project . reopen -- --req <REQ>
+python <skill-dir>/scripts/works.py --project . doctor
+python <skill-dir>/scripts/works.py --project . init
+python <skill-dir>/scripts/works.py --project . preflight
+python <skill-dir>/scripts/works.py --project . recover
+python <skill-dir>/scripts/works.py --project . contract-init
+python <skill-dir>/scripts/works.py --project . contract-check
+python <skill-dir>/scripts/works.py --project . implement -- --req <REQ>
+python <skill-dir>/scripts/works.py --project . test -- --req <REQ> --test-file <file> --testcase <Class#method>
+python <skill-dir>/scripts/works.py --project . rework -- --req <REQ> --reason production-fix
+python <skill-dir>/scripts/works.py --project . finalize
+python <skill-dir>/scripts/works.py --project . reopen -- --req <REQ>
 ```
 
-Windows 使用 `py -3`，Linux 使用 `python3`，不可用时使用 `python`。Maven 入口由 discovery 统一解析：优先使用 `M2_HOME/bin/mvn`（Windows 为 `mvn.cmd`），无有效入口时依次回退项目 wrapper 和系统 `mvn`。定向测试命令只允许 `test` 生命周期，禁止 `verify/package`；必须覆盖 POM 中为 true 的测试跳过属性，并确保指定 testcase 在新鲜 JUnit XML 中真实执行通过。
+Windows 和 Linux 均使用 `python` 启动 Works，使用 `mvn` 启动 Maven；不解析 `M2_HOME`，不使用 `py -3`、`python3`、`mvnw` 或 `mvn.cmd`。定向测试命令只允许 `test` 生命周期，禁止 `verify/package`；必须覆盖 POM 中为 true 的测试跳过属性，并确保指定 testcase 在新鲜 JUnit XML 中真实执行通过。
 
 按阶段读取：探索见 `references/exploration.md`，契约见 `references/requirement-contract.md`，实现与测试证据见 `references/code-first.md`，恢复见 `references/persistent-memory.md`。

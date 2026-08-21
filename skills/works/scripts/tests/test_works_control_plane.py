@@ -17,7 +17,6 @@ import requirement_contract
 import service_boundary
 import baseline
 from works_core.application import Application, WorksError
-from works_core.common import windows_command
 from works_core.discovery import discover, discover_maven_command
 from works_core import state as store
 
@@ -555,33 +554,31 @@ class RequirementContractTest(unittest.TestCase):
             "mvn.cmd",
         )
 
-    def test_contract_replaces_maven_placeholder_with_discovered_executable(self):
+    def test_contract_replaces_maven_aliases_with_mvn(self):
         data = {"acceptance_commands": [
             {"command": ["$M2_HOME/bin/mvn", "-Dtest=ATest#works", "test"]},
             {"command": ["./mvnw", "-Dtest=BTest#works", "test"]},
         ]}
-        executable = "/opt/apache-maven/bin/mvn"
+        self.assertTrue(requirement_contract.normalize_maven_commands(data))
+        self.assertEqual(data["acceptance_commands"][0]["command"][0], "mvn")
+        self.assertEqual(data["acceptance_commands"][1]["command"][0], "mvn")
 
-        self.assertTrue(requirement_contract.normalize_maven_commands(data, executable))
-        self.assertEqual(data["acceptance_commands"][0]["command"][0], executable)
-        self.assertEqual(data["acceptance_commands"][1]["command"][0], executable)
-
-    def test_contract_check_receives_discovered_maven_executable(self):
+    def test_contract_check_uses_python_without_maven_override(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             plan = root / ".planning" / "works-requirement"
             plan.mkdir(parents=True)
-            executable = root / "apache-maven/bin/mvn"
             current = {
                 "project_root": str(root),
                 "requirement": str(root / "requirement.md"),
                 "evidence_dir": str(plan / "evidence"),
-                "discovery": {"maven_project": str(root), "build": str(executable)},
+                "discovery": {"maven_project": str(root), "build": "mvn"},
             }
 
             command = Application(SCRIPTS)._command(plan, current, "contract-check", [])
 
-            self.assertEqual(command[command.index("--maven-command") + 1], str(executable))
+            self.assertEqual(command[0], "python")
+            self.assertNotIn("--maven-command", command)
 
     def test_allows_a_planned_entrypoint_but_requires_existing_reuse_target(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1009,10 +1006,10 @@ class CodeFirstEvidenceTest(unittest.TestCase):
                 ["mvn", "-Dtest=ATest#expected", "test"],
             )
 
-    def test_resolves_windows_wrapper_argv_without_shell_parsing(self):
+    def test_resolves_platform_neutral_maven_argv_without_shell_parsing(self):
         with tempfile.TemporaryDirectory() as directory:
             contract = Path(directory) / "requirement-contract.json"
-            command = [r"C:\\repo\\mvnw.cmd", "-DskipTests=false", "-Dmaven.test.skip=false",
+            command = ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
                        "-Dtest=ATest#expected", "test"]
             contract.write_text(json.dumps({"acceptance_commands": [{
                 "covers": ["REQ-1"], "command": command,
@@ -1053,43 +1050,14 @@ class CodeFirstEvidenceTest(unittest.TestCase):
 
 
 class DiscoveryTest(unittest.TestCase):
-    def test_prefers_m2_home_maven_over_project_wrapper(self):
+    def test_maven_command_is_always_mvn(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            maven_home = root / "apache-maven"
-            executable = maven_home / "bin" / "mvn"
-            executable.parent.mkdir(parents=True)
-            executable.write_text("#!/bin/sh\n")
             (root / "mvnw").write_text("#!/bin/sh\n")
+            (root / "mvnw.cmd").write_text("@echo off\r\n")
 
-            self.assertEqual(
-                discover_maven_command(root, "posix", {"M2_HOME": str(maven_home)}),
-                str(executable),
-            )
-
-    def test_uses_windows_maven_from_m2_home(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            maven_home = root / "apache-maven"
-            executable = maven_home / "bin" / "mvn.cmd"
-            executable.parent.mkdir(parents=True)
-            executable.write_text("@echo off\r\n")
-
-            self.assertEqual(
-                discover_maven_command(root, "nt", {"M2_HOME": str(maven_home)}),
-                str(executable),
-            )
-
-    def test_invalid_m2_home_falls_back_to_project_wrapper(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            wrapper = root / "mvnw"
-            wrapper.write_text("#!/bin/sh\n")
-
-            self.assertEqual(
-                discover_maven_command(root, "posix", {"M2_HOME": str(root / "missing")}),
-                str(wrapper),
-            )
+            self.assertEqual(discover_maven_command(root, "posix", {"M2_HOME": "ignored"}), "mvn")
+            self.assertEqual(discover_maven_command(root, "nt", {"M2_HOME": "ignored"}), "mvn")
 
     def test_discovers_current_maven_project(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1147,49 +1115,6 @@ class DiscoveryTest(unittest.TestCase):
             command = Application(SCRIPTS)._command(root, current, "preflight", [])
 
             self.assertEqual(command[command.index("--project-root") + 1], str(module))
-
-    def test_prefers_windows_maven_wrapper_on_windows(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "mvnw").write_text("#!/bin/sh\n")
-            (root / "mvnw.cmd").write_text("@echo off\r\n")
-            self.assertEqual(discover_maven_command(root, "nt", {}), str(root / "mvnw.cmd"))
-
-    def test_windows_ignores_unix_wrapper_and_falls_back_to_maven(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "mvnw").write_text("#!/bin/sh\n")
-            self.assertEqual(discover_maven_command(root, "nt", {}), "mvn")
-
-
-class CrossPlatformCommandTest(unittest.TestCase):
-    def test_linux_executes_maven_argv_directly(self):
-        command = ["/opt/apache-maven/bin/mvn", "-Dtest=ATest#works", "test"]
-        self.assertEqual(windows_command(command, "posix", {}), command)
-
-    def test_windows_runs_maven_cmd_through_comspec_with_quoted_path(self):
-        command = [r"C:\Program Files\Apache Maven\bin\mvn.cmd",
-                   "-Dmaven.test.skip=false", "-Dtest=ATest#works", "test"]
-
-        resolved = windows_command(
-            command, "nt", {"COMSPEC": r"C:\Windows\System32\cmd.exe"}
-        )
-
-        self.assertEqual(
-            resolved,
-            'C:\\Windows\\System32\\cmd.exe /d /s /c '
-            '""C:\\Program Files\\Apache Maven\\bin\\mvn.cmd" '
-            '"-Dmaven.test.skip=false" "-Dtest=ATest#works" "test""',
-        )
-
-    def test_windows_supports_maven_bat_and_comspec_casing(self):
-        resolved = windows_command(
-            [r"C:\Maven\bin\mvn.bat", "test"], "nt", {"ComSpec": "custom-cmd.exe"}
-        )
-        self.assertEqual(
-            resolved, 'custom-cmd.exe /d /s /c ""C:\\Maven\\bin\\mvn.bat" "test""'
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

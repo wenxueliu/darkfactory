@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Create and validate the autonomous requirement-to-verification contract."""
 
 from __future__ import annotations
@@ -169,17 +169,17 @@ def executable_name(command: str) -> str:
     return PureWindowsPath(command).name.lower()
 
 
-def normalize_maven_commands(data: object, maven_command: str) -> bool:
-    """Replace Maven command placeholders with the executable resolved by discovery."""
+def normalize_maven_commands(data: object) -> bool:
+    """Replace Maven command aliases with the platform-neutral mvn command."""
     if not isinstance(data, dict) or not isinstance(data.get("acceptance_commands"), list):
         return False
     changed = False
     for row in data["acceptance_commands"]:
         command = row.get("command") if isinstance(row, dict) else None
         if (isinstance(command, list) and command and isinstance(command[0], str)
-                and executable_name(command[0]) in {"mvn", "mvnw", "mvnw.cmd"}
-                and command[0] != maven_command):
-            command[0] = maven_command
+                and executable_name(command[0]) in {"mvn", "mvn.cmd", "mvn.bat", "mvnw", "mvnw.cmd"}
+                and command[0] != "mvn"):
+            command[0] = "mvn"
             changed = True
     return changed
 
@@ -258,9 +258,8 @@ def validate(data: object, requirement: Path, project_root: Path | None = None) 
             if unknown:
                 errors.append(f"{prefix}.covers contains unknown IDs: {unknown!r}")
             covered.update(req for req in coverage if req in ids)
-            executable = executable_name(command[0]) if command else ""
             lifecycle = {"test", "verify", "package"} & set(command)
-            if executable in {"mvn", "mvnw", "mvnw.cmd"}:
+            if command and command[0] == "mvn":
                 if lifecycle != {"test"}:
                     errors.append(f"{prefix}.command Maven lifecycle must be exactly test")
                     continue
@@ -297,7 +296,6 @@ def main() -> int:
     check.add_argument("--file", required=True)
     check.add_argument("--requirement", required=True)
     check.add_argument("--project-root", required=True)
-    check.add_argument("--maven-command", required=True)
     args = parser.parse_args()
     path = Path(args.output if args.action == "init" else args.file)
     requirement = Path(args.requirement)
@@ -313,7 +311,7 @@ def main() -> int:
         raise SystemExit(f"{ERROR}: {exc}")
     project = Path(args.project_root)
     normalized = normalize_project_paths(data, project)
-    normalized = normalize_maven_commands(data, args.maven_command) or normalized
+    normalized = normalize_maven_commands(data) or normalized
     errors = validate(data, requirement, project)
     if errors:
         print(json.dumps({"ok": False, "error": ERROR, "violations": errors}, ensure_ascii=False, indent=2))

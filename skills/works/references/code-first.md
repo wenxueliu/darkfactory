@@ -7,7 +7,7 @@
 1. 完成当前 Req 的最小生产代码修改。
 2. 运行 `implement -- --req <REQ>`，冻结生产代码 checkpoint。
 3. 添加对应实现行为的快速测试；存在外部协作者时优先 Mockito，纯逻辑允许普通 JUnit。不要为存量行为补测或运行存量测试。
-4. 运行 `test -- --req <REQ> --test-file <file> --testcase <case>`。不要在命令尾部重复拼接 Maven 命令；CLI 从 `requirement-contract.json` 读取已校验的 argv 数组，并在 Windows `.cmd`/`.bat` wrapper 上自动经 `cmd /c` 执行。
+4. 运行 `test -- --req <REQ> --test-file <file> --testcase <case>`。不要在命令尾部重复拼接 Maven 命令；CLI 从 `requirement-contract.json` 读取已校验且以 `mvn` 开头的 argv 数组直接执行。
 
 `test` 必须满足：
 

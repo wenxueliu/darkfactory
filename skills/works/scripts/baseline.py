@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Workspace baseline, Git preflight, fingerprints, and JUnit evidence helpers."""
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import subprocess
 import time
 import xml.etree.ElementTree as ET
 
-from works_core.common import IGNORED_DIRS as IGNORED_PARTS, atomic_json, sha, windows_command
+from works_core.common import IGNORED_DIRS as IGNORED_PARTS, atomic_json, sha
 
 TRANSIENT_DIR_PARTS = {".idea", ".vscode", ".settings", ".metadata", ".externaltoolbuilders", ".classpath"}
 TRANSIENT_FILE_NAMES = {".classpath", ".project", ".factorypath"}
@@ -112,7 +112,7 @@ def run_command(root: Path, command: list[str], log: Path, report_dir: Path, tes
     if not command:
         raise SystemExit("missing command after --")
     before = report_snapshot(root)
-    proc = subprocess.run(windows_command(command), cwd=root, text=True,
+    proc = subprocess.run(command, cwd=root, text=True,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     log.parent.mkdir(parents=True, exist_ok=True)
     log.write_text(proc.stdout)

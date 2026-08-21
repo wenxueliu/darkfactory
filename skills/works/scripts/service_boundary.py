@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Reject high-confidence entry-layer dependencies on persistence types."""
 
 from __future__ import annotations

@@ -20,7 +20,6 @@ OpenCode 会按需加载 Skill，并向模型提供 Skill 基目录及 supportin
 
 ## Platform entry
 
-- Windows 使用 `py -3 <skill-dir>/scripts/works.py`；如果 Python Launcher 不存在，使用 `python`。
-- Linux 使用 `python3 <skill-dir>/scripts/works.py`；如果不存在，使用 `python`。
-- Maven 优先使用 `M2_HOME/bin/mvn`（Windows 为 `mvn.cmd`）；入口不存在时，Windows wrapper 使用 `mvnw.cmd`，Linux 使用 `./mvnw`，没有 wrapper 时使用 `mvn`。
+- Windows 和 Linux 均使用 `python <skill-dir>/scripts/works.py`。
+- Windows 和 Linux 均使用 `mvn`，不解析 `M2_HOME`，不使用 Maven wrapper。
 - 始终把 Maven 命令保存为 argv 数组，不依赖 shell 语法。

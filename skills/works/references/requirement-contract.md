@@ -44,12 +44,11 @@
 - `reuse.kind` 只能为 `existing_method`、`service_api`、`persistence` 或 `architecture_exception`。选择 `persistence` 时，`absence_evidence` 必须同时包含 `current_class` 和 `same_layer_service`；其他类型必须为空。
 - `test_target.file` 保存计划测试文件且必须是项目内的 Maven 测试路径；测试文件可以在契约阶段尚不存在。具体 `Class#method` 只保存在该 Req 唯一验收命令的 `-Dtest` 中，不做双份存储。
 - `acceptance_commands` 使用 argv 数组，不使用 shell 字符串。
-- Maven argv 的首项使用 discovery 返回的平台入口：优先取 `M2_HOME/bin/mvn`（Windows 为 `mvn.cmd`）；入口不存在时再取平台对应的项目 wrapper，没有 wrapper 时为 `mvn`。命令从 `discovery.maven_project` 执行，不需要额外拼接子项目 `-f`。
-- `contract-check` 会把 Maven argv 首项统一改写为 `discovery.build` 的真实路径；不要依赖 shell 展开 `$M2_HOME`、`%M2_HOME%` 或 `~`，因为测试通过 Python `subprocess` 的 argv 模式执行。
-- Linux 直接执行 Maven argv；Windows 的 `mvn.cmd`/`.bat` 统一通过 `%COMSPEC% /d /s /c` 执行，并对 Maven 路径及每个参数分别加引号，确保 `-Dmaven.test.skip=false` 等参数不被 PowerShell/cmd 拆分。不要手工添加 `cmd /c` 或额外引号。
+- Maven argv 的首项在 Windows 和 Linux 上都必须是 `mvn`。命令从 `discovery.maven_project` 执行，不拼接子项目 `-f`，不解析 `M2_HOME`，也不使用项目 wrapper。
+- `contract-check` 会把常见 Maven 入口别名统一改写为 `mvn`；不要依赖 shell 展开、`cmd /c` 或额外引号，因为测试通过 Python `subprocess` 的 argv 模式执行。
 - 每个 Req 必须恰好由一条精确定向 Maven `test` 命令覆盖；生命周期只能是 `test`，禁止 `verify`、`package`、模块级、依赖模块或全量存量测试。命令必须包含唯一 `-Dtest=Class#method`，只执行当前 Req 的新实现行为。
 - `acceptance_commands` 是前瞻性测试契约：目标测试类和方法允许尚不存在。`contract-check` 只验证命令结构、行为可测试性和 Req 覆盖，不执行命令。
 - 当前 Req 进入 test checkpoint 后，实际 `--testcase` 和 Maven `-Dtest` 必须匹配该 Req 契约中声明的 selector；repair Req 回溯匹配其原始 Req。测试文件和方法此时必须真实存在并执行通过。
-- Test CLI 不从 shell 命令行重新解析 Maven 命令，而是按 Req + testcase 从本文件解析唯一 argv；因此同一契约可分别保存 Linux 的 `mvn`/wrapper argv 或 Windows 的 `mvnw.cmd` argv，避免 Bash 与 PowerShell 引号和拆词差异。
+- Test CLI 不从 shell 命令行重新解析 Maven 命令，而是按 Req + testcase 从本文件解析唯一、平台中立的 `mvn` argv。
 - 优先快速定向测试；有外部协作者时使用 Mockito 或项目既有 fake，纯逻辑允许普通 JUnit。禁止无必要的 `@SpringBootTest`。
 - 契约通过后，严格按固定 Req 顺序执行。失败由模型自主诊断、修改并重试；同一 Req 第三次连续定向测试失败后保存证据并跳过，继续下一 Req。

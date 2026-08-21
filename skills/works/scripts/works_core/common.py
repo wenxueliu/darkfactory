@@ -1,13 +1,11 @@
-"""Shared file-I/O, hashing and cross-platform exec helpers for the works skill."""
+"""Shared file-I/O and hashing helpers for the works skill."""
 from __future__ import annotations
 
 import hashlib
 import json
 import os
 from pathlib import Path
-import subprocess
 import tempfile
-from collections.abc import Mapping
 
 IGNORED_DIRS = {".git", ".planning", "target", "build", ".gradle", "node_modules"}
 
@@ -39,20 +37,3 @@ def sha(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def windows_command(command: list[str], platform: str | None = None,
-                    env: Mapping[str, str] | None = None) -> list[str] | str:
-    """Build a safe CreateProcess argv for Windows batch files."""
-    platform = platform or os.name
-    env = os.environ if env is None else env
-    if platform == "nt" and command and command[0].lower().endswith((".cmd", ".bat")):
-        comspec = env.get("COMSPEC") or env.get("ComSpec") or "cmd.exe"
-        # cmd /s strips the outer quote pair. Quote every inner argument so Maven
-        # properties such as -Dmaven.test.skip=false survive batch/cmd parsing as
-        # one argument even when the caller itself was launched from PowerShell.
-        command_line = " ".join(f'"{part.replace(chr(34), chr(34) * 2)}"'
-                                for part in command)
-        launcher = subprocess.list2cmdline([comspec, "/d", "/s", "/c"])
-        return f'{launcher} "{command_line}"'
-    return command

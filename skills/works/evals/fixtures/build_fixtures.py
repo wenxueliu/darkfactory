@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Build deterministic local Maven repositories for MiniMax M2.7 evaluations."""
 
 from __future__ import annotations

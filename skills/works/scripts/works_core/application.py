@@ -9,7 +9,7 @@ import time
 
 from . import discovery
 from . import state as store
-from .common import sha, windows_command
+from .common import sha
 
 
 class WorksError(RuntimeError):
@@ -90,7 +90,7 @@ class Application:
         if operation == "preflight" and (evidence / "preflight.json").exists():
             boundary = evidence / "service-boundary-baseline.json"
             if not boundary.exists():
-                self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
+                self._checked(["python", str(self.scripts / "service_boundary.py"), "init",
                                "--project-root", self._maven_project(current),
                                "--state-dir", str(evidence)], operation)
             return {"ok": True, "operation": operation, "output": "preflight already completed",
@@ -103,7 +103,7 @@ class Application:
         attempt_key = f"{operation}:{current.get('current_req') or '-'}"
         if operation == "test":
             try:
-                self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
+                self._checked(["python", str(self.scripts / "service_boundary.py"), "verify",
                                "--state-dir", str(evidence)], operation)
             except WorksError as exc:
                 self._record_failure(plan, current, attempt_key, operation, exc.code, exc.evidence)
@@ -111,14 +111,14 @@ class Application:
         elif operation == "finalize":
             try:
                 self._checked(
-                    [sys.executable, str(self.scripts / "code_first.py"), "verify",
+                    ["python", str(self.scripts / "code_first.py"), "verify",
                      "--state-dir", str(evidence), "--no-replay",
                      *[item for req in current["requirements"] for item in ("--req", req)],
                      *[item for req in current.get("skipped_requirements", {})
                        for item in ("--skipped", req)]],
                     operation,
                 )
-                self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "verify",
+                self._checked(["python", str(self.scripts / "service_boundary.py"), "verify",
                                "--state-dir", str(evidence)], operation)
             except WorksError as exc:
                 store.atomic_json(evidence / "final-verification.json", {
@@ -136,12 +136,12 @@ class Application:
             self._record_failure(plan, current, attempt_key, operation, code, details)
             raise WorksError(code, f"{operation} failed", details)
         if operation == "preflight":
-            self._checked([sys.executable, str(self.scripts / "service_boundary.py"), "init",
+            self._checked(["python", str(self.scripts / "service_boundary.py"), "init",
                            "--project-root", self._maven_project(current),
                            "--state-dir", str(evidence)], operation)
         elif operation == "contract-check":
             contract = json.loads((plan / "requirement-contract.json").read_text())
-            self._checked([sys.executable, str(self.scripts / "code_first.py"), "reuse-init",
+            self._checked(["python", str(self.scripts / "code_first.py"), "reuse-init",
                            "--state-dir", str(evidence)], operation)
             current["requirements"] = [row["id"] for row in contract["requirements"]]
             current["contract_valid"] = True
@@ -158,20 +158,19 @@ class Application:
             if current["state"] != expected:
                 raise WorksError("E202_INVALID_STATE", f"{operation} is forbidden in {current['state']}")
         if operation == "contract-init":
-            return [sys.executable, str(self.scripts / "requirement_contract.py"), "init",
+            return ["python", str(self.scripts / "requirement_contract.py"), "init",
                     "--output", str(plan / "requirement-contract.json"),
                     "--requirement", current["requirement"]]
         if operation == "contract-check":
-            return [sys.executable, str(self.scripts / "requirement_contract.py"), "validate",
+            return ["python", str(self.scripts / "requirement_contract.py"), "validate",
                     "--file", str(plan / "requirement-contract.json"),
                     "--requirement", current["requirement"],
-                    "--project-root", self._maven_project(current),
-                    "--maven-command", current.get("discovery", {}).get("build", "mvn")]
+                    "--project-root", self._maven_project(current)]
         if operation == "finalize":
             return []
         action = operation
         runner = "code_first.py" if operation in {"implement", "test"} else "baseline.py"
-        command = [sys.executable, str(self.scripts / runner), action]
+        command = ["python", str(self.scripts / runner), action]
         if operation == "preflight":
             command.extend(["--project-root", self._maven_project(current)])
         elif operation == "implement":
@@ -201,7 +200,7 @@ class Application:
             if row.get("covers") and set(row["covers"]).issubset(skipped):
                 results.append({"id": row["id"], "covers": row["covers"], "skipped": True})
                 continue
-            proc = subprocess.run(windows_command(row["command"]),
+            proc = subprocess.run(row["command"],
                                   cwd=Path(self._maven_project(current)), text=True,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             log = logs / f"acceptance-{row['id']}.log"

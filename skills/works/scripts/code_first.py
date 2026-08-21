@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Evidence gates for the Java/Maven implement-then-test workflow."""
 
 from __future__ import annotations
