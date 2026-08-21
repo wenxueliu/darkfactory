@@ -81,18 +81,51 @@ def _implementation_errors(value: object, prefix: str, project: Path) -> list[st
         elif absence:
             errors.append(f"{prefix}.reuse.absence_evidence is only allowed for persistence")
     test_target = value.get("test_target")
-    if (not isinstance(test_target, dict) or set(test_target) != {"file", "selector"}
-            or not isinstance(test_target.get("file"), str)
-            or not test_target["file"].endswith(("Test.java", "Tests.java", "IT.java"))
-            or not isinstance(test_target.get("selector"), str)
-            or "#" not in test_target["selector"]):
-        errors.append(f"{prefix}.test_target must contain a Maven test file and Class#method selector")
+    if not isinstance(test_target, dict) or set(test_target) != {"file"}:
+        errors.append(f"{prefix}.test_target must contain exactly file")
+    else:
+        test_file = test_target.get("file")
+        if (not isinstance(test_file, str) or not test_file
+                or Path(test_file).is_absolute()
+                or not test_file.endswith(("Test.java", "Tests.java", "IT.java"))):
+            errors.append(f"{prefix}.test_target.file must be a project-relative Maven test file")
+        else:
+            try:
+                (project / test_file).resolve().relative_to(project.resolve())
+            except ValueError:
+                errors.append(f"{prefix}.test_target.file escapes the project root")
     return errors
+
+
+def _source_exists(requirement_text: str, heading: str, item: str) -> bool:
+    """Return whether item appears under the named Markdown heading."""
+    lines = requirement_text.splitlines()
+    start = None
+    level = None
+    for index, line in enumerate(lines):
+        match = re.match(r"^\s*(#{1,6})\s+(.+?)\s*#*\s*$", line)
+        if match and match.group(2).strip() == heading.strip():
+            start, level = index + 1, len(match.group(1))
+            break
+    if start is None or level is None:
+        has_headings = any(re.match(r"^\s*#{1,6}\s+", line) for line in lines)
+        if not has_headings and heading.strip().casefold() in {"requirement", "document", "需求"}:
+            return " ".join(item.split()) in " ".join(requirement_text.split())
+        return False
+    section = []
+    for line in lines[start:]:
+        match = re.match(r"^\s*(#{1,6})\s+", line)
+        if match and len(match.group(1)) <= level:
+            break
+        section.append(line)
+    normalized_section = " ".join(" ".join(section).split())
+    normalized_item = " ".join(item.split())
+    return normalized_item in normalized_section
 
 
 def template(requirement: Path) -> dict:
     return {
-        "version": 1,
+        "version": 2,
         "requirement": str(requirement.resolve()),
         "requirements": [],
         "acceptance_commands": [],
@@ -155,11 +188,15 @@ def validate(data: object, requirement: Path, project_root: Path | None = None) 
     if not isinstance(data, dict):
         return ["contract must be an object"]
     errors: list[str] = []
-    if data.get("version") != 1:
-        errors.append("version must be 1")
+    if data.get("version") != 2:
+        errors.append("version must be 2")
     if Path(str(data.get("requirement", ""))).resolve() != requirement.resolve():
         errors.append("requirement must match the discovered requirement document")
     project = (project_root or requirement.resolve().parent).resolve()
+    try:
+        requirement_text = requirement.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        requirement_text = ""
     rows = data.get("requirements")
     if not isinstance(rows, list) or not rows:
         errors.append("requirements must be a non-empty array")
@@ -175,21 +212,16 @@ def validate(data: object, requirement: Path, project_root: Path | None = None) 
             errors.append(f"{prefix}.id is invalid")
         else:
             ids.append(req)
-        if not isinstance(row.get("statement"), str) or not row["statement"].strip():
-            errors.append(f"{prefix}.statement is required")
         source = row.get("source")
         if (not isinstance(source, dict) or set(source) != {"heading", "item"}
                 or not all(isinstance(source.get(key), str) and source[key].strip()
                            for key in ("heading", "item"))):
             errors.append(f"{prefix}.source must contain non-empty heading and item")
-        criteria = row.get("acceptance_criteria")
-        if not isinstance(criteria, list) or not criteria or any(
-            not isinstance(item, str) or not item.strip() for item in criteria
-        ):
-            errors.append(f"{prefix}.acceptance_criteria must contain executable behaviors")
+        elif not _source_exists(requirement_text, source["heading"], source["item"]):
+            errors.append(f"{prefix}.source does not resolve inside the requirement document")
         errors.extend(_implementation_errors(row.get("implementation"), f"{prefix}.implementation", project))
     if len(ids) != len(set(ids)):
-        errors.append("requirement IDs must be unique and ordered")
+        errors.append("requirement IDs must be unique")
     sources = [json.dumps(row.get("source"), ensure_ascii=False, sort_keys=True)
                for row in rows if isinstance(row, dict) and isinstance(row.get("source"), dict)]
     if len(sources) != len(set(sources)):
@@ -201,8 +233,7 @@ def validate(data: object, requirement: Path, project_root: Path | None = None) 
         commands = []
     command_ids: list[str] = []
     covered: set[str] = set()
-    targeted_test_covered: set[str] = set()
-    selectors_by_req: dict[str, set[str]] = {req: set() for req in ids}
+    targeted_commands_by_req: dict[str, int] = {req: 0 for req in ids}
     for index, row in enumerate(commands):
         prefix = f"acceptance_commands[{index}]"
         if not isinstance(row, dict):
@@ -239,29 +270,20 @@ def validate(data: object, requirement: Path, project_root: Path | None = None) 
                 if len(targeted) != 1 or "#" not in targeted[0]:
                     errors.append(f"{prefix}.command must target exactly one implemented behavior with -Dtest=Class#method")
                 else:
-                    targeted_test_covered.update(req for req in coverage if req in ids)
                     for req in coverage:
-                        if req in selectors_by_req:
-                            selectors_by_req[req].add(targeted[0].split("=", 1)[1])
+                        if req in targeted_commands_by_req:
+                            targeted_commands_by_req[req] += 1
     if len(command_ids) != len(set(command_ids)):
         errors.append("acceptance command IDs must be unique")
     missing = [req for req in ids if req not in covered]
     if missing:
         errors.append(f"requirements missing acceptance command coverage: {missing!r}")
-    missing_targeted_test = [req for req in ids if req not in targeted_test_covered]
-    if missing_targeted_test:
+    invalid_targeted_test = [req for req in ids if targeted_commands_by_req[req] != 1]
+    if invalid_targeted_test:
         errors.append(
-            "each requirement must have one targeted Maven test command; missing: "
-            f"{missing_targeted_test!r}"
+            "each requirement must have exactly one targeted Maven test command; invalid: "
+            f"{invalid_targeted_test!r}"
         )
-    for row in rows:
-        if not isinstance(row, dict) or row.get("id") not in selectors_by_req:
-            continue
-        planned = row.get("implementation", {}).get("test_target", {}).get("selector")
-        if planned and selectors_by_req[row["id"]] != {planned}:
-            errors.append(
-                f"{row['id']}: implementation.test_target.selector must match its acceptance command"
-            )
     return errors
 
 

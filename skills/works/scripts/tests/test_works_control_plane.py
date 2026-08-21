@@ -25,7 +25,7 @@ from works_core import state as store
 def project_fixture(root: Path) -> None:
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     (root / "pom.xml").write_text("<project/>")
-    (root / "requirement.md").write_text("# Requirement")
+    (root / "requirement.md").write_text("# Requirement\n\nbehavior\n")
     (root / "Controller.java").write_text("class Controller { void existing() {} }\n")
 
 
@@ -42,7 +42,7 @@ def implementation_fixture(kind: str = "existing_method") -> dict:
         "entrypoint": {"path": "Controller.java", "symbol": "Controller"},
         "reuse": {"kind": kind, "target": {"path": "Controller.java", "symbol": "existing"},
                   "reason": "reuse the existing boundary", "absence_evidence": absence},
-        "test_target": {"file": "src/test/java/ATest.java", "selector": "ATest#works"},
+        "test_target": {"file": "src/test/java/ATest.java"},
     }
 
 
@@ -226,7 +226,7 @@ class StateMachineTest(unittest.TestCase):
             self.assertIsNone(authored["next_action"]["subagent"])
             contract = plan / "requirement-contract.json"
             contract.write_text(json.dumps({
-                "version": 1,
+                "version": 2,
                 "requirement": str((root / "requirement.md").resolve()),
                 "requirements": [{"id": "REQ-1", "statement": "behavior",
                                   "source": {"heading": "Requirement", "item": "behavior"},
@@ -487,7 +487,7 @@ class RequirementContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             repository = Path(directory)
             requirement = repository / "requirement.md"
-            requirement.write_text("# Requirement")
+            requirement.write_text("# Requirement\n\nbehavior\n")
             project = repository / "service"
             project.mkdir()
             (project / "Controller.java").write_text(
@@ -587,7 +587,7 @@ class RequirementContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             requirement = root / "requirement.md"
-            requirement.write_text("# Requirement")
+            requirement.write_text("# Requirement\n\ncreate endpoint\n")
             (root / "Service.java").write_text("class Service { void existing() {} }\n")
             implementation = implementation_fixture()
             implementation["entrypoint"] = {
@@ -614,7 +614,7 @@ class RequirementContractTest(unittest.TestCase):
     def test_requires_full_command_coverage(self):
         with tempfile.TemporaryDirectory() as directory:
             requirement = Path(directory) / "requirement.md"
-            requirement.write_text("# Requirement")
+            requirement.write_text("# Requirement\n\nbehavior\n")
             (Path(directory) / "Controller.java").write_text(
                 "class Controller { void existing() {} }\n")
             data = requirement_contract.template(requirement)
@@ -645,23 +645,71 @@ class RequirementContractTest(unittest.TestCase):
             self.assertTrue(any("requires current_class and same_layer_service" in error
                                 for error in errors))
 
-    def test_test_target_must_match_acceptance_selector(self):
+    def test_each_requirement_has_exactly_one_targeted_command(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             requirement = root / "requirement.md"
-            requirement.write_text("# Requirement")
+            requirement.write_text("# Requirement\n\nbehavior\n")
             (root / "Controller.java").write_text("class Controller { void existing() {} }\n")
             data = requirement_contract.template(requirement)
             data["requirements"] = [{"id": "REQ-1", "statement": "behavior",
                                      "acceptance_criteria": ["result"],
                                      "implementation": implementation_fixture()}]
+            data["acceptance_commands"] = [
+                {"id": "tests-1", "covers": ["REQ-1"],
+                 "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
+                             "-Dtest=ATest#first", "test"]},
+                {"id": "tests-2", "covers": ["REQ-1"],
+                 "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
+                             "-Dtest=ATest#second", "test"]},
+            ]
+            errors = requirement_contract.validate(data, requirement)
+            self.assertTrue(any("exactly one targeted Maven test command" in error for error in errors))
+
+    def test_source_must_resolve_under_declared_heading(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            requirement = root / "requirement.md"
+            requirement.write_text("# Requirement\n\nreal behavior\n")
+            (root / "Controller.java").write_text("class Controller { void existing() {} }\n")
+            data = requirement_contract.template(requirement)
+            data["requirements"] = [{"id": "REQ-1",
+                                     "source": {"heading": "Requirement", "item": "invented behavior"},
+                                     "implementation": implementation_fixture()}]
             data["acceptance_commands"] = [{
                 "id": "tests", "covers": ["REQ-1"],
                 "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
-                            "-Dtest=ATest#different", "test"],
+                            "-Dtest=ATest#works", "test"],
             }]
-            errors = requirement_contract.validate(data, requirement)
-            self.assertTrue(any("test_target.selector must match" in error for error in errors))
+            self.assertTrue(any("source does not resolve" in error
+                                for error in requirement_contract.validate(data, requirement)))
+
+    def test_plain_text_requirement_uses_virtual_requirement_heading(self):
+        self.assertTrue(requirement_contract._source_exists(
+            "Return a display name for every user.",
+            "Requirement",
+            "display name",
+        ))
+
+    def test_test_target_must_stay_inside_project(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            requirement = root / "requirement.md"
+            requirement.write_text("# Requirement\n\nbehavior\n")
+            (root / "Controller.java").write_text("class Controller { void existing() {} }\n")
+            implementation = implementation_fixture()
+            implementation["test_target"]["file"] = "../EscapedTest.java"
+            data = requirement_contract.template(requirement)
+            data["requirements"] = [{"id": "REQ-1",
+                                     "source": {"heading": "Requirement", "item": "behavior"},
+                                     "implementation": implementation}]
+            data["acceptance_commands"] = [{
+                "id": "tests", "covers": ["REQ-1"],
+                "command": ["mvn", "-DskipTests=false", "-Dmaven.test.skip=false",
+                            "-Dtest=ATest#works", "test"],
+            }]
+            self.assertTrue(any("test_target.file escapes" in error
+                                for error in requirement_contract.validate(data, requirement)))
 
     def test_rejects_module_wide_test_command(self):
         with tempfile.TemporaryDirectory() as directory:

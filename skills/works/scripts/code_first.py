@@ -63,12 +63,6 @@ require_targeted_mockito_test = require_targeted_test
 def resolve_contract_test_command(contract_path: Path, req: str, testcase: str) -> list[str]:
     contract = load(contract_path)
     expected = testcase.rsplit(".", 1)[-1]
-    row = next((item for item in contract.get("requirements", []) if item.get("id") == req), None)
-    planned = row.get("implementation", {}).get("test_target", {}) if isinstance(row, dict) else {}
-    if planned and planned.get("selector") != expected:
-        raise SystemExit(
-            f"test policy violation: testcase {expected} differs from contract test target for {req}"
-        )
     matches = []
     for row in contract.get("acceptance_commands", []):
         if req not in row.get("covers", []):

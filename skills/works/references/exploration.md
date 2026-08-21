@@ -21,7 +21,7 @@
 
 - **只读**：不修改任何文件。
 - **找不到就如实报告**：把「已穷尽搜索、确定不存在」写进 finding，不请求用户提供更多线索，不停在「待确认」状态。
-- **证据落字段**：把入口写入 contract 的 `implementation.entrypoint`，复用目标写入 `implementation.reuse`，计划测试写入 `implementation.test_target`。源码目标使用项目相对 `path + symbol`；测试文件可以尚不存在。
+- **证据落字段**：把入口写入 contract 的 `implementation.entrypoint`，复用目标写入 `implementation.reuse`，计划测试文件写入 `implementation.test_target.file`。源码目标使用项目相对 `path + symbol`；测试文件可以尚不存在，具体 selector 只写入 acceptance command。
 - **复用顺序**：当前类已有等价方法 > 同层 Service API > 新增或直接调用 Mapper/Repository。不得因为 Mapper 调用更直接就跳过前两级。
 - **冻结决策**：每个 Req 必须填写 `implementation.reuse`。选择 `persistence` 时，`absence_evidence` 分别记录 `current_class` 和 `same_layer_service` 的搜索范围与缺失理由；其他 kind 必须为空。
 
