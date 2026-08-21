@@ -1,0 +1,27 @@
+{
+  "name": "development-test-fix",
+  "initial_step": "development",
+  "steps": [
+    {
+      "id": "development",
+      "do": "理解需求并完成最小、安全的代码修改。",
+      "check": "确认需求相关代码已经实现，且不存在明显的语法或静态检查错误。",
+      "on_success": "test",
+      "on_failure": {"retries": 1, "goto": "development"}
+    },
+    {
+      "id": "test",
+      "do": "运行能证明需求成立的真实测试。",
+      "check": "以真实测试命令的退出码和输出判断测试是否通过。",
+      "on_success": null,
+      "on_failure": {"retries": 0, "goto": "test_fix"}
+    },
+    {
+      "id": "test_fix",
+      "do": "根据 state.json.last_check 中的失败证据修复代码或测试。",
+      "check": "确认失败原因已被针对性修复，可以重新运行原测试。",
+      "on_success": "test",
+      "on_failure": {"retries": 1, "goto": "development"}
+    }
+  ]
+}

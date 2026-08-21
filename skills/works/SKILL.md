@@ -1,47 +1,61 @@
 ---
 name: works
-description: 面向 OpenCode + MiniMax M2.7 的全自动存量 Java/Maven 实现 Skill。用户输入 /works，或要求依据明确 requirement.md 无人值守完成实现、定向测试、失败返工和验收时使用。以轻量磁盘状态恢复长任务，并以确定性门禁判定完成。
+description: 按可定制的多步骤流程持续执行开发、测试、审查或修复任务。用户要求使用 /works、选择不同流程、为步骤配置 do/check 提示、失败重试或成功/失败跳转时使用。运行时只维护一个 state.json。
 ---
 
 # Works
 
-从明确的 `requirement.md` 持续执行到实现和验收通过。不要等待阶段确认。先读 `references/opencode.md`，再运行：
+选择流程并初始化：
 
 ```text
 python <skill-dir>/scripts/works.py --project <project> init
+python <skill-dir>/scripts/works.py --project <project> init --workflow <workflow.json>
 ```
 
-每次只完成响应中的 `next_action`，并直接使用动作响应刷新后的 `state/current_req/next_action`；不要在每个成功动作后重复运行 `status`。只有恢复、响应丢失或人工检查时运行 `recover/status`。命令失败时记录真实输出和次数，再由 Agent 诊断或重试；不要维护工作区签名。`state.json` 是唯一流程状态，不建立第二套计划。
+不传 `--workflow` 时使用 `assets/workflows/development.json`。初始化后，完整流程定义会写入 `.works/state.json`；它是唯一运行时状态，不创建第二套计划、日志或证据文件。
 
-## 流程
+## 执行
 
-1. `init` 完成项目发现，随后执行唯一正常环境动作 `preflight`：保存 dirty baseline、生产指纹和 Service boundary，不运行 Maven 编译或测试。`doctor` 仅用于人工排障，不属于正常状态机。
-2. 把启动命令时的当前工作目录固定为 `project_root`，用于状态与 requirement；把 Java 路径校验、代码扫描和 Maven 执行的根固定为 `discovery.maven_project`，两者不得混用。按 `references/exploration.md` 探索仓库，再依据 `references/requirement-contract.md` 一次性填写 Req、轻量 requirement 来源、入口、复用决策、测试目标和验收命令，随后运行 `contract-check`。`contract-init` 只是创建契约文件的内部准备动作，不代表业务阶段。不要创建独立 impact-map。
-3. 优先复用当前类已有方法，其次同层 Service API；只有新增持久层调用时才在 contract 中提交两级缺失证据。`contract-check` 通过后直接进入实现，不做实现前的独立审查。
-4. 最小实现当前 Req，运行 `implement` 冻结生产 checkpoint。随后添加只覆盖该行为的快速测试并运行 `test`。前两次测试失败执行 `rework -- --req <REQ> --reason production-fix`：保留失败日志、归档旧 implementation evidence，并回到实现。同一 Req 第三次连续测试失败后自动记录三次失败证据并标记 `SKIPPED`，随后继续下一 Req；不要创建 repair Req。有外部协作者时优先 Mockito；纯逻辑允许普通 JUnit。
-5. 所有 Req 完成后运行 `finalize`，统一重放 contract commands，并校验 checkpoint、evidence hash 与 architecture gate，避免对同一 selector 分层重复验收。finalize 重新打开已完成行为时，才用 `reopen -- --req <REQ>` 创建 repair Req。
-6. 确定性门禁全部通过且没有跳过项时进入 `COMPLETE`；存在 `SKIPPED` Req 时进入 `PARTIAL`，必须报告跳过项及最后错误，不得报告全部完成。不做风险分类或独立 reviewer 审查。
-
-## 无人值守决策
-
-- 可安全推断：选择最小、可逆解释，并用 `note --kind decision` 记录。
-- 可保守降级：保持现有行为，记录 limitation 与验证范围。
-- requirement 自相矛盾、与仓库事实冲突、验收不可观察、方案互斥或缺少必要外部凭据，且穷尽仓库证据仍无法正确实现：进入 `BLOCKED`，记录冲突与已检查证据；无人值守不等于编造缺失信息。
-
-## 核心命令
+1. 读取响应的 `next_action.do` 并完成工作。
+2. 按 `next_action.check` 执行校验。
+3. 优先用真实命令提交校验：
 
 ```text
-python <skill-dir>/scripts/works.py --project . doctor
-python <skill-dir>/scripts/works.py --project . init
-python <skill-dir>/scripts/works.py --project . preflight
-python <skill-dir>/scripts/works.py --project . recover
-python <skill-dir>/scripts/works.py --project . contract-init
-python <skill-dir>/scripts/works.py --project . contract-check
-python <skill-dir>/scripts/works.py --project . implement -- --req <REQ>
-python <skill-dir>/scripts/works.py --project . test -- --req <REQ> --test-file <file> --testcase <Class#method>
-python <skill-dir>/scripts/works.py --project . rework -- --req <REQ> --reason production-fix
-python <skill-dir>/scripts/works.py --project . finalize
-python <skill-dir>/scripts/works.py --project . reopen -- --req <REQ>
+python <skill-dir>/scripts/works.py --project . check -- <command> <args...>
 ```
-Windows 和 Linux 均使用 `python` 运行python脚本，使用 `mvn` 进行maven项目构建。定向测试命令只允许 `test` 生命周期；必须覆盖 POM 中为 true 的测试跳过属性，并确保指定 testcase 在新鲜 JUnit XML 中真实执行通过。:
-按阶段读取：探索见 `references/exploration.md`，契约见 `references/requirement-contract.md`，实现与测试证据见 `references/code-first.md`，恢复见 `references/persistent-memory.md`。
+
+无法用命令表达的审查，必须附具体证据：
+
+```text
+python <skill-dir>/scripts/works.py --project . check --result passed --evidence "检查内容和结论"
+python <skill-dir>/scripts/works.py --project . check --result failed --evidence "失败原因"
+```
+
+校验成功进入 `on_success`；值为 `null` 时完成。校验失败先留在当前步骤重试；失败次数超过 `on_failure.retries` 后跳到 `on_failure.goto`。动作响应已经包含刷新后的下一步；仅在中断恢复时运行 `status`。
+
+## 流程格式
+
+```json
+{
+  "name": "development-test-fix",
+  "initial_step": "development",
+  "steps": [
+    {
+      "id": "development",
+      "do": "完成最小代码修改",
+      "check": "检查实现是否满足需求",
+      "on_success": "test",
+      "on_failure": {"retries": 1, "goto": "development"}
+    },
+    {
+      "id": "test",
+      "do": "运行真实测试",
+      "check": "根据测试退出码判断",
+      "on_success": null,
+      "on_failure": {"retries": 0, "goto": "development"}
+    }
+  ]
+}
+```
+
+每个步骤必须有唯一 `id`、非空 `do/check`。所有跳转目标必须存在。`retries: 0` 表示第一次失败立即跳转；回退可以指向前序步骤、自身或任意其他步骤。
