@@ -186,3 +186,4 @@ _context/memory/
 | 查看配置项详情 | [configuration.md →](configuration.md) |
 | 深入了解知识库 | [knowledge-base.md →](knowledge-base.md) |
 | 多平台技能开发 | [multi-platform.md →](multi-platform.md) |
+| Works 动态路由目标架构 | [works-routing-target-architecture.md →](works-routing-target-architecture.md) |
