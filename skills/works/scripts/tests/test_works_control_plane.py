@@ -28,6 +28,37 @@ def workflow() -> dict:
     }
 
 
+def development_evidence(selected: str | None = "SameLayerService.call") -> str:
+    failed_gates = {
+        "semantic_match": True, "callable": True, "no_recursion": False,
+        "dependency_direction": True, "proxy_safe": True,
+        "transaction_compatible": True, "contract_compatible": True,
+    }
+    passed_gates = {name: True for name in failed_gates}
+    candidates = [
+        {"symbol": "CurrentService.helper", "tier": "current_class", "feasible": False,
+         "evidence": "private helper at CurrentService.java:20",
+         "reject_reasons": ["calling it would recurse"], "gates": failed_gates},
+        {"symbol": "SameLayerService.call", "tier": "same_layer", "feasible": True,
+         "evidence": "declaration and caller at SameLayerService.java:30", "reject_reasons": [],
+         "gates": passed_gates},
+    ]
+    if selected is None:
+        candidates[1]["feasible"] = False
+        candidates[1]["reject_reasons"] = ["module dependency direction forbids the call"]
+        candidates[1]["gates"] = {**passed_gates, "dependency_direction": False}
+    search_evidence = {
+        "current_class": "searched CurrentService methods",
+        "same_layer": "searched service interfaces and implementations",
+    }
+    if selected is None:
+        search_evidence["cross_layer"] = "searched allowed adapters and mapper boundary"
+    return json.dumps({"reuse_decisions": [{
+        "feature": "feature-a", "selected": selected, "candidates": candidates,
+        "search_evidence": search_evidence,
+    }]})
+
+
 class WorksStateFlowTest(unittest.TestCase):
     def test_default_development_workflow_enforces_java_brownfield_flow(self):
         workflow_path = SCRIPTS.parent / "assets" / "workflows" / "development.json"
@@ -161,6 +192,158 @@ class WorksStateFlowTest(unittest.TestCase):
             with self.assertRaises(WorksError):
                 Application().init(Path(directory), custom)
 
+    def test_reuse_decision_is_validated_and_survives_unit_test(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            app.init(root, json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text()))
+            app.check(root, True, "requirements")
+            app.check(root, True, "exploration")
+
+            unit_test = app.check(root, True, development_evidence())
+            implementation = app.check(root, True, "valid red test")
+            (root / "CurrentService.java").write_text(
+                "sameLayerService.call();\n", encoding="utf-8"
+            )
+            implementation_evidence = json.dumps({"implementation_reuse": [{
+                "feature": "feature-a", "action": "invoke",
+                "symbol": "SameLayerService.call", "call_site": "CurrentService.java:1",
+            }]})
+            compile_step = app.check(root, True, implementation_evidence)
+
+            self.assertEqual(unit_test["reuse_decisions"]["feature-a"]["selected"],
+                             "SameLayerService.call")
+            self.assertEqual(implementation["current_step"], "implementation")
+            self.assertIn("feature-a", implementation["reuse_decisions"])
+            self.assertEqual(compile_step["current_step"], "compile")
+
+    def test_reuse_rejects_lower_tier_when_higher_tier_is_feasible(self):
+        evidence = json.loads(development_evidence())
+        evidence["reuse_decisions"][0]["candidates"][0]["feasible"] = True
+        evidence["reuse_decisions"][0]["candidates"][0]["reject_reasons"] = []
+        evidence["reuse_decisions"][0]["candidates"][0]["gates"]["no_recursion"] = True
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            app.init(root, json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text()))
+            app.check(root, True, "requirements")
+            app.check(root, True, "exploration")
+            with self.assertRaises(WorksError):
+                app.check(root, True, json.dumps(evidence))
+
+    def test_reuse_fallback_requires_all_tier_search_and_no_feasible_candidate(self):
+        valid = development_evidence(None)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            app.init(root, json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text()))
+            app.check(root, True, "requirements")
+            app.check(root, True, "exploration")
+            result = app.check(root, True, valid)
+            self.assertIsNone(result["reuse_decisions"]["feature-a"]["selected"])
+
+            incomplete = json.loads(valid)
+            incomplete["reuse_decisions"][0]["search_evidence"]["cross_layer"] = ""
+            root2 = Path(directory) / "second"
+            root2.mkdir()
+            app.init(root2, json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text()))
+            app.check(root2, True, "requirements")
+            app.check(root2, True, "exploration")
+            with self.assertRaises(WorksError):
+                app.check(root2, True, json.dumps(incomplete))
+
+    def test_implementation_requires_persisted_reuse_decision(self):
+        custom = workflow()
+        custom["steps"][2]["id"] = "implementation"
+        custom["steps"][2]["validator"] = "implementation_reuse"
+        custom["steps"][1]["on_failure"]["goto"] = "implementation"
+        custom["initial_step"] = "implementation"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            app.init(root, custom)
+            with self.assertRaises(WorksError) as caught:
+                app.check(root, True, "implementation reviewed")
+            self.assertEqual(caught.exception.code, "E205_REUSE_DECISION_REQUIRED")
+
+    def test_v2_default_state_migrates_and_returns_to_reuse_analysis(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
+            app.init(root, default)
+            state_path = root / ".works/state.json"
+            state = json.loads(state_path.read_text())
+            state["version"] = 2
+            state.pop("reuse_decisions")
+            state["current_step"] = "implementation"
+            for step in state["workflow"]["steps"]:
+                step.pop("validator", None)
+            state_path.write_text(json.dumps(state), encoding="utf-8")
+
+            migrated = app.status(root)
+
+            self.assertEqual(migrated["version"], 3)
+            self.assertEqual(migrated["current_step"], "reuse_analysis")
+            self.assertEqual(migrated["reuse_decisions"], {})
+            self.assertEqual(migrated["next_action"]["step"], "reuse_analysis")
+
+    def test_implementation_evidence_must_match_selected_symbol(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
+            app.init(root, default)
+            app.check(root, True, "requirements")
+            app.check(root, True, "exploration")
+            app.check(root, True, development_evidence())
+            app.check(root, True, "valid red test")
+            mismatch = json.dumps({"implementation_reuse": [{
+                "feature": "feature-a", "action": "invoke",
+                "symbol": "WrongService.call", "call_site": "CurrentService.java:42",
+            }]})
+            with self.assertRaises(WorksError) as caught:
+                app.check(root, True, mismatch)
+            self.assertEqual(caught.exception.code, "E206_IMPLEMENTATION_REUSE_MISMATCH")
+
+    def test_implementation_rejects_a_nonexistent_call_site(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
+            app.init(root, default)
+            app.check(root, True, "requirements")
+            app.check(root, True, "exploration")
+            app.check(root, True, development_evidence())
+            app.check(root, True, "valid red test")
+            forged = json.dumps({"implementation_reuse": [{
+                "feature": "feature-a", "action": "invoke",
+                "symbol": "SameLayerService.call", "call_site": "missing.java:1",
+            }]})
+            with self.assertRaises(WorksError) as caught:
+                app.check(root, True, forged)
+            self.assertEqual(caught.exception.code, "E206_IMPLEMENTATION_REUSE_MISMATCH")
+
+    def test_current_class_selection_stops_before_lower_tier_search(self):
+        evidence = json.loads(development_evidence("CurrentService.helper"))
+        current = evidence["reuse_decisions"][0]["candidates"][0]
+        current["feasible"] = True
+        current["reject_reasons"] = []
+        current["gates"]["no_recursion"] = True
+        evidence["reuse_decisions"][0]["candidates"] = [current]
+        evidence["reuse_decisions"][0]["search_evidence"] = {
+            "current_class": "searched CurrentService methods"
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
+            app.init(root, default)
+            app.check(root, True, "requirements")
+            app.check(root, True, "exploration")
+            result = app.check(root, True, json.dumps(evidence))
+            self.assertEqual(result["reuse_decisions"]["feature-a"]["selected"],
+                             "CurrentService.helper")
 
 if __name__ == "__main__":
     unittest.main()

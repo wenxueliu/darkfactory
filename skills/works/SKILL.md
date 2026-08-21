@@ -46,7 +46,21 @@ python <skill-dir>/scripts/works.py --project <project_root> status
 
 默认流程仅支持 Java 项目，会从根目录向下识别 Maven、Gradle、Wrapper、`src/main/java` 及多模块声明，不依赖固定项目目录名。
 
-初始化后，完整流程定义写入 `.works/state.json`。它是唯一运行时状态；不要创建第二套计划、日志、清单或证据文件。需求映射、代码定位、复用决策和检查证据均通过当前步骤的工作上下文与 `check` evidence 推进。
+初始化后，完整流程定义写入 `.works/state.json`。它是唯一运行时状态；不要创建第二套计划、日志、清单或证据文件。需求映射、代码定位、复用决策和检查证据均写入该状态并由 `check` 推进。`reuse_analysis` 必须提交控制面可校验的 `reuse_decisions`，后续步骤只能读取该字段决定复用或 fallback，不得凭对话记忆重新选择 API。
+
+## API 复用协议
+
+默认 Java 流程对每个功能点独立执行以下层级，不得把不同功能点合并判断：
+
+- `T0`：目标类自身已经存在且可直接调用的方法。
+- `T1`：同一业务层、同一模块或明确允许依赖模块中的已有公开 Service API。
+- `T2`：项目架构明确允许的跨层或跨模块公开端口。Mapper/Repository 只有在目标 Service 本就拥有该聚合的持久化职责时才可作为候选，不能作为找不到 Service API 时的通用捷径。
+
+必须按 `T0 -> T1 -> T2` 串行处理：枚举当前层候选，逐个执行参考资料定义的全部硬门禁；当前层存在通过全部门禁的候选时，选定一个并停止搜索更低优先层。只有当前层候选全部被拒绝，且每个拒绝都有证据时，才能进入下一层。只有 T0、T1、T2 都穷尽且没有合格候选时，才能选择最小新增实现的 fallback。层级接近度只用于通过全部门禁后的排序，不能覆盖语义、依赖方向、事务或副作用约束。
+
+`reuse_analysis` 的 evidence 必须是单个 JSON 对象，顶层只使用 `reuse_decisions` 字段，并严格采用当前 `next_action.check` 给出的 schema。JSON 中以 `current_class`、`same_layer`、`cross_layer` 分别表示 T0、T1、T2；`selected=null` 表示三层候选全部不可行后批准进入最小新增 fallback 分支。不得使用 Markdown 代码围栏、注释、省略号或 JSON 之外的说明。控制面拒绝的 evidence 视为本步骤失败，不能人工宣布通过。
+
+`implementation` 的 evidence 同样必须是单个 JSON 对象，顶层只使用 `implementation_reuse` 字段。每个功能点报告 `invoke` 或 `fallback` 及实际调用/实现位置；控制面会与已持久化的 `reuse_decisions.selected` 比对，不一致时不得通过。
 
 ## 上下文与搜索预算
 
@@ -62,7 +76,7 @@ python <skill-dir>/scripts/works.py --project <project_root> status
 
 - 需求：每个功能点都有约束和可验证验收条件。
 - 项目定位：已确定构建入口、受影响模块、已有类/方法、直接调用方或最近测试，以及潜在回归面。
-- API 复用：已找到候选 API 的声明与既有调用证据，或已记录足以证明无可复用 API 的搜索范围。
+- API 复用：每个功能点都有通过控制面校验的 `reuse_decisions`；选择 T1/T2 时已穷尽更高优先层，选择 fallback 时已穷尽 T0/T1/T2。
 - 单元测试：每个功能点已映射到具体测试，且真实命令产生目标行为导致的有效红灯。
 - 实现：每个功能点已落到目标存量方法，diff 中没有无关改动，并保留既有调用约定。
 - 编译与回归：当前修改版本已有退出码、测试统计和实际选择范围明确的新鲜命令证据。

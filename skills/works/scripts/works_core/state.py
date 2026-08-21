@@ -7,7 +7,7 @@ import tempfile
 import time
 
 
-VERSION = 2
+VERSION = 3
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -35,6 +35,9 @@ def validate_workflow(workflow: dict) -> dict:
             raise ValueError(f"step {row['id']} requires a non-empty do prompt")
         if not isinstance(row.get("check"), str) or not row["check"].strip():
             raise ValueError(f"step {row['id']} requires a non-empty check prompt")
+        validator = row.get("validator")
+        if validator not in (None, "reuse_decisions", "implementation_reuse"):
+            raise ValueError(f"step {row['id']} has an unknown validator")
         references = row.get("references", [])
         if (not isinstance(references, list)
                 or any(not isinstance(value, str) or not value.strip()
@@ -82,6 +85,7 @@ def create(project: Path, workflow: dict) -> dict:
         "completed": False,
         "failures": {},
         "last_check": None,
+        "reuse_decisions": {},
         "created_at": time.time(),
         "updated_at": time.time(),
     }
@@ -94,11 +98,29 @@ def load(project: Path) -> dict:
     if not path.is_file():
         raise FileNotFoundError(path)
     state = json.loads(path.read_text(encoding="utf-8"))
+    if state.get("version") == 2:
+        state = _migrate_v2(project, state)
     if state.get("version") != VERSION:
         raise ValueError("unsupported works state version")
     validate_workflow(state.get("workflow"))
     if state.get("current_step") not in step_map(state):
         raise ValueError("current_step does not exist in workflow")
+    return state
+
+
+def _migrate_v2(project: Path, state: dict) -> dict:
+    state["version"] = VERSION
+    state["reuse_decisions"] = {}
+    workflow = state.get("workflow", {})
+    if (workflow.get("name") == "java-brownfield-development"
+            and not state.get("completed")):
+        current_workflow = json.loads(
+            (SKILL_ROOT / "assets" / "workflows" / "development.json").read_text(encoding="utf-8")
+        )
+        state["workflow"] = validate_workflow(current_workflow)
+        if state.get("current_step") not in {"requirements", "exploration", "reuse_analysis"}:
+            state["current_step"] = "reuse_analysis"
+    save(project, state)
     return state
 
 

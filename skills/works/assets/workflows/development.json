@@ -18,8 +18,8 @@
       "references": [
         "references/java-project-discovery.md"
       ],
-      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。在根目录及其直接/合理深度的子目录中自动定位 Java 项目，不假定目录名（mall-swarm/ 仅为示例）。依据 pom.xml、build.gradle、build.gradle.kts、mvnw、gradlew、src/main/java 和多模块声明确定实际项目与模块边界；排除 build、target、.git、生成代码和依赖缓存。读取适用的项目指令。搜索调用链、接口、实现类、测试和配置，为每个功能点精确定位必须修改的已有类、已有方法与代码位置，并分析原有调用方和行为。",
-      "check": "逐项给出功能点到 Java 模块、已有类、已有方法及相关测试/调用方的定位证据；确认目标不是仅靠新增类实现，并说明现有行为与潜在回归面。若检查失败，证据必须明确记录失败根因、本次方法和下次策略。",
+      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。在根目录及其直接/合理深度的子目录中自动定位 Java 项目，不假定目录名（mall-swarm/ 仅为示例）。依据 pom.xml、build.gradle、build.gradle.kts、mvnw、gradlew、src/main/java 和多模块声明确定实际项目与模块边界；排除 build、target、.git、生成代码和依赖缓存。读取适用的项目指令。搜索调用链、接口、实现类、测试和配置，为每个功能点优先定位必须修改的已有类、已有方法与代码位置，并分析原有调用方和行为；仅当定位证据表明没有合适存量入口时，标记该功能点需要最小新增入口，不得虚构已有方法。",
+      "check": "逐项给出功能点到 Java 模块、已有类、已有方法及相关测试/调用方的定位证据，并说明现有行为与潜在回归面。存在合适存量入口时确认目标不是仅靠新增类实现；不存在时给出搜索范围和需要最小新增入口的证据。若检查失败，证据必须明确记录失败根因、本次方法和下次策略。",
       "on_success": "reuse_analysis",
       "on_failure": {
         "retries": 3,
@@ -28,11 +28,12 @@
     },
     {
       "id": "reuse_analysis",
+      "validator": "reuse_decisions",
       "references": [
         "references/java-brownfield-development.md"
       ],
-      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。为每个功能点搜索可直接调用的现有 API，重点检查 Service 接口、ServiceImpl 及当前类已有方法。按同类复用 > 同层复用 > 跨层复用排序；Service 场景优先调用当前类或其他 Service 的既有方法，不因方便绕到 Mapper。核对实际调用点的参数格式、返回值处理、事务边界、异常类型、统一响应格式和已有调用约定。禁止复制已有 API 实现后改写，禁止把代码复制称为复用。",
-      "check": "形成逐功能点的复用决策证据：选定 API 的声明与既有调用位置、为何符合复用优先级、参数/返回值/异常/事务约定；若确无可复用 API，必须给出搜索范围和证据后才能采用最小新增实现。若检查失败，证据必须明确记录失败根因、本次方法和下次策略。",
+      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。对每个功能点独立执行 T0 -> T1 -> T2：T0 是目标类已有方法；T1 是同层且依赖方向允许的已有公开 Service API；T2 是架构允许的跨层或跨模块公开端口，Mapper/Repository 仅在目标 Service 本就拥有该聚合持久化职责时可作为候选。每层先记录搜索证据并枚举候选，再逐候选检查 semantic_match、callable、no_recursion、dependency_direction、proxy_safe、transaction_compatible、contract_compatible 七项硬门禁。任一门禁失败即拒绝；当前层有全部通过的候选时必须选定并立即停止，不得搜索或改选更低层；仅当当前层候选为空或全部拒绝且证据完整时才能降级。T0/T1/T2 均穷尽后才允许 selected=null 并进入最小新增 fallback。已有调用点可为空，但必须读取声明、实现和相关测试；禁止复制实现冒充复用。最终只输出 next_action.check 指定的单个 JSON 对象，不要输出 Markdown 或解释文字。",
+      "check": "evidence 必须是可解析的 JSON，且顶层严格为 {\"reuse_decisions\":[{\"feature\":\"唯一的非空功能点标识\",\"selected\":\"候选 symbol 或 null\",\"candidates\":[{\"symbol\":\"唯一的类#方法(签名)\",\"tier\":\"current_class|same_layer|cross_layer\",\"feasible\":true,\"gates\":{\"semantic_match\":true,\"callable\":true,\"no_recursion\":true,\"dependency_direction\":true,\"proxy_safe\":true,\"transaction_compatible\":true,\"contract_compatible\":true},\"evidence\":\"非空的代码位置与判定依据\",\"reject_reasons\":[]}],\"search_evidence\":{\"current_class\":\"T0 非空搜索证据\",\"same_layer\":\"到达 T1 时提供\",\"cross_layer\":\"到达 T2 时提供\"}}]}。每个 requirement 功能点恰有一个 feature 且全局唯一；同一决策内 symbol 唯一。current_class、same_layer、cross_layer 分别表示 T0、T1、T2。gates 必须恰含七个指定布尔字段，feasible 必须等于全部 gates 为 true；不可行候选的 reject_reasons 必须为非空字符串数组，可行候选必须为 []。selected 非 null 时必须精确等于一个 feasible 候选的 symbol，且不得跳过更高层 feasible 候选；selected=null 时所有候选都不可行。search_evidence 的必填范围由最终决策决定：selected 属于 current_class 时仅 current_class 必须非空；属于 same_layer 时 current_class、same_layer 必须非空；属于 cross_layer 或 selected=null 时三层都必须非空。未到达的低优先层字段可以省略；选定后立即停止，不得伪造其搜索。JSON 之外不得有任何文字。不满足 schema、门禁或降级规则时使用 failed 并记录需修正字段。",
       "on_success": "unit_test",
       "on_failure": {
         "retries": 3,
@@ -55,11 +56,12 @@
     },
     {
       "id": "implementation",
+      "validator": "implementation_reuse",
       "references": [
         "references/java-brownfield-development.md"
       ],
-      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。在已定位的已有类和已有方法中，以 unit_test 步骤建立的失败测试为驱动完成最小生产代码修改，并直接调用选定的现有 Service API。保持项目现有 Controller -> Service -> ServiceImpl 等分层、命名、格式、依赖注入、事务和统一返回/异常处理风格。保留原方法签名和既有语义以兼容所有调用方；新增类只能作为必要辅助，不能替代对存量方法的修改。避免与本功能无关的重构、格式化或测试改动。",
-      "check": "逐项审查 diff 与调用链：生产代码修改发生在失败测试之后；每个功能点落在已有方法中；复用为真实方法调用而非复制实现；调用约定一致；原签名和原行为兼容；异常使用项目统一格式；没有加入与本功能无关的实现或测试。若检查失败，证据必须明确记录失败根因、本次方法和下次策略。",
+      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。以 unit_test 步骤建立的失败测试为驱动，并逐功能点读取 state.json.reuse_decisions，不得凭对话记忆重新选择 API。selected 非 null 时，必须真实调用完全相同的 symbol：current_class 使用安全的直接内部调用，same_layer/cross_layer 沿用项目依赖注入与公开端口约定，不得复制其实现。selected=null 时才进入 fallback 分支：依据 requirement、exploration 证据和全部不可行候选完成满足测试的最小新增实现，不得改用任何已拒绝候选或顺便新增其他入口。优先修改已定位的已有类和已有方法；仅当 exploration 与 selected=null 都证明不存在合适存量入口时才新增生产入口。保持项目现有分层、命名、格式、依赖注入、事务和统一返回/异常处理风格，保留原签名和既有语义，避免无关重构、格式化或测试改动。",
+      "check": "先逐项审查 diff、调用链与 state.json.reuse_decisions：生产代码修改发生在失败测试之后；selected 非 null 时实现真实调用完全相同的 symbol 且未复制实现；selected=null 时所有候选均不可行且 diff 仅包含满足 requirement 的最小 fallback；没有重新选择被拒绝或更低优先层候选；存量入口存在时功能点落在已有方法中，不存在时新增入口有 exploration 与 selected=null 双重证据；调用约定、原签名、原行为和统一异常格式兼容；没有无关实现或测试。通过时 evidence 必须是可解析 JSON，顶层严格为 {\"implementation_reuse\":[{\"feature\":\"与 reuse_decisions 完全相同\",\"action\":\"invoke|fallback\",\"symbol\":\"选定 symbol 或 null\",\"call_site\":\"非空 path:line\"}]}。每个 reuse_decisions 功能点恰有一项：persisted selected 非 null 时 action=invoke 且 symbol 必须完全相同；persisted selected=null 时 action=fallback 且 symbol=null。控制面比对失败时不得通过。若检查失败，证据必须明确记录失败根因、本次方法和下次策略。",
       "on_success": "compile",
       "on_failure": {
         "retries": 3,
@@ -98,7 +100,7 @@
         "references/java-brownfield-development.md",
         "references/build-and-test.md"
       ],
-      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。读取 state.json.last_check 的命令、退出码和输出，定位编译或测试失败根因并做最小修复。若失败暴露复用 API 的参数、返回值、异常、事务或兼容性理解错误，回查实际声明和既有调用点；不得通过删除断言、跳过测试、吞异常或绕开既有 Service API 让检查变绿。",
+      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。读取 state.json.last_check 的命令、退出码和输出，定位编译或测试失败根因并做最小修复。若失败暴露 reuse_decisions 中 selected API 的参数、返回值、异常、事务或兼容性理解错误，回查实际声明和既有调用点，但不得擅自换用其他候选；若证明原决策违反硬门禁，检查失败并返回 reuse_analysis 重做决策。不得通过删除断言、跳过测试、吞异常、绕开 selected API 或超出已批准 fallback 让检查变绿。",
       "check": "提供针对 last_check 失败根因的代码 diff 与证据，确认未削弱测试、未改变验收标准且已具备重新编译条件。若检查失败，证据必须明确记录失败根因、本次方法和下次策略。",
       "on_success": "compile",
       "on_failure": {
