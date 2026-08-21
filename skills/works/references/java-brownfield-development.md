@@ -38,9 +38,31 @@
 
 ## 用例设计与实现后测试
 
-在修改生产代码之前，只为每个功能点设计测试用例，不创建或修改测试文件，也不运行测试。设计至少记录目标行为、输入或前置条件、预期结果、边界条件和明确的兼容性要求。
+在修改生产代码之前，由 fresh 独立 subagent 只为每个功能点设计测试用例。该 subagent 只能写入 `.works/test-case-design.json`，不得创建或修改生产/测试文件，也不得运行测试。文件采用：
 
-功能实现并编译通过后再编写和运行测试：
+```json
+{
+  "schema_version": 1,
+  "requirement_sha256": "<requirement.md 的 SHA-256>",
+  "features": [{
+    "feature": "<与 reuse_decisions 相同的唯一功能点>",
+    "target_test_class": "<限定类名或项目相对路径>",
+    "cases": [{
+      "id": "<全局唯一稳定 id>",
+      "kind": "happy_path|boundary|compatibility|error",
+      "given": ["<前置条件>"],
+      "when": "<操作>",
+      "then": ["<可观察断言>"],
+      "related_requirement": "<对应需求>"
+    }],
+    "excluded": ["<不在本次测试范围内的场景及原因>"]
+  }]
+}
+```
+
+每个 `reuse_decisions` 功能点恰好出现一次；case id 全局唯一。只设计功能相关用例，不包含测试代码或实现细节。控制面校验后只把路径、文件 SHA-256、schema 版本和计数写入 `state.json.test_case_design_artifact`，不复制用例正文。
+
+功能实现并编译通过后，重新读取该文件并确认 SHA-256 与状态一致，再编写和运行测试：
 
 1. 优先沿用项目已有的 JUnit 版本、扩展和断言库；项目已使用 JUnit 时不得另引入测试框架。
 2. 测试必须直接覆盖预先设计的功能相关用例，不扩展到无关模块、全量回归或端到端场景。

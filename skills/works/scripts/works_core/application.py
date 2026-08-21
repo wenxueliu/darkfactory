@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -48,11 +49,23 @@ class Application:
         if passed and step.get("validator") == "reuse_decisions":
             decisions = self._validate_reuse_decisions(evidence)
             state["reuse_decisions"] = decisions
+        if passed and step.get("validator") == "test_case_design_artifact":
+            state["test_case_design_artifact"] = self._validate_test_case_file(
+                evidence,
+                Path(state["project_root"]),
+                state.get("reuse_decisions", {}),
+            )
         if passed and step.get("validator") == "implementation_reuse":
             self._validate_implementation_evidence(
                 evidence,
                 state.get("reuse_decisions", {}),
                 Path(state["project_root"]),
+            )
+        if passed and step.get("validator") == "test_generation_mapping":
+            state["test_generation_mapping"] = self._validate_test_generation_mapping(
+                evidence,
+                Path(state["project_root"]),
+                state.get("test_case_design_artifact"),
             )
         state["last_check"] = {
             "step": step["id"], "passed": passed, "evidence": evidence,
@@ -205,6 +218,208 @@ class Application:
         return validated
 
     @staticmethod
+    def _validate_test_case_file(
+        evidence: str, project_root: Path, decisions: dict[str, dict]
+    ) -> dict:
+        relative_path = ".works/test-case-design.json"
+        if evidence.strip() != relative_path:
+            raise WorksError(
+                "E207_TEST_CASE_FILE_REQUIRED",
+                f"test_case_design evidence must be exactly {relative_path}",
+            )
+        project_root = project_root.resolve()
+        path = project_root / relative_path
+        try:
+            resolved = path.resolve()
+            resolved.relative_to(project_root)
+            if (path.is_symlink() or (project_root / ".works").is_symlink()
+                    or not path.is_file()):
+                raise OSError("artifact must be a regular file")
+            raw = path.read_bytes()
+            payload = json.loads(raw.decode("utf-8"))
+        except (ValueError, OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise WorksError(
+                "E207_TEST_CASE_FILE_REQUIRED",
+                f"{relative_path} must exist and contain valid JSON",
+            ) from exc
+        features = payload.get("features") if isinstance(payload, dict) else None
+        if (not isinstance(payload, dict)
+                or set(payload) != {"schema_version", "requirement_sha256", "features"}
+                or payload.get("schema_version") != 1
+                or not isinstance(features, list) or not features):
+            raise WorksError(
+                "E207_TEST_CASE_FILE_REQUIRED",
+                "test case file requires schema_version 1 and non-empty features",
+            )
+        requirement = project_root / "requirement.md"
+        try:
+            requirement_hash = hashlib.sha256(requirement.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise WorksError(
+                "E207_TEST_CASE_FILE_REQUIRED", "requirement.md is required"
+            ) from exc
+        if payload["requirement_sha256"] != requirement_hash:
+            raise WorksError(
+                "E207_TEST_CASE_FILE_REQUIRED",
+                "test case design does not match the current requirement.md",
+            )
+        seen_case_ids: set[str] = set()
+        covered_features: set[str] = set()
+        case_count = 0
+        for feature in features:
+            if (not isinstance(feature, dict)
+                    or set(feature) != {
+                        "feature", "target_test_class", "cases", "excluded"
+                    }
+                    or not isinstance(feature["feature"], str)
+                    or not feature["feature"].strip()
+                    or feature["feature"] in covered_features
+                    or feature["feature"] not in decisions
+                    or not isinstance(feature["target_test_class"], str)
+                    or not feature["target_test_class"].strip()
+                    or not isinstance(feature["cases"], list)
+                    or not feature["cases"]
+                    or not isinstance(feature["excluded"], list)
+                    or not feature["excluded"]
+                    or any(not isinstance(item, str) or not item.strip()
+                           for item in feature["excluded"])):
+                raise WorksError(
+                    "E207_TEST_CASE_FILE_REQUIRED",
+                    "each feature requires a unique persisted id, target, cases, and exclusions",
+                )
+            covered_features.add(feature["feature"])
+            for case in feature["cases"]:
+                if (not isinstance(case, dict)
+                        or set(case) != {
+                            "id", "kind", "given", "when", "then", "related_requirement"
+                        }
+                        or not isinstance(case["id"], str) or not case["id"].strip()
+                        or case["id"] in seen_case_ids
+                        or case["kind"] not in {
+                            "happy_path", "boundary", "compatibility", "error"
+                        }
+                        or not isinstance(case["given"], list) or not case["given"]
+                        or any(not isinstance(item, str) or not item.strip()
+                               for item in case["given"])
+                        or not isinstance(case["when"], str) or not case["when"].strip()
+                        or not isinstance(case["then"], list) or not case["then"]
+                        or any(not isinstance(item, str) or not item.strip()
+                               for item in case["then"])
+                        or not isinstance(case["related_requirement"], str)
+                        or not case["related_requirement"].strip()):
+                    raise WorksError(
+                        "E207_TEST_CASE_FILE_REQUIRED",
+                        "each test case requires a unique id and complete observable behavior",
+                    )
+                seen_case_ids.add(case["id"])
+                case_count += 1
+        if covered_features != set(decisions):
+            raise WorksError(
+                "E207_TEST_CASE_FILE_REQUIRED",
+                "test cases must cover every persisted feature",
+            )
+        return {
+            "path": relative_path,
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "schema_version": 1,
+            "feature_count": len(features),
+            "case_count": case_count,
+        }
+
+    @staticmethod
+    def _verify_test_case_artifact(project_root: Path, metadata: object) -> None:
+        if not isinstance(metadata, dict) or metadata.get("path") != ".works/test-case-design.json":
+            raise WorksError(
+                "E208_TEST_CASE_DESIGN_STALE",
+                "regression_test requires persisted test case design metadata",
+            )
+        project_root = project_root.resolve()
+        path = project_root / metadata["path"]
+        try:
+            path.resolve().relative_to(project_root)
+            if (path.is_symlink() or (project_root / ".works").is_symlink()
+                    or not path.is_file()):
+                raise OSError("artifact must be a regular file")
+            raw = path.read_bytes()
+            digest = hashlib.sha256(raw).hexdigest()
+            payload = json.loads(raw.decode("utf-8"))
+            requirement_hash = hashlib.sha256(
+                (project_root / "requirement.md").read_bytes()
+            ).hexdigest()
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise WorksError(
+                "E208_TEST_CASE_DESIGN_STALE", "test case design artifact is missing"
+            ) from exc
+        if (digest != metadata.get("sha256")
+                or payload.get("requirement_sha256") != requirement_hash):
+            raise WorksError(
+                "E208_TEST_CASE_DESIGN_STALE",
+                "test case design or requirement changed after validation",
+            )
+
+    @classmethod
+    def _validate_test_generation_mapping(
+        cls, evidence: str, project_root: Path, artifact_metadata: object
+    ) -> dict[str, dict]:
+        cls._verify_test_case_artifact(project_root, artifact_metadata)
+        try:
+            payload = json.loads(evidence)
+        except json.JSONDecodeError as exc:
+            raise WorksError(
+                "E209_TEST_GENERATION_MAPPING_REQUIRED",
+                "test generation evidence must be valid JSON",
+            ) from exc
+        rows = payload.get("test_generation_mapping") if isinstance(payload, dict) else None
+        if (not isinstance(payload, dict) or set(payload) != {"test_generation_mapping"}
+                or not isinstance(rows, list) or not rows):
+            raise WorksError(
+                "E209_TEST_GENERATION_MAPPING_REQUIRED",
+                "test_generation_mapping must be a non-empty list",
+            )
+        artifact_path = project_root / artifact_metadata["path"]
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+        expected_ids = {
+            case["id"]
+            for feature in artifact["features"]
+            for case in feature["cases"]
+        }
+        mapping: dict[str, dict] = {}
+        required_fields = {"case_id", "test_file", "test_method", "test_selector"}
+        project_root = project_root.resolve()
+        for row in rows:
+            if (not isinstance(row, dict) or set(row) != required_fields
+                    or any(not isinstance(row[field], str) or not row[field].strip()
+                           for field in required_fields)
+                    or row["case_id"] in mapping):
+                raise WorksError(
+                    "E209_TEST_GENERATION_MAPPING_REQUIRED",
+                    "each case requires one complete unique test mapping",
+                )
+            test_path = (project_root / row["test_file"]).resolve()
+            try:
+                test_path.relative_to(project_root)
+                if test_path.is_symlink() or not test_path.is_file():
+                    raise OSError("test file must be regular")
+                source = test_path.read_text(encoding="utf-8")
+            except (ValueError, OSError, UnicodeDecodeError) as exc:
+                raise WorksError(
+                    "E209_TEST_GENERATION_MAPPING_REQUIRED",
+                    f"{row['case_id']}: test_file must resolve inside the project",
+                ) from exc
+            if row["test_method"] not in source:
+                raise WorksError(
+                    "E209_TEST_GENERATION_MAPPING_REQUIRED",
+                    f"{row['case_id']}: test_method was not found in test_file",
+                )
+            mapping[row["case_id"]] = row
+        if set(mapping) != expected_ids:
+            raise WorksError(
+                "E209_TEST_GENERATION_MAPPING_REQUIRED",
+                "test mappings must cover every designed case exactly once",
+            )
+        return mapping
+
+    @staticmethod
     def _validate_implementation_evidence(
         evidence: str, decisions: dict[str, dict], project_root: Path
     ) -> None:
@@ -281,6 +496,28 @@ class Application:
         if not command:
             raise WorksError("E203_CHECK_REQUIRED", "check requires a command after --")
         state = self._load(project)
+        step = store.step_map(state)[state["current_step"]]
+        if step["id"] == "regression_test":
+            try:
+                self._verify_test_case_artifact(
+                    Path(state["project_root"]),
+                    state.get("test_case_design_artifact"),
+                )
+            except WorksError:
+                state["current_step"] = "test_case_design"
+                store.save(project, state)
+                raise
+            mapping = state.get("test_generation_mapping", {})
+            selectors = {
+                row["test_selector"] for row in mapping.values()
+                if isinstance(row, dict) and isinstance(row.get("test_selector"), str)
+            }
+            command_text = " ".join(command)
+            if not selectors or any(selector not in command_text for selector in selectors):
+                raise WorksError(
+                    "E209_TEST_GENERATION_MAPPING_REQUIRED",
+                    "regression command must select every mapped generated test",
+                )
         process = subprocess.run(
             command, cwd=Path(state["project_root"]), text=True,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

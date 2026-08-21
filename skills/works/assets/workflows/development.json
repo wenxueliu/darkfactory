@@ -42,12 +42,16 @@
     },
     {
       "id": "test_case_design",
+      "validator": "test_case_design_artifact",
+      "subagent": {
+        "role": "test-case-designer",
+        "fresh_context": true
+      },
       "references": [
-        "references/java-brownfield-development.md",
-        "references/build-and-test.md"
+        "references/java-brownfield-development.md"
       ],
-      "do": "在实现功能之前只设计测试用例，不编写或修改任何 UT/测试代码，也不运行测试。若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。为 requirement.md 的每个功能点记录功能相关的测试场景、输入或前置条件、预期结果、边界条件和明确兼容性要求，并指出实现后应落入的最接近测试类。不得加入无关模块、全量回归或端到端场景。",
-      "check": "提供功能点到测试用例设计的逐项映射，每项必须包含场景、输入或前置条件、预期结果、边界条件和目标测试类。检查当前 diff，确认没有创建或修改测试文件、没有运行测试、没有修改生产代码。若检查失败，证据必须明确记录失败根因、本次方法和下次策略。",
+      "do": "必须启动一个 fresh、独立且只负责本步骤的 test-case-designer subagent；主 agent 不得自行设计用例。只向 subagent 提供 requirement.md、已确认的项目定位、state.json.reuse_decisions、最近的现有测试与构建约定，以及 references/java-brownfield-development.md。subagent 只允许原子写入 <project_root>/.works/test-case-design.json，不得修改生产代码或测试代码、不得运行测试、不得继续实现。文件严格采用参考资料定义的 schema；每个 reuse_decisions 功能点恰有一项，包含目标测试类、功能相关用例及明确排除项。重试时覆盖同一文件，不创建 attempt 文件。subagent 完成后主 agent 等待结果并独立检查文件。",
+      "check": "evidence 必须严格为 .works/test-case-design.json。控制面只校验该文件位于项目内且不是符号链接、schema_version=1、requirement_sha256 匹配当前 requirement.md、功能点完整、case id 全局唯一及字段完整。主 agent 另行检查 subagent 报告，确认除该设计文件外没有创建或修改生产/测试文件且没有运行测试；agent 身份与操作历史属于编排约束，不伪称由文件 validator 证明。若无法启动独立 subagent，不得由主 agent 代做，必须将本步骤标记为 failed。",
       "on_success": "implementation",
       "on_failure": {
         "retries": 3,
@@ -60,8 +64,8 @@
       "references": [
         "references/java-brownfield-development.md"
       ],
-      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。依据 test_case_design 的用例设计先完成全部功能实现，此步骤不编写测试代码。逐功能点读取 state.json.reuse_decisions，不得凭对话记忆重新选择 API。selected 非 null 时，必须真实调用完全相同的 symbol：current_class 使用安全的直接内部调用，same_layer/cross_layer 沿用项目依赖注入与公开端口约定，不得复制其实现。selected=null 时才进入 fallback 分支：依据 requirement、exploration 证据和全部不可行候选完成满足需求的最小新增实现，不得改用任何已拒绝候选或顺便新增其他入口。优先修改已定位的已有类和已有方法；仅当 exploration 与 selected=null 都证明不存在合适存量入口时才新增生产入口。保持项目现有分层、命名、格式、依赖注入、事务和统一返回/异常处理风格，保留原签名和既有语义，避免无关重构、格式化或测试改动。",
-      "check": "先逐项审查 diff、调用链与 state.json.reuse_decisions：每个用例设计对应的功能已实现，且本步骤没有创建或修改测试代码；selected 非 null 时实现真实调用完全相同的 symbol 且未复制实现；selected=null 时所有候选均不可行且 diff 仅包含满足 requirement 的最小 fallback；没有重新选择被拒绝或更低优先层候选；存量入口存在时功能点落在已有方法中，不存在时新增入口有 exploration 与 selected=null 双重证据；调用约定、原签名、原行为和统一异常格式兼容；没有无关实现。通过时 evidence 必须是可解析 JSON，顶层严格为 {\"implementation_reuse\":[{\"feature\":\"与 reuse_decisions 完全相同\",\"action\":\"invoke|fallback\",\"symbol\":\"选定 symbol 或 null\",\"call_site\":\"非空 path:line\"}]}。每个 reuse_decisions 功能点恰有一项：persisted selected 非 null 时 action=invoke 且 symbol 必须完全相同；persisted selected=null 时 action=fallback 且 symbol=null。控制面比对失败时不得通过。若检查失败，证据必须明确记录失败根因、本次方法和下次策略。",
+      "do": "若 state.json.last_check 属于当前步骤且 passed=false，先提取失败根因、本次方法和下次策略；本轮必须采用下次策略，不得重复策略。依据 requirement.md 完成全部功能实现，此步骤不读取或修改用例设计，也不编写测试代码。逐功能点读取 state.json.reuse_decisions，不得凭对话记忆重新选择 API。selected 非 null 时，必须真实调用完全相同的 symbol：current_class 使用安全的直接内部调用，same_layer/cross_layer 沿用项目依赖注入与公开端口约定，不得复制其实现。selected=null 时才进入 fallback 分支：依据 requirement、exploration 证据和全部不可行候选完成满足需求的最小新增实现，不得改用任何已拒绝候选或顺便新增其他入口。优先修改已定位的已有类和已有方法；仅当 exploration 与 selected=null 都证明不存在合适存量入口时才新增生产入口。保持项目现有分层、命名、格式、依赖注入、事务和统一返回/异常处理风格，保留原签名和既有语义，避免无关重构、格式化或测试改动。",
+      "check": "先逐项审查 diff、调用链与 state.json.reuse_decisions：每个 requirement.md 功能点已实现，且本步骤没有创建或修改测试代码；selected 非 null 时实现真实调用完全相同的 symbol 且未复制实现；selected=null 时所有候选均不可行且 diff 仅包含满足 requirement 的最小 fallback；没有重新选择被拒绝或更低优先层候选；存量入口存在时功能点落在已有方法中，不存在时新增入口有 exploration 与 selected=null 双重证据；调用约定、原签名、原行为和统一异常格式兼容；没有无关实现。通过时 evidence 必须是可解析 JSON，顶层严格为 {\"implementation_reuse\":[{\"feature\":\"与 reuse_decisions 完全相同\",\"action\":\"invoke|fallback\",\"symbol\":\"选定 symbol 或 null\",\"call_site\":\"非空 path:line\"}]}。每个 reuse_decisions 功能点恰有一项：persisted selected 非 null 时 action=invoke 且 symbol 必须完全相同；persisted selected=null 时 action=fallback 且 symbol=null。控制面比对失败时不得通过。若检查失败，证据必须明确记录失败根因、本次方法和下次策略。",
       "on_success": "compile",
       "on_failure": {
         "retries": 3,
@@ -75,10 +79,25 @@
       ],
       "do": "在已定位的 Java 项目或受影响模块执行真实编译。优先使用仓库自带 Maven/Gradle Wrapper，并按当前操作系统选择 mvnw 或 mvnw.cmd、gradlew 或 gradlew.bat；否则使用已安装的 mvn 或 gradle。多模块项目应覆盖受影响模块及必要依赖模块。不得用静态阅读代替编译。",
       "check": "通过 `works.py --project <root> check -- <构建程序> <参数...>` 提交真实编译命令，以退出码 0 和构建输出为通过依据。Linux/macOS 使用可用的 ./mvnw 或 ./gradlew，Windows 使用 mvnw.cmd 或 gradlew.bat；命令参数不得依赖 Bash 专属语法。",
-      "on_success": "regression_test",
+      "on_success": "test_generation",
       "on_failure": {
         "retries": 0,
         "goto": "build_test_fix"
+      }
+    },
+    {
+      "id": "test_generation",
+      "validator": "test_generation_mapping",
+      "references": [
+        "references/java-brownfield-development.md",
+        "references/build-and-test.md"
+      ],
+      "do": "读取并校验 state.json.test_case_design_artifact.path 指向的设计文件，严格按其中全部 case id 编写或调整功能相关测试，不得发明未设计的无关场景。优先使用项目现有 JUnit 和最近的测试类。完成后为每个 case id 记录唯一的 test_file、test_method 和构建工具可选择的 test_selector；test_selector 必须能用于下一步真实测试命令。",
+      "check": "evidence 必须是单个 JSON 对象：{\"test_generation_mapping\":[{\"case_id\":\"设计文件中的唯一 id\",\"test_file\":\"项目相对测试文件\",\"test_method\":\"文件中真实存在的方法名\",\"test_selector\":\"Maven/Gradle 命令可匹配的选择器\"}]}。必须恰好覆盖设计文件全部 case id，无缺失、重复或额外项；测试文件和方法必须真实存在于项目内。",
+      "on_success": "regression_test",
+      "on_failure": {
+        "retries": 3,
+        "goto": "test_generation"
       }
     },
     {
@@ -86,8 +105,8 @@
       "references": [
         "references/build-and-test.md"
       ],
-      "do": "功能实现并编译通过后，按照 test_case_design 编写或调整测试，再运行本次功能直接相关的真实 Java 测试：新增/修改的单元测试类或方法，以及与被修改类、方法和兼容行为直接相关的已有回归测试。优先使用项目现有 JUnit 版本及其 Maven/Gradle 测试选择参数。Nacos、MySQL、Redis、消息队列或远程服务与本次修改无关时，不启动、不等待、不连接它们，选择不触发这些依赖的最小相关测试；修改功能确实依赖外部系统时，沿用项目已有 mock、stub、fake 或 fixture 隔离外部边界，必要时先做最小测试侧调整，然后继续执行测试。不得因外部服务不可用而停止、询问是否跳过或仅报告无法测试。不要运行完整项目测试套件、无关模块测试或无关端到端测试；若构建工具无法选择单个测试方法，逐级扩大到最小相关测试类或模块并记录原因。不跳过测试，不以仅编译成功代替相关回归测试。",
-      "check": "通过 `works.py --project <root> check -- <测试程序> <参数...>` 提交真实测试命令，以退出码 0、无失败测试和输出中的测试统计为通过依据。证据必须列出命令实际选择的测试类/方法及其与功能点的关系，并确认未包含无关测试；同时说明外部依赖与修改无关，或列出实际采用的 mock、stub、fake、fixture 隔离方式。只有测试真实执行且编译与功能相关测试均有当前修改版本的新鲜通过证据时才能完成流程；外部服务不可用不能作为跳过或停止本步骤的理由。",
+      "do": "功能实现并编译通过后，先读取 state.json.test_case_design_artifact.path 指向的 .works/test-case-design.json；控制面会在执行测试命令前确认文件 SHA-256 与 state.json 中记录的一致。严格按其中 case id 编写或调整测试，并建立 case-id 到测试类/方法的映射；不得发明文件之外的无关场景。随后只运行这些新增/修改测试及与被修改行为直接相关的已有回归测试，优先使用项目现有 JUnit 版本及其 Maven/Gradle 测试选择参数。外部系统与修改无关时不连接，确实涉及时使用项目已有 mock、stub、fake 或 fixture。不要运行完整项目测试套件、无关模块测试或无关端到端测试；无法选择单个方法时逐级扩大到最小相关类或模块并记录原因。",
+      "check": "通过 `works.py --project <root> check -- <测试程序> <参数...>` 提交真实测试命令；命令执行前设计文件必须存在且 SHA-256 未变化。以退出码 0、无失败测试和输出统计为通过依据。证据必须覆盖设计文件中的全部 case id，实际选择范围仅包含其映射测试与必要的相关回归，并说明外部依赖的隔离方式。设计文件发生变化时返回 test_case_design，不能继续使用陈旧设计。",
       "on_success": null,
       "on_failure": {
         "retries": 0,

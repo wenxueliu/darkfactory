@@ -7,7 +7,7 @@ import tempfile
 import time
 
 
-VERSION = 4
+VERSION = 5
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -36,8 +36,20 @@ def validate_workflow(workflow: dict) -> dict:
         if not isinstance(row.get("check"), str) or not row["check"].strip():
             raise ValueError(f"step {row['id']} requires a non-empty check prompt")
         validator = row.get("validator")
-        if validator not in (None, "reuse_decisions", "implementation_reuse"):
+        if validator not in (
+                None, "reuse_decisions", "test_case_design_artifact",
+                "implementation_reuse", "test_generation_mapping"):
             raise ValueError(f"step {row['id']} has an unknown validator")
+        subagent = row.get("subagent")
+        if subagent is not None and (
+                not isinstance(subagent, dict)
+                or set(subagent) != {"role", "fresh_context"}
+                or not isinstance(subagent.get("role"), str)
+                or not subagent["role"].strip()
+                or not isinstance(subagent.get("fresh_context"), bool)):
+            raise ValueError(
+                f"step {row['id']}.subagent requires role and fresh_context"
+            )
         references = row.get("references", [])
         if (not isinstance(references, list)
                 or any(not isinstance(value, str) or not value.strip()
@@ -86,6 +98,8 @@ def create(project: Path, workflow: dict) -> dict:
         "failures": {},
         "last_check": None,
         "reuse_decisions": {},
+        "test_case_design_artifact": None,
+        "test_generation_mapping": {},
         "created_at": time.time(),
         "updated_at": time.time(),
     }
@@ -98,7 +112,7 @@ def load(project: Path) -> dict:
     if not path.is_file():
         raise FileNotFoundError(path)
     state = json.loads(path.read_text(encoding="utf-8"))
-    if state.get("version") in (2, 3):
+    if state.get("version") in (2, 3, 4):
         state = _migrate_v2(project, state)
     if state.get("version") != VERSION:
         raise ValueError("unsupported works state version")
@@ -113,6 +127,10 @@ def _migrate_v2(project: Path, state: dict) -> dict:
     state["version"] = VERSION
     if "reuse_decisions" not in state:
         state["reuse_decisions"] = {}
+    if "test_case_design_artifact" not in state:
+        state["test_case_design_artifact"] = None
+    if "test_generation_mapping" not in state:
+        state["test_generation_mapping"] = {}
     workflow = state.get("workflow", {})
     if (workflow.get("name") == "java-brownfield-development"
             and not state.get("completed")):
@@ -120,14 +138,18 @@ def _migrate_v2(project: Path, state: dict) -> dict:
             (SKILL_ROOT / "assets" / "workflows" / "development.json").read_text(encoding="utf-8")
         )
         state["workflow"] = validate_workflow(current_workflow)
-        if previous_version == 2 and state.get("current_step") not in {
+        if previous_version == 4 and state.get("current_step") in {
+                "implementation", "compile", "regression_test", "build_test_fix"}:
+            state["current_step"] = "test_case_design"
+        elif previous_version == 2 and state.get("current_step") not in {
                 "requirements", "exploration", "reuse_analysis"}:
             state["current_step"] = "reuse_analysis"
         elif state.get("current_step") == "unit_test":
             state["current_step"] = "test_case_design"
         elif state.get("current_step") not in {
                 "requirements", "exploration", "reuse_analysis", "test_case_design",
-                "implementation", "compile", "regression_test", "build_test_fix"}:
+                "implementation", "compile", "test_generation", "regression_test",
+                "build_test_fix"}:
             state["current_step"] = "reuse_analysis"
     save(project, state)
     return state
@@ -162,6 +184,7 @@ def response(state: dict) -> dict:
             "do": current["do"],
             "check": current["check"],
             "references_to_read": current.get("references", []),
+            "subagent": current.get("subagent"),
             "command": "check",
         },
         **state,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -59,6 +60,43 @@ def development_evidence(selected: str | None = "SameLayerService.call") -> str:
     }]})
 
 
+def write_test_case_design(root: Path) -> None:
+    requirement_hash = hashlib.sha256((root / "requirement.md").read_bytes()).hexdigest()
+    artifact = {
+        "schema_version": 1,
+        "requirement_sha256": requirement_hash,
+        "features": [{
+            "feature": "feature-a",
+            "target_test_class": "CurrentServiceTest",
+            "cases": [{
+                "id": "feature-a-happy",
+                "kind": "happy_path",
+                "given": ["valid input"],
+                "when": "the feature is invoked",
+                "then": ["the expected result is returned"],
+                "related_requirement": "feature-a acceptance criterion",
+            }],
+            "excluded": ["unrelated modules are out of scope"],
+        }],
+    }
+    path = root / ".works" / "test-case-design.json"
+    path.write_text(json.dumps(artifact), encoding="utf-8")
+
+
+def write_generated_test(root: Path) -> str:
+    test_file = root / "CurrentServiceTest.java"
+    test_file.write_text(
+        "class CurrentServiceTest { void featureAHappy() {} }\n",
+        encoding="utf-8",
+    )
+    return json.dumps({"test_generation_mapping": [{
+        "case_id": "feature-a-happy",
+        "test_file": "CurrentServiceTest.java",
+        "test_method": "featureAHappy",
+        "test_selector": "CurrentServiceTest#featureAHappy",
+    }]})
+
+
 class WorksStateFlowTest(unittest.TestCase):
     def test_default_development_workflow_enforces_java_brownfield_flow(self):
         workflow_path = SCRIPTS.parent / "assets" / "workflows" / "development.json"
@@ -68,21 +106,24 @@ class WorksStateFlowTest(unittest.TestCase):
         self.assertEqual(
             step_ids,
             ["requirements", "exploration", "reuse_analysis", "test_case_design", "implementation",
-             "compile", "regression_test", "build_test_fix"],
+             "compile", "test_generation", "regression_test", "build_test_fix"],
         )
         self.assertEqual(default["initial_step"], "requirements")
         self.assertIn("requirement.md", default["steps"][0]["do"])
         self.assertIn("Service", default["steps"][2]["do"])
-        self.assertIn("不编写或修改任何 UT/测试代码", default["steps"][3]["do"])
-        self.assertIn("没有创建或修改测试文件", default["steps"][3]["check"])
+        self.assertIn("test-case-designer subagent", default["steps"][3]["do"])
+        self.assertEqual(default["steps"][3]["validator"], "test_case_design_artifact")
+        self.assertEqual(default["steps"][3]["subagent"]["role"], "test-case-designer")
+        self.assertTrue(default["steps"][3]["subagent"]["fresh_context"])
         self.assertIn("已有类和已有方法", default["steps"][4]["do"])
         self.assertEqual(default["steps"][5]["on_failure"]["goto"], "build_test_fix")
-        self.assertEqual(default["steps"][6]["on_failure"]["goto"], "build_test_fix")
-        self.assertIn("本次功能直接相关", default["steps"][6]["do"])
-        self.assertIsNone(default["steps"][6]["on_success"])
+        self.assertEqual(default["steps"][6]["validator"], "test_generation_mapping")
+        self.assertEqual(default["steps"][7]["on_failure"]["goto"], "build_test_fix")
+        self.assertIn("设计文件中的全部 case id", default["steps"][7]["check"])
+        self.assertIsNone(default["steps"][7]["on_success"])
         self.assertEqual(
             default["steps"][3]["references"],
-            ["references/java-brownfield-development.md", "references/build-and-test.md"],
+            ["references/java-brownfield-development.md"],
         )
 
     def test_init_embeds_workflow_in_the_only_state_file(self):
@@ -94,6 +135,7 @@ class WorksStateFlowTest(unittest.TestCase):
             self.assertEqual(result["next_action"]["do"], "build it")
             self.assertEqual(result["next_action"]["check"], "inspect build")
             self.assertEqual(result["next_action"]["references_to_read"], [])
+            self.assertIsNone(result["next_action"]["subagent"])
             self.assertEqual(
                 [path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()],
                 [".works/state.json"],
@@ -196,12 +238,18 @@ class WorksStateFlowTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             app = Application()
+            (root / "requirement.md").write_text("feature-a", encoding="utf-8")
             app.init(root, json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text()))
             app.check(root, True, "requirements")
             app.check(root, True, "exploration")
 
             test_case_design = app.check(root, True, development_evidence())
-            implementation = app.check(root, True, "test cases designed")
+            self.assertEqual(
+                test_case_design["next_action"]["subagent"]["role"],
+                "test-case-designer",
+            )
+            write_test_case_design(root)
+            implementation = app.check(root, True, ".works/test-case-design.json")
             (root / "CurrentService.java").write_text(
                 "sameLayerService.call();\n", encoding="utf-8"
             )
@@ -215,7 +263,86 @@ class WorksStateFlowTest(unittest.TestCase):
                              "SameLayerService.call")
             self.assertEqual(implementation["current_step"], "implementation")
             self.assertIn("feature-a", implementation["reuse_decisions"])
+            self.assertEqual(
+                implementation["test_case_design_artifact"]["path"],
+                ".works/test-case-design.json",
+            )
             self.assertEqual(compile_step["current_step"], "compile")
+
+    def test_test_case_design_requires_the_validated_artifact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            (root / "requirement.md").write_text("feature-a", encoding="utf-8")
+            default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
+            app.init(root, default)
+            app.check(root, True, "requirements")
+            app.check(root, True, "exploration")
+            app.check(root, True, development_evidence())
+
+            with self.assertRaises(WorksError) as caught:
+                app.check(root, True, ".works/test-case-design.json")
+
+            self.assertEqual(caught.exception.code, "E207_TEST_CASE_FILE_REQUIRED")
+
+    def test_changed_test_case_design_returns_regression_to_design(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            (root / "requirement.md").write_text("feature-a", encoding="utf-8")
+            default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
+            app.init(root, default)
+            app.check(root, True, "requirements")
+            app.check(root, True, "exploration")
+            app.check(root, True, development_evidence())
+            write_test_case_design(root)
+            app.check(root, True, ".works/test-case-design.json")
+            (root / "CurrentService.java").write_text(
+                "sameLayerService.call();\n", encoding="utf-8"
+            )
+            implementation_evidence = json.dumps({"implementation_reuse": [{
+                "feature": "feature-a", "action": "invoke",
+                "symbol": "SameLayerService.call", "call_site": "CurrentService.java:1",
+            }]})
+            app.check(root, True, implementation_evidence)
+            app.check(root, True, "compiled")
+            app.check(root, True, write_generated_test(root))
+            with (root / ".works" / "test-case-design.json").open("a", encoding="utf-8") as handle:
+                handle.write("\n")
+
+            with self.assertRaises(WorksError) as caught:
+                app.check_command(root, [sys.executable, "-c", "print('tests')"])
+
+            self.assertEqual(caught.exception.code, "E208_TEST_CASE_DESIGN_STALE")
+            self.assertEqual(app.status(root)["current_step"], "test_case_design")
+
+    def test_regression_command_must_select_generated_tests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            (root / "requirement.md").write_text("feature-a", encoding="utf-8")
+            default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
+            app.init(root, default)
+            app.check(root, True, "requirements")
+            app.check(root, True, "exploration")
+            app.check(root, True, development_evidence())
+            write_test_case_design(root)
+            app.check(root, True, ".works/test-case-design.json")
+            (root / "CurrentService.java").write_text(
+                "sameLayerService.call();\n", encoding="utf-8"
+            )
+            implementation_evidence = json.dumps({"implementation_reuse": [{
+                "feature": "feature-a", "action": "invoke",
+                "symbol": "SameLayerService.call", "call_site": "CurrentService.java:1",
+            }]})
+            app.check(root, True, implementation_evidence)
+            app.check(root, True, "compiled")
+            app.check(root, True, write_generated_test(root))
+
+            with self.assertRaises(WorksError) as caught:
+                app.check_command(root, [sys.executable, "-c", "print('unrelated')"])
+
+            self.assertEqual(caught.exception.code, "E209_TEST_GENERATION_MAPPING_REQUIRED")
 
     def test_reuse_rejects_lower_tier_when_higher_tier_is_feasible(self):
         evidence = json.loads(development_evidence())
@@ -283,7 +410,7 @@ class WorksStateFlowTest(unittest.TestCase):
 
             migrated = app.status(root)
 
-            self.assertEqual(migrated["version"], 4)
+            self.assertEqual(migrated["version"], 5)
             self.assertEqual(migrated["current_step"], "reuse_analysis")
             self.assertEqual(migrated["reuse_decisions"], {})
             self.assertEqual(migrated["next_action"]["step"], "reuse_analysis")
@@ -302,20 +429,40 @@ class WorksStateFlowTest(unittest.TestCase):
 
             migrated = app.status(root)
 
-            self.assertEqual(migrated["version"], 4)
+            self.assertEqual(migrated["version"], 5)
             self.assertEqual(migrated["current_step"], "test_case_design")
             self.assertEqual(migrated["next_action"]["step"], "test_case_design")
 
-    def test_implementation_evidence_must_match_selected_symbol(self):
+    def test_v4_implementation_state_returns_to_test_case_design(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             app = Application()
             default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
             app.init(root, default)
+            state_path = root / ".works/state.json"
+            state = json.loads(state_path.read_text())
+            state["version"] = 4
+            state["current_step"] = "implementation"
+            state.pop("test_case_design_artifact")
+            state_path.write_text(json.dumps(state), encoding="utf-8")
+
+            migrated = app.status(root)
+
+            self.assertEqual(migrated["version"], 5)
+            self.assertEqual(migrated["current_step"], "test_case_design")
+
+    def test_implementation_evidence_must_match_selected_symbol(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = Application()
+            (root / "requirement.md").write_text("feature-a", encoding="utf-8")
+            default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
+            app.init(root, default)
             app.check(root, True, "requirements")
             app.check(root, True, "exploration")
             app.check(root, True, development_evidence())
-            app.check(root, True, "test cases designed")
+            write_test_case_design(root)
+            app.check(root, True, ".works/test-case-design.json")
             mismatch = json.dumps({"implementation_reuse": [{
                 "feature": "feature-a", "action": "invoke",
                 "symbol": "WrongService.call", "call_site": "CurrentService.java:42",
@@ -328,12 +475,14 @@ class WorksStateFlowTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             app = Application()
+            (root / "requirement.md").write_text("feature-a", encoding="utf-8")
             default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
             app.init(root, default)
             app.check(root, True, "requirements")
             app.check(root, True, "exploration")
             app.check(root, True, development_evidence())
-            app.check(root, True, "test cases designed")
+            write_test_case_design(root)
+            app.check(root, True, ".works/test-case-design.json")
             forged = json.dumps({"implementation_reuse": [{
                 "feature": "feature-a", "action": "invoke",
                 "symbol": "SameLayerService.call", "call_site": "missing.java:1",

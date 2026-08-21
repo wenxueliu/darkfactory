@@ -19,12 +19,12 @@ description: 按可定制的多步骤流程持续执行开发、测试、审查�
 1. 将 `project_root` 解析为绝对路径；未提供时使用当前工作目录。
 2. 检查 `<project_root>/.works/state.json`。文件不存在时执行 `init`；文件存在时执行 `status`，不得再次初始化或用新的 `workflow` 覆盖已有流程。
 3. 将本次命令返回的 JSON 作为当前状态的唯一事实来源。若 `completed` 为 `true`，立即停止并报告完成；否则只处理本次返回的 `next_action`。
-4. 只读取 `next_action.references_to_read` 列出的参考文件，再执行 `next_action.do`。同一轮不得提前执行后续步骤。
+4. 只读取 `next_action.references_to_read` 列出的参考文件，再执行 `next_action.do`。同一轮不得提前执行后续步骤。若 `next_action.subagent` 非空，必须按其中角色启动 fresh 独立 subagent，等待其完成后再由主 agent 检查产物；不得由主 agent 代做。
 5. 严格按 `next_action.check` 收集当前代码版本的新鲜证据。分析或审查使用 `--result/--evidence`；编译和测试使用真实命令。
 6. 调用一次 `check` 提交本步骤结果，并立即解析它返回的新 JSON。未调用 `check` 不得自行宣布步骤通过或切换步骤。
 7. 若新响应未完成，从第 3 步继续；不得沿用上一次响应中的 `next_action`。检查失败时服从响应给出的重试或跳转结果，不自行选择状态。
 
-只要 `next_action` 存在，就表示流程已确定下一步。立即执行，不询问用户是否继续，不提供跳过当前步骤或直接进入后续步骤的选项。`test_case_design` 在实现前只设计用例，不编写或运行测试；`regression_test` 在功能实现和编译之后编写并执行本次修改的最小相关测试。外部依赖与修改无关时忽略，确实涉及时使用 mock、stub 或 fixture 隔离，不得因 Nacos、MySQL、Redis 等服务不可用而停止。
+只要 `next_action` 存在，就表示流程已确定下一步。立即执行，不询问用户是否继续，不提供跳过当前步骤或直接进入后续步骤的选项。`test_case_design` 必须由 fresh 独立 subagent 在实现前生成 `.works/test-case-design.json`，但不编写或运行测试；功能实现和编译后，`test_generation` 校验并读取该文件、生成测试及 case 映射，`regression_test` 只执行映射选择的最小相关测试。外部依赖与修改无关时忽略，确实涉及时使用 mock、stub 或 fixture 隔离，不得因 Nacos、MySQL、Redis 等服务不可用而停止。
 
 首次初始化命令：
 
@@ -46,7 +46,7 @@ python <skill-dir>/scripts/works.py --project <project_root> status
 
 默认流程仅支持 Java 项目，会从根目录向下识别 Maven、Gradle、Wrapper、`src/main/java` 及多模块声明，不依赖固定项目目录名。
 
-初始化后，完整流程定义写入 `.works/state.json`。它是唯一运行时状态；不要创建第二套计划、日志、清单或证据文件。需求映射、代码定位、复用决策和检查证据均写入该状态并由 `check` 推进。`reuse_analysis` 必须提交控制面可校验的 `reuse_decisions`，后续步骤只能读取该字段决定复用或 fallback，不得凭对话记忆重新选择 API。
+初始化后，完整流程定义写入 `.works/state.json`。它是唯一运行时状态；不要创建第二套计划、日志、清单或证据文件。默认流程仅允许额外生成 `.works/test-case-design.json`，它是供后续步骤读取的用例设计产物，不是运行状态。需求映射、代码定位、复用决策、产物哈希和检查证据均由 `state.json` 与 `check` 推进。`reuse_analysis` 必须提交控制面可校验的 `reuse_decisions`，后续步骤只能读取该字段决定复用或 fallback，不得凭对话记忆重新选择 API。
 
 ## API 复用协议
 
