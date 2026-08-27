@@ -130,7 +130,7 @@ Use Task tool with run_in_background for each review
 | Agent 委托 | `Agent` tool | `$skill-name` | agent config | 描述意图，非工具名 |
 | 后台任务 | `run_in_background` | N/A | N/A | 描述并行性，非机制 |
 | 权限 | `.claude/settings.json` | `config.toml` | `opencode.json` | 文档化所需权限；各平台独立配置 |
-| Hooks | `hooks/hooks.json` | N/A | plugin events | 避免技能中依赖 hook 逻辑 |
+| Hooks | `hooks/hooks.json` | `.codex/hooks.json` 或插件 `hooks/hooks.json` | plugin events | Claude/Codex 复用 Python hook；OpenCode 单独适配事件 |
 | MCP 服务器 | `.mcp.json` | `[mcp_servers]` in TOML | `mcp` in JSON | 每平台分别配置 MCP；技能仅按名称引用 MCP 工具 |
 | 指令文件 | `CLAUDE.md` | `AGENTS.md` | instructions in JSON | 维护 `AGENTS.md` 为规范文件；`CLAUDE.md` 委托给它 |
 | Frontmatter 扩展 | `allowed-tools` | `argument-hint` | N/A | 保持 frontmatter 仅含 `name` + `description` |

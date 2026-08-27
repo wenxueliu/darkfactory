@@ -342,6 +342,18 @@ HOOK_SETTINGS_TEMPLATE: dict = {
         ],
         "PostToolUse": [
             {
+                "matcher": "Bash|Write|Edit|Read|Grep|Glob|Agent|TodoWrite|Skill|apply_patch|exec_command|view_image|web_search",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"${workspaceFolder}/hooks/works-boundary.py\"",
+                        "timeout": 5,
+                        "additionalContextLimit": 2000,
+                    }
+                ],
+                "description": "Re-check Works state after every tool boundary",
+            },
+            {
                 "matcher": "Bash|Write|Edit|Read|Grep|Glob|Agent|TodoWrite|Skill",
                 "hooks": [
                     {
@@ -378,6 +390,17 @@ HOOK_SETTINGS_TEMPLATE: dict = {
         ],
         "PreToolUse": [
             {
+                "matcher": "Bash|Write|Edit|Read|Grep|Glob|Agent|TodoWrite|Skill|apply_patch|exec_command|view_image|web_search",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"${workspaceFolder}/hooks/works-next-guard.py\"",
+                        "timeout": 5,
+                    }
+                ],
+                "description": "Block tools until pending Works feedback is processed",
+            },
+            {
                 "matcher": "Write|Edit|apply_patch",
                 "hooks": [
                     {
@@ -411,6 +434,32 @@ HOOK_SETTINGS_TEMPLATE: dict = {
                     }
                 ],
                 "description": "Clear per-session hook state before context compaction",
+            },
+        ],
+        "UserPromptSubmit": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"${workspaceFolder}/hooks/works-feedback-ingest.py\"",
+                        "timeout": 5,
+                        "additionalContextLimit": 2000,
+                    }
+                ],
+                "description": "Persist user messages into the active Works inbox",
+            },
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"${workspaceFolder}/hooks/user-prompt-clarifier.py\"",
+                        "timeout": 3,
+                        "additionalContextLimit": 3000,
+                    }
+                ],
+                "description": "Nudge implementation requests toward requirements clarification",
             },
         ],
     }

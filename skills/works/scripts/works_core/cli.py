@@ -17,6 +17,29 @@ def parser() -> argparse.ArgumentParser:
     init = commands.add_parser("init")
     init.add_argument("--workflow", default=str(DEFAULT_WORKFLOW))
     commands.add_parser("status")
+    commands.add_parser("next")
+    feedback = commands.add_parser("feedback")
+    feedback.add_argument("message")
+    commands.add_parser("feedback-list")
+    respond = commands.add_parser("feedback-respond")
+    respond.add_argument("feedback_id")
+    respond.add_argument("--decision", required=True, choices=("continue", "ask", "pause"))
+    respond.add_argument("--understanding", required=True)
+    respond.add_argument("--reason", required=True)
+    respond.add_argument("--impact", default="{}")
+    respond.add_argument("--question")
+    pause = commands.add_parser("pause")
+    pause.add_argument("--reason", required=True)
+    commands.add_parser("resume")
+    revise = commands.add_parser("goal-revise")
+    revise.add_argument("--reason", required=True)
+    revise.add_argument("--requirement", required=True)
+    route = commands.add_parser("route")
+    route.add_argument("--target", required=True)
+    route.add_argument("--reason", required=True)
+    route.add_argument("--evidence", required=True)
+    route.add_argument("--still-valid", nargs="*", default=[])
+    route.add_argument("--invalidated", nargs="*", default=[])
     check = commands.add_parser("check")
     check.add_argument("--result", choices=("passed", "failed"))
     check.add_argument("--evidence")
@@ -44,6 +67,36 @@ def main(argv: list[str] | None = None) -> int:
             result = app.init(project, load_workflow(args.workflow))
         elif args.action == "status":
             result = app.status(project)
+        elif args.action == "next":
+            result = app.next(project)
+        elif args.action == "feedback":
+            result = app.feedback(project, args.message)
+        elif args.action == "feedback-list":
+            result = app.feedback_list(project)
+        elif args.action == "feedback-respond":
+            try:
+                impact = json.loads(args.impact)
+                question = json.loads(args.question) if args.question else None
+            except json.JSONDecodeError as exc:
+                raise WorksError("E_FEEDBACK_RESPONSE_REQUIRED", str(exc)) from exc
+            result = app.feedback_respond(
+                project, args.feedback_id, args.decision, args.understanding,
+                args.reason, impact, question,
+            )
+        elif args.action == "pause":
+            result = app.pause(project, args.reason)
+        elif args.action == "resume":
+            result = app.resume(project)
+        elif args.action == "goal-revise":
+            requirement = Path(args.requirement)
+            if not requirement.is_absolute():
+                requirement = project / requirement
+            result = app.goal_revise(project, args.reason, requirement)
+        elif args.action == "route":
+            result = app.route(
+                project, args.target, args.reason, args.evidence,
+                args.still_valid, args.invalidated,
+            )
         else:
             command = args.command[1:] if args.command[:1] == ["--"] else args.command
             if command:

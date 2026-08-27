@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import time
+import uuid
 
 from . import state as store
 
@@ -40,9 +41,258 @@ class Application:
     def status(self, project: Path) -> dict:
         return store.response(self._load(project))
 
+    def feedback(self, project: Path, message: str) -> dict:
+        state = self._load(project)
+        if not isinstance(message, str) or not message.strip():
+            raise WorksError("E_FEEDBACK_REQUIRED", "feedback message must be non-empty")
+        item = self._write_feedback(project, {
+            "kind": "message", "message": message.strip(), "status": "delivered",
+        })
+        state["pending_feedback"].append(item["id"])
+        store.append_event(project, "feedback_delivered", {"feedback_id": item["id"]})
+        store.save(project, state)
+        result = store.response(state)
+        result["feedback"] = item
+        return result
+
+    def feedback_list(self, project: Path) -> dict:
+        state = self._load(project)
+        result = store.response(state)
+        result["feedback"] = store.load_feedback(project)
+        return result
+
+    def pause(self, project: Path, reason: str) -> dict:
+        state = self._load(project)
+        if not isinstance(reason, str) or not reason.strip():
+            raise WorksError("E_PAUSE_REASON_REQUIRED", "pause reason must be non-empty")
+        item = self._write_feedback(project, {
+            "kind": "control", "action": "pause", "reason": reason.strip(),
+            "status": "delivered",
+        })
+        state["pending_feedback"].append(item["id"])
+        state["execution_state"] = "interrupt_requested"
+        store.append_event(project, "interrupt_requested", {"feedback_id": item["id"]})
+        store.save(project, state)
+        result = store.response(state)
+        result["feedback"] = item
+        return result
+
+    def resume(self, project: Path) -> dict:
+        state = self._load(project)
+        if state["execution_state"] not in ("paused", "waiting_for_human"):
+            raise WorksError("E_NOT_PAUSED", "works is not paused")
+        if state["execution_state"] == "waiting_for_human" and state.get("active_question"):
+            raise WorksError("E_QUESTION_PENDING", "respond to the active question before resuming")
+        state["execution_state"] = "running"
+        store.append_event(project, "resumed", {})
+        store.save(project, state)
+        return store.response(state)
+
+    def next(self, project: Path) -> dict:
+        state = self._load(project)
+        feedback = store.load_feedback(project)
+        unresolved_ids = [item["id"] for item in feedback
+                          if item.get("status") in ("delivered", "observed", "acknowledged")]
+        if state.get("pending_feedback") != unresolved_ids:
+            state["pending_feedback"] = unresolved_ids
+            store.save(project, state)
+        controls = [item for item in feedback
+                    if item["kind"] == "control" and item["status"] != "applied"]
+        if controls:
+            item = controls[0]
+            item["status"] = "applied"
+            item["observed_at"] = time.time()
+            item["applied_at"] = time.time()
+            self._save_feedback(project, item)
+            state["pending_feedback"] = [value for value in state["pending_feedback"]
+                                           if value != item["id"]]
+            action = item.get("action")
+            if action == "pause":
+                state["execution_state"] = "paused"
+                event_type = "paused"
+            elif action == "resume":
+                state["execution_state"] = (
+                    "waiting_for_human" if state.get("active_question") else "running"
+                )
+                event_type = "resumed"
+            else:
+                raise WorksError("E_INVALID_CONTROL", f"unsupported control action: {action}")
+            store.append_event(project, event_type, {
+                "feedback_id": item["id"], "reason": item.get("reason", ""),
+            })
+            store.save(project, state)
+            result = store.response(state)
+            if action == "pause":
+                result["next_action"] = None
+            result["feedback"] = item
+            return result
+        if state["execution_state"] == "paused":
+            result = store.response(state)
+            result["next_action"] = None
+            return result
+        messages = [item for item in feedback
+                    if item["kind"] == "message"
+                    and item["status"] in ("delivered", "observed")]
+        if messages:
+            item = messages[0]
+            if item["status"] == "delivered":
+                item["status"] = "observed"
+                item["observed_at"] = time.time()
+                self._save_feedback(project, item)
+                store.append_event(project, "feedback_observed", {"feedback_id": item["id"]})
+            result = store.response(state)
+            result["next_action"] = {
+                "type": "interpret_feedback",
+                "feedback": item,
+                "allowed_decisions": ["continue", "ask", "pause"],
+            }
+            return result
+        if state.get("active_question"):
+            result = store.response(state)
+            result["next_action"] = {
+                "type": "await_human", "question": state["active_question"],
+            }
+            return result
+        if state.get("awaiting_route"):
+            result = store.response(state)
+            result["next_action"] = {
+                "type": "route", "current_step": state["current_step"],
+                "last_check": state["last_check"],
+                "allowed_targets": self._target_cards(state),
+            }
+            return result
+        result = store.response(state)
+        if result["next_action"] is not None:
+            result["next_action"]["type"] = "execute_step"
+        return result
+
+    def feedback_respond(self, project: Path, feedback_id: str, decision: str,
+                         understanding: str, reason: str, impact: dict,
+                         question: dict | None = None) -> dict:
+        state = self._load(project)
+        item = self._feedback_by_id(project, feedback_id)
+        if item.get("kind") != "message" or item.get("status") != "observed":
+            raise WorksError("E_FEEDBACK_NOT_OBSERVED", "feedback must be observed before response")
+        if decision not in ("continue", "ask", "pause"):
+            raise WorksError("E_INVALID_FEEDBACK_DECISION", "invalid feedback decision")
+        if not understanding.strip() or not reason.strip() or not isinstance(impact, dict):
+            raise WorksError("E_FEEDBACK_RESPONSE_REQUIRED", "understanding, reason and impact required")
+        active_question = state.get("active_question")
+        if decision == "ask":
+            if (not isinstance(question, dict) or not isinstance(question.get("text"), str)
+                    or not question["text"].strip()
+                    or not isinstance(question.get("options", []), list)):
+                raise WorksError("E_QUESTION_REQUIRED", "ask requires a question and options")
+            state["active_question"] = {"feedback_id": feedback_id, **question}
+            state["execution_state"] = "waiting_for_human"
+            item["status"] = "acknowledged"
+        elif decision == "pause":
+            state["execution_state"] = "paused"
+            item["status"] = "applied"
+        else:
+            state["execution_state"] = "running"
+            state["active_question"] = None
+            item["status"] = "applied"
+            if active_question and active_question.get("feedback_id") != feedback_id:
+                original = self._feedback_by_id(project, active_question["feedback_id"])
+                original["status"] = "applied"
+                original["applied_at"] = time.time()
+                original["resolved_by"] = feedback_id
+                self._save_feedback(project, original)
+        item.update({
+            "decision": decision, "understanding": understanding.strip(),
+            "response_reason": reason.strip(), "impact": impact,
+            "question": question, "acknowledged_at": time.time(),
+        })
+        if item["status"] == "applied":
+            item["applied_at"] = time.time()
+        self._save_feedback(project, item)
+        state["pending_feedback"] = [value for value in state["pending_feedback"]
+                                       if value != feedback_id]
+        store.append_event(project, "feedback_responded", {
+            "feedback_id": feedback_id, "decision": decision,
+        })
+        store.save(project, state)
+        result = store.response(state)
+        result["feedback"] = item
+        return result
+
+    def goal_revise(self, project: Path, reason: str, requirement: Path) -> dict:
+        state = self._load(project)
+        if not reason.strip():
+            raise WorksError("E_GOAL_REASON_REQUIRED", "goal revision reason must be non-empty")
+        try:
+            metadata = store.requirement_metadata(project, requirement)
+            objective = requirement.read_text(encoding="utf-8").strip()
+        except (OSError, ValueError, UnicodeDecodeError) as exc:
+            raise WorksError("E_REQUIREMENT_INVALID", "requirement must be inside project") from exc
+        goal = store.load_goal(project)
+        old_revision = goal["revision"]
+        goal.update({
+            "revision": old_revision + 1, "objective": objective, "requirement": metadata,
+        })
+        store.write_json(store.goal_file(project), goal)
+        state["goal_revision"] = goal["revision"]
+        for result in state["step_results"].values():
+            if result.get("status") == "verified":
+                result["status"] = "needs_revalidation"
+        state["awaiting_route"] = True
+        store.append_event(project, "goal_revised", {
+            "old_revision": old_revision, "new_revision": goal["revision"],
+            "reason": reason.strip(), "requirement": metadata,
+        })
+        store.save(project, state)
+        return store.response(state)
+
+    def route(self, project: Path, target: str, reason: str, evidence: str,
+              still_valid: list[str], invalidated: list[str]) -> dict:
+        state = self._load(project)
+        self._ensure_unblocked(project, state)
+        if not state.get("awaiting_route"):
+            raise WorksError("E_ROUTE_NOT_READY", "current step must be checked before routing")
+        allowed = store.allowed_targets(state)
+        if target not in allowed:
+            raise WorksError("E_INVALID_TARGET", f"target is not allowed: {target}", allowed)
+        known = set(store.step_map(state))
+        if (not reason.strip() or not evidence.strip()
+                or any(value not in known for value in still_valid + invalidated)
+                or set(still_valid) & set(invalidated)):
+            raise WorksError("E_INVALID_ROUTE", "route evidence or step validity is invalid")
+        if target == "__complete__" and not state.get("last_check", {}).get("passed"):
+            raise WorksError("E_COMPLETE_NOT_AUTHORIZED", "completion requires a passed current check")
+        decision = {
+            "from": state["current_step"], "target": target, "reason": reason.strip(),
+            "evidence": evidence.strip(), "still_valid": still_valid,
+            "invalidated": invalidated, "created_at": time.time(),
+        }
+        state["route_history"].append(decision)
+        decisions = json.loads(store.decisions_file(project).read_text(encoding="utf-8"))
+        decisions.setdefault("current", []).append(decision)
+        store.write_json(store.decisions_file(project), decisions)
+        for step_id in still_valid:
+            state["step_results"].setdefault(step_id, {})["status"] = "verified"
+        for step_id in invalidated:
+            state["step_results"].setdefault(step_id, {})["status"] = "invalidated"
+        if target == "__complete__":
+            state["completed"] = True
+            state["execution_state"] = "completed"
+            state["awaiting_route"] = False
+        else:
+            previous = state["current_step"]
+            state["current_step"] = target
+            if target not in state["visited_steps"]:
+                state["visited_steps"].append(target)
+            state["step_results"].setdefault(previous, {})
+            state["step_results"].setdefault(target, {})["status"] = "active"
+            state["awaiting_route"] = False
+        store.append_event(project, "route", decision)
+        store.save(project, state)
+        return store.response(state)
+
     def check(self, project: Path, passed: bool, evidence: str,
               command: list[str] | None = None) -> dict:
         state = self._load(project)
+        self._ensure_unblocked(project, state)
         if state["completed"]:
             raise WorksError("E204_ALREADY_COMPLETE", "works is already complete")
         step = store.step_map(state)[state["current_step"]]
@@ -71,7 +321,15 @@ class Application:
             "step": step["id"], "passed": passed, "evidence": evidence,
             "command": command, "checked_at": time.time(),
         }
-        if passed:
+        store.append_event(project, "check", state["last_check"])
+        if "next" in step:
+            state["step_results"][step["id"]] = {
+                "status": "verified" if passed else "failed",
+                "summary": evidence,
+                "checked_at": state["last_check"]["checked_at"],
+            }
+            state["awaiting_route"] = True
+        elif passed:
             state["failures"][step["id"]] = 0
             target = step.get("on_success")
             if target is None:
@@ -496,6 +754,9 @@ class Application:
         if not command:
             raise WorksError("E203_CHECK_REQUIRED", "check requires a command after --")
         state = self._load(project)
+        self._ensure_unblocked(project, state)
+        if state["completed"]:
+            raise WorksError("E204_ALREADY_COMPLETE", "works is already complete")
         step = store.step_map(state)[state["current_step"]]
         if step["id"] == "regression_test":
             try:
@@ -524,6 +785,41 @@ class Application:
         )
         evidence = f"exit={process.returncode}\n{process.stdout[-4000:]}"
         return self.check(project, process.returncode == 0, evidence, command)
+
+    @staticmethod
+    def _target_cards(state: dict) -> list[dict]:
+        steps = store.step_map(state)
+        return ([store.step_card(steps[target]) for target in store.allowed_targets(state)
+                 if target != "__complete__"]
+                + ([{"id": "__complete__"}]
+                   if "__complete__" in store.allowed_targets(state) else []))
+
+    @staticmethod
+    def _ensure_unblocked(project: Path, state: dict) -> None:
+        pending = [item for item in store.load_feedback(project)
+                   if item["status"] in ("delivered", "observed", "acknowledged")]
+        if pending or state.get("active_question") or state["execution_state"] != "running":
+            raise WorksError("E_FEEDBACK_BLOCKING", "feedback or execution state blocks business work")
+
+    @staticmethod
+    def _save_feedback(project: Path, item: dict) -> None:
+        store.write_json(store.inbox_dir(project) / f"{item['id']}.json", item)
+
+    def _write_feedback(self, project: Path, fields: dict) -> dict:
+        directory = store.inbox_dir(project)
+        directory.mkdir(parents=True, exist_ok=True)
+        identifier = f"HF-{uuid.uuid4().hex[:12].upper()}"
+        item = {"id": identifier, **fields, "created_at": time.time()}
+        self._save_feedback(project, item)
+        return item
+
+    @staticmethod
+    def _feedback_by_id(project: Path, feedback_id: str) -> dict:
+        path = store.inbox_dir(project) / f"{feedback_id}.json"
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise WorksError("E_FEEDBACK_NOT_FOUND", f"feedback not found: {feedback_id}") from exc
 
     @staticmethod
     def _load(project: Path) -> dict:

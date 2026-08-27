@@ -14,6 +14,23 @@ sys.path.insert(0, str(SCRIPTS))
 from works_core.application import Application, WorksError
 
 
+def advance(app: Application, root: Path, passed: bool, evidence: str) -> dict:
+    """Submit a check and choose the workflow's former deterministic target in tests."""
+    result = app.check(root, passed, evidence)
+    if not result.get("awaiting_route"):
+        return result
+    step = next(row for row in result["workflow"]["steps"]
+                if row["id"] == result["current_step"])
+    target = (step.get("on_success") if passed
+              else step.get("on_failure", {}).get("goto", step["id"]))
+    target = "__complete__" if target is None else target
+    return app.route(
+        root, target, "test compatibility routing", evidence,
+        [result["current_step"]] if passed else [],
+        [] if passed else [result["current_step"]],
+    )
+
+
 def workflow() -> dict:
     return {
         "name": "custom",
@@ -137,8 +154,12 @@ class WorksStateFlowTest(unittest.TestCase):
             self.assertEqual(result["next_action"]["references_to_read"], [])
             self.assertIsNone(result["next_action"]["subagent"])
             self.assertEqual(
-                [path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()],
-                [".works/state.json"],
+                sorted(path.relative_to(root).as_posix()
+                       for path in root.rglob("*") if path.is_file()),
+                [
+                    ".works/decisions.json", ".works/events.jsonl",
+                    ".works/goal.json", ".works/state.json",
+                ],
             )
             self.assertEqual(json.loads((root / ".works/state.json").read_text())["workflow"]["name"],
                              "custom")
@@ -149,7 +170,7 @@ class WorksStateFlowTest(unittest.TestCase):
             app = Application()
             app.init(root, workflow())
 
-            testing = app.check(root, True, "implementation inspected")
+            testing = advance(app, root, True, "implementation inspected")
             completed = app.check_command(root, [sys.executable, "-c", "print('ok')"])
 
             self.assertEqual(testing["current_step"], "test")
@@ -165,8 +186,8 @@ class WorksStateFlowTest(unittest.TestCase):
             app = Application()
             app.init(root, custom)
 
-            retry = app.check(root, False, "first failure")
-            fallback = app.check(root, False, "second failure")
+            retry = advance(app, root, False, "first failure")
+            fallback = advance(app, root, False, "second failure")
 
             self.assertEqual(retry["current_step"], "build")
             self.assertEqual(retry["failures"]["build"], 1)
@@ -179,7 +200,7 @@ class WorksStateFlowTest(unittest.TestCase):
             root = Path(directory)
             app = Application()
             app.init(root, workflow())
-            app.check(root, True, "ready")
+            advance(app, root, True, "ready")
 
             failed = app.check_command(root, [sys.executable, "-c", "raise SystemExit(7)"])
 
@@ -240,16 +261,16 @@ class WorksStateFlowTest(unittest.TestCase):
             app = Application()
             (root / "requirement.md").write_text("feature-a", encoding="utf-8")
             app.init(root, json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text()))
-            app.check(root, True, "requirements")
-            app.check(root, True, "exploration")
+            advance(app, root, True, "requirements")
+            advance(app, root, True, "exploration")
 
-            test_case_design = app.check(root, True, development_evidence())
+            test_case_design = advance(app, root, True, development_evidence())
             self.assertEqual(
                 test_case_design["next_action"]["subagent"]["role"],
                 "test-case-designer",
             )
             write_test_case_design(root)
-            implementation = app.check(root, True, ".works/test-case-design.json")
+            implementation = advance(app, root, True, ".works/test-case-design.json")
             (root / "CurrentService.java").write_text(
                 "sameLayerService.call();\n", encoding="utf-8"
             )
@@ -257,7 +278,7 @@ class WorksStateFlowTest(unittest.TestCase):
                 "feature": "feature-a", "action": "invoke",
                 "symbol": "SameLayerService.call", "call_site": "CurrentService.java:1",
             }]})
-            compile_step = app.check(root, True, implementation_evidence)
+            compile_step = advance(app, root, True, implementation_evidence)
 
             self.assertEqual(test_case_design["reuse_decisions"]["feature-a"]["selected"],
                              "SameLayerService.call")
@@ -276,12 +297,12 @@ class WorksStateFlowTest(unittest.TestCase):
             (root / "requirement.md").write_text("feature-a", encoding="utf-8")
             default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
             app.init(root, default)
-            app.check(root, True, "requirements")
-            app.check(root, True, "exploration")
-            app.check(root, True, development_evidence())
+            advance(app, root, True, "requirements")
+            advance(app, root, True, "exploration")
+            advance(app, root, True, development_evidence())
 
             with self.assertRaises(WorksError) as caught:
-                app.check(root, True, ".works/test-case-design.json")
+                advance(app, root, True, ".works/test-case-design.json")
 
             self.assertEqual(caught.exception.code, "E207_TEST_CASE_FILE_REQUIRED")
 
@@ -292,11 +313,11 @@ class WorksStateFlowTest(unittest.TestCase):
             (root / "requirement.md").write_text("feature-a", encoding="utf-8")
             default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
             app.init(root, default)
-            app.check(root, True, "requirements")
-            app.check(root, True, "exploration")
-            app.check(root, True, development_evidence())
+            advance(app, root, True, "requirements")
+            advance(app, root, True, "exploration")
+            advance(app, root, True, development_evidence())
             write_test_case_design(root)
-            app.check(root, True, ".works/test-case-design.json")
+            advance(app, root, True, ".works/test-case-design.json")
             (root / "CurrentService.java").write_text(
                 "sameLayerService.call();\n", encoding="utf-8"
             )
@@ -304,9 +325,9 @@ class WorksStateFlowTest(unittest.TestCase):
                 "feature": "feature-a", "action": "invoke",
                 "symbol": "SameLayerService.call", "call_site": "CurrentService.java:1",
             }]})
-            app.check(root, True, implementation_evidence)
-            app.check(root, True, "compiled")
-            app.check(root, True, write_generated_test(root))
+            advance(app, root, True, implementation_evidence)
+            advance(app, root, True, "compiled")
+            advance(app, root, True, write_generated_test(root))
             with (root / ".works" / "test-case-design.json").open("a", encoding="utf-8") as handle:
                 handle.write("\n")
 
@@ -323,11 +344,11 @@ class WorksStateFlowTest(unittest.TestCase):
             (root / "requirement.md").write_text("feature-a", encoding="utf-8")
             default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
             app.init(root, default)
-            app.check(root, True, "requirements")
-            app.check(root, True, "exploration")
-            app.check(root, True, development_evidence())
+            advance(app, root, True, "requirements")
+            advance(app, root, True, "exploration")
+            advance(app, root, True, development_evidence())
             write_test_case_design(root)
-            app.check(root, True, ".works/test-case-design.json")
+            advance(app, root, True, ".works/test-case-design.json")
             (root / "CurrentService.java").write_text(
                 "sameLayerService.call();\n", encoding="utf-8"
             )
@@ -335,9 +356,9 @@ class WorksStateFlowTest(unittest.TestCase):
                 "feature": "feature-a", "action": "invoke",
                 "symbol": "SameLayerService.call", "call_site": "CurrentService.java:1",
             }]})
-            app.check(root, True, implementation_evidence)
-            app.check(root, True, "compiled")
-            app.check(root, True, write_generated_test(root))
+            advance(app, root, True, implementation_evidence)
+            advance(app, root, True, "compiled")
+            advance(app, root, True, write_generated_test(root))
 
             with self.assertRaises(WorksError) as caught:
                 app.check_command(root, [sys.executable, "-c", "print('unrelated')"])
@@ -353,10 +374,10 @@ class WorksStateFlowTest(unittest.TestCase):
             root = Path(directory)
             app = Application()
             app.init(root, json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text()))
-            app.check(root, True, "requirements")
-            app.check(root, True, "exploration")
+            advance(app, root, True, "requirements")
+            advance(app, root, True, "exploration")
             with self.assertRaises(WorksError):
-                app.check(root, True, json.dumps(evidence))
+                advance(app, root, True, json.dumps(evidence))
 
     def test_reuse_fallback_requires_all_tier_search_and_no_feasible_candidate(self):
         valid = development_evidence(None)
@@ -364,9 +385,9 @@ class WorksStateFlowTest(unittest.TestCase):
             root = Path(directory)
             app = Application()
             app.init(root, json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text()))
-            app.check(root, True, "requirements")
-            app.check(root, True, "exploration")
-            result = app.check(root, True, valid)
+            advance(app, root, True, "requirements")
+            advance(app, root, True, "exploration")
+            result = advance(app, root, True, valid)
             self.assertIsNone(result["reuse_decisions"]["feature-a"]["selected"])
 
             incomplete = json.loads(valid)
@@ -374,10 +395,10 @@ class WorksStateFlowTest(unittest.TestCase):
             root2 = Path(directory) / "second"
             root2.mkdir()
             app.init(root2, json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text()))
-            app.check(root2, True, "requirements")
-            app.check(root2, True, "exploration")
+            advance(app, root2, True, "requirements")
+            advance(app, root2, True, "exploration")
             with self.assertRaises(WorksError):
-                app.check(root2, True, json.dumps(incomplete))
+                advance(app, root2, True, json.dumps(incomplete))
 
     def test_implementation_requires_persisted_reuse_decision(self):
         custom = workflow()
@@ -390,7 +411,7 @@ class WorksStateFlowTest(unittest.TestCase):
             app = Application()
             app.init(root, custom)
             with self.assertRaises(WorksError) as caught:
-                app.check(root, True, "implementation reviewed")
+                advance(app, root, True, "implementation reviewed")
             self.assertEqual(caught.exception.code, "E205_REUSE_DECISION_REQUIRED")
 
     def test_v2_default_state_migrates_and_returns_to_reuse_analysis(self):
@@ -410,7 +431,7 @@ class WorksStateFlowTest(unittest.TestCase):
 
             migrated = app.status(root)
 
-            self.assertEqual(migrated["version"], 5)
+            self.assertEqual(migrated["version"], 6)
             self.assertEqual(migrated["current_step"], "reuse_analysis")
             self.assertEqual(migrated["reuse_decisions"], {})
             self.assertEqual(migrated["next_action"]["step"], "reuse_analysis")
@@ -429,7 +450,7 @@ class WorksStateFlowTest(unittest.TestCase):
 
             migrated = app.status(root)
 
-            self.assertEqual(migrated["version"], 5)
+            self.assertEqual(migrated["version"], 6)
             self.assertEqual(migrated["current_step"], "test_case_design")
             self.assertEqual(migrated["next_action"]["step"], "test_case_design")
 
@@ -448,7 +469,7 @@ class WorksStateFlowTest(unittest.TestCase):
 
             migrated = app.status(root)
 
-            self.assertEqual(migrated["version"], 5)
+            self.assertEqual(migrated["version"], 6)
             self.assertEqual(migrated["current_step"], "test_case_design")
 
     def test_implementation_evidence_must_match_selected_symbol(self):
@@ -458,17 +479,17 @@ class WorksStateFlowTest(unittest.TestCase):
             (root / "requirement.md").write_text("feature-a", encoding="utf-8")
             default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
             app.init(root, default)
-            app.check(root, True, "requirements")
-            app.check(root, True, "exploration")
-            app.check(root, True, development_evidence())
+            advance(app, root, True, "requirements")
+            advance(app, root, True, "exploration")
+            advance(app, root, True, development_evidence())
             write_test_case_design(root)
-            app.check(root, True, ".works/test-case-design.json")
+            advance(app, root, True, ".works/test-case-design.json")
             mismatch = json.dumps({"implementation_reuse": [{
                 "feature": "feature-a", "action": "invoke",
                 "symbol": "WrongService.call", "call_site": "CurrentService.java:42",
             }]})
             with self.assertRaises(WorksError) as caught:
-                app.check(root, True, mismatch)
+                advance(app, root, True, mismatch)
             self.assertEqual(caught.exception.code, "E206_IMPLEMENTATION_REUSE_MISMATCH")
 
     def test_implementation_rejects_a_nonexistent_call_site(self):
@@ -478,17 +499,17 @@ class WorksStateFlowTest(unittest.TestCase):
             (root / "requirement.md").write_text("feature-a", encoding="utf-8")
             default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
             app.init(root, default)
-            app.check(root, True, "requirements")
-            app.check(root, True, "exploration")
-            app.check(root, True, development_evidence())
+            advance(app, root, True, "requirements")
+            advance(app, root, True, "exploration")
+            advance(app, root, True, development_evidence())
             write_test_case_design(root)
-            app.check(root, True, ".works/test-case-design.json")
+            advance(app, root, True, ".works/test-case-design.json")
             forged = json.dumps({"implementation_reuse": [{
                 "feature": "feature-a", "action": "invoke",
                 "symbol": "SameLayerService.call", "call_site": "missing.java:1",
             }]})
             with self.assertRaises(WorksError) as caught:
-                app.check(root, True, forged)
+                advance(app, root, True, forged)
             self.assertEqual(caught.exception.code, "E206_IMPLEMENTATION_REUSE_MISMATCH")
 
     def test_current_class_selection_stops_before_lower_tier_search(self):
@@ -506,9 +527,9 @@ class WorksStateFlowTest(unittest.TestCase):
             app = Application()
             default = json.loads((SCRIPTS.parent / "assets/workflows/development.json").read_text())
             app.init(root, default)
-            app.check(root, True, "requirements")
-            app.check(root, True, "exploration")
-            result = app.check(root, True, json.dumps(evidence))
+            advance(app, root, True, "requirements")
+            advance(app, root, True, "exploration")
+            result = advance(app, root, True, json.dumps(evidence))
             self.assertEqual(result["reuse_decisions"]["feature-a"]["selected"],
                              "CurrentService.helper")
 

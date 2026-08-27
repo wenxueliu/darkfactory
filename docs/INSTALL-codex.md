@@ -100,6 +100,19 @@ hooks are enabled and trusted. The `using-harness` bootstrap skill establishes
 the full skill system, while lifecycle hooks enforce ideation and write-safety
 gates around `apply_patch` and other supported local tools.
 
+When an active `.works/state.json` exists, the installed lifecycle hooks also:
+
+- persist every `UserPromptSubmit` message as an atomic `.works/inbox/HF-*.json` event;
+- classify explicit stop/resume prompts as hard control events;
+- deny new business tools at `PreToolUse` until the Agent runs `works next` and
+  handles the returned feedback/control action;
+- inject a `PostToolUse` reminder whenever feedback, pause, a human question, or
+  a route decision remains pending.
+
+The same Python scripts and event definitions are used by Claude Code. Codex
+requires the `hooks` feature and hook trust; updated hook files change the trust
+hash and must be reviewed again with `/hooks`.
+
 For Codex edits, the write-safety hook accepts an `apply_patch` update when it
 contains matching original-file context. File deletion still requires a prior
 file-read event. This adapts the Claude `Read`-then-`Write` contract to Codex's

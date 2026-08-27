@@ -8,6 +8,8 @@ import os
 import re
 import sys
 import tempfile
+import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -134,3 +136,33 @@ def detect_project_root(start: Path) -> Path | None:
         if any((candidate / marker).exists() for marker in markers):
             return candidate
     return None
+
+
+def find_active_works_root(start: Path) -> Path | None:
+    """Find the nearest resumable Works directory without guessing a child project."""
+    current = start.resolve(strict=False)
+    if current.is_file():
+        current = current.parent
+    for candidate in (current, *current.parents):
+        state = load_state(candidate / ".works" / "state.json")
+        if (state.get("version") == 6 and not state.get("completed")
+                and state.get("execution_state") != "completed"):
+            return candidate
+    return None
+
+
+def works_feedback(works_root: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for path in sorted((works_root / ".works" / "inbox").glob("HF-*.json")):
+        row = load_state(path)
+        if row:
+            rows.append(row)
+    return rows
+
+
+def write_works_feedback(works_root: Path, fields: dict[str, Any]) -> dict[str, Any]:
+    """Atomically append one independently addressable feedback inbox item."""
+    identifier = f"HF-{uuid.uuid4().hex[:12].upper()}"
+    item = {"id": identifier, **fields, "created_at": time.time()}
+    save_state(works_root / ".works" / "inbox" / f"{identifier}.json", item)
+    return item

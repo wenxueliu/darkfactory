@@ -1,6 +1,6 @@
 ---
 name: works
-description: 按可定制的多步骤流程持续执行开发、测试、审查或修复任务。用户要求使用 /works、从 requirement.md 自动完成 Java 存量项目开发、选择不同流程、为步骤配置 do/check 提示、失败重试或成功/失败跳转时使用。默认流程会自动定位 Java 项目、优先复用已有 Service API、修改存量方法并持续到编译和回归测试通过。运行时只维护一个 state.json。
+description: 按可定制的多步骤流程持续执行开发、测试、审查或修复任务。用户要求使用 /works、从 requirement.md 自动完成 Java 存量项目开发、选择不同流程、为步骤配置 do/check 提示、处理人工反馈、动态选择修复入口或恢复长期任务时使用。
 ---
 
 # Works
@@ -17,12 +17,12 @@ description: 按可定制的多步骤流程持续执行开发、测试、审查�
 每次激活都严格按以下顺序执行，不得跳步、合并步骤或凭对话记忆推断当前状态：
 
 1. 将 `project_root` 解析为绝对路径；未提供时使用当前工作目录。
-2. 检查 `<project_root>/.works/state.json`。文件不存在时执行 `init`；文件存在时执行 `status`，不得再次初始化或用新的 `workflow` 覆盖已有流程。
-3. 将本次命令返回的 JSON 作为当前状态的唯一事实来源。若 `completed` 为 `true`，立即停止并报告完成；否则只处理本次返回的 `next_action`。
+2. 检查 `<project_root>/.works/state.json`。文件不存在时执行 `init`；文件存在时执行 `status`，不得再次初始化或用新的 `workflow` 覆盖已有流程。随后必须调用 `next` 领取一个原子动作。
+3. 将 `status` 和最新一次 `next` 返回的 JSON 作为当前事实来源。若 `execution_state=completed`，立即停止并报告完成；若为 `paused` 或 `waiting_for_human`，不得启动业务动作；否则只处理本次 `next_action`。
 4. 只读取 `next_action.references_to_read` 列出的参考文件，再执行 `next_action.do`。同一轮不得提前执行后续步骤。若 `next_action.subagent` 非空，必须按其中角色启动 fresh 独立 subagent，等待其完成后再由主 agent 检查产物；不得由主 agent 代做。
 5. 严格按 `next_action.check` 收集当前代码版本的新鲜证据。分析或审查使用 `--result/--evidence`；编译和测试使用真实命令。
-6. 调用一次 `check` 提交本步骤结果，并立即解析它返回的新 JSON。未调用 `check` 不得自行宣布步骤通过或切换步骤。
-7. 若新响应未完成，从第 3 步继续；不得沿用上一次响应中的 `next_action`。检查失败时服从响应给出的重试或跳转结果，不自行选择状态。
+6. 调用一次 `check` 提交本步骤结果，然后重新调用 `next`。未调用 `check` 不得自行宣布步骤通过或切换步骤。
+7. 当 `next_action.type=route` 时，只能从 `allowed_targets` 选择目标，并用 `route` 同时提交非空 reason/evidence、still-valid 和 invalidated。选择最早失效步骤；多个结论仍有效时保留它们。路由后重新调用 `next`，不得沿用旧动作。
 
 只要 `next_action` 存在，就表示流程已确定下一步。立即执行，不询问用户是否继续，不提供跳过当前步骤或直接进入后续步骤的选项。`test_case_design` 必须由 fresh 独立 subagent 在实现前生成 `.works/test-case-design.json`，但不编写或运行测试；功能实现和编译后，`test_generation` 校验并读取该文件、生成测试及 case 映射，`regression_test` 只执行映射选择的最小相关测试。外部依赖与修改无关时忽略，确实涉及时使用 mock、stub 或 fixture 隔离，不得因 Nacos、MySQL、Redis 等服务不可用而停止。
 
@@ -46,7 +46,9 @@ python <skill-dir>/scripts/works.py --project <project_root> status
 
 默认流程仅支持 Java 项目，会从根目录向下识别 Maven、Gradle、Wrapper、`src/main/java` 及多模块声明，不依赖固定项目目录名。
 
-初始化后，完整流程定义写入 `.works/state.json`。它是唯一运行时状态；不要创建第二套计划、日志、清单或证据文件。默认流程仅允许额外生成 `.works/test-case-design.json`，它是供后续步骤读取的用例设计产物，不是运行状态。需求映射、代码定位、复用决策、产物哈希和检查证据均由 `state.json` 与 `check` 推进。`reuse_analysis` 必须提交控制面可校验的 `reuse_decisions`，后续步骤只能读取该字段决定复用或 fallback，不得凭对话记忆重新选择 API。
+初始化后，控制面管理 `.works/state.json`、`events.jsonl`、`goal.json`、`decisions.json`、`inbox/` 和 `artifacts/`。不得绕过 CLI 手工改写这些控制面文件，也不要创建第二套计划或状态。默认流程额外生成 `.works/test-case-design.json` 作为用例设计产物。需求映射、代码定位、复用决策、产物哈希和检查证据由控制面推进。`reuse_analysis` 必须提交可校验的 `reuse_decisions`，后续步骤只能读取该字段决定复用或 fallback。
+
+每次工具调用、子 Agent 返回、check、route 和完成声明前都重新调用 `next`。若返回 `interpret_feedback`，先用 `feedback-respond` 提交理解和 `continue|ask|pause` 决定；硬暂停优先于所有业务动作。消息送达不等于已采纳：delivered、observed、acknowledged 仍需处理，只有 applied 是不再注入和阻断的反馈终态。applied 仅表示反馈已影响计划或执行，不代替步骤 check；后续发现处理不足时追加新反馈或使步骤失效，不回退原反馈状态。
 
 ## API 复用协议
 
@@ -108,4 +110,4 @@ python <skill-dir>/scripts/works.py --project <project-root> check -- <program> 
 
 ## 流程语义
 
-每个步骤必须有唯一 `id` 和非空 `do/check`；可选 `references` 必须是不含空值和重复项的字符串数组。所有跳转目标必须存在。检查成功进入 `on_success`，值为 `null` 时完成；检查失败先按 `on_failure.retries` 原地重试，超过次数后进入 `on_failure.goto`。`retries: 0` 表示第一次失败立即跳转。
+每个步骤必须有唯一 `id` 和非空 `do/check`；可选 `purpose`、`route_when` 为模型提供路由语义。`next` 声明直接后继，`forward_policy` 支持 `next_only`、`declared` 和低风险流程专用的 `any_defined`；`declared` 通过 `forward_targets` 授权更远前跳。已访问步骤始终可以重新打开，未访问步骤不能仅凭 JSON 顺序成为恢复目标。只有声明 `complete: true` 的当前步骤可选择 `__complete__`。旧 workflow 的 `on_success/on_failure` 仍可加载以便迁移，但新 workflow 应使用动态路由字段。
