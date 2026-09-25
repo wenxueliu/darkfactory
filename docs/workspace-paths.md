@@ -41,9 +41,9 @@ paths:
 
 | 语义路径 | 必选 | 用途 |
 |---|---:|---|
-| `context_files` | 是 | 领域术语和上下文定义，可配置多个文件或 glob |
+| `context_files` | 核心 | 领域术语和上下文定义，可配置多个文件或 glob |
 | `context_maps` | 否 | 多上下文之间的关系地图 |
-| `decision_roots` | 是 | ADR 或其他架构决策记录目录，可配置多个 |
+| `decision_roots` | 核心 | ADR 或其他架构决策记录目录，可配置多个 |
 | `source_roots` | 否 | 代码交叉验证时扫描的源码根目录 |
 | `config_file` | 否 | 读取语言等运行配置 |
 | `write_targets.context_file` | 否 | 用户确认后允许更新的上下文文件 |
@@ -53,17 +53,17 @@ paths:
 ## 解析规则
 
 - 所有相对路径都相对于 `{project-root}` 解析。
-- 路径值统一使用数组；单个文件也写成单元素数组。
+- 路径值统一使用数组；单个文件也写成单元素数组。高优先级配置声明数组时整体替换低优先级数组，不隐式拼接。
 - `decision_roots` 多个目录合并读取，并在报告中标记来源。
 - `source_roots` 只有执行代码交叉验证时才读取。
 - 读取路径和写入路径分离；没有 `write_targets` 时只读，不创建文件。
-- `report_root` 不影响质询结果，也不作为工作流状态目录。
+- `report_root` 不影响质询结果，也不作为工作流状态目录；核心证据缺失时报告不得伪装为完整 PASS。
 - 不把 `workflow_root` 作为 `sw-grill-docs` 的依赖；需求、计划和任务状态由调用方自行管理。
 
 ## sw-grill-docs 的最小依赖
 
 ```text
-必需：context_files + decision_roots
+核心证据角色：context_files + decision_roots（实际文件缺失时仍可运行，对应检查标记为未发现）
 可选：context_maps + source_roots + config_file
 写入：仅使用显式 write_targets
 报告：默认对话输出

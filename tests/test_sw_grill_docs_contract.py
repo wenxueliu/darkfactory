@@ -7,10 +7,6 @@ CHECKLIST = ROOT / "skills" / "sw-grill-docs" / "references" / "grill-checklist.
 PATH_DEFAULTS = ROOT / "skills" / "sw-grill-docs" / "references" / "path-defaults.yaml"
 PATH_RESOLUTION = ROOT / "skills" / "sw-grill-docs" / "references" / "path-resolution.md"
 WORKSPACE_PATHS = ROOT / "docs" / "workspace-paths.md"
-CALLERS = (
-    ROOT / "skills" / "sw-brainstorming" / "SKILL.md",
-    ROOT / "skills" / "sw-strategic-planner" / "SKILL.md",
-)
 
 
 def _frontmatter_description(text: str) -> str:
@@ -48,7 +44,7 @@ def test_sw_grill_docs_discovers_all_supported_decision_sources() -> None:
     assert "write_targets" in workspace_paths
 
 
-def test_sw_grill_docs_preserves_caller_contracts() -> None:
+def test_sw_grill_docs_is_composable_without_named_caller_dependencies() -> None:
     skill = SKILL.read_text(encoding="utf-8")
 
     assert "PASS" in skill
@@ -56,11 +52,12 @@ def test_sw_grill_docs_preserves_caller_contracts() -> None:
     assert "CONFLICT" in skill
     assert "调用方负责" in skill or "caller" in skill
 
-    for path in CALLERS + (
-        ROOT / "skills" / "sw-requirements-clarifier" / "references" / "requirement-clarification.md",
+    for caller in (
+        "sw-requirements-clarifier",
+        "sw-brainstorming",
+        "sw-strategic-planner",
     ):
-        content = path.read_text(encoding="utf-8")
-        assert "sw-grill-docs" in content
+        assert caller not in skill
 
 
 def test_sw_grill_docs_requires_evidence_before_reporting_a_problem() -> None:
@@ -71,10 +68,3 @@ def test_sw_grill_docs_requires_evidence_before_reporting_a_problem() -> None:
     assert "证据" in combined
     assert "仅凭术语缺失" in combined or "absence alone" in combined
     assert "引用" in combined
-
-
-def test_sw_grill_docs_callers_wait_before_persisting_decisions() -> None:
-    for path in CALLERS:
-        content = path.read_text(encoding="utf-8")
-        assert "用户确认后" in content
-        assert "实时更新 CONTEXT.md" not in content

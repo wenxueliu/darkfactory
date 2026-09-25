@@ -187,7 +187,7 @@ Skill 内置 path-defaults.yaml
 
 ```
 对设计/计划中关于现有系统的每个声称:
-  1. 搜索相关代码
+  1. 仅在已解析的 `source_roots` 中搜索相关代码
   2. 代码行为与声称是否一致？
      YES → PASS
      NO → CHALLENGE: "你的代码以 X 方式工作，但你声称是 Y——哪个是对的？"
@@ -247,6 +247,13 @@ Skill 内置 path-defaults.yaml
 - 代码一致性: {count} PASS / {count} CONFLICT
 - [行为矛盾列表]
 
+### Resolved Sources
+- `context_files`: [实际读取的上下文文件]
+- `context_maps`: [实际读取的上下文地图]
+- `decision_roots`: [实际扫描的决策根目录]
+- `source_roots`: [实际扫描的源码根目录；未执行则为 N/A]
+- 写入: [`write_targets` 实际写入；无写入则为 N/A]
+
 ### Document Updates
 - `write_targets.context_file`: [新增/修改的术语；未写入则标记为提议]
 - `write_targets.adr_root`: [新创建的 ADR 编号和标题；未写入则标记为提议]
@@ -256,8 +263,8 @@ Skill 内置 path-defaults.yaml
 
 | Result | 条件 |
 |--------|------|
-| **PASS** | 零 CONFLICT，零 GAP，术语全部一致 |
-| **CONCERNS** | 有 CHALLENGE 需要用户澄清，但无直接矛盾（等待用户回应） |
+| **PASS** | 零 CONFLICT，零 GAP，术语全部一致，且报告声明范围内的证据检查均已执行 |
+| **CONCERNS** | 有 CHALLENGE 需要用户澄清，或核心证据缺失导致部分检查未执行（等待用户回应或补充路径） |
 | **CONFLICT** | 发现与已解析上下文或 ADR 的直接矛盾，必须在继续前解决 |
 
 ## 独立运行与组合运行

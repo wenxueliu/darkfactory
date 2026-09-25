@@ -52,7 +52,7 @@ Every project goes through this process. "Simple" projects are where unexamined 
 5. **Present design sections** — Incrementally, get approval after each
 6. **Write design doc** — Save to `{project-root}/_context-output/designs/YYYY-MM-DD-<topic>-design.md`
 7. **Design self-review** — Check for placeholders, contradictions, ambiguity, scope
-8. **Grill design against docs** — Activate `sw-grill-docs` to verify terminology consistency with CONTEXT.md and ADR compliance. Apply CONTEXT/ADR updates only after the user confirms the proposed decision（用户确认后再写入）。
+8. **Grill design against docs** — Activate `sw-grill-docs` to verify terminology consistency with the resolved context files and ADR compliance. Apply context/ADR updates only after the user confirms the proposed decision（用户确认后再写入）。
 9. **User reviews design** — Present the design doc (with grill results) for human approval
 10. **Transition to planning** — Invoke `sw-strategic-planner` to create implementation plan
 
@@ -148,10 +148,10 @@ Fix issues inline. No need to re-review — just fix and move on.
 Once the design passes self-review, activate `sw-grill-docs` to verify it against the project's existing documentation:
 
 1. Pass the design document path to `sw-grill-docs`
-2. `sw-grill-docs` will: audit terminology against CONTEXT.md, check ADR compliance, stress-test with scenarios, cross-reference with code
+2. `sw-grill-docs` will: audit terminology against the resolved context files, check ADR compliance, stress-test with scenarios, cross-reference with code
 3. Review the grill report — address any CHALLENGE or CONFLICT findings
 4. Update the design doc based on grill results
-5. New/updated terms are proposed in the grill report and written to CONTEXT.md only after user confirmation.
+5. New/updated terms are proposed in the grill report and written to the configured context target only after user confirmation.
 
 This ensures the design speaks the same language as the project and respects all documented architectural decisions before it reaches the user for final approval.
 

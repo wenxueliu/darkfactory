@@ -185,20 +185,20 @@ C) {自定义 — 用自己的话描述}
 
 ### 第 4.5 步: 需求规格质询 (Spec Grilling — sw-grill-docs Quick)
 
-在需求规格成文之后、进入正式门禁之前，**强制委托 `sw-grill-docs` 进行 Quick 模式质询**，把规格对照项目的领域模型（CONTEXT.md）和架构决策记录（ADRs）做一次交叉验证。
+在需求规格成文之后、进入正式门禁之前，**强制委托 `sw-grill-docs` 进行 Quick 模式质询**，把规格对照项目解析后的上下文和架构决策记录（ADRs）做一次交叉验证。
 
 **为什么需要这步：**
 - 澄清过程是"问用户"导向，可能漏掉项目已有的领域约束
-- 用语可能与 CONTEXT.md 中的术语表不一致，导致下游设计歧义
+- 用语可能与项目上下文中的术语表不一致，导致下游设计歧义
 - 已有 ADR 可能已否决规格中隐含的某条架构假设
 
 **执行方式：**
 
 1. delegate to `sw-grill-docs`（Step 0 → Step 1 → Step 2 → Phase 1 + Phase 2）:
-   - **Step 0**: 读取 CONTEXT.md / CONTEXT-MAP.md / `docs/adr/` 或 `knowledge/_enterprise/decisions/` / `design-decisions.md` / `config.yaml`
+   - **Step 0**: 由 `sw-grill-docs` 解析 `context_files` / `context_maps` / `decision_roots` / `config_file`，调用方不拼接物理目录
    - **Step 1**: 目标文档 = `requirements/{requirement_id}.md`（新增"需求层"调用来源）
    - **Step 2**: 深度 = **Quick**（<3 个新概念 → 术语扫描 + ADR 冲突检查）
-   - **Phase 1 (Glossary Audit)**: 对照 CONTEXT.md 检查规格中每个领域术语
+   - **Phase 1 (Glossary Audit)**: 对照已解析上下文检查规格中每个领域术语
    - **Phase 2 (ADR Compliance)**: 对照已有 ADR 检查规格中每个架构决策
 
 2. 接收 grill-docs 的 `Grill Docs Report`，按结果分流:
@@ -207,7 +207,7 @@ C) {自定义 — 用自己的话描述}
 |--------|------|
 | **PASS** | 零 CONFLICT、零 GAP → 执行解析后的需求门禁与验证器 |
 | **CONCERNS** | 有 CHALLENGE 需要澄清 → 把 CHALLENGE 转化为新问题，回到第 3 步优先队列 |
-| **CONFLICT** | 与 CONTEXT.md 或 ADR 直接矛盾 → 立即告知用户，给出两种选择：(a) 修订规格 (b) 创建新 ADR 覆盖 |
+| **CONFLICT** | 与已解析上下文或 ADR 直接矛盾 → 立即告知用户，给出两种选择：(a) 修订规格 (b) 创建新 ADR 覆盖 |
 
 3. 在 `requirements/{requirement_id}.md` 末尾的"澄清记录"段追加:
    ```markdown
@@ -280,7 +280,7 @@ Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-updat
 - **需求层（本节）**：质询 requirements 规格 — 这是第三种调用源
 
 **何时跳过本步骤：**
-- 项目无 CONTEXT.md 且无 `docs/adr/`、`knowledge/_enterprise/decisions/` 目录 → 跳过（标注"无既有约束"）
+- 项目没有任何已解析上下文或 ADR 证据，且调用方不要求本次核验 → 跳过（标注"无既有约束"）
 - 规格是 trivial typo fix / 配置微调 → 跳过
 - 用户明确说"快进到设计" → 跳过，但在 tracker 中记录 `grill_skipped: true`
 
