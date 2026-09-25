@@ -1,6 +1,6 @@
 # 需求理解与澄清 (Progressive Clarification)
 
-参考: Spec-Kit clarify (13维分类扫描 + Impact×Uncertainty 优先队列 + 增量更新) +
+参考: Spec-Kit clarify (定义包驱动的维度扫描 + Impact×Uncertainty 优先队列 + 增量更新) +
       BMAD guided-elicitation (自适应对话 + lead-ask-reflect-confirm + 实质完备度阈值) +
       Compound Engineering requirements-capture (问题标签 + 设计前必解 vs 设计时再解)
 
@@ -14,19 +14,39 @@
 - 范围边界在哪里？（明确不做 > 模糊都做）
 - 有哪些关键约束和假设？
 
-## 澄清流程 (4 步)
+## 外部能力降级协议
+
+`sw-knowledge-agent`、`sw-grill-docs` 和 `sw-value-judgment` 是可组合的增强能力，不是本 Skill 的启动前提。调用前先检查能力是否可用：
+
+1. 可用且调用成功 → 记录 `USED` 及其产物/摘要。
+2. 不可用、超时或未安装 → 记录 `SKIPPED`，向用户输出提示，执行本地证据或剩余内部检查，然后继续流程。
+3. 只有需求定义包、模板、门禁、验证器等本 Skill 内部契约无效时，才阻断流程；不能把外部 Skill 不可用直接报告为失败。
+
+统一记录格式：
+
+```text
+⚠️ SKIPPED — {capability} unavailable.
+Reason: {reason}
+Impact: {missing evidence or review}
+Fallback: {local evidence or remaining internal checks}
+The requirement clarification continues; this is not a direct failure.
+```
+
+将记录同时加入 `Requirements Clarification Report.external_capabilities` 和规格文档的“澄清记录”（如果规格文档已经创建）。
+
+## 澄清流程 (主流程 + 可选增强)
 
 ### 第 1 步: 理解问题空间 (Listen First)
 
-**1.0 需求层 KB 预检 (Requirement-Level KB Pre-Check) — 必做，在向用户提问之前**
+**1.0 需求层 KB 预检 (Requirement-Level KB Pre-Check) — 可选增强，在向用户提问之前执行**
 
-澄清阶段的 KB 预检**专注于"需求层面"的上下文**，不是"实现层面"。目的有三：
+澄清阶段的 KB 预检**专注于"需求层面"的上下文**，不是"实现层面"。本地 tracker 和调用方提供的证据始终可以独立读取；`sw-knowledge-agent` 只负责补充跨知识库查询。目的有三：
 
 | 目的 | 检出场景 | 查询目标 |
 |------|---------|---------|
 | **需求已实现** | 防止重复造轮子 — 避免做出已经被做过的需求 | `requirements-tracker.yaml` (status: done) + `knowledge/_enterprise/lessons/` + `knowledge/_enterprise/patterns/` |
 | **需求实现冲突** | 防止新需求与已有实现矛盾（API 行为不一致、数据模型冲突、UX 不一致） | `knowledge/_enterprise/lessons/`（历史冲突教训）+ `knowledge/_enterprise/contracts/`（已有 API 契约）+ `requirements-tracker.yaml` (status: in_progress) |
-| **确有已有需求的实现** | 帮助新需求继承/参考已有实现（命名一致、概念对齐、避免另起炉灶） | `knowledge/_enterprise/patterns/`（已有需求实现模式）+ `knowledge/_enterprise/contracts/`（已有 API 端点）+ `CONTEXT.md`（领域术语） |
+| **确有已有需求的实现** | 帮助新需求继承/参考已有实现（命名一致、概念对齐、避免另起炉灶） | 已解析上下文中的领域术语 + 知识库 patterns/contracts |
 
 **与设计阶段 KB 预检的边界：**
 
@@ -37,31 +57,15 @@
 
 **执行方式：**
 
-1. **检查需求追踪器**（KB 之外的本地源）：
-   ```bash
-   # 读 tracker 找出所有非 cancelled 的需求
-   cat _context/memory/sw-shared/requirements-tracker.yaml
-   ```
+1. **检查需求追踪器**（KB 之外的本地源）：读取配置的需求 tracker，找出所有非 `cancelled` 的需求。
    重点关注：
    - `status: done` 中标题/描述与当前需求相似的 → "需求已实现"候选
    - `status: in_progress` 中范围重叠的 → "实现冲突"候选
    - `status: planned` 中相关的 → 合并/串行机会
 
-2. **delegate to `sw-knowledge-agent` (KnowledgeQuery 能力)**，按"需求层"视角查询：
-   ```bash
-   # 找类似需求的实现模式（用于"需求已实现"和"参考已有实现"）
-   python scripts/kb-search.py "<需求关键词>" --type pattern
-   
-   # 找历史需求冲突的教训（用于"实现冲突"）
-   python scripts/kb-search.py "<需求关键词>" --type lesson
-   
-   # 找相关 API 契约（用于"实现冲突"和"参考已有实现"）
-   python scripts/kb-search.py "<需求关键词>" --type api
-   
-   # 找相关领域术语定义（用于"参考已有实现"，确保命名一致）
-   cat CONTEXT.md  # 读取领域术语表
-   ```
-   完整命令清单与新鲜度规则由 `sw-knowledge-agent` 自己维护；委托该 Skill 查询即可。
+2. **尝试调用 `sw-knowledge-agent` (KnowledgeQuery 能力)**，按"需求层"视角查询类似需求、历史冲突教训、API 契约和领域术语。完整查询协议由该 Skill 自己维护；本 Skill 不依赖其命令、脚本或目录。
+   - 可用并返回结果 → 写入“需求全景图”，标记 `USED`。
+   - 不可用或调用失败 → 按“外部能力降级协议”记录 `SKIPPED`，使用 tracker、已解析上下文和调用方证据继续。
 
 3. **生成本步输出**（"需求全景图"），写入对话上下文：
    ```markdown
@@ -171,7 +175,7 @@ C) {自定义 — 用自己的话描述}
 **每收到一个答案后立即执行:**
 
 1. 将答案编码到需求规格文件的对应章节
-2. 在 `requirements/{requirement_id}.md` 末尾附加澄清日志:
+2. 在 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md` 末尾附加澄清日志:
    ```markdown
    ## 澄清记录 (Clarification Log)
    | # | 时间 | 维度 | 问题 | 答案 | 类型 |
@@ -183,9 +187,9 @@ C) {自定义 — 用自己的话描述}
 5. 如果队列为空且仍有 Partial/Missing 维度 → 回到第 3 步补充新问题
 6. 如果所有维度 Clear 或仅剩 `[设计时再解]` 或 `[待调研]` → 进入第 4.5 步需求规格质询
 
-### 第 4.5 步: 需求规格质询 (Spec Grilling — sw-grill-docs Quick)
+### 第 4.5 步: 可选需求规格质询 (Spec Grilling — sw-grill-docs Quick)
 
-在需求规格成文之后、进入正式门禁之前，**强制委托 `sw-grill-docs` 进行 Quick 模式质询**，把规格对照项目解析后的上下文和架构决策记录（ADRs）做一次交叉验证。
+在需求规格成文之后、进入正式门禁之前，**尝试委托 `sw-grill-docs` 进行 Quick 模式质询**，把规格对照项目解析后的上下文和架构决策记录（ADRs）做一次交叉验证。不可用时必须记录 `SKIPPED`，提示用户并继续内部门禁/验证器。
 
 **为什么需要这步：**
 - 澄清过程是"问用户"导向，可能漏掉项目已有的领域约束
@@ -194,22 +198,23 @@ C) {自定义 — 用自己的话描述}
 
 **执行方式：**
 
-1. delegate to `sw-grill-docs`（Step 0 → Step 1 → Step 2 → Phase 1 + Phase 2）:
+1. 尝试调用 `sw-grill-docs`（Step 0 → Step 1 → Step 2 → Phase 1 + Phase 2）:
    - **Step 0**: 由 `sw-grill-docs` 解析 `context_files` / `context_maps` / `decision_roots` / `config_file`，调用方不拼接物理目录
-   - **Step 1**: 目标文档 = `requirements/{requirement_id}.md`（新增"需求层"调用来源）
+   - **Step 1**: 目标文档 = `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`（新增"需求层"调用来源）
    - **Step 2**: 深度 = **Quick**（<3 个新概念 → 术语扫描 + ADR 冲突检查）
    - **Phase 1 (Glossary Audit)**: 对照已解析上下文检查规格中每个领域术语
    - **Phase 2 (ADR Compliance)**: 对照已有 ADR 检查规格中每个架构决策
 
-2. 接收 grill-docs 的 `Grill Docs Report`，按结果分流:
+2. 接收 grill-docs 的 `Grill Docs Report`，按结果分流；如果能力不可用，按“外部能力降级协议”处理:
 
 | Result | 行动 |
 |--------|------|
 | **PASS** | 零 CONFLICT、零 GAP → 执行解析后的需求门禁与验证器 |
 | **CONCERNS** | 有 CHALLENGE 需要澄清 → 把 CHALLENGE 转化为新问题，回到第 3 步优先队列 |
 | **CONFLICT** | 与已解析上下文或 ADR 直接矛盾 → 立即告知用户，给出两种选择：(a) 修订规格 (b) 创建新 ADR 覆盖 |
+| **SKIPPED** | `sw-grill-docs` 不可用 → 记录原因、影响、fallback 和用户提示，继续执行内部门禁/验证器；不直接失败 |
 
-3. 在 `requirements/{requirement_id}.md` 末尾的"澄清记录"段追加:
+3. 在 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md` 末尾的"澄清记录"段追加:
    ```markdown
    | # | 时间 | 维度 | 问题 | 答案 | 类型 |
    |---|------|------|------|------|------|
@@ -219,7 +224,7 @@ C) {自定义 — 用自己的话描述}
 **注意**:
 - 规格质询不是把澄清流程重新走一遍；它针对的是"已写下的规格" vs "项目的真理来源" 这一具体冲突
 - Quick 模式故意不执行 Phase 3/4 压力测试和代码交叉验证（保留给设计阶段）
-- 如果项目没有 CONTEXT.md / ADR → 跳过此步（直接进入门禁），并在规格中注明"无需质询，无既有约束"
+- 如果没有可用的上下文或 ADR 证据 → 不把证据缺失伪装成 PASS；记录 `NOT_REQUESTED` 或 `SKIPPED` 及影响，直接进入内部门禁/验证器
 
 ## 何时停止澄清
 
@@ -243,17 +248,17 @@ C) {自定义 — 用自己的话描述}
 
 ## 连接到价值评估
 
-如果需求的价值维度（用户价值/业务价值/战略对齐）仍然是 Partial，在澄清流程中调度价值评估能力:
+如果需求的价值维度（用户价值/业务价值/战略对齐）仍然是 Partial，可以尝试调度价值评估能力:
 
-Delegate value assessment to `sw-value-judgment`; that Skill owns its assessment protocol.
+尝试调用 `sw-value-judgment`; 该 Skill 可用时由它负责评估协议。不可用时记录 `SKIPPED`，提示用户缺少独立价值评估，并使用当前对话中的价值证据继续；不要因为该 Skill 不可用直接失败。
 
 对需求进行 5 维度评分（Impact / Effort / Risk / Dependencies / Strategic Fit），结果写入 `{project-root}/_context/memory/sw-shared/value-assessment/{requirement_id}.md`。
 
 ## 连接到知识库
 
-如果在澄清过程中发现了可复用的模式、经验教训或设计决策，写入知识库:
+如果在澄清过程中发现了可复用的模式、经验教训或设计决策，可以写入知识库:
 
-Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-update protocol.
+尝试委托 `sw-knowledge-agent`; 不可用时记录 `SKIPPED`，保留知识沉淀提议，不阻断需求澄清。
 
 ## 需求规格质询 (Spec Grilling — sw-grill-docs)
 
@@ -267,7 +272,8 @@ Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-updat
 | 必做 Phase | Phase 1 (Glossary Audit) + Phase 2 (ADR Compliance) |
 | 跳过 Phase | Phase 3 (Scenario Stress-Test) + Phase 4 (Code Cross-Reference) — 保留给设计阶段 |
 | 输入 | 规格文件路径 + 需求 ID + `requirement_id` |
-| 输出 | Grill Docs Report (PASS / CONCERNS / CONFLICT) + 必须 inline 写入"澄清记录"段 |
+| 输出 | Grill Docs Report (PASS / CONCERNS / CONFLICT / SKIPPED) + inline 写入"澄清记录"段 |
+| 外部能力不可用 | `SKIPPED` + 原因/影响/fallback/用户提示；继续内部门禁和验证 |
 
 **为何选 Quick 而非 Standard/Deep：**
 - 规格阶段的目的是验证"和项目已有约束是否一致"，不是设计完整性
@@ -295,19 +301,12 @@ Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-updat
 | 查询目标 | 需求-需求关系（重复、冲突、参考） | 需求-实现关系（模式、契约、决策） |
 | 主要消费者 | 澄清对话的优先级与问题设计 | 设计的方案选择与一致性 |
 | 核心问题 | "我们做过类似的吗？和它什么关系？" | "用什么模式实现？参考什么契约？" |
-| 典型命令 | `kb-search.py --type pattern/lesson` 查需求级条目 + tracker 状态 | `kb-search.py --type decision/pattern/api` 查实现级条目 |
+| 典型查询 | 查询 pattern/lesson/api/decision + tracker 状态 | 查询 decision/pattern/api |
 | 输出产物 | "需求全景图"（写到对话上下文） | `knowledge/pre-query-{id}.md`（独立文件） |
 
-在需求澄清完成、进入设计阶段之前，执行一次知识库快速扫描：
+在需求澄清完成、进入设计阶段之前，可以执行一次知识库快速扫描：
 
-1. 运行知识库预查询（delegate to `sw-knowledge-agent` KnowledgeQuery 能力）：
-   ```bash
-   python scripts/kb-search.py "<需求关键词>" --type pattern
-   python scripts/kb-search.py "<需求关键词>" --type decision
-   python scripts/kb-search.py "<需求关键词>" --type lesson
-   python scripts/kb-search.py "<需求关键词>" --type api
-   ```
-   完整命令清单与新鲜度规则由 `sw-knowledge-agent` 自己维护。
+1. 尝试调用 `sw-knowledge-agent` KnowledgeQuery 能力执行快速扫描。查询命令和新鲜度规则由该 Skill 自己维护，本 Skill 不直接依赖其脚本；不可用时记录 `SKIPPED` 并继续。
 2. 检查是否有与当前需求相关的已有 ADR、设计模式、经验教训、API 契约
 3. 如果有冲突或需要参考的历史决策，在需求规格中注明，并提供知识库链接
 4. 知识库查询结果作为设计阶段的输入，确保设计不会重复造轮子或偏离既有架构方向
@@ -320,10 +319,10 @@ Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-updat
 
 | 产物 | 路径 | 何时生成 |
 |------|------|---------|
-| 需求规格 | `requirements/{id}.md` | 澄清完成后 |
+| 需求规格 | `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md` | 澄清完成后 |
 | 澄清日志 | 嵌入在需求规格文件末尾 | 每次回答后增量更新 |
-| 价值评估 | `value-assessment/{id}.md` | 如果价值维度 Partial |
+| 价值评估 | `{project-root}/_context/memory/sw-shared/value-assessment/{requirement_id}.md` | 如果价值维度 Partial 且能力可用 |
 | 知识条目 | `knowledge/` | 如果发现可复用知识 |
-| 知识预查询 | `knowledge/pre-query-{id}.md` | 澄清完成后，进入设计前 |
-| **规格质询报告** | **嵌入在需求规格"澄清记录"段** | **第 4.5 步质询完成后** |
-| 门禁结果 | `requirements/{id}-gate.md` | 需求规格完成后 |
+| 知识预查询 | `{project-root}/knowledge/pre-query-{requirement_id}.md` | 澄清完成后，进入设计前且能力可用 |
+| **规格质询报告** | **嵌入在需求规格"澄清记录"段** | **第 4.5 步质询完成后；不可用则嵌入 `SKIPPED` 记录** |
+| 门禁结果 | `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}-gate.md` | 需求规格完成后 |
