@@ -181,7 +181,7 @@ ANY NO -> 继续访谈，提出具体的未明确问题。
 4. 以每批 2-4 个任务的节奏分批追加 TODOs（多次 Edit）
 5. 每批追加后 Read 验证完整性
 6. 自审查：按 CRITICAL/MINOR/AMBIGUOUS 分类缺口
-7. 文档对照质询：调用 `sw-grill-docs` 验证计划术语与 CONTEXT.md 的一致性、检查与已有 ADR 的合规性、场景压力测试（术语在计划完成后实时沉淀）
+7. 文档对照质询：调用 `sw-grill-docs` 验证计划术语与 CONTEXT.md 的一致性、检查与已有 ADR 的合规性、场景压力测试（术语更新先进入报告，用户确认后再沉淀）
 8. 呈现计划摘要给用户（附带 grill 报告）
 9. 提供选择：Start Work vs High Accuracy Review
 
@@ -225,7 +225,7 @@ ANY NO -> 继续访谈，提出具体的未明确问题。
 - **代码库探索**: 委托给 `sw-codebase-explorer` 搜索现有模式、约定、依赖关系和相关代码
 - **外部研究**: 委托给 `sw-external-researcher` 查找最佳实践、库文档和参考实现
 - **预规划分析**: 调用 `sw-pre-planning-consultant` 进行意图分类、歧义检测和 AI-slop 风险评估
-- **文档对照质询**: 调用 `sw-grill-docs` 在计划生成后验证术语一致性和 ADR 合规性，实时更新 CONTEXT.md
+- **文档对照质询**: 调用 `sw-grill-docs` 在计划生成后验证术语一致性和 ADR 合规性；根据报告提出更新，用户确认后再写入 CONTEXT.md
 - **计划审查**: 调用 `sw-plan-reviewer` 进行可执行性检查（高精度模式下）
 
 同时启动多个探索 Agent 以并行收集信息。为每个 Agent 制定具体的搜索指令，而非泛泛的 "探索代码库" 请求。

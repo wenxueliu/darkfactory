@@ -1,0 +1,18 @@
+# Fallback semantic paths for standalone sw-grill-docs execution.
+# Project configuration has precedence over these values.
+version: 1
+
+paths:
+  context_files:
+    - CONTEXT.md
+  context_maps:
+    - CONTEXT-MAP.md
+  decision_roots:
+    - knowledge/_enterprise/decisions
+  source_roots:
+    - services
+  config_file: _context/config.yaml
+  write_targets:
+    context_file: CONTEXT.md
+    adr_root: knowledge/_enterprise/decisions
+  report_root: null

@@ -1,8 +1,10 @@
 # ADR Format
 
-ADRs live in `docs/adr/` and use sequential numbering: `0001-slug.md`, `0002-slug.md`, etc.
+ADRs live in the project's resolved `decision_roots`. The workspace path contract maps this semantic role to one or more existing directories. If `write_targets.adr_root` is absent, the skill is read-only and must not create an ADR.
 
-Create the `docs/adr/` directory lazily — only when the first ADR is needed.
+Use sequential numbering within the selected root: `0001-slug.md`, `0002-slug.md`, etc.
+
+Create the selected `write_targets.adr_root` lazily — only after the user confirms that a new ADR is needed. Never turn a read-only `decision_roots` entry into a write target implicitly.
 
 ## Template
 
@@ -24,7 +26,7 @@ Only include these when they add genuine value. Most ADRs won't need them.
 
 ## Numbering
 
-Scan `docs/adr/` for the highest existing number and increment by one.
+Scan the selected `write_targets.adr_root` for the highest existing number and increment by one. If multiple decision roots are read-only, do not choose one for writing by convention.
 
 ## When to offer an ADR
 

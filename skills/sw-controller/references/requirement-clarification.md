@@ -195,7 +195,7 @@ C) {自定义 — 用自己的话描述}
 **执行方式：**
 
 1. delegate to `sw-grill-docs`（Step 0 → Step 1 → Step 2 → Phase 1 + Phase 2）:
-   - **Step 0**: 读取 CONTEXT.md / CONTEXT-MAP.md / `docs/adr/` / `design-decisions.md` / `config.yaml`
+   - **Step 0**: 读取 CONTEXT.md / CONTEXT-MAP.md / `docs/adr/` 或 `knowledge/_enterprise/decisions/` / `design-decisions.md` / `config.yaml`
    - **Step 1**: 目标文档 = `requirements/{requirement_id}.md`（新增"需求层"调用来源）
    - **Step 2**: 深度 = **Quick**（<3 个新概念 → 术语扫描 + ADR 冲突检查）
    - **Phase 1 (Glossary Audit)**: 对照 CONTEXT.md 检查规格中每个领域术语
@@ -280,7 +280,7 @@ Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-updat
 - **需求层（本节）**：质询 requirements 规格 — 这是第三种调用源
 
 **何时跳过本步骤：**
-- 项目无 CONTEXT.md 且无 `docs/adr/` 目录 → 跳过（标注"无既有约束"）
+- 项目无 CONTEXT.md 且无 `docs/adr/`、`knowledge/_enterprise/decisions/` 目录 → 跳过（标注"无既有约束"）
 - 规格是 trivial typo fix / 配置微调 → 跳过
 - 用户明确说"快进到设计" → 跳过，但在 tracker 中记录 `grill_skipped: true`
 

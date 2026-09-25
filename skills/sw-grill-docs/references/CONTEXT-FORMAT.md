@@ -58,6 +58,6 @@ The skill infers which structure applies:
 
 - If `CONTEXT-MAP.md` exists, read it to find contexts
 - If only a root `CONTEXT.md` exists, single context
-- If neither exists, create a root `CONTEXT.md` lazily when the first term is resolved
+- If neither exists, propose the configured `write_targets.context_file` when the first term needs to be resolved; create it only after the user confirms the proposed terminology. If no write target is configured, keep the proposal in the report.
 
 When multiple contexts exist, infer which one the current topic relates to. If unclear, ask.
