@@ -116,7 +116,7 @@ lint 是"不变的"——由服务语言决定，与任务内容无关：
 
 | 任务所属服务语言 | lint 工具 | 来源 |
 |----------------|----------|------|
-| java-springboot | checkstyle / spotbugs | service-registry.yaml → language |
+| java-springboot | checkstyle / spotbugs | `_context/memory/sw-shared/service-registry.yaml` → language |
 | nodejs-express | eslint + prettier | 同上 |
 | golang | golangci-lint + gofmt + go vet | 同上 |
 | python-fastapi | ruff | 同上 |

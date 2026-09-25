@@ -20,14 +20,14 @@
 ## 三级分层架构
 
 ```
-_context/memory/sw-shared/knowledge-base/
+knowledge/
 ├── index.md                    # 全局知识索引
 │
-├── _enterprise/                # 第一级：企业级 —— 跨所有服务
+├── _enterprise/                # 第一级：企业级 —— 跨所有代码仓
 │   ├── decisions/              #   架构决策记录 (ADR)
-│   ├── patterns/               #   跨服务可复用模式
+│   ├── patterns/               #   跨仓库可复用模式
 │   ├── lessons/                #   全局经验教训
-│   └── contracts/              #   跨服务 API 契约
+│   └── contracts/              #   跨仓库 API 契约
 │
 ├── domains/                    # 第二级：业务领域级 —— 按领域组织
 │   └── {domain}/               #   例：user-domain/、order-domain/
@@ -35,7 +35,7 @@ _context/memory/sw-shared/knowledge-base/
 │       ├── patterns/           #     领域内复用模式
 │       └── lessons/            #     领域经验教训
 │
-└── services/                   # 第三级：服务级 —— 每个服务独立
+└── services/                   # 第三级：服务级 —— 每个代码仓独立
     └── {service-id}/           #   例：user-service/、order-service/
         ├── overview.md         #     服务概览（自动生成）
         ├── api-endpoints.md    #     API 端点列表（自动生成）
@@ -49,7 +49,7 @@ _context/memory/sw-shared/knowledge-base/
 
 | 层级 | 存放内容 | 查询时机 |
 |------|---------|---------|
-| `_enterprise/` | 影响多个服务的全局决策、跨服务契约、通用的可复用模式 | 任何设计开始前必查 |
+| `_enterprise/` | 影响多个代码仓的全局决策、跨仓库契约、通用的可复用模式 | 任何设计开始前必查 |
 | `domains/{domain}/` | 特定业务领域的决策和模式（例：用户领域的认证策略） | 涉及该领域的服务设计时查询 |
 | `services/{service-id}/` | 单个服务的概要、API、Schema、服务内决策 | 修改该服务时查询 |
 
@@ -74,7 +74,8 @@ KB 目录结构的建立分两阶段，各自在不同时机触发：
 在项目工作空间创建 `_context/` 配置的同时，创建空的 KB 目录骨架：
 
 ```bash
-mkdir -p _context/memory/sw-shared/knowledge-base/{patterns,decisions,lessons,api-contracts}
+mkdir -p services knowledge/_enterprise/{patterns,decisions,lessons,contracts}
+mkdir -p knowledge/{domains,services}
 mkdir -p _context/memory/sw-shared/reviews
 mkdir -p _context/memory/sw-controller
 ```
@@ -83,22 +84,22 @@ mkdir -p _context/memory/sw-controller
 
 ### 第二阶段：自动生成内容（首次 `/sw-controller 初始化` 时）
 
-当运行 `/sw-controller 初始化：发现所有服务并建立注册表` 时，sw-knowledge-agent 自动执行服务发现：
+当运行 `/sw-controller 初始化：发现 services/ 下的代码仓并建立注册表` 时，sw-knowledge-agent 自动执行服务发现：
 
 **检测内容：**
 
 | 检测维度 | 检测方式 | 生成产物 |
 |---------|---------|---------|
-| 技术栈 | 检测 `build.gradle`/`package.json`/`go.mod`/`pyproject.toml` 等 | `service-registry.yaml` |
-| API 端点 | 扫描 Controller/Route/Handler 文件中的路由注解 | `services/{id}/api-endpoints.md` |
-| 数据库 Schema | 扫描 Flyway migration / Prisma schema / SQLAlchemy model / GORM struct | `services/{id}/db-schema.md` |
-| 基础设施依赖 | 检测 redis/kafka/postgresql 等驱动依赖 | `service-registry.yaml` |
-| 跨服务依赖 | 扫描代码中对外部服务 URL 的引用 | `service-registry.yaml` 依赖图 |
-| 服务概览 | 综合以上信息 + README 摘要 | `services/{id}/overview.md` |
+| 技术栈 | 检测 `build.gradle`/`package.json`/`go.mod`/`pyproject.toml` 等 | `_context/memory/sw-shared/service-registry.yaml` |
+| API 端点 | 扫描 Controller/Route/Handler 文件中的路由注解 | `knowledge/services/{id}/api-endpoints.md` |
+| 数据库 Schema | 扫描 Flyway migration / Prisma schema / SQLAlchemy model / GORM struct | `knowledge/services/{id}/db-schema.md` |
+| 基础设施依赖 | 检测 redis/kafka/postgresql 等驱动依赖 | `_context/memory/sw-shared/service-registry.yaml` |
+| 跨服务依赖 | 扫描代码中对外部服务 URL 的引用 | `_context/memory/sw-shared/service-registry.yaml` 依赖图 |
+| 服务概览 | 综合以上信息 + README 摘要 | `knowledge/services/{id}/overview.md` |
 
 此阶段产物：**每个服务的自动生成知识文件 + 服务注册表**。
 
-> 服务信息从代码中自动学习，而非人工配置。`service-registry.yaml` 是生成的产物，不是手写的输入。
+> 服务信息从 `services/` 下的代码仓自动学习，而非人工配置。`_context/memory/sw-shared/service-registry.yaml` 是生成的运行时索引，不是手写的输入。
 
 ### 两阶段对比
 
@@ -106,9 +107,9 @@ mkdir -p _context/memory/sw-controller
 |------|---------|---------|
 | 触发 | 项目搭建时手动执行 | `/sw-controller 初始化` |
 | 执行者 | 人 | sw-knowledge-agent（自动） |
-| 产物 | 空目录骨架 | 服务级 KB 文件 + service-registry.yaml |
+| 产物 | 空目录骨架 | 服务级 KB 文件 + `_context/memory/sw-shared/service-registry.yaml` |
 | 频率 | 一次性 | 首次初始化 + 后续持续更新 |
-| 前提条件 | 无 | services/ 下各服务已 clone、依赖已安装、基线测试通过 |
+| 前提条件 | `services/` 与 `knowledge/` 已创建 | services/ 下各仓库已放入、依赖已安装、基线测试通过 |
 
 ---
 
@@ -116,16 +117,16 @@ mkdir -p _context/memory/sw-controller
 
 | 内容 | 来源 | 维护方式 |
 |------|------|---------|
-| `services/{id}/overview.md` | 自动检测 + README 提取 | 自动更新。职责描述如无法提取则标记 `NEEDS_MANUAL` |
-| `services/{id}/api-endpoints.md` | 自动扫描 Controller/Route | 任务完成后增量更新 |
-| `services/{id}/db-schema.md` | 自动扫描 Migration/Model | 任务完成后增量更新 |
-| `service-registry.yaml` | 自动扫描所有服务 | 全量或增量更新 |
-| `_enterprise/contracts/` | 设计阶段自动生成 + 人工审核 | sw-controller 写入，人审核确认 |
-| `_enterprise/decisions/` (ADR) | 设计阶段 sw-controller 自动写入 | 自动写入，重大决策需人工确认 |
-| `_enterprise/patterns/` | sw-knowledge-agent 自动沉淀 | 自动提取，可人工补充 |
-| `_enterprise/lessons/` | 开发完成后自动沉淀 | 自动写入，包含成功和失败经验 |
-| `domains/{domain}/` | 涉及多服务的领域知识 | 自动分类 + 人工调整领域归属 |
-| `services/{id}/decisions/` | 服务级设计决策 | 自动写入，服务负责人可补充 |
+| `knowledge/services/{id}/overview.md` | 自动检测 + README 提取 | 自动更新。职责描述如无法提取则标记 `NEEDS_MANUAL` |
+| `knowledge/services/{id}/api-endpoints.md` | 自动扫描 Controller/Route | 任务完成后增量更新 |
+| `knowledge/services/{id}/db-schema.md` | 自动扫描 Migration/Model | 任务完成后增量更新 |
+| `_context/memory/sw-shared/service-registry.yaml` | 自动扫描 `services/` 下所有仓库 | 全量或增量更新 |
+| `knowledge/_enterprise/contracts/` | 设计阶段自动生成 + 人工审核 | sw-controller 写入，人审核确认 |
+| `knowledge/_enterprise/decisions/` (ADR) | 设计阶段 sw-controller 自动写入 | 自动写入，重大决策需人工确认 |
+| `knowledge/_enterprise/patterns/` | sw-knowledge-agent 自动沉淀 | 自动提取，可人工补充 |
+| `knowledge/_enterprise/lessons/` | 开发完成后自动沉淀 | 自动写入，包含成功和失败经验 |
+| `knowledge/domains/{domain}/` | 涉及多个代码仓的领域知识 | 自动分类 + 人工调整领域归属 |
+| `knowledge/services/{id}/decisions/` | 服务级设计决策 | 自动写入，服务负责人可补充 |
 
 **基本原则：能从代码检测的，不手写。需要判断和决策的，Agent 自动生成初稿，人审核确认。**
 
@@ -150,8 +151,8 @@ KB 不是一次生成就完事的——它随项目持续演进。三种更新�
 每个需求的所有任务完成后，全量重新发现一次：
 
 - 重新扫描所有服务的技术栈、API、Schema、依赖
-- 重建 `service-registry.yaml`
-- 重建所有 `services/{id}/*.md`
+- 重建 `_context/memory/sw-shared/service-registry.yaml`
+- 重建所有 `knowledge/services/{id}/*.md`
 - 与上一版本对比，标记新增、修改、删除
 
 **触发时机：** 需求进入 `merge → test` 阶段时
@@ -266,7 +267,7 @@ ideation → design → decomposition → execution → merge → test → deliv
 
 ### Q: KB 在工作空间根目录还是服务仓库里？
 
-在工作空间根目录的 `_context/memory/sw-shared/knowledge-base/`。每个 `services/{id}/` 保持独立的 git 仓库，知识全部沉淀在工作空间层。
+在工作空间根目录的 `knowledge/`。每个 `services/{id}/` 保持独立的 Git 仓库，知识全部沉淀在工作空间层；`_context/` 只保存编排状态。
 
 ### Q: 新增一个服务后需要重新初始化吗？
 
@@ -278,9 +279,9 @@ ideation → design → decomposition → execution → merge → test → deliv
 - `NEEDS_MANUAL` 标记的字段不会被覆盖——填充后请移除标记
 - 知识沉淀（patterns、lessons、ADR、contracts）只追加不覆盖
 
-### Q: 多个服务有相似的 pattern 应该放哪里？
+### Q: 多个代码仓有相似的 pattern 应该放哪里？
 
-如果 pattern 只在一个服务内使用 → `services/{id}/patterns/`。如果被 2+ 个服务使用 → 提取到 `_enterprise/patterns/`。
+如果 pattern 只在一个代码仓内使用 → `knowledge/services/{id}/patterns/`。如果被 2+ 个代码仓使用 → 提取到 `knowledge/_enterprise/patterns/`。
 
 ### Q: 什么时候应该清理 KB？
 

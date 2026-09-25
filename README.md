@@ -31,6 +31,7 @@
 ```bash
 mkdir -p _context/memory/sw-shared
 mkdir -p _context/memory/sw-controller
+mkdir -p services knowledge
 ```
 
 **Step 2: Configure**
@@ -39,7 +40,6 @@ Create `_context/config.yaml`:
 
 ```yaml
 sw:
-  architecture: "monolith"              # or "microservices"
   business_domain: "general"            # general | fintech | ecommerce | internal-tools
   min_iteration_before_human: 3
   enabled_reviewers: "security,logic,performance"
@@ -53,6 +53,8 @@ Create `_context/config.user.yaml`:
 communication_language: Chinese
 user_name: Your Name
 ```
+
+After initialization, put every source repository to be modified under `services/{repository-name}/`. One repository and multiple repositories use the same flow. Project knowledge is written to `knowledge/`; `_context/` is reserved for harness state.
 
 **Step 3: Copy skills**
 
@@ -121,7 +123,7 @@ Four scenarios — pick your starting point:
 |----------|-----------|
 | I have an existing project | See [Scenario A](docs/quickstart-en.md#scenario-a-add-to-existing-project) |
 | I'm starting a new project from scratch | See [Scenario B](docs/quickstart-en.md#scenario-b-new-project) |
-| I have multiple microservices | See [Scenario C](docs/quickstart-en.md#scenario-c-microservices-multi-repo) |
+| I have one or more source repositories | See [Scenario C](docs/quickstart-en.md#scenario-c-multi-repository-workspace) |
 | I just want a 5-minute tour | Run `/sw-controller demo mode` |
 
 Detailed walkthrough: [docs/quickstart-en.md](docs/quickstart-en.md)
@@ -186,6 +188,8 @@ multiagents/
 │   ├── sw-brainstorming/    # Pre-design exploration (NEW)
 │   └── ...                  # 24 more specialized skills
 ├── agents/                  # Standalone agent prompt templates
+├── services/                # User-provided source repositories
+├── knowledge/               # Project knowledge
 ├── _context/                   # BMAD framework (config + memory)
 │   ├── config.yaml          # Project configuration
 │   ├── config.user.yaml     # User-specific settings
@@ -205,7 +209,6 @@ multiagents/
 | `business_domain` | `general` | Domain template: `general`, `fintech`, `ecommerce`, `internal-tools` |
 | `enabled_reviewers` | `security,logic,performance` | Active review types |
 | `min_iteration_before_human` | `3` | AI iterations before human escalation |
-| `architecture` | `microservices` | `monolith` or `microservices` |
 | `communication_language` | `Chinese` | Human-Agent interaction language |
 
 ### Next Steps
@@ -249,6 +252,7 @@ multiagents/
 ```bash
 mkdir -p _context/memory/sw-shared
 mkdir -p _context/memory/sw-controller
+mkdir -p services knowledge
 ```
 
 **第二步：配置**
@@ -257,7 +261,6 @@ mkdir -p _context/memory/sw-controller
 
 ```yaml
 sw:
-  architecture: "monolith"              # 单体服务，或 "microservices" 微服务
   business_domain: "general"            # general | fintech | ecommerce | internal-tools
   min_iteration_before_human: 3         # AI 自主迭代次数，之后升级到人工
   enabled_reviewers: "security,logic,performance"
@@ -341,7 +344,7 @@ multi_agent = true
 |----------|------|
 | 已有项目，想接入黑灯工厂 | 见 [场景 A](docs/quickstart.md#场景-a已有项目接入) |
 | 从零开始新项目 | 见 [场景 B](docs/quickstart.md#场景-b新项目启动) |
-| 多个微服务，想统一编排 | 见 [场景 C](docs/quickstart.md#场景-c微服务多仓接入) |
+| 一个或多个代码仓，想统一编排 | 见 [场景 C](docs/quickstart.md#场景-c多仓库工作区接入) |
 | 只想先体验一下 | 运行 `/sw-controller 体验模式` |
 
 详细教程：[docs/quickstart.md](docs/quickstart.md)
@@ -406,6 +409,8 @@ multiagents/
 │   ├── sw-brainstorming/    # 头脑风暴（NEW）
 │   └── ...                  # 其余 18 个专项技能
 ├── agents/                  # 独立 Agent prompt 模板
+├── services/                # 用户放入的源码仓库
+├── knowledge/               # 项目知识
 ├── _context/                   # BMAD 框架（配置 + 记忆）
 │   ├── config.yaml          # 项目配置
 │   ├── config.user.yaml     # 用户配置
@@ -425,7 +430,6 @@ multiagents/
 | `business_domain` | `general` | 业务领域模板：`general`、`fintech`、`ecommerce`、`internal-tools` |
 | `enabled_reviewers` | `security,logic,performance` | 启用的审查类型 |
 | `min_iteration_before_human` | `3` | AI 自主迭代几次后升级到人工 |
-| `architecture` | `microservices` | `monolith` 或 `microservices` |
 | `communication_language` | `Chinese` | 人机交互语言 |
 
 ### 下一步
@@ -443,3 +447,4 @@ multiagents/
 ---
 
 **开始你的第一次人机协同开发：** 打开 Claude Code，输入 `/sw-controller {你的需求}`
+初始化完成后，请将需要修改的一个或多个独立 Git 代码仓放入 `services/{仓库名}/`；项目知识写入独立的 `knowledge/`，`_context/` 仅保存黑灯工厂运行状态。

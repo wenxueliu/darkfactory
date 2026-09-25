@@ -76,7 +76,7 @@ sw:
 - 设计文档: `designs/{id}-design.md`
 - 关联的需求规格: `requirements/{id}.md`
 - 头脑风暴记录: `designs/{id}-brainstorm.md`（如有）
-- 知识库 ADR: `knowledge-base/decisions/ADR-*.md`
+- 知识库 ADR: `knowledge/_enterprise/decisions/ADR-*.md`
 
 **准备动作:**
 

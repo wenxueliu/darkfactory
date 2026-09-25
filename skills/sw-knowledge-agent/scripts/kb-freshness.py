@@ -22,8 +22,9 @@ import sys
 from datetime import date, datetime
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
-_DEFAULT_KB_DIR = os.path.join(_PROJECT_ROOT, "_context", "memory", "sw-shared", "knowledge-base")
+from kb_paths import KNOWLEDGE_DIR, PROJECT_ROOT
+
+_DEFAULT_KB_DIR = str(KNOWLEDGE_DIR)
 
 VALID_TYPES = {"pattern", "decision", "lesson", "api"}
 TYPE_DIR_MAP = {
@@ -53,7 +54,7 @@ def discover_kb_dir():
 
 def load_config(kb_dir):
     """Load freshness config from config.yaml if available."""
-    config_path = os.path.join(os.path.dirname(kb_dir), "..", "..", "config.yaml")
+    config_path = os.path.join(str(PROJECT_ROOT), "_context", "config.yaml")
     decay_rates = dict(DEFAULT_DECAY_RATES)
     stale_threshold = 90
     auto_expire_days = 365

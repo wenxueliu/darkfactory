@@ -19,6 +19,8 @@ import sys
 import argparse
 from pathlib import Path
 
+from kb_paths import KNOWLEDGE_DIR
+
 
 # Keywords that indicate technical content worth preserving
 TECH_KEYWORDS_PATTERN = re.compile(
@@ -275,10 +277,7 @@ def main():
             print("Saved: {}".format(out_path))
 
     elif args.command == "batch":
-        kb_dir = args.kb_dir or os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "_context", "memory", "sw-shared", "knowledge-base"
-        )
+        kb_dir = args.kb_dir or str(KNOWLEDGE_DIR)
         if not os.path.isdir(kb_dir):
             print("Error: KB directory not found: {}".format(kb_dir), file=sys.stderr)
             sys.exit(1)

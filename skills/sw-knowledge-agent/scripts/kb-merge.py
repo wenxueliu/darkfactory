@@ -20,8 +20,9 @@ import sys
 from datetime import date, datetime, timezone
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
-_DEFAULT_KB_DIR = os.path.join(_PROJECT_ROOT, "_context", "memory", "sw-shared", "knowledge-base")
+from kb_paths import KNOWLEDGE_DIR
+
+_DEFAULT_KB_DIR = str(KNOWLEDGE_DIR)
 
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
@@ -77,7 +78,7 @@ TYPE_DIR_MAP = {
     "pattern": "patterns",
     "decision": "decisions",
     "lesson": "lessons",
-    "api": "api-contracts",
+    "api": "contracts",
 }
 TYPE_LABEL_MAP = {
     "pattern": "Pattern",

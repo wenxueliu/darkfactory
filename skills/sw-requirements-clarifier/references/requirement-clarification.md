@@ -24,9 +24,9 @@
 
 | 目的 | 检出场景 | 查询目标 |
 |------|---------|---------|
-| **需求已实现** | 防止重复造轮子 — 避免做出已经被做过的需求 | `requirements-tracker.yaml` (status: done) + `knowledge-base/lessons/` + `knowledge-base/patterns/` |
-| **需求实现冲突** | 防止新需求与已有实现矛盾（API 行为不一致、数据模型冲突、UX 不一致） | `knowledge-base/lessons/`（历史冲突教训）+ `knowledge-base/contracts/`（已有 API 契约）+ `requirements-tracker.yaml` (status: in_progress) |
-| **确有已有需求的实现** | 帮助新需求继承/参考已有实现（命名一致、概念对齐、避免另起炉灶） | `knowledge-base/patterns/`（已有需求实现模式）+ `knowledge-base/contracts/`（已有 API 端点）+ `CONTEXT.md`（领域术语） |
+| **需求已实现** | 防止重复造轮子 — 避免做出已经被做过的需求 | `requirements-tracker.yaml` (status: done) + `knowledge/_enterprise/lessons/` + `knowledge/_enterprise/patterns/` |
+| **需求实现冲突** | 防止新需求与已有实现矛盾（API 行为不一致、数据模型冲突、UX 不一致） | `knowledge/_enterprise/lessons/`（历史冲突教训）+ `knowledge/_enterprise/contracts/`（已有 API 契约）+ `requirements-tracker.yaml` (status: in_progress) |
+| **确有已有需求的实现** | 帮助新需求继承/参考已有实现（命名一致、概念对齐、避免另起炉灶） | `knowledge/_enterprise/patterns/`（已有需求实现模式）+ `knowledge/_enterprise/contracts/`（已有 API 端点）+ `CONTEXT.md`（领域术语） |
 
 **与设计阶段 KB 预检的边界：**
 
@@ -296,7 +296,7 @@ Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-updat
 | 主要消费者 | 澄清对话的优先级与问题设计 | 设计的方案选择与一致性 |
 | 核心问题 | "我们做过类似的吗？和它什么关系？" | "用什么模式实现？参考什么契约？" |
 | 典型命令 | `kb-search.py --type pattern/lesson` 查需求级条目 + tracker 状态 | `kb-search.py --type decision/pattern/api` 查实现级条目 |
-| 输出产物 | "需求全景图"（写到对话上下文） | `knowledge-base/pre-query-{id}.md`（独立文件） |
+| 输出产物 | "需求全景图"（写到对话上下文） | `knowledge/pre-query-{id}.md`（独立文件） |
 
 在需求澄清完成、进入设计阶段之前，执行一次知识库快速扫描：
 
@@ -314,7 +314,7 @@ Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-updat
 5. **方案继承性检查**：检查设计是否与已有实现保持术语/契约/模式一致
 6. **方案一致性检查**：检查设计是否与已有架构决策（ADR）一致
 
-预查询结果写入 `{project-root}/_context/memory/sw-shared/knowledge-base/pre-query-{requirement_id}.md`。
+预查询结果写入 `{project-root}/knowledge/pre-query-{requirement_id}.md`。
 
 ## 输出产物
 
@@ -323,7 +323,7 @@ Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-updat
 | 需求规格 | `requirements/{id}.md` | 澄清完成后 |
 | 澄清日志 | 嵌入在需求规格文件末尾 | 每次回答后增量更新 |
 | 价值评估 | `value-assessment/{id}.md` | 如果价值维度 Partial |
-| 知识条目 | `knowledge-base/` | 如果发现可复用知识 |
-| 知识预查询 | `knowledge-base/pre-query-{id}.md` | 澄清完成后，进入设计前 |
+| 知识条目 | `knowledge/` | 如果发现可复用知识 |
+| 知识预查询 | `knowledge/pre-query-{id}.md` | 澄清完成后，进入设计前 |
 | **规格质询报告** | **嵌入在需求规格"澄清记录"段** | **第 4.5 步质询完成后** |
 | 门禁结果 | `requirements/{id}-gate.md` | 需求规格完成后 |

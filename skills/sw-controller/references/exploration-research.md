@@ -83,11 +83,11 @@ VERSION: {目标版本号 — 确保搜索结果是针对正确版本的}
 对于跨多个模块的复杂任务，可以同时启动多个探索 Agent：
 
 ```
-收到跨 3 个微服务的改动需求
+收到跨 3 个代码仓的改动需求
   ├─ [并行] sw-codebase-explorer #1: 搜索 user-service 认证逻辑
   ├─ [并行] sw-codebase-explorer #2: 搜索 order-service 订单状态机
   ├─ [并行] sw-codebase-explorer #3: 搜索 gateway 路由配置
-  └─ [并行] sw-external-researcher: 搜索微服务间认证 token 传递最佳实践
+  └─ [并行] sw-external-researcher: 搜索跨仓库认证 token 传递最佳实践
       │
       └─ 收集所有结果 → 综合 → 实现决策
 ```

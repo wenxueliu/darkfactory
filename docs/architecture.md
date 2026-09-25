@@ -84,7 +84,27 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 | **test (测试)** | `integration-test-plan.md`, `browser-test-plan.md` | all IT PASS + all browser E2E PASS | sw-controller |
 | **delivery (交付)** | `delivery-checklist.md`, `release-notes-template.md` | `delivery-acceptance-gate.md` | sw-delivery-manager |
 
-知识库在所有阶段持续维护：ADR 在 `decisions/`、模式在 `patterns/`、经验教训在 `lessons/`。
+知识库在所有阶段持续维护：ADR 在 `knowledge/_enterprise/decisions/`、模式在 `knowledge/_enterprise/patterns/`、经验教训在 `knowledge/_enterprise/lessons/`。
+
+## 工作区边界
+
+黑灯工厂把源码仓库、项目知识和编排状态分开管理：
+
+```text
+{project-root}/
+├── services/                         # 用户放入的一个或多个独立源码仓库
+│   ├── {repository-name}/            # 每个直接子目录都是一个 Git 仓库/服务单元
+│   └── ...
+├── knowledge/                        # 工作区级、可读、可积累的项目知识
+│   ├── _enterprise/                  # ADR、跨仓库契约、通用模式和经验
+│   ├── domains/                      # 领域知识
+│   └── services/{service-id}/        # 服务发现生成的概览、API、Schema
+└── _context/                         # 配置、需求状态、任务状态和运行时编排数据
+```
+
+初始化完成后，用户必须将待修改的代码仓放入 `services/{repository-name}/`。一个仓库是这个模型的自然特例，仍然执行同一套服务发现、设计、拆分和质量门禁；`services/` 为空时不得退回到工作区根目录寻找业务源码，流程必须阻塞并提示用户补充仓库。
+
+服务注册表由 `sw-knowledge-agent` 扫描 `services/` 后生成到 `_context/memory/sw-shared/service-registry.yaml`。注册表是运行时索引，不替代 `knowledge/` 中的人类可读知识。
 
 ### 文档契约边界
 
@@ -169,23 +189,24 @@ multiagents/
 └── .remember/               # Session memory and logs
 ```
 
+上面的 `multiagents/` 是框架源码仓库本身；使用框架的业务项目还必须遵循上一节的 `services/`、`knowledge/`、`_context/` 工作区边界。
+
 ---
 
 ## 记忆架构 (Memory Architecture)
 
 ```
+services/                         # User-provided source repositories
+knowledge/                        # Independent project knowledge
+├── _enterprise/                  # ADRs, patterns, lessons, cross-repository contracts
+├── domains/                      # Domain-scoped knowledge
+└── services/{service-id}/        # Repository-scoped generated knowledge
 _context/memory/
 ├── sw-shared/                    # Cross-agent shared state
 │   ├── requirements-tracker.yaml # Requirement lifecycle tracking (phase status, progress, artifacts)
 │   ├── tasks.yaml                # Task definitions and status
-│   ├── design-decisions.md       # Architecture decision records
+│   ├── service-registry.yaml     # Generated index of services/
 │   ├── human-interventions.md    # Human intervention history
-│   ├── knowledge-base/           # Institutional knowledge
-│   │   ├── index.md
-│   │   ├── patterns/             # Reusable patterns
-│   │   ├── decisions/            # Architecture decisions
-│   │   ├── lessons/              # Lessons learned
-│   │   └── api-contracts/        # API documentation
 │   ├── reviews/                  # Code review outputs
 │   └── value-assessment/         # Requirements value assessments
 └── sw-controller/                # Controller-private state

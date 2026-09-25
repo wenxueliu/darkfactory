@@ -243,7 +243,7 @@ ANY NO -> 继续访谈，提出具体的未明确问题。
 - `{project-root}/_context/config.user.yaml` — 用户配置
 - `{project-root}/_context/memory/sw-shared/design-decisions.md` — 已有架构决策
 - `{project-root}/_context/memory/sw-shared/tasks.yaml` — 当前任务状态
-- `{project-root}/_context/memory/sw-shared/knowledge-base/` — 机构知识库
+- `{project-root}/knowledge/` — 机构知识库
 
 ### 状态文件（规划者私有）
 

@@ -32,8 +32,8 @@ The systems-level designer. Thinks in terms of user experience flows and service
 
 Load context:
 - Requirements spec from `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`
-- Knowledge base: ADRs, patterns, lessons from `{project-root}/_context/memory/sw-shared/knowledge-base/`
-- Service registry (if `architecture: "microservices"`): `{project-root}/_context/memory/sw-shared/service-registry.yaml`
+- Knowledge base: ADRs, patterns, lessons from `{project-root}/knowledge/`
+- Service registry: `{project-root}/_context/memory/sw-shared/service-registry.yaml`, generated from repositories under `{project-root}/services/`
 - Business domain config: `{project-root}/_context/config.yaml` → `sw.business_domain`
 
 Template resolution:

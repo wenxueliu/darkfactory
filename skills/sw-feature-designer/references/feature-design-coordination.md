@@ -14,9 +14,9 @@
 
 | 查询目标 | 在知识库中的位置 | 要回答的问题 |
 |---------|----------------|-------------|
-| 架构决策 | `knowledge-base/decisions/ADR-*.md` | 哪些已有 ADR 会约束本次设计？ |
-| 可复用模式 | `knowledge-base/patterns/` | 有没有已解决过类似问题的模式？ |
-| 经验教训 | `knowledge-base/lessons/` | 过去类似场景踩过什么坑？ |
+| 架构决策 | `knowledge/_enterprise/decisions/ADR-*.md` | 哪些已有 ADR 会约束本次设计？ |
+| 可复用模式 | `knowledge/_enterprise/patterns/` | 有没有已解决过类似问题的模式？ |
+| 经验教训 | `knowledge/_enterprise/lessons/` | 过去类似场景踩过什么坑？ |
 | 服务注册表 | `service-registry.yaml` | 哪些服务存在？它们的 API 和依赖是什么？ |
 | 需求规格 | `requirements/{id}.md` | 需求的具体约束和 AC 是什么？ |
 | 头脑风暴输出 | `designs/{id}-brainstorm.md` | 推荐的技术方向是什么？ |
@@ -42,8 +42,7 @@
 - 标注跨服务依赖
 - 评估风险等级
 
-**微服务模式:** 从 `service-registry.yaml` 获取服务列表，交叉比对。
-**单体模式:** 识别受影响的模块/包，输出到 Section 2。
+从 `service-registry.yaml` 获取 `services/` 下的仓库列表并交叉比对；只有一个仓库时仍输出一行仓库影响分析。
 
 ### 第 3 步: 渐进式填充 (Progressive Fill)
 

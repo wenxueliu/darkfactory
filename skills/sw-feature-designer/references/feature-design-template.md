@@ -12,12 +12,9 @@ contract_version: "1.0"
 
 特性设计文档是跨服务的 "大图"——定义用户旅程、服务影响范围、服务间交互和契约、部署策略。它不涉及任何服务的内部实现细节（那是 Stage 2 per-service 设计文档的职责）。
 
-### 架构模式
+### 仓库范围
 
-| 架构模式 | 行为 |
-|---------|------|
-| `monolith` | 第 2 节"服务影响分析"替换为"模块影响分析"，第 5-6 节标注 N/A |
-| `microservices` | 全章节适用 |
+所有章节都以 `services/` 下的代码仓为边界。一个仓库就是一个服务单元；没有跨仓库交互时，交互与契约章节必须明确标注 N/A。
 
 ### 模板可定制
 
@@ -29,7 +26,7 @@ contract_version: "1.0"
 
 **设计ID:** `{DESIGN-YYYYMMDD-NNN}`
 **关联需求:** `{REQ-YYYYMMDD-NNN}`
-**架构模式:** `monolith | microservices`
+**服务仓库范围:** `{services/{service-id}, ...}`
 **状态:** `draft | reviewed | approved | implemented`
 **创建时间:** `{timestamp}`
 
@@ -48,7 +45,7 @@ contract_version: "1.0"
 <!-- section-id: service_impact -->
 ## 2. 服务影响分析
 
-{列出此特性影响的所有服务/模块。微服务模式下从 `service-registry.yaml` 获取服务列表。}
+{列出此特性影响的所有服务仓库，从 `service-registry.yaml` 获取候选列表并以代码和需求证据确认。}
 
 | 服务/模块 | 影响类型 | 变更内容 | 依赖的其他服务 | 风险等级 |
 |----------|---------|---------|-------------|---------|
@@ -139,7 +136,7 @@ P-1 → P-2 → P-3
 <!-- section-id: service_interactions -->
 ## 5. 服务交互设计
 
-{微服务模式必填。单体模式下标注 N/A 跳过。}
+{有跨仓库交互时必填；没有跨仓库交互时标注 N/A 并说明原因。}
 
 ### 5.1 服务交互序列
 
@@ -167,18 +164,18 @@ P-1 → P-2 → P-3
 <!-- section-id: cross_service_contracts -->
 ## 6. 跨服务契约
 
-{微服务模式必填。定义服务间 API 调用的契约。单体模式下标注 N/A 跳过。}
+{有跨仓库 API/事件调用时必填；没有跨仓库调用时标注 N/A 并说明原因。}
 
 ### 6.1 契约清单
 
 | 契约 ID | 提供方 | 消费方 | 协议 | 路径 | 契约文件 |
 |---------|--------|--------|------|------|---------|
-| CT-001 | `{provider_svc}` | `{consumer_svc}` | HTTP | `{method} {path}` | `contracts/{provider_svc}-openapi.yaml` |
+| CT-001 | `{provider_svc}` | `{consumer_svc}` | HTTP | `{method} {path}` | `knowledge/_enterprise/contracts/{provider_svc}-openapi.yaml` |
 
 ### 6.2 契约定义 (每个契约)
 
 ```yaml
-# contracts/{service_id}-openapi.yaml (片段)
+# knowledge/_enterprise/contracts/{service_id}-openapi.yaml (片段)
 paths:
   {path}:
     {method}:
@@ -233,4 +230,4 @@ paths:
 - Per-service 设计文档 (Stage 2 产出):
 {列出所有受影响服务的 per-service 设计文档路径}
 - E2E 测试设计 (Stage 3 产出): `designs/{requirement_id}-e2e-design.md`
-- 知识库: `knowledge-base/decisions/`
+- 知识库: `knowledge/_enterprise/decisions/`

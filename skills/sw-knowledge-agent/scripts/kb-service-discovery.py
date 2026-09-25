@@ -8,9 +8,9 @@ Implements the 3-step process from sw-knowledge-agent/references/service-discove
 
 Outputs:
   - service-registry.yaml (machine-readable metadata)
-  - knowledge-base/services/{id}/overview.md
-  - knowledge-base/services/{id}/api-endpoints.md
-  - knowledge-base/services/{id}/db-schema.md
+  - knowledge/services/{id}/overview.md
+  - knowledge/services/{id}/api-endpoints.md
+  - knowledge/services/{id}/db-schema.md
 
 Usage:
     kb-service-discovery.py --probe --verbose
@@ -25,11 +25,11 @@ import sys
 from datetime import datetime, timezone
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
-_HARNESS_ROOT = os.path.dirname(os.path.dirname(_PROJECT_ROOT))
-_DEFAULT_SERVICES_DIR = os.path.join(_HARNESS_ROOT, "services")
-_DEFAULT_KB_DIR = os.path.join(_PROJECT_ROOT, "_context", "memory", "sw-shared", "knowledge-base")
-_DEFAULT_REGISTRY_PATH = os.path.join(_PROJECT_ROOT, "_context", "memory", "sw-shared", "service-registry.yaml")
+from kb_paths import KNOWLEDGE_DIR, REGISTRY_PATH, SERVICES_DIR
+
+_DEFAULT_SERVICES_DIR = str(SERVICES_DIR)
+_DEFAULT_KB_DIR = str(KNOWLEDGE_DIR)
+_DEFAULT_REGISTRY_PATH = str(REGISTRY_PATH)
 
 SKIP_DIRS = {".", "..", ".git", "__pycache__", "node_modules", ".venv", "venv", "env",
              ".pytest_cache", ".mypy_cache", ".tox", "dist", "build", ".next", ".turbo"}
@@ -783,7 +783,7 @@ def generate_registry_yaml(services, output_path):
             "depends_on_infra": svc.get("depends_on_infra", []),
             "depends_on_services": svc.get("depends_on_services", []),
             "depended_by_services": svc.get("depended_by_services", []),
-            "knowledge_path": f"services/{svc_id}/overview.md",
+            "knowledge_path": f"knowledge/services/{svc_id}/overview.md",
             "warnings": svc.get("warnings", []),
         }
 
@@ -861,7 +861,7 @@ def generate_registry_yaml(services, output_path):
         f.write("\n".join(lines) + "\n")
 
 
-def generate_overview_md(service_info, output_dir):
+def generate_overview_md(service_info, output_dir, services_dir=None):
     """Generate overview.md for a service."""
     svc_id = service_info["service_id"]
     os.makedirs(output_dir, exist_ok=True)
@@ -896,7 +896,8 @@ def generate_overview_md(service_info, output_dir):
     ])
 
     # Try to detect from README
-    readme_path = os.path.join(_DEFAULT_SERVICES_DIR, svc_id, "README.md")
+    source_root = services_dir or _DEFAULT_SERVICES_DIR
+    readme_path = os.path.join(source_root, svc_id, "README.md")
     has_readme = False
     if os.path.exists(readme_path):
         try:
@@ -1104,8 +1105,9 @@ def main():
     services = step1_service_inventory(services_dir)
 
     if not services:
-        print("No services found (no git repos under services/).")
-        return
+        print("No services found (no git repos under services/).", file=sys.stderr)
+        print("Initialization is blocked: place one or more source repositories under services/{repository-name}/.", file=sys.stderr)
+        sys.exit(1)
 
     print(f"Found {len(services)} service(s): {', '.join(s['service_id'] for s in services)}")
 
@@ -1158,7 +1160,7 @@ def main():
     # Per-service knowledge files
     for svc_info in services:
         svc_out = os.path.join(kb_dir, "services", svc_info["service_id"])
-        generate_overview_md(svc_info, svc_out)
+        generate_overview_md(svc_info, svc_out, services_dir)
         generate_api_endpoints_md(svc_info, svc_out)
         generate_db_schema_md(svc_info, svc_out)
         print(f"  Created: {svc_out}/overview.md")

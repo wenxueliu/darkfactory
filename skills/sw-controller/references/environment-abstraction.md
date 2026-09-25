@@ -29,8 +29,8 @@
 
 | 层级 | 用途 | 测试阶段 | 服务范围 | 生命周期 |
 |------|------|---------|---------|---------|
-| `worktree-local` | 任务内 TDD 开发 | GATE 1: UT + API (单服务) | 1 个服务 | 随 worktree 创建/销毁 |
-| `integration` | 跨服务集成测试 | GATE 3: 全量 UT+API + E2E | 所有受影响服务 | 测试执行期间 |
+| `worktree-local` | 任务内 TDD 开发 | GATE 1: UT + API | 1 个受影响代码仓 | 随 worktree 创建/销毁 |
+| `integration` | 集成测试 | GATE 3: 全量 UT+API + E2E | 所有受影响代码仓 | 测试执行期间 |
 | `staging` | 预发布验证 | 交付门禁: 冒烟 + 金丝雀 | 全量服务 (生产镜像) | 持续运行 |
 | `production` | 生产环境 | 只读监控 | 全量服务 | 持久 |
 
@@ -83,7 +83,7 @@ interface EnvironmentProvider:
 
 ### Provider 1: local-process
 
-最简单的 Provider。服务以**本机进程**方式运行，适用于单仓库单体或微服务 co-location 场景。
+最简单的 Provider。代码仓以**本机进程**方式运行，适用于 `services/` 下一个或多个仓库的本地开发。
 
 ```yaml
 # 配置
@@ -107,8 +107,7 @@ service_defaults:
 | `exec` | 直接在 worktree 内执行命令 |
 
 **适用场景:**
-- 单体架构
-- 微服务 co-location (所有服务在 `services/` 下)
+- `services/` 下一个或多个代码仓
 - 快速本地开发迭代
 
 **约束:**
@@ -208,7 +207,7 @@ k8s:
 | 生产 parity | 低 | 中 | 高 |
 | 依赖安装 | 需要所有运行时 | 只需 Docker | 只需 kubectl |
 | 端口管理 | 手动 | 自动 (容器网络) | 自动 (Service/Ingress) |
-| 适用团队 | 小型/单体 | 中型 | 大型/企业 |
+| 适用团队 | 低规模 | 中型 | 大型/企业 |
 | 工作流复杂度 | 最低 | 中 | 高 |
 
 ## 服务启动命令 (Per-Service Lifecycle)
@@ -262,7 +261,7 @@ services:
 ```yaml
 # _context/config.yaml
 sw:
-  architecture: "microservices"
+  source_root: "services"
 
   # 环境 Provider 配置 — 按层级选择 Provider
   environments:
@@ -339,7 +338,7 @@ sw:
 | `quality-gates.md` GATE 1 | `newman run` 命令中的 baseUrl 通过 `provider.get_endpoint()` 获取，不硬编码 localhost |
 | `quality-gates.md` GATE 3 | `docker-compose` 命令替换为 `provider.start()` / `provider.stop()` |
 | `task-decomposition.md` Step 3 | 第一/二/三轮 API 测试的环境表述，改为引用环境层级名而非具体技术 |
-| `microservice-adaptation.md` | `integration_test_mode` 废弃，迁移到 `environments.integration.provider` |
+| `repository-workspace.md` | `integration_test_mode` 废弃，迁移到 `environments.integration.provider`；该参考文档定义统一的多仓库工作区 |
 | `worktree-management.md` | 服务搭建命令从 lifecycle 字段读取，不硬编码 `./gradlew` |
 | `service-registry.yaml` schema | 新增 `lifecycle` 字段 |
 

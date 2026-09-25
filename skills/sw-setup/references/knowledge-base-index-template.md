@@ -8,14 +8,14 @@
 ## 目录结构
 
 ```
-knowledge-base/
+knowledge/
 ├── index.md                    # 本索引文件
 ├── .kb-log.jsonl               # 事务日志
 ├── _enterprise/                # 企业级全局知识
 │   ├── decisions/              # 影响多个/全部服务的 ADR
 │   ├── patterns/               # 跨服务可复用模式
 │   ├── lessons/                # 全局经验教训
-│   └── contracts/              # 跨服务 API 契约
+│   └── contracts/              # 跨仓库 API 契约
 ├── domains/                    # 业务领域级知识（预留）
 └── services/                   # 服务级知识（sw-knowledge-agent 自动发现）
     └── (services auto-discovered by sw-knowledge-agent)
@@ -30,4 +30,3 @@ knowledge-base/
 ## Patterns
 
 (sw-knowledge-agent 自动维护)
-

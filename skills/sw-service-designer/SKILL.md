@@ -33,7 +33,7 @@ The service-level architect. Thinks in terms of components, APIs, state machines
 Load context:
 - Feature design: `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md`
 - Service registry: `{project-root}/_context/memory/sw-shared/service-registry.yaml` (for service language/type)
-- Knowledge base: service-specific patterns from `{project-root}/_context/memory/sw-shared/knowledge-base/services/{service_id}/`
+- Knowledge base: service-specific patterns from `{project-root}/knowledge/services/{service_id}/`
 
 Service type detection:
 1. Load local `references/service-type-detection.md`
@@ -41,7 +41,7 @@ Service type detection:
 3. Otherwise, infer from `language` field using detection rules
 4. Resolve the local `service-design/{type}` document definition package
 
-In monolith mode (no service-registry.yaml): default to `backend` type, output to `designs/{requirement_id}-service-design.md`.
+If a registry entry is missing, inspect the repository under `services/{service_id}/`, infer the type from its files, and default to `backend` with a warning. The output remains bound to the repository's `service_id`.
 
 ## Capabilities
 

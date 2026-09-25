@@ -2,7 +2,7 @@
 
 适用于:
 - 测试/生产环境（需要 Docker）
-- 微服务容器化部署
+- `services/` 下代码仓的容器化部署
 - docker run / docker-compose
 """
 

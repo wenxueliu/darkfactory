@@ -15,7 +15,7 @@
 5. 解析对应定义包: `service-design/{type}`，使用其 manifest 选择模板、门禁和验证器
 6. 类型无法识别 → 默认 `backend` + 警告
 
-单体模式: 跳过检测，默认 `backend`。
+即使只有一个仓库也执行检测；服务类型来自注册表或仓库代码，无法识别时才默认 `backend` 并警告。
 
 ### 第 2 步: 上下文加载
 
@@ -23,7 +23,7 @@
 2. 从 Section 2 "服务影响分析" 提取该服务的变更内容
 3. 从 Section 5 "服务交互设计" 提取该服务参与的调用序列
 4. 从 Section 6 "跨服务契约" 提取该服务提供/消费的契约
-5. 读取 `knowledge-base/services/{service_id}/` 下的现有知识
+5. 读取 `knowledge/services/{service_id}/` 下的现有知识
 
 ### 第 3 步: 架构与接口设计
 

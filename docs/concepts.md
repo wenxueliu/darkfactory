@@ -30,7 +30,7 @@
 | 技术栈 | `references/` 按语言加载模式文件 | Python 项目加载 `references/patterns-python.md` |
 | 质量策略 | `enabled_reviewers` 配置 | 金融项目启用 security+logic；内部工具仅启用 logic |
 | 流程节奏 | `min_iteration_before_human` | 探索性项目设高值；关键项目设低值 |
-| 知识领域 | `knowledge-base/` 结构定制 | 微服务项目强化 `api-contracts/` |
+| 知识领域 | `knowledge/` 结构定制 | 跨仓库项目可强化 `knowledge/_enterprise/contracts/` |
 | 交付策略 | `merge_strategy` | 持续部署用 `rebase`；保守团队用 `merge` |
 | 自然语言 | `communication_language` | 中文/英文/日文团队，切换即用 |
 

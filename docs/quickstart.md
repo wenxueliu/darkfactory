@@ -16,7 +16,7 @@
 |----------|--------|
 | 我有一个已有项目，想给它加上黑灯工厂 | [场景 A：已有项目接入](#场景-a已有项目接入) |
 | 我要从零开始一个新项目 | [场景 B：新项目启动](#场景-b新项目启动) |
-| 我有多个微服务，想统一编排 | [场景 C：微服务多仓接入](#场景-c微服务多仓接入) |
+| 我有一个或多个代码仓，想统一编排 | [场景 C：多仓库工作区接入](#场景-c多仓库工作区接入) |
 | 我只是想先看看它长什么样 | [场景 D：5 分钟体验](#场景-d5-分钟体验) |
 
 ---
@@ -28,7 +28,7 @@
 在开始之前，先回答三个问题：
 
 1. **你的项目是什么语言？** Python / Java / Go / TypeScript / ...（`*` 表示自动检测）
-2. **你的项目是单体还是微服务？** 单体意味着一个 git 仓库对应一个可部署的服务
+2. **需要修改哪些代码仓？** 初始化后将一个或多个独立 Git 仓放入 `services/`；一个仓库是多仓模型的自然特例
 3. **你对质量门禁的严格度要求？**
    - 金融/合规场景 → 全开（security + logic + performance），人工介入频繁
    - 内部工具 → 仅 logic，减少打断
@@ -41,13 +41,13 @@
 ```bash
 mkdir -p _context/memory/sw-shared
 mkdir -p _context/memory/sw-controller
+mkdir -p services knowledge
 ```
 
 **`_context/config.yaml`**（根据上面的回答调整）：
 
 ```yaml
 sw:
-  architecture: "monolith"              # 单体服务
   business_domain: "general"            # general | fintech | ecommerce | internal-tools
   min_iteration_before_human: 3         # AI 自主迭代几次后升级到人工
   enabled_reviewers: "logic"            # 起步保守，后续加 security,performance
@@ -61,6 +61,8 @@ sw:
 communication_language: Chinese
 user_name: 你的名字
 ```
+
+初始化完成后，将需要修改的现有代码仓克隆或移动到 `services/{仓库名}/`。如果有多个仓库，每个仓库都作为 `services/` 的直接子目录保留自己的 `.git/`；不要把业务源码留在工作区根目录。
 
 > 完整的配置项说明见 `CLAUDE.md` 中的 Configuration 章节。
 
@@ -130,8 +132,8 @@ echo "_context-output/" >> .gitignore
 mkdir my-project && cd my-project
 git init
 
-# 创建基础目录
-mkdir -p src tests
+# 创建基础目录；业务源码仓库放到 services/ 下
+mkdir -p services knowledge
 mkdir -p _context/memory/sw-shared
 mkdir -p _context/memory/sw-controller
 mkdir -p skills
@@ -143,7 +145,6 @@ mkdir -p skills
 
 ```yaml
 sw:
-  architecture: "monolith"
   business_domain: "general"
   min_iteration_before_human: 3
   enabled_reviewers: "security,logic,performance"
@@ -158,14 +159,27 @@ communication_language: Chinese
 user_name: 你的名字
 ```
 
-### 第三步：安装技能
+### 第三步：放入源码仓库
+
+在启动 `/sw-controller` 之前，将需要开发的源码仓库放入 `services/`：
+
+```bash
+# 现有仓库
+git clone <repository-url> services/my-service
+
+# 或将本地仓库移动/复制到 services/my-service/
+```
+
+每个 `services/{仓库名}/` 都必须保留自己的 `.git/`。即使只有一个仓库，也不能把业务源码直接放在工作区根目录；`services/` 为空时初始化会被阻断。
+
+### 第四步：安装技能
 
 ```bash
 # 从黑灯工厂仓库安装全部技能
 python /path/to/harness/services/multiagents/install.py --target .
 ```
 
-### 第四步：让 sw-controller 带你走
+### 第五步：让 sw-controller 带你走
 
 ```
 /sw-controller 我要启动一个新项目，技术栈是 {Python FastAPI / Go Gin / Java Spring Boot / ...}，
@@ -180,28 +194,28 @@ sw-controller 会引导你完成：
 5. **审查通过** — 逻辑、安全、性能三层审查
 6. **交付就绪** — 代码合并、集成测试、发布清单
 
-### 第五步：沉淀知识
+### 第六步：沉淀知识
 
-第一次开发完成后，检查 `_context/memory/sw-shared/knowledge-base/`：
-- `patterns/` — 本次发现的可复用模式
-- `decisions/ADR-0001-*.md` — 架构决策记录
-- `lessons/` — 经验教训
+第一次开发完成后，检查 `knowledge/`：
+- `knowledge/_enterprise/patterns/` — 本次发现的可复用模式
+- `knowledge/_enterprise/decisions/ADR-0001-*.md` — 架构决策记录
+- `knowledge/_enterprise/lessons/` — 经验教训
 
 这些沉淀会在后续开发中被自动引用。
 
 ---
 
-## 场景 C：微服务多仓接入
+## 场景 C：多仓库工作区接入
 
 ### 前置条件确认
 
-你有多个独立的微服务仓库。比如：`user-service`、`order-service`、`web-frontend`。
+你有一个或多个独立的代码仓库。比如：`user-service`、`order-service`、`web-frontend`；即使只有一个仓库，也放入 `services/` 并走同一流程。
 
 ### 第一步：创建工作目录
 
 ```bash
 mkdir sw-workspace && cd sw-workspace
-git init  # 这个仓只放 _context + skills，不放服务代码
+git init  # 工作区保存 _context、skills、services 和 knowledge
 ```
 
 ### 第二步：克隆所有服务
@@ -220,7 +234,8 @@ git clone git@github.com:org/web-frontend.git services/web-frontend
 创建 `_context/` 目录结构——这是**手动一次性**操作，建立空的记忆目录骨架：
 
 ```bash
-mkdir -p _context/memory/sw-shared/knowledge-base/{patterns,decisions,lessons,api-contracts}
+mkdir -p services knowledge/_enterprise/{patterns,decisions,lessons,contracts}
+mkdir -p knowledge/{domains,services}
 mkdir -p _context/memory/sw-shared/reviews
 mkdir -p _context/memory/sw-controller
 ```
@@ -229,13 +244,6 @@ mkdir -p _context/memory/sw-controller
 
 ```yaml
 sw:
-  architecture: "microservices"
-
-  microservices:
-    max_parallel_services: 4
-    integration_test_mode: "docker-compose"
-    contract_first: true
-
   business_domain: "general"
   min_iteration_before_human: 3
   enabled_reviewers: "security,logic,performance"
@@ -276,31 +284,31 @@ python /path/to/harness/services/multiagents/install.py --target .
 | 产物 | 路径 |
 |------|------|
 | 服务注册表 | `_context/memory/sw-shared/service-registry.yaml` |
-| 服务概览 | `_context/memory/sw-shared/knowledge-base/services/{id}/overview.md` |
-| API 端点文档 | `_context/memory/sw-shared/knowledge-base/services/{id}/api-endpoints.md` |
-| 数据库 Schema | `_context/memory/sw-shared/knowledge-base/services/{id}/db-schema.md` |
+| 服务概览 | `knowledge/services/{id}/overview.md` |
+| API 端点文档 | `knowledge/services/{id}/api-endpoints.md` |
+| 数据库 Schema | `knowledge/services/{id}/db-schema.md` |
 
 你不需要手写任何服务元数据——服务信息从代码中自动检测，而非人工配置。
 
 > KB 的三级分层结构、自动/手动内容划分、后续更新策略详见 [`docs/knowledge-base.md`](knowledge-base.md)。
 
-### 第六步：开始一个跨服务需求
+### 第六步：开始一个需求
 
 ```
 /sw-controller 用户下单时需要校验信用分，涉及 user-service（新增信用分接口）、
 order-service（调用信用分校验）、web-frontend（下单页展示信用额度）
 ```
 
-微服务模式下的关键差异：
+多仓库工作区的统一规则：
 
-| 阶段 | 与单体的区别 |
+| 阶段 | 统一规则 |
 |------|------------|
-| 需求 | 追加「服务影响分析」表，标注每个服务的变更类型 |
-| 设计 | 3 个 Agent 依次执行：特性设计（跨服务）→ 服务设计（每服务并行）→ E2E 设计 |
-| 拆分 | 按服务分组，跨服务依赖标记为 CONTRACT 类型（可并行 + mock） |
-| 执行 | 不同服务的 worktree 独立创建在 `.worktree/{service-id}/` 下 |
-| 质量 | 新增契约测试层（API 测试通过后、E2E 前） |
-| 交付 | 多服务协调发布序列，按依赖关系分 wave 上线 |
+| 需求 | 始终从 `services/` 生成服务影响分析；一个仓库至少一行 |
+| 设计 | 特性设计 → 按受影响仓库的服务设计 → 必要时 E2E 设计 |
+| 拆分 | 按代码仓分组；跨仓库依赖有证据时标记 CONTRACT |
+| 执行 | 每个仓库的 worktree 独立创建在 `.worktree/{service-id}/` 下 |
+| 质量 | 每个仓库独立验证；有跨仓库契约时增加契约测试 |
+| 交付 | 按实际依赖关系编排发布，无依赖时不人为增加 wave |
 
 ---
 
@@ -369,15 +377,16 @@ sw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 |------|------|--------|
 | `_context/config.yaml` | 项目配置 | 你（人工） |
 | `_context/memory/sw-shared/` | 需求、设计、任务、审查 | sw-controller（自动） |
-| `_context/memory/sw-shared/knowledge-base/_enterprise/` | 全局 ADR、契约、跨服务模式 | sw-controller + 人工审核 |
-| `_context/memory/sw-shared/knowledge-base/domains/` | 业务领域级知识 | sw-controller（自动分类） |
-| `_context/memory/sw-shared/knowledge-base/services/` | 每个服务的 API、Schema、概览 | sw-knowledge-agent（自动生成） |
+| `services/` | 一个或多个独立源码仓库 | 用户放入，Agent 只读/修改受影响仓库 |
+| `knowledge/_enterprise/` | 全局 ADR、契约、跨仓库模式 | sw-controller + 人工审核 |
+| `knowledge/domains/` | 业务领域级知识 | sw-controller（自动分类） |
+| `knowledge/services/` | 每个代码仓的 API、Schema、概览 | sw-knowledge-agent（自动生成） |
 | `_context/memory/sw-controller/` | 编排状态、worktree 注册表 | sw-controller（自动） |
 | `.worktree/` | 隔离开发环境 | 自动创建/销毁 |
 | `skills/` | Agent 技能定义（Claude Code） | 随黑灯工厂更新 |
 | `agents/` | Agent 独立 prompt 模板（Codex/OpenCode） | 随黑灯工厂更新 |
-| `contracts/` | 跨服务 API 契约 | sw-controller + 人工审核 |
-| `service-registry.yaml` | 服务注册表（技术栈/依赖图） | sw-knowledge-agent（自动生成） |
+| `knowledge/_enterprise/contracts/` | 跨仓库 API 契约 | sw-controller + 人工审核 |
+| `_context/memory/sw-shared/service-registry.yaml` | 服务注册表（技术栈/依赖图） | sw-knowledge-agent（自动生成） |
 
 ---
 

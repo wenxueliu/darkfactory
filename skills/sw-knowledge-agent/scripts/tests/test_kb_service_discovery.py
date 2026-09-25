@@ -40,14 +40,16 @@ def _create_git_repo(path, remote_url=None):
 
 
 def test_scan_empty_services_dir(tmp_path):
-    """Empty services directory produces empty results."""
+    """Empty services directory blocks initialization."""
     services_dir = tmp_path / "services"
     services_dir.mkdir()
     output_dir = tmp_path / "kb"
     registry = tmp_path / "registry.yaml"
 
     proc = run_discovery(services_dir, output_dir, registry)
-    assert "No services found" in proc.stdout
+    assert proc.returncode != 0
+    assert "No services found" in proc.stderr
+    assert "place one or more source repositories" in proc.stderr
 
 
 def test_scan_git_repos(tmp_path):
@@ -90,7 +92,7 @@ def test_skip_hidden_dirs(tmp_path):
     registry = tmp_path / "registry.yaml"
 
     proc = run_discovery(services_dir, output_dir, registry)
-    assert "No services found" in proc.stdout
+    assert "No services found" in proc.stderr
 
 
 def test_detect_python(tmp_path):
@@ -233,6 +235,20 @@ def test_service_registry_yaml_generated(tmp_path):
     assert "my-svc:" in content
     assert "display_name" in content
     assert "language:" in content
+
+
+def test_registry_points_to_project_knowledge_path(tmp_path):
+    """Registry knowledge paths point to the independent knowledge root."""
+    services_dir = tmp_path / "services"
+    services_dir.mkdir()
+    _create_git_repo(services_dir / "my-svc")
+
+    output_dir = tmp_path / "knowledge"
+    registry = tmp_path / "registry.yaml"
+
+    proc = run_discovery(services_dir, output_dir, registry)
+    assert proc.returncode == 0
+    assert "knowledge/services/my-svc/overview.md" in registry.read_text()
 
 
 def test_service_knowledge_files(tmp_path):

@@ -9,11 +9,11 @@
 
 **纵向拆分原则:** 每个任务是一个独立的纵向切片——自包含实现代码 + UT + API 测试。不允许把测试横切为独立任务（如 "API 测试任务"、"E2E 测试任务"），UT 和 API 测试必须在同一个 worktree 内随代码一起完成。E2E 测试跨服务编排，作为最后一个 wave 的独立任务。
 
-**拆分是可选的:** 一个微服务可以只对应一个任务。拆分是优化手段，不是强制要求。只有当服务内的功能点可以独立验证时才拆分。
+**拆分是可选的:** 一个代码仓可以只对应一个任务。拆分是优化手段，不是强制要求。只有当仓库内的功能点可以独立验证时才拆分。
 
 ## 拆分流程 (6 步)
 
-> **第 1 步新增了「服务识别」子流程**（原第 1 步只做工作单元提取）。在微服务模式下，必须先确定受影响的服务列表（4 级 fallback），才能提取工作单元。单体模式下跳过服务识别。
+> **第 1 步包含「服务仓库识别」子流程**。必须先确定 `services/` 下受影响的代码仓列表，才能提取工作单元；即使只有一个仓库也执行识别。
 
 ### 第 1 步: 确定受影响服务列表 + 提取工作单元 (Identify Services & Extract Work Units)
 
@@ -24,7 +24,7 @@
 3. **Stage 2 Per-service 设计:** `designs/{id}-service-{svc}-design.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
 4. **Stage 3 E2E 测试设计:** `designs/{id}-e2e-design.md` — 用于最后一个 wave 的 E2E 任务
 5. **需求规格:** `requirements/{id}.md` — 验收条件来源
-6. **ADR:** `knowledge-base/decisions/ADR-*.md` — 架构约束
+6. **ADR:** `knowledge/_enterprise/decisions/ADR-*.md` — 架构约束
 
 **受影响服务必须从设计文档获取，禁止臆想:**
 
@@ -63,18 +63,18 @@
   │
   └─ 第 4 优先: 用户交互输入
        向用户提问:
-         "无法自动确定受影响的服务列表。请提供本次需求涉及的服务:"
-         选项 A: 输入服务名称（逗号分隔）
-         选项 B: 只有 1 个服务（单体模式，直接输入服务路径）
-         选项 C: 跳过服务验证，手动指定 per-service 设计文档路径
+         "无法自动确定受影响的代码仓。请提供 services/ 下的仓库路径:"
+         选项 A: 输入仓库名称（逗号分隔）
+         选项 B: 指定一个仓库路径
+         选项 C: 手动指定 per-service 设计文档路径
        用户输入后，记录到临时服务清单，继续后续步骤
        同时提示: "建议运行 sw-knowledge-agent service-discovery 生成 service-registry.yaml，避免下次重复询问。"
 ```
 
-**单体模式 (architecture: "monolith"):**
-- 如果 `service-registry.yaml` 不存在且 `services/` 目录为空 → 跳过服务验证
-- 直接从需求规格和设计文档提取工作单元（组件/端点/页面）
-- 任务不绑定 `service` 字段，使用 `component` 字段
+**空目录处理:**
+- `services/` 不存在或为空是初始化错误，必须阻塞并提示用户放入源码仓。
+- 注册表缺失时可以从 `services/` 重新发现；不能退回到项目根目录源码或跳过服务验证。
+- 每个任务都绑定 `service_id` 和 `service_path`；仓库内的组件、端点和页面作为任务的 `component` 字段。
 
 **为什么不能臆想服务:**
 - 服务列表的唯一权威来源是 `service-registry.yaml`（由 sw-knowledge-agent 从代码自动发现）
@@ -263,13 +263,13 @@ Final Wave: E2E 测试任务（依赖所有实现任务）
 requirement_id: "{REQ-YYYYMMDD-NNN}"
 created_at: "{timestamp}"
 total_estimated_hours: {n}
-split_strategy: "one-task-per-service" | "by-endpoint" | "by-component" | "by-user-story"
+split_strategy: "one-task-per-repository" | "by-endpoint" | "by-component" | "by-user-story"
 
 tasks:
   - task_id: "sw-{NNN}"
     name: "{描述性名称}"
     description: "{1-2 句话描述做什么}"
-    service: "{对应微服务名}"
+    service: "{对应代码仓的 service_id}"
     service_path: "{服务代码路径，来自 service-registry.yaml local_path，如 services/user-service}"
     repo_url: "{服务 git 仓库地址，来自 service-registry.yaml repo}"
     language: "{服务语言/框架，来自 service-registry.yaml language，如 java-springboot}"

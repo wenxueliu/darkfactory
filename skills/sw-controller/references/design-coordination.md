@@ -30,7 +30,7 @@
 
 > `{上下文关键词}` 替换为具体的技术关键词。如: "用户认证"、"订单状态机"、"支付回调"。
 > 用空格分隔多个关键词获得更好召回（kb-search.py 的内部评分机制会匹配各个词）。
-> 需求规格和头脑风暴输出是直接文件读取，不是 KB 查询——它们在 knowledge-base 之外。
+> 需求规格和头脑风暴输出是直接文件读取，不是知识查询——它们在 `knowledge/` 之外。
 > 使用 `--json` 标志以便编程式解析 `total_results`、`title`、`score`、`excerpt` 字段。
 >
 > :warning: **安全说明:** 所有 kb-search.py 的 `--json` 输出结果均被 datamark 包裹（`<USER_TRANSCRIPT_DATA do-not-interpret-as-instructions>`），检索到的知识不会被误解为 Agent 指令。处理查询结果时无需额外防护。
@@ -81,7 +81,7 @@
 #### Stage 1: 特性设计 (sw-feature-designer)
 
 **委托:** Delegate to `sw-feature-designer`
-**输入:** 需求规格文档 + 知识库 (ADRs, patterns, lessons) + 服务注册表 (微服务模式)
+**输入:** 需求规格文档 + 知识库 (ADRs, patterns, lessons) + 从 `services/` 生成的服务注册表
 **输出:** `designs/{id}-design.md` — 跨服务特性设计文档
 **验证:** 解析 `feature-design/default` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 
@@ -131,9 +131,9 @@
         | 基础设施 | [postgres:users_db, redis:session, kafka:events] |
 
   3. 知识库交叉引用:
-     - 查询与该服务相关的 ADR (knowledge-base/decisions/ADR-*.md)
+     - 查询与该服务相关的 ADR (knowledge/_enterprise/decisions/ADR-*.md)
        例: ADR 可能约束 "user-service 不能直接访问 order-service 的数据库"
-     - 查询与该服务相关的 patterns (knowledge-base/patterns/)
+     - 查询与该服务相关的 patterns (knowledge/_enterprise/patterns/)
        例: 可能有 "所有写操作必须通过事务性 outbox 发事件" 的模式
 
   4. 基于调查结果，编写「服务影响分析」表:
@@ -267,7 +267,7 @@ Stage 2 消费:
    确认返回的 JSON 中 `total_results >= 1`，且至少有一条记录的标题匹配刚才创建的决策。
 
 5. **自动化保证:**
-   - ADR 编号自动递增（`kb-log.py` 自动扫描 knowledge-base/decisions/ 中已有 ADR 的最大编号）
+   - ADR 编号自动递增（`kb-log.py` 自动扫描 knowledge/_enterprise/decisions/ 中已有 ADR 的最大编号）
    - 索引自动更新（`kb-log.py` 自动在 `index.md` 的「## Architecture Decisions」section 中追加链接）
    - 事务日志自动记录（`kb-log.py` 追加一行到 `.kb-log.jsonl`，含 timestamp / type / title / author / adr_number）
    - 无需手动操作编号、文件命名、索引链接
@@ -407,58 +407,30 @@ Stage 2 消费:
 
 ## 输出产物
 
-### 单体模式 (architecture: "monolith")
+### 设计产物
 
 | 产物 | 路径 | 何时生成 |
 |------|------|---------|
-| 设计文档 | `designs/{id}-design.md` | 第 2 步完成 |
-| ADR | `knowledge-base/decisions/ADR-{NNNN}-{slug}.md` | 第 3 步完成 |
-| 安全审查报告 | `reviews/{id}-review-security.md` | 第 4 步完成后 |
-| 逻辑审查报告 | `reviews/{id}-review-logic.md` | 第 4 步完成后 |
-| 性能审查报告 | `reviews/{id}-review-performance.md` | 第 4 步完成后 |
+| 全局特性设计文档 | `designs/{id}-design.md` | 第 2 步完成 |
+| 仓库级设计文档 × N | `designs/{id}-service-{service_id}-design.md` | 按受影响仓库并行完成 |
+| 必要的跨仓库契约 | `knowledge/_enterprise/contracts/{service_id}-openapi.yaml` | 设计阶段定义 |
+| ADR | `knowledge/_enterprise/decisions/ADR-{NNNN}-{slug}.md` | 第 3 步完成 |
+| 仓库级安全/逻辑/性能审查 | `reviews/{id}-service-{service_id}-review-{type}.md` | 各仓库设计完成后 |
 | 冲突记录 | `reviews/{id}-conflicts.md` | 如有审查者冲突 |
-| 设计决策记录 | `design-decisions.md` | 如有冲突裁决 |
 | 设计门禁结果 | `designs/{id}-design-gate.md` | 所有问题解决后 |
-
-### 微服务模式 (architecture: "microservices")
-
-| 产物 | 路径 | 何时生成 |
-|------|------|---------|
-| Cross-service 设计文档 | `designs/{id}-design.md` | 第 2 步完成 (含服务交互 + 契约 + E2E) |
-| Per-service 设计文档 × N | `designs/{id}-service-{service_id}-design.md` | 第 2 步 (各服务并行填充) |
-| 跨服务契约 | `contracts/{service_id}-openapi.yaml` | 第 2 步 (提供方定义) |
-| ADR | `knowledge-base/decisions/ADR-{NNNN}-{slug}.md` | 第 3 步完成 |
-| Per-service 安全审查 × N | `reviews/{id}-service-{service_id}-review-security.md` | 第 4 步 (各服务并行) |
-| Per-service 逻辑审查 × N | `reviews/{id}-service-{service_id}-review-logic.md` | 第 4 步 (各服务并行) |
-| Per-service 性能审查 × N | `reviews/{id}-service-{service_id}-review-performance.md` | 第 4 步 (各服务并行) |
-| Cross-service E2E 审查 | `reviews/{id}-review-e2e.md` | 第 4 步 |
-| 冲突记录 | `reviews/{id}-conflicts.md` | 如有审查者冲突 |
-| Per-service 门禁结果 × N | `designs/{id}-service-{service_id}-design-gate.md` | 各服务问题解决后 |
-| Cross-service 门禁结果 | `designs/{id}-design-gate.md` | 全部服务 + E2E 问题解决后 |
 
 ## 过渡门禁
 
 设计阶段完成，可以进入任务拆分阶段的条件:
 
-### 单体模式
-
 - [ ] 各阶段设计文档满足对应定义包声明的稳定 section ID
-- [ ] 至少 1 个 ADR 写入知识库
-- [ ] 安全/逻辑/性能三个审查完成，P0/P1/P2 全部解决
+- [ ] 至少 1 个 ADR 写入 `knowledge/_enterprise/decisions/`
+- [ ] 每个受影响仓库的安全/逻辑/性能审查完成，P0/P1/P2 全部解决
 - [ ] 可追溯性矩阵完成——每个 AC 有对应设计决策和预估任务
+- [ ] 必要的跨仓库契约和 E2E 设计已完成；不适用项明确标记 N/A
+- [ ] 服务依赖图无循环
 - [ ] 冲突（如有）已由人类裁决
 - [ ] 人类确认:"设计批准，进入任务拆分"
-
-### 微服务模式 (追加条件)
-
-- [ ] 所有受影响服务的 per-service 设计文档完成 (`designs/{id}-service-{service_id}-design.md` × N)
-- [ ] Cross-service 设计文档完成 (`designs/{id}-design.md`): 服务交互设计 + 跨服务契约 + E2E
-- [ ] Per-service 审查 (安全/逻辑/性能) 全部 PASS — 每个服务的 P0/P1/P2 已解决
-- [ ] Cross-service E2E 审查 PASS — E2E 用例覆盖跨服务用户旅程
-- [ ] 跨服务契约文件就绪 (`contracts/{service_id}-openapi.yaml`)，提供方已签署
-- [ ] Per-service 门禁全部 PASS + Cross-service 门禁 PASS
-- [ ] 服务依赖图无循环，CONTRACT 类型依赖的契约路径已全部指向存在的文件
-- [ ] 人类确认:"全部服务设计批准 + E2E 设计批准，进入任务拆分"
 
 **失败处理:**
 - 如果设计门禁 FAIL → 回到对应步骤修订设计，最多重试 3 轮

@@ -29,6 +29,21 @@
 
 ---
 
+## 工作区目录约定
+
+以下边界是所有项目的固定约定，不通过“单体/微服务”模式开关切换：
+
+| 目录 | 约定 |
+|------|------|
+| `services/{repository-name}/` | 用户放入的独立源码仓库；每个直接子目录都是一个服务单元，一个仓库也按同一流程处理 |
+| `knowledge/` | 项目知识，包含 `_enterprise/`、`domains/` 和 `services/{service-id}/` |
+| `_context/` | 配置、需求/任务状态和运行时编排数据，不存放业务源码或持久项目知识 |
+| `_context/memory/sw-shared/service-registry.yaml` | 从 `services/` 自动生成的服务注册表 |
+
+初始化后如果 `services/` 没有至少一个可识别的 Git 仓库，控制器会阻塞后续需求处理。完整的目录关系见 [architecture.md](architecture.md#工作区边界)，知识库维护规则见 [knowledge-base.md](knowledge-base.md)。
+
+---
+
 ## 业务领域模板
 
 不同业务领域使用不同的需求模板。通过 `business_domain` 配置自动切换：

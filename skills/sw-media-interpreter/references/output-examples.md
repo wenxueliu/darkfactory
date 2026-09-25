@@ -153,8 +153,8 @@ goal: 描述这个登录页面的布局和所有UI元素
 ### 输入 (Caller)
 
 ```
-file_path: /path/to/microservices-arch.png
-goal: 描述这个微服务架构图中的所有组件、分层和调用关系
+file_path: /path/to/service-workspace-arch.png
+goal: 描述这个多仓库服务工作区中的所有组件、分层和调用关系
 ```
 
 ### 正确输出

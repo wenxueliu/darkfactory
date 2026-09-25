@@ -36,7 +36,7 @@ Every project goes through this process. "Simple" projects are where unexamined 
 
 ## On Activation
 
-1. Read the current project context: `_context/config.yaml`, recent design docs in `_context-output/designs/`, knowledge base in `_context/memory/sw-shared/knowledge-base/`
+1. Read the current project context: `_context/config.yaml`, recent design docs in `_context-output/designs/`, and project knowledge in `knowledge/`
 2. Run `sw-controller`'s Intent Gate (Phase 0) to classify the request
 3. If implementation intent with no clear design: proceed with brainstorming
 4. Create a todo list for the brainstorming checklist
@@ -75,7 +75,7 @@ Explore Context → Assess Scope → Clarifying Questions (one at a time)
 Before asking questions, understand the current state:
 - Read `_context/config.yaml` for business domain and project settings
 - Check `_context/memory/sw-shared/design-decisions.md` for existing ADRs
-- Check `_context/memory/sw-shared/knowledge-base/` for relevant patterns and lessons
+- Check `knowledge/` for relevant patterns and lessons
 - Check `_context-output/designs/` for related design documents
 - Check recent git history for active areas of development
 

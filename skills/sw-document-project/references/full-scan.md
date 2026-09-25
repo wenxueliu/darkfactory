@@ -33,25 +33,18 @@ Scan `project_root_path` for key indicators:
 - Directory structure (presence of client/, server/, api/, src/, app/, etc.)
 - Key files (package.json, go.mod, requirements.txt, etc.)
 
-Detect if project is:
-- **Monolith**: Single cohesive codebase
-- **Monorepo**: Multiple parts in one repository
-- **Multi-part**: Separate client/server or similar architecture
+Treat the project root as a workspace. Discover source repositories from `services/`; each direct child Git repository is one documentation part. A workspace with one repository creates one part and uses exactly the same flow as a workspace with multiple repositories. If `services/` is absent or empty, stop and ask the user to place the repositories there.
 
-If multiple distinct parts detected (e.g., client/ and server/ folders):
-- List detected parts with their paths
-- Ask user to confirm: "I detected multiple parts in this project. Is this correct? Should I document each part separately?"
-- If confirmed: For each part, identify root path, run project type detection using `key_file_patterns` from CSV
-
-If single cohesive project detected:
-- Set `repository_type = "monolith"`
-- Create single part with `root_path = project_root_path`
+For each discovered repository:
+- List its path and detected project type
+- Ask the user to confirm the repository list when discovery is ambiguous
+- Identify its root path and run project type detection using `key_file_patterns` from CSV
 
 For each part, match detected technologies/file patterns against `key_file_patterns` column in CSV. Assign `project_type_id` to each part. Load corresponding documentation requirements row.
 
 Present classification to user: "I've classified this project: {summary}. Does this look correct?"
 
-Purge detailed scan results from context. Keep only: "{repository_type}, {parts_count} parts, {primary_tech}".
+Purge detailed scan results from context. Keep only: "{parts_count} source repositories, {primary_tech}".
 
 ---
 
@@ -246,8 +239,8 @@ For each part:
   - Deployment Architecture (from Step 6)
   - Testing Strategy (from test patterns)
 
-If single part: generate `architecture.md` (no part suffix).
-If multi-part: generate `architecture-{part_id}.md` for each part.
+If one part: generate `architecture.md` (no part suffix).
+If multiple parts: generate `architecture-{part_id}.md` for each repository.
 
 For each architecture file: write immediately, validate, purge. Keep only: "Architecture for {part_id} written".
 
@@ -258,8 +251,7 @@ For each architecture file: write immediately, validate, purge. Keep only: "Arch
 Generate **project-overview.md** using the resolved `project-overview/default` definition with:
 - Project name and purpose (from README or user input)
 - Executive summary, tech stack summary table
-- Architecture type classification
-- Repository structure (monolith/monorepo/multi-part)
+- Workspace repository count and source layout
 - Links to detailed docs
 
 Generate **component-inventory.md** (or per-part) with:
@@ -277,7 +269,7 @@ If deployment configuration found: generate **deployment-guide.md**.
 If contribution guidelines found: generate **contribution-guide.md**.
 If API contracts documented: generate **api-contracts.md** (or per-part).
 If data models documented: generate **data-models.md** (or per-part).
-If multi-part: generate **integration-architecture.md** and **project-parts.json**.
+If multiple repositories have integration points: generate **integration-architecture.md** and **project-parts.json**.
 
 Write each file immediately after generation. Validate each file. Purge after writing.
 

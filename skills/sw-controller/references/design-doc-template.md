@@ -21,16 +21,9 @@
 
 此模板在需求门禁 PASS 后使用。基于 `requirements/{requirement_id}.md` 创建。
 
-### 架构模式适配
+### 仓库边界与章节归属
 
-| 架构模式 | 文档结构 | 模板使用方式 |
-|---------|---------|------------|
-| `monolith` (默认) | 一份文档包含全部 13 章 | 直接使用本模板 |
-| `microservices` | N 个 per-service 文档 + 1 个 cross-service 文档 | 见 `microservice-adaptation.md` — 本模板章节按拆分原则分属不同文档 |
-
-### 微服务模式下的章节归属
-
-当 `architecture: "microservices"` 时，本模板的章节按以下原则拆分:
+所有文档都以 `services/` 下的代码仓为边界。一个仓库就是一个服务单元；仓库数量决定是否并行，不决定是否加载另一套架构模板。
 
 **Per-service 文档** (`designs/{id}-service-{service_id}-design.md`) — 使用本模板的 Section 4-10.4:
 - Section 4 技术决策 → per-service S1
@@ -41,16 +34,14 @@
 - Section 9 安全设计 → per-service S6
 - Section 10.1-10.4 测试设计 (UT + API) → per-service S7-S8
 
-**Cross-service 文档** (`designs/{id}-design.md`) — 使用本模板的其余章节:
+**全局特性文档** (`designs/{id}-design.md`) — 使用本模板的其余章节:
 - Section 1-3 设计概述/用户旅程/页面设计
 - Section 10.5 E2E 测试设计
 - Section 10.6-10.7 三层追溯矩阵/测试数据策略
 - Section 11-13 部署/开放问题/下游引用
-- 加上微服务专属: 服务交互设计 + 跨服务契约 + per-service 文档引用指针
+- 加上跨仓库扩展: 服务交互设计 + 跨仓库契约 + per-service 文档引用指针
 
-**拆分原因:** UT 和 API 测试随服务——测试的是该服务的代码和端点。E2E 跨服务——验证的是完整用户旅程，不归属单一服务。
-
-### 单体模式
+**拆分原因:** UT 和 API 测试随仓库——测试的是该仓库的代码和端点。需要时，E2E 和契约测试验证跨仓库用户旅程；没有跨仓库交互时明确标记 N/A。
 
 填入后写入 `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md`。
 
@@ -545,4 +536,4 @@ JSON 文件格式规范见 `references/api-test-postman-schema.md`。
 
 - 需求规格: `requirements/{requirement_id}.md`
 - 任务拆分: `_context/memory/sw-shared/tasks.yaml`
-- 知识库: `_context/memory/sw-shared/knowledge-base/decisions/`
+- 知识库: `knowledge/_enterprise/decisions/`

@@ -206,7 +206,7 @@
 
 - **创建**：Step 2 (Initialize Notepad) -- 当开始执行计划时创建
 - **累积**：每个委托前读取，每个验证后写入
-- **归档**：Final Verification Wave 全部通过后，整个 notepad 目录可以考虑合并到共享知识库 `_context/memory/sw-shared/knowledge-base/`
+- **归档**：Final Verification Wave 全部通过后，整个 notepad 目录可以考虑合并到共享知识库 `knowledge/`
 - **清理**：不自动删除。如需清理，这是人工决策。
 
 ## Notepad 使用示例

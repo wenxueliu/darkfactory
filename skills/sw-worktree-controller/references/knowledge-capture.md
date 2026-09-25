@@ -50,7 +50,7 @@ Every knowledge entry carries source and confidence metadata. This determines ho
 |-------|---------|---------|
 | 10 | Certain (human confirmed, tested) | "We chose Consul KV after benchmarking against etcd and Redis" |
 | 8-9 | High confidence (strong evidence) | "The DAG pattern has been used in 15+ workflows without issues" |
-| 5-7 | Medium confidence (reasonable assumption) | "This pattern likely applies to similar microservice architectures" |
+| 5-7 | Medium confidence (reasonable assumption) | "This pattern likely applies to similar service/repository layouts" |
 | 3-4 | Low confidence (speculative) | "This might be related to the performance issue" |
 | 1-2 | Very low (guess, needs validation) | "Could this be a memory leak?" |
 

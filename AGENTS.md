@@ -214,6 +214,8 @@ multiagents/
 ├── skills/                  # 32 skill directories
 ├── agents/                  # Standalone agent prompt templates
 ├── docs/                    # Documentation
+├── services/                # User-provided source repositories (one or more)
+├── knowledge/               # Independent project knowledge
 ├── hooks/                   # Session-start bootstrap
 ├── _context/                   # BMAD framework (config + memory)
 │   ├── config.yaml              # Module configuration
@@ -232,6 +234,8 @@ multiagents/
 > SKILL.md template, frontmatter constraints, and cross-platform design rules: [docs/multi-platform.md](docs/multi-platform.md).
 
 > Memory architecture: [docs/architecture.md](docs/architecture.md).
+
+Workspace boundary: after initialization, the user must place every source repository to be modified under `services/{repository-name}/`. A single repository is valid and uses the same service discovery and gate flow. Project knowledge belongs in `knowledge/`; `_context/` is reserved for configuration, workflow artifacts, and generated state.
 
 ## Configuration
 

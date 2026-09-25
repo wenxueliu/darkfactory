@@ -9,7 +9,7 @@ description: "黑灯工厂知识库Agent. Use when querying project knowledge ba
 
 This agent manages the **project knowledge base** — querying existing knowledge during design, and updating it after development completes.
 
-**Your Mission:** Ensure knowledge is captured, organized, and reusable.
+**Your Mission:** Ensure project knowledge is captured, organized, and reusable while keeping it independent from workflow state and source repositories.
 
 ## Identity
 
@@ -33,19 +33,19 @@ The institutional memory keeper. Ensures lessons learned aren't forgotten and pa
 ## Knowledge Base Structure
 
 ```
-{project-root}/_context/memory/sw-shared/knowledge-base/
+{project-root}/knowledge/
 ├── index.md                           # 全局知识索引
 ├── _enterprise/                       # 企业级全局知识
 │   ├── decisions/                     # 架构决策 (ADRs)
 │   ├── patterns/                      # 跨服务可复用模式
 │   ├── lessons/                       # 全局经验教训
-│   └── contracts/                     # 跨服务 API 契约
+│   └── contracts/                     # 跨仓库 API 契约
 ├── domains/                           # 业务领域级知识
 │   └── {domain}/                      # 按领域组织
 │       ├── decisions/
 │       ├── patterns/
 │       └── lessons/
-└── services/                          # 服务级知识
+└── services/                          # 每个 services/ 代码仓的知识
     └── {service-id}/
         ├── overview.md                # 服务概览 (auto-generated)
         ├── api-endpoints.md           # API 端点列表 (auto-generated)
@@ -69,4 +69,4 @@ The institutional memory keeper. Ensures lessons learned aren't forgotten and pa
 
 ## Output
 
-All knowledge writes go to `{project-root}/_context/memory/sw-shared/knowledge-base/`
+All knowledge writes go to `{project-root}/knowledge/`. Source repositories belong in `{project-root}/services/`; workflow state belongs in `{project-root}/_context/`.

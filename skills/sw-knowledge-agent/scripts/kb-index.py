@@ -14,8 +14,9 @@ import sys
 from datetime import date, datetime
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
-_DEFAULT_KB_DIR = os.path.join(_PROJECT_ROOT, "_context", "memory", "sw-shared", "knowledge-base")
+from kb_paths import KNOWLEDGE_DIR
+
+_DEFAULT_KB_DIR = str(KNOWLEDGE_DIR)
 
 VALID_TYPES = {"pattern", "decision", "lesson", "api"}
 TYPE_DIR_MAP = {
@@ -469,7 +470,7 @@ def main():
 
     entries = scan_entries(kb_dir)
 
-    print(f"Index Report for knowledge-base/")
+    print(f"Index Report for knowledge/")
     print("─" * 40)
 
     # Count by type and scope

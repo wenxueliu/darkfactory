@@ -9,17 +9,17 @@ The knowledge base is organized, searchable, and entries are properly linked.
 ```markdown
 # Knowledge Base Index
 
-## Shared Knowledge (跨服务共享)
+## Enterprise Knowledge (跨仓库共享)
 ### Patterns
-- [Pattern Name](shared/patterns/{name}.md)
+- [Pattern Name](_enterprise/patterns/{name}.md)
 - ...
 
 ### Architecture Decisions
-- [ADR-{NNNN}: Decision Title](shared/decisions/ADR-{NNNN}-{slug}.md)
+- [ADR-{NNNN}: Decision Title](_enterprise/decisions/ADR-{NNNN}-{slug}.md)
 - ...
 
 ### Lessons Learned
-- [Lesson Title](shared/lessons/{id}.md)
+- [Lesson Title](_enterprise/lessons/{id}.md)
 - ...
 
 ## Service Knowledge (每服务专属)
@@ -33,8 +33,8 @@ The knowledge base is organized, searchable, and entries are properly linked.
 ### {another-service-id} — {另一服务名称}
 - ...
 
-## Cross-Service Contracts
-- [{service-id} OpenAPI](contracts/{service-id}-openapi.yaml)
+## Cross-Repository Contracts
+- [{service-id} OpenAPI](_enterprise/contracts/{service-id}-openapi.yaml)
 - ...
 
 ## Service Dependency Graph
@@ -81,7 +81,7 @@ python scripts/kb-index.py
 ## 质量检查清单
 
 - [ ] 所有共享知识条目有类型、日期、作者
-- [ ] 所有服务有 auto-generated 概览文件 (monolith 模式跳过)
+- [ ] `services/` 下所有代码仓都有 auto-generated 概览文件
 - [ ] 所有条目在索引中可发现
 - [ ] 服务依赖图与 service-registry.yaml 一致
 - [ ] 无孤儿条目

@@ -125,7 +125,7 @@ The skill itself tells you which type it is.
 
 ## Working with the Knowledge Base
 
-The knowledge base (`_context/memory/sw-shared/knowledge-base/`) accumulates institutional knowledge:
+The knowledge base (`knowledge/`) accumulates institutional knowledge. Source repositories live under `services/`, while `_context/` is reserved for harness state:
 - **Before starting work:** Check for relevant ADRs (`decisions/`), patterns (`patterns/`), and lessons (`lessons/`)
 - **After completing work:** Deposit new patterns, decisions, and lessons
 - **KB health:** Run `python scripts/kb-health.py` periodically to detect staleness and gaps

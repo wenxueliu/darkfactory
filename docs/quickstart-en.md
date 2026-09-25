@@ -16,7 +16,7 @@ Black灯 Factory (HW) is a **human-AI collaborative software generation system**
 |----------------|---------|
 | I have an existing project, want to add HW | [Scenario A: Add to Existing Project](#scenario-a-add-to-existing-project) |
 | I'm starting a brand new project | [Scenario B: New Project](#scenario-b-new-project) |
-| I have multiple microservices to orchestrate | [Scenario C: Microservices Multi-Repo](#scenario-c-microservices-multi-repo) |
+| I have one or more source repositories to orchestrate | [Scenario C: Multi-Repository Workspace](#scenario-c-multi-repository-workspace) |
 | I just want to see what it looks like | [Scenario D: 5-Minute Tour](#scenario-d-5-minute-tour) |
 
 ---
@@ -28,7 +28,7 @@ Black灯 Factory (HW) is a **human-AI collaborative software generation system**
 Answer three questions before you start:
 
 1. **What language is your project?** Python / Java / Go / TypeScript / ... (use `*` for auto-detect)
-2. **Monolith or microservices?** Monolith = one git repo, one deployable service
+2. **Which repositories need changes?** Put one or more independent Git repositories under `services/`; one repository is simply the one-repository case
 3. **How strict do you want quality gates?**
    - Fintech / compliance → full (security + logic + performance), frequent human checkpoints
    - Internal tools → logic only, minimal interruption
@@ -41,13 +41,13 @@ Create `_context/` under your project root:
 ```bash
 mkdir -p _context/memory/sw-shared
 mkdir -p _context/memory/sw-controller
+mkdir -p services knowledge
 ```
 
 **`_context/config.yaml`** (adjust based on your answers above):
 
 ```yaml
 sw:
-  architecture: "monolith"
   business_domain: "general"            # general | fintech | ecommerce | internal-tools
   min_iteration_before_human: 3         # AI iterations before escalating to human
   enabled_reviewers: "logic"            # start conservative, add security,performance later
@@ -61,6 +61,8 @@ sw:
 communication_language: English
 user_name: Your Name
 ```
+
+After initialization, clone or move every source repository to be modified into `services/{repository-name}/`. With multiple repositories, keep each repository as a direct child of `services/` with its own `.git/`; do not leave business source code at the workspace root.
 
 > See the Configuration section in `CLAUDE.md` for all configurable options.
 
@@ -117,8 +119,8 @@ You'll see sw-controller kick off and walk through:
 mkdir my-project && cd my-project
 git init
 
-# Create base directories
-mkdir -p src tests
+# Create workspace roots; source repositories go under services/
+mkdir -p services knowledge
 mkdir -p _context/memory/sw-shared
 mkdir -p _context/memory/sw-controller
 mkdir -p skills
@@ -130,7 +132,6 @@ mkdir -p skills
 
 ```yaml
 sw:
-  architecture: "monolith"
   business_domain: "general"
   min_iteration_before_human: 3
   enabled_reviewers: "security,logic,performance"
@@ -138,11 +139,24 @@ sw:
   merge_strategy: "merge"
 ```
 
-### Step 3: Copy Skills
+### Step 3: Place Source Repositories
+
+Before starting `/sw-controller`, put every repository that may be changed under `services/`:
+
+```bash
+# Existing repository
+git clone <repository-url> services/my-service
+
+# Or move/copy a local repository to services/my-service/
+```
+
+Each `services/{repository-name}/` must keep its own `.git/`. A single repository is valid, but business source must not remain at the workspace root; initialization blocks when `services/` is empty.
+
+### Step 4: Copy Skills
 
 Copy all `sw-*` skill directories from the HW repo's `skills/` into your `skills/`.
 
-### Step 4: Let sw-controller Guide You
+### Step 5: Let sw-controller Guide You
 
 ```
 /sw-controller I'm starting a new project. Tech stack: {Python FastAPI / Go Gin / Java Spring Boot / ...}.
@@ -157,32 +171,33 @@ sw-controller will guide you through:
 5. **Review** — logic, security, and performance review layers
 6. **Delivery** — merge, integration tests, release checklist
 
-### Step 5: Harvest Knowledge
+### Step 6: Harvest Knowledge
 
-After your first development cycle, check `_context/memory/sw-shared/knowledge-base/`:
-- `patterns/` — reusable patterns discovered
-- `decisions/ADR-0001-*.md` — architecture decision records
-- `lessons/` — lessons learned
+After your first development cycle, check `knowledge/`:
+- `knowledge/_enterprise/patterns/` — reusable patterns discovered
+- `knowledge/_enterprise/decisions/ADR-0001-*.md` — architecture decision records
+- `knowledge/_enterprise/lessons/` — lessons learned
 
 These get automatically referenced in future development cycles.
 
 ---
 
-## Scenario C: Microservices Multi-Repo
+## Scenario C: Multi-Repository Workspace
 
-Before you start: you have multiple independent service repos (e.g. `user-service`, `order-service`, `web-frontend`).
+Before you start: place one or more independent source repositories under `services/` (e.g. `user-service`, `order-service`, `web-frontend`). A single repository follows the same flow.
 
 ### Step 1: Create Workspace
 
 ```bash
 mkdir sw-workspace && cd sw-workspace
-git init  # this repo only holds _context + skills, not service code
+git init  # workspace holds _context, skills, services, and knowledge
 ```
 
 ### Step 2: Clone All Services
 
 ```bash
-mkdir -p services
+mkdir -p services knowledge/_enterprise/{patterns,decisions,lessons,contracts}
+mkdir -p knowledge/{domains,services}
 git clone git@github.com:org/user-service.git services/user-service
 git clone git@github.com:org/order-service.git services/order-service
 git clone git@github.com:org/web-frontend.git services/web-frontend
@@ -190,19 +205,12 @@ git clone git@github.com:org/web-frontend.git services/web-frontend
 
 > Key point: each `services/{id}/` keeps its own `.git/`, its own remote, its own CI/CD. Co-location just puts them in the same working directory — git independence is fully preserved.
 
-### Step 3: Configure for Microservices
+### Step 3: Configure the Workspace
 
 **`_context/config.yaml`**:
 
 ```yaml
 sw:
-  architecture: "microservices"
-
-  microservices:
-    max_parallel_services: 4
-    integration_test_mode: "docker-compose"
-    contract_first: true
-
   business_domain: "general"
   min_iteration_before_human: 3
   enabled_reviewers: "security,logic,performance"
@@ -225,16 +233,16 @@ This touches user-service (new credit score API), order-service (call credit che
 and web-frontend (show credit limit on checkout page)
 ```
 
-Key differences from monolith mode:
+Unified workspace rules:
 
-| Phase | Microservices Behavior |
+| Phase | Workspace Behavior |
 |-------|----------------------|
-| Requirements | Adds "Service Impact Analysis" table — which services change, how |
-| Design | 3-agent pipeline: Feature Designer (cross-service) → Service Designer (per service, parallel) → E2E Designer |
-| Decomposition | Tasks grouped by service. Cross-service deps marked CONTRACT (parallel OK + mock) |
-| Execution | Worktrees created per service under `.worktree/{service-id}/` |
-| Quality | Extra contract-testing layer between API tests and E2E |
-| Delivery | Multi-service coordinated release with rollback waves |
+| Requirements | Always includes a repository impact table; one repository still has one row |
+| Design | Feature design → per-repository service design → E2E when needed |
+| Decomposition | Tasks grouped by repository; CONTRACT is used only when evidence shows a cross-repository dependency |
+| Execution | Worktrees created per repository under `.worktree/{service-id}/` |
+| Quality | Each repository is verified independently; contract tests are added when contracts exist |
+| Delivery | Release order follows actual dependencies; no artificial waves |
 
 ---
 
@@ -303,8 +311,9 @@ Create `_context/templates/<document-type>/<variant>/` under the project root wi
 | `_context/memory/sw-controller/` | Orchestration state, worktree registry | sw-controller (auto) |
 | `.worktree/` | Isolated dev environments | Auto created/destroyed |
 | `skills/` | Agent skill definitions | Updated with HW releases |
-| `contracts/` | Cross-service API contracts | sw-controller + human review |
-| `_context/memory/sw-shared/knowledge-base/` | Accumulated architecture knowledge | sw-controller (auto) |
+| `knowledge/_enterprise/contracts/` | Cross-repository API contracts | sw-controller + human review |
+| `services/` | User-provided source repositories | User; agents modify scoped repositories |
+| `knowledge/` | Accumulated project knowledge | sw-knowledge-agent + human review |
 
 ---
 

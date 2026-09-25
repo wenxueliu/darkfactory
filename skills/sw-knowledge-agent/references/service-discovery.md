@@ -2,7 +2,7 @@
 
 ## 核心理念
 
-服务信息**不应由人工配置**——它是代码的派生信息，应该从代码中自动学习。`service-registry.yaml` 是生成的产物，不是手写的输入。本文件描述如何从 `services/{id}/` 目录中自动检测和提取服务元数据。
+服务信息**不应由人工配置**——它是代码的派生信息，应该从代码中自动学习。`service-registry.yaml` 是生成的产物，不是手写的输入。本文件描述如何从 `services/{id}/` 目录中自动检测和提取服务元数据。一个仓库就是一个服务单元；仓库数量只影响并行度，不改变流程。
 
 ## 前置约束 (Pre-flight)
 
@@ -219,7 +219,7 @@ services:
     depended_by_services: []  # filled after scanning all services
     
     # --- Knowledge base ---
-    knowledge_path: "knowledge-base/services/user-service/"
+    knowledge_path: "knowledge/services/user-service/"
 
 # --- Dependency graph (computed after scanning all services) ---
 dependency_graph:

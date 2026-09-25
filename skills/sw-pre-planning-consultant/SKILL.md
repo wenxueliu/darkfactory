@@ -135,7 +135,7 @@ This agent is **read-only** and **stateless** across invocations. It does not wr
 
 **Reads (optional):**
 - `{project-root}/_context/memory/sw-shared/design-decisions.md` — existing architecture decisions for context
-- `{project-root}/_context/memory/sw-shared/knowledge-base/` — institutional knowledge for pattern matching
+- `{project-root}/knowledge/` — institutional knowledge for pattern matching
 - `{project-root}/_context/memory/sw-shared/tasks.yaml` — current task status for context on mid-sized tasks
 
 **Does NOT write** anything. Output is delivered directly in the response.

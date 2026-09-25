@@ -2,7 +2,7 @@
 
 ## 核心理念
 
-微服务模式下，在 黑灯工厂 启动任何流程之前，必须确保所有服务处于**已知良好状态**——代码最新、环境可用、元数据已发现。这不是可选的准备工作，而是硬前置条件。
+在黑灯工厂启动任何流程之前，必须确保 `services/` 下所有代码仓处于**已知良好状态**——代码可读、环境可用、元数据已发现。这不是可选的准备工作，而是硬前置条件。`services/` 下只有一个仓库时仍执行同一流程。
 
 ## 引导流程 (4 步)
 
@@ -105,14 +105,14 @@ done
 2. 检测每个服务的技术栈 → 更新 service-registry.yaml
 3. 提取 API 端点、DB Schema、依赖关系 → 生成服务知识文件
 4. 构建服务依赖图 → 验证无循环依赖
-5. 写入 knowledge-base/services/{id}/*.md
+5. 写入 knowledge/services/{id}/*.md
 ```
 
 **服务发现必须产生:**
 - `_context/memory/sw-shared/service-registry.yaml` — 机器可读的服务元数据
-- `_context/memory/sw-shared/knowledge-base/services/{id}/overview.md` — 人类可读的服务概览
-- `_context/memory/sw-shared/knowledge-base/services/{id}/api-endpoints.md`
-- `_context/memory/sw-shared/knowledge-base/services/{id}/db-schema.md`
+- `knowledge/services/{id}/overview.md` — 人类可读的服务概览
+- `knowledge/services/{id}/api-endpoints.md`
+- `knowledge/services/{id}/db-schema.md`
 
 ## 引导报告
 

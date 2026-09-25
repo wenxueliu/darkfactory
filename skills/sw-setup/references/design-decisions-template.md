@@ -1,7 +1,7 @@
 # 架构决策记录索引 (ADR Index)
 
 ADRs are managed by `kb-log.py decision` — do NOT write ADR content directly in this file.
-Create ADRs with the script and they will be auto-linked in `knowledge-base/decisions/`.
+Create ADRs with the script and they will be auto-linked in `knowledge/_enterprise/decisions/`.
 
 ## 设计需求与 ADR 对照
 

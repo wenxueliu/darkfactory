@@ -4,7 +4,7 @@
 
 1. `service-registry.yaml` 中 `services[].type` 显式声明 → 直接使用
 2. `service-registry.yaml` 中 `services[].language` 字段 → 按规则推断
-3. 无 `service-registry.yaml` (单体模式) → 默认 `backend`
+3. 注册表缺少当前仓库条目 → 直接检查 `services/{service_id}/` 的文件并按规则推断；无法识别时默认 `backend` 并警告
 
 ## 语言 → 类型映射
 
@@ -28,7 +28,7 @@
 
 | 场景 | 行为 |
 |------|------|
-| 无 service-registry.yaml | 默认 `backend` |
+| 注册表缺少当前仓库条目 | 从代码推断；无法识别时默认 `backend` + 警告 |
 | language 不在映射规则中 | 默认 `backend` + 警告 |
 | type 为未知值 | 报错，提示有效值: backend/frontend/bff/data-pipeline |
 | 自定义模板路径不存在 | 警告 + fallback 到内置模板 |

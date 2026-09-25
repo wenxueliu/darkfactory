@@ -62,7 +62,7 @@ When Intent Gate classifies the request as a new feature, implementation, or ope
 
 1. **Requirements Clarification** — Delegate to `sw-requirements-clarifier`. It runs progressive 4-step clarification dialogue (Listen First → Ambiguity Scan → Prioritized Question Queue → Incremental Spec Update). Stops when Substantiality Threshold is met. Writes `requirements/{id}.md`.
 2. **Value Assessment** — Delegate to `sw-value-judgment`. Scores 5 dimensions (Impact / Effort / Risk / Dependencies / Strategic Fit). If P3 (don't do), archive the requirement. Writes `value-assessment/{id}.md`.
-3. **Knowledge Base Pre-Query** — Delegate to `sw-knowledge-agent`. Scans for relevant ADRs, patterns, lessons, and API contracts. Writes `knowledge-base/pre-query-{id}.md`.
+3. **Knowledge Base Pre-Query** — Delegate to `sw-knowledge-agent`. Scans for relevant ADRs, patterns, lessons, and API contracts. Writes `knowledge/pre-query-{id}.md`.
 4. **Requirements Gate** — Resolve the `requirements/{business_domain}` definition through the layered document resolver and execute its selected `gate.yaml` and `validator.yaml`. Only proceed to design when all resolved rules PASS. Max 3 retries → escalate to human.
 5. **Phase Transition** — When all ideation gates PASS → proceed to design phase (3-Stage delegation). See Phase Transition Rules below for `ideation → design` criteria.
 
@@ -112,7 +112,8 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 - `knowledge_base_auto_update`: `true`
 - `merge_strategy`: `merge`
 - `business_domain`: `general`
-- `architecture`: `microservices`
+- `source_root`: `services`
+- `knowledge_root`: `knowledge`
 
 ### Requirements Tracker (需求跟踪)
 
@@ -122,6 +123,19 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 - **阶段前置条件**: 检查各 phase 的 `status` 是否达到 `done` 才允许 phase transition
 - **产出物清单**: 读取各 phase 的 `artifacts` 验证输出文件是否存在
 - **更新职责**: 控制器在完成 merge 和 test 阶段后，更新对应 phase 的 tracker 条目
+
+### Workspace Preflight (统一仓库模型)
+
+在需求澄清、设计或代码执行前，先验证工作区边界：
+
+1. `{project-root}/services/` 存在，且至少包含一个直接子目录 Git 仓库。
+2. `{project-root}/knowledge/` 存在，并包含 `index.md` 或可由 `sw-setup` 初始化的知识骨架。
+3. 源码只从 `services/{repository-name}/` 读取；项目根目录不再作为业务源码仓。
+4. 服务发现已生成或即将生成 `_context/memory/sw-shared/service-registry.yaml`。
+
+如果 `services/` 不存在或为空，阻塞需求流程并提示：
+`请先运行 sw-setup，然后将需要修改的一个或多个独立 Git 代码仓放入 services/{repository-name}/。`
+不得通过猜测项目根目录源码、跳过服务发现或切换其他架构模式来绕过该门禁。
 
 ### 设计阶段 3-Stage 委托
 
@@ -286,14 +300,14 @@ decomposition → execution:
   ✅ All tasks defined in tasks.yaml
   ✅ No circular dependencies between tasks
   ✅ Each task has acceptance criteria from requirements
-  ✅ [microservices] Service registry complete, cross-service contracts defined
-  ✅ [microservices] Tasks grouped by service, CONTRACT-type dependencies identified
+  ✅ Service registry complete for all repositories under `services/`
+  ✅ Tasks grouped by service unit; CONTRACT-type dependencies identified where applicable
 
 execution → merge:
   ✅ All worktrees report DONE or human-approved DONE_WITH_CONCERNS
   ✅ Code review passed: 0 P0, 0 P1 (logic + security + performance + context)
   ✅ Unit tests + API tests: 100% PASS (UT layer + API layer)
-  ✅ [microservices] Contract tests PASS (all cross-service contracts verified)
+  ✅ Contract tests PASS where cross-repository contracts exist
 
 merge → test:
   ✅ Merge complete, no conflicts
