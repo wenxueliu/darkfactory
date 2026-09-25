@@ -4,4 +4,4 @@ contract: sw.requirements
 version: "1.0"
 
 resources:
-  template: ../../../requirements-spec-template-ecommerce.md
+  template: template.md

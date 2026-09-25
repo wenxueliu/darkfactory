@@ -4,6 +4,6 @@ contract: sw.requirements
 version: "1.0"
 
 resources:
-  template: ../../../requirements-spec-template.md
+  template: template.md
   gate: gate.yaml
   validator: validator.yaml

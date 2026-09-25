@@ -1,0 +1,35 @@
+# Fallback semantic paths for standalone sw-requirements-clarifier execution.
+# Call-time paths and project configuration take precedence over these values.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  definition_roots:
+    project: /templates
+    user: null
+    skill: skills/sw-requirements-clarifier/references/document-definitions
+
+  evidence:
+    tracker: knowledge/requirements-tracker.yaml
+    context_files:
+      - knowledge/CONTEXT.md
+    context_maps:
+      - knowledge/CONTEXT-MAP.md
+    decision_roots:
+      - knowledge/decisions
+    knowledge_roots:
+      patterns: knowledge/patterns
+      lessons: knowledge/lessons
+      contracts: knowledge/contracts
+      decisions: knowledge/decisions
+
+  artifact_targets:
+    requirement_document: knowledge/requirements/{requirement_id}/{requirement_id}.md
+    gate_report: knowledge/requirements/{requirement_id}/{requirement_id}-gate.md
+    value_assessment: knowledge/requirements/{requirement_id}/value-assessment.md
+    knowledge_prequery: knowledge/requirements/{requirement_id}/pre-query-{requirement_id}.md
+    knowledge_root: knowledge
+    tasks: knowledge/requirements/{requirement_id}/tasks.yaml
+    reviews: knowledge/requirements/{requirement_id}/reviews

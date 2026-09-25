@@ -304,5 +304,8 @@ def test_builtin_requirements_definition_is_resolvable() -> None:
     )
 
     assert definition.contract == "sw.requirements"
-    assert definition.resource("template").path.name == "requirements-spec-template-fintech.md"
+    assert definition.resource("template").path.name == "template.md"
+    assert definition.resource("template").path.parent == (
+        root / "requirements" / "fintech"
+    ).resolve()
     assert definition.resource("gate").path.name == "gate.yaml"

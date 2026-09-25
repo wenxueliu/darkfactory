@@ -1,6 +1,6 @@
 # 需求理解与澄清 (Progressive Clarification)
 
-参考: Spec-Kit clarify (定义包驱动的维度扫描 + Impact×Uncertainty 优先队列 + 增量更新) +
+参考: Spec-Kit clarify (定义包驱动的维度扫描 + Impact×Uncertainty 前沿排序 + 增量更新) +
       BMAD guided-elicitation (自适应对话 + lead-ask-reflect-confirm + 实质完备度阈值) +
       Compound Engineering requirements-capture (问题标签 + 设计前必解 vs 设计时再解)
 
@@ -44,8 +44,8 @@ The requirement clarification continues; this is not a direct failure.
 
 | 目的 | 检出场景 | 查询目标 |
 |------|---------|---------|
-| **需求已实现** | 防止重复造轮子 — 避免做出已经被做过的需求 | `requirements-tracker.yaml` (status: done) + `knowledge/_enterprise/lessons/` + `knowledge/_enterprise/patterns/` |
-| **需求实现冲突** | 防止新需求与已有实现矛盾（API 行为不一致、数据模型冲突、UX 不一致） | `knowledge/_enterprise/lessons/`（历史冲突教训）+ `knowledge/_enterprise/contracts/`（已有 API 契约）+ `requirements-tracker.yaml` (status: in_progress) |
+| **需求已实现** | 防止重复造轮子 — 避免做出已经被做过的需求 | `paths.evidence.tracker` (status: done) + `paths.evidence.knowledge_roots.lessons` + `paths.evidence.knowledge_roots.patterns` |
+| **需求实现冲突** | 防止新需求与已有实现矛盾（API 行为不一致、数据模型冲突、UX 不一致） | `paths.evidence.knowledge_roots.lessons` + `paths.evidence.knowledge_roots.contracts` + `paths.evidence.tracker` (status: in_progress) |
 | **确有已有需求的实现** | 帮助新需求继承/参考已有实现（命名一致、概念对齐、避免另起炉灶） | 已解析上下文中的领域术语 + 知识库 patterns/contracts |
 
 **与设计阶段 KB 预检的边界：**
@@ -95,7 +95,7 @@ The requirement clarification continues; this is not a direct failure.
      - A) 新需求替代旧需求（需明确迁移路径）
      - B) 新需求是旧需求的扩展/演进
      - C) 我没意识到旧需求的存在，请帮我看看怎么协调
-   - 把这个澄清问题加入优先队列（即使 KB 检出了，第 3 步还是要走完）
+   - 把这个澄清问题加入决策树，并按其依赖关系重建 frontier（即使 KB 检出了，第 3 步还是要走完）
 
 **与 Step 1.1 的关系：** Step 1.0 结束后，你带着"需求全景图"开始 Step 1.1 的倾听 — 用户描述时，你能基于全景图追问："我看到我们已实现 {X}，这次的需求和它是什么关系？"
 
@@ -141,19 +141,20 @@ The requirement clarification continues; this is not a direct failure.
 
 **不要输出原始扫描结果给用户**（除非一个澄清问题都不会问了，那时候可以直接跳到撰写）。
 
-### 第 3 步: 优先队列提问 (Prioritized Question Queue)
+### 第 3 步: 决策树与 frontier 轮次提问 (Decision Tree and Frontier Rounds)
 
 **规则:**
-- 最多 5 个问题在队列中（控制认知负荷）
-- 每次只问 1 个问题（不要批处理）
-- 优先公式: **Impact × Uncertainty** — 影响最大 × 最不确定的维度优先
-- 每个问题必须是多选题或 ≤ 5 个词的简答题（降低回答成本）
-- 永远给出推荐选项 + 推荐理由
-- 不要提前透露后续问题（防止锚定效应）
+- 把每个待确认决策记录为决策树节点，并记录其前置决策、影响和不确定性
+- **frontier** 是所有前置条件已经确定、当前可以提问的决策集合
+- 每轮一次提出**完整 frontier**，不要只挑一个问题，也不要静默遗漏同轮的独立问题
+- 依赖当前 frontier 中未解决问题的后续问题必须留到下一轮
+- 在当前 frontier 内按 **Impact × Uncertainty** 排序，但排序不改变完整提问范围
+- 每个问题必须是多选题或简短可回答的问题，并给出推荐选项及理由
+- 可检索的事实由 Agent 通过文件、代码或工具核实；只有业务判断、价值取舍和环境无法确定的决策交给用户
 
 **问题格式:**
 ```
-📋 [维度名称]
+📋 [Q{n}] [维度名称]
 
 {一句话描述为什么这个问题重要}
 
@@ -165,6 +166,8 @@ C) {自定义 — 用自己的话描述}
 💡 推荐: {选项 X}，因为 {一句话理由}
 ```
 
+同一轮重复上述格式，按当前 frontier 的排序编号。每个问题应记录 `depends_on`；没有前置依赖的问题可以出现在同一轮。
+
 **分类标记每个问题:**
 - `[设计前必解]` — 阻塞设计阶段，在进入设计之前必须确定
 - `[设计时再解]` — 可以先进入设计，在设计过程中解决
@@ -175,7 +178,7 @@ C) {自定义 — 用自己的话描述}
 **每收到一个答案后立即执行:**
 
 1. 将答案编码到需求规格文件的对应章节
-2. 在 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md` 末尾附加澄清日志:
+2. 在 `paths.artifact_targets.requirement_document` 末尾附加澄清日志:
    ```markdown
    ## 澄清记录 (Clarification Log)
    | # | 时间 | 维度 | 问题 | 答案 | 类型 |
@@ -183,9 +186,10 @@ C) {自定义 — 用自己的话描述}
    | 1 | {ts} | {dimension} | {question} | {answer} | 设计前必解 |
    ```
 3. 重新评估该维度的状态（Partial → Clear）
-4. 更新优先队列（移除已回答的，可能新增因澄清而产生的后续问题）
-5. 如果队列为空且仍有 Partial/Missing 维度 → 回到第 3 步补充新问题
-6. 如果所有维度 Clear 或仅剩 `[设计时再解]` 或 `[待调研]` → 进入第 4.5 步需求规格质询
+4. 按已确认答案重建设计树，重新计算下一轮 frontier
+5. 同一轮中未回答的问题保持未决，不能默认为已确认；下一轮继续提出
+6. 如果 frontier 为空且仍有 Partial/Missing 维度 → 根据新增依赖回到第 3 步
+7. 如果所有维度 Clear 或仅剩 `[设计时再解]` 或 `[待调研]` → 进入第 4.5 步需求规格质询
 
 ### 第 4.5 步: 可选需求规格质询 (Spec Grilling — sw-grill-docs Quick)
 
@@ -200,7 +204,7 @@ C) {自定义 — 用自己的话描述}
 
 1. 尝试调用 `sw-grill-docs`（Step 0 → Step 1 → Step 2 → Phase 1 + Phase 2）:
    - **Step 0**: 由 `sw-grill-docs` 解析 `context_files` / `context_maps` / `decision_roots` / `config_file`，调用方不拼接物理目录
-   - **Step 1**: 目标文档 = `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`（新增"需求层"调用来源）
+   - **Step 1**: 目标文档 = `paths.artifact_targets.requirement_document`（新增"需求层"调用来源）
    - **Step 2**: 深度 = **Quick**（<3 个新概念 → 术语扫描 + ADR 冲突检查）
    - **Phase 1 (Glossary Audit)**: 对照已解析上下文检查规格中每个领域术语
    - **Phase 2 (ADR Compliance)**: 对照已有 ADR 检查规格中每个架构决策
@@ -210,11 +214,11 @@ C) {自定义 — 用自己的话描述}
 | Result | 行动 |
 |--------|------|
 | **PASS** | 零 CONFLICT、零 GAP → 执行解析后的需求门禁与验证器 |
-| **CONCERNS** | 有 CHALLENGE 需要澄清 → 把 CHALLENGE 转化为新问题，回到第 3 步优先队列 |
+| **CONCERNS** | 有 CHALLENGE 需要澄清 → 把 CHALLENGE 转化为决策树节点，重建 frontier，回到第 3 步 |
 | **CONFLICT** | 与已解析上下文或 ADR 直接矛盾 → 立即告知用户，给出两种选择：(a) 修订规格 (b) 创建新 ADR 覆盖 |
 | **SKIPPED** | `sw-grill-docs` 不可用 → 记录原因、影响、fallback 和用户提示，继续执行内部门禁/验证器；不直接失败 |
 
-3. 在 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md` 末尾的"澄清记录"段追加:
+3. 在 `paths.artifact_targets.requirement_document` 末尾的"澄清记录"段追加:
    ```markdown
    | # | 时间 | 维度 | 问题 | 答案 | 类型 |
    |---|------|------|------|------|------|
@@ -242,7 +246,7 @@ C) {自定义 — 用自己的话描述}
 
 ## 连接到需求规格
 
-澄清完后，将收集到的信息填入解析后的定义包结构，写入 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`。
+澄清完后，将收集到的信息填入解析后的定义包结构，写入 `paths.artifact_targets.requirement_document`。
 
 然后执行定义包中解析得到的 `gate.yaml` 和 `validator.yaml`。
 
@@ -252,7 +256,7 @@ C) {自定义 — 用自己的话描述}
 
 尝试调用 `sw-value-judgment`; 该 Skill 可用时由它负责评估协议。不可用时记录 `SKIPPED`，提示用户缺少独立价值评估，并使用当前对话中的价值证据继续；不要因为该 Skill 不可用直接失败。
 
-对需求进行 5 维度评分（Impact / Effort / Risk / Dependencies / Strategic Fit），结果写入 `{project-root}/_context/memory/sw-shared/value-assessment/{requirement_id}.md`。
+对需求进行 5 维度评分（Impact / Effort / Risk / Dependencies / Strategic Fit），结果写入 `paths.artifact_targets.value_assessment`。
 
 ## 连接到知识库
 
@@ -267,7 +271,7 @@ C) {自定义 — 用自己的话描述}
 | 字段 | 取值 |
 |------|------|
 | 调用方 | sw-requirements-clarifier (澄清完成时) |
-| 目标文档 | `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md` |
+| 目标文档 | `paths.artifact_targets.requirement_document` |
 | 深度 | Quick (术语扫描 + ADR 冲突检查) |
 | 必做 Phase | Phase 1 (Glossary Audit) + Phase 2 (ADR Compliance) |
 | 跳过 Phase | Phase 3 (Scenario Stress-Test) + Phase 4 (Code Cross-Reference) — 保留给设计阶段 |
@@ -302,7 +306,7 @@ C) {自定义 — 用自己的话描述}
 | 主要消费者 | 澄清对话的优先级与问题设计 | 设计的方案选择与一致性 |
 | 核心问题 | "我们做过类似的吗？和它什么关系？" | "用什么模式实现？参考什么契约？" |
 | 典型查询 | 查询 pattern/lesson/api/decision + tracker 状态 | 查询 decision/pattern/api |
-| 输出产物 | "需求全景图"（写到对话上下文） | `knowledge/pre-query-{id}.md`（独立文件） |
+| 输出产物 | "需求全景图"（写到对话上下文） | `paths.artifact_targets.knowledge_prequery`（独立文件） |
 
 在需求澄清完成、进入设计阶段之前，可以执行一次知识库快速扫描：
 
@@ -313,16 +317,16 @@ C) {自定义 — 用自己的话描述}
 5. **方案继承性检查**：检查设计是否与已有实现保持术语/契约/模式一致
 6. **方案一致性检查**：检查设计是否与已有架构决策（ADR）一致
 
-预查询结果写入 `{project-root}/knowledge/pre-query-{requirement_id}.md`。
+预查询结果写入 `paths.artifact_targets.knowledge_prequery`。
 
 ## 输出产物
 
 | 产物 | 路径 | 何时生成 |
 |------|------|---------|
-| 需求规格 | `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md` | 澄清完成后 |
+| 需求规格 | `paths.artifact_targets.requirement_document` | 澄清完成后 |
 | 澄清日志 | 嵌入在需求规格文件末尾 | 每次回答后增量更新 |
-| 价值评估 | `{project-root}/_context/memory/sw-shared/value-assessment/{requirement_id}.md` | 如果价值维度 Partial 且能力可用 |
-| 知识条目 | `knowledge/` | 如果发现可复用知识 |
-| 知识预查询 | `{project-root}/knowledge/pre-query-{requirement_id}.md` | 澄清完成后，进入设计前且能力可用 |
+| 价值评估 | `paths.artifact_targets.value_assessment` | 如果价值维度 Partial 且能力可用 |
+| 知识条目 | `paths.artifact_targets.knowledge_root` | 如果发现可复用知识 |
+| 知识预查询 | `paths.artifact_targets.knowledge_prequery` | 澄清完成后，进入设计前且能力可用 |
 | **规格质询报告** | **嵌入在需求规格"澄清记录"段** | **第 4.5 步质询完成后；不可用则嵌入 `SKIPPED` 记录** |
-| 门禁结果 | `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}-gate.md` | 需求规格完成后 |
+| 门禁结果 | `paths.artifact_targets.gate_report` | 需求规格完成后 |

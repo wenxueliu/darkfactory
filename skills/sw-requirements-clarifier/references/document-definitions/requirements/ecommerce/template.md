@@ -175,5 +175,5 @@ contract_version: "1.0"
 ## 14. 下游引用
 
 - 设计文档: `{path}`
-- 任务拆分: `_context/memory/sw-shared/tasks.yaml`
+- 任务拆分: `paths.artifact_targets.tasks`
 - A/B 测试结果: `{path}`

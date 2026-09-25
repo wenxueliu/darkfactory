@@ -8,7 +8,7 @@ contract_version: "1.0"
 
 ## 使用说明
 
-此模板在需求澄清完成后使用。填入结构化内容后，写入 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`。
+此模板在需求澄清完成后使用。填入结构化内容后，写入 `paths.artifact_targets.requirement_document`。
 
 需求规格是后续设计、开发、测试、交付的**唯一事实源**。任何阶段对需求理解的偏差，都回溯到此文档。
 
@@ -156,5 +156,5 @@ contract_version: "1.0"
 ## 11. 下游引用
 
 - 设计文档: `{path}`
-- 任务拆分: `_context/memory/sw-shared/tasks.yaml`
-- Review 记录: `_context/memory/sw-shared/reviews/{task_id}-*.md`
+- 任务拆分: `paths.artifact_targets.tasks`
+- Review 记录: `paths.artifact_targets.reviews/{task_id}-*.md`
