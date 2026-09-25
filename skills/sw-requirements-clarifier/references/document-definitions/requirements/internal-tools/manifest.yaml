@@ -1,0 +1,9 @@
+document_type: requirements
+variant: internal-tools
+contract: sw.requirements
+version: "1.0"
+
+resources:
+  template: ../../../requirements-spec-template-internal-tools.md
+  gate: gate.yaml
+  validator: validator.yaml

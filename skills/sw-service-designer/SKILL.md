@@ -36,10 +36,10 @@ Load context:
 - Knowledge base: service-specific patterns from `{project-root}/_context/memory/sw-shared/knowledge-base/services/{service_id}/`
 
 Service type detection:
-1. Load `references/service-type-detection.md`
+1. Load local `references/service-type-detection.md`
 2. If `service-registry.yaml` has explicit `type` field → use it
 3. Otherwise, infer from `language` field using detection rules
-4. Load the corresponding template: `references/service-design-template-{type}.md`
+4. Resolve the local `service-design/{type}` document definition package
 
 In monolith mode (no service-registry.yaml): default to `backend` type, output to `designs/{requirement_id}-service-design.md`.
 
@@ -49,14 +49,11 @@ In monolith mode (no service-registry.yaml): default to `backend` type, output t
 | ---------- | ----- |
 | 服务类型检测 | Load `references/service-type-detection.md` |
 | 服务设计协调 | Load `references/service-design-coordination.md` |
-| 服务设计模板(后端) | Load `references/service-design-template-backend.md` |
-| 服务设计模板(前端) | Load `references/service-design-template-frontend.md` |
-| 服务设计模板(BFF) | Load `references/service-design-template-bff.md` |
-| 服务设计模板(数据管道) | Load `references/service-design-template-data-pipeline.md` |
+| 服务设计定义包 | Resolve `references/document-definitions/service-design/{type}/manifest.yaml` |
 | 测试用例模板(UT) | Load `references/test-case-template.md` |
 | 测试用例模板(API) | Load `references/api-test-case-template.json` |
 | API测试Postman规范 | Load `references/api-test-postman-schema.md` |
-| 服务设计验证器 | Load `references/service-design-validator.md` |
+| 服务设计验证 | Execute the resolved `gate.yaml` and `validator.yaml` |
 | 架构决策记录 | Load `references/adr-template.md` |
 
 ## Output

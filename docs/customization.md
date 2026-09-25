@@ -408,9 +408,63 @@ class HelmProductionDeployer(Deployer):
 
 ---
 
-## 3. 验证自定义结果
+## 3. 文档定义包定制
 
-### 3.1 验证 lint 自定义
+正式需求、设计、计划和项目文档不再通过修改 Agent 核心逻辑定制，而是通过定义包提供模板、门禁和验证器。每个文档生产 Skill 维护自己的内置定义包，项目和用户可以按相同结构覆盖：
+
+```text
+项目：_context/templates/<document-type>/<variant>/
+用户：<user_context_root>/templates/<document-type>/<variant>/
+内置：skills/<owner-skill>/references/document-definitions/<document-type>/<variant>/
+```
+
+一个定义包包含：
+
+```text
+manifest.yaml       # document_type / variant / contract / version
+template.md         # 完整解析结果必须具备
+gate.yaml           # 可选，阶段门禁
+validator.yaml      # 可选，文档验证
+```
+
+项目或用户层可以只替换某一个资源，未声明的资源继续从下一层解析。模板中的 frontmatter 必须声明 `document_type`、`contract`、`contract_version`，结构化章节使用稳定的 `<!-- section-id: ... -->` 标记，不能依赖标题文本或章节编号。
+
+示例：
+
+```yaml
+# _context/templates/feature-design/default/manifest.yaml
+document_type: feature-design
+variant: default
+contract: sw.feature-design
+version: "1.0"
+resources:
+  template: template.md
+  gate: gate.yaml
+  validator: validator.yaml
+```
+
+统一解析和验证：
+
+```bash
+python3 -m document_contracts resolve \
+  --document-type feature-design \
+  --variant default \
+  --root project=./_context/templates \
+  --root skill=./skills/sw-feature-designer/references/document-definitions
+
+python3 -m document_contracts validate \
+  --document-type feature-design \
+  --variant default \
+  --document ./_context/memory/sw-shared/designs/REQ-001-design.md \
+  --root project=./_context/templates \
+  --root skill=./skills/sw-feature-designer/references/document-definitions
+```
+
+完整协议和可用文档类型见 [document-contracts.md](document-contracts.md)。
+
+## 4. 验证自定义结果
+
+### 4.1 验证 lint 自定义
 
 ```bash
 # 查看当前生效的检查器列表（local 优先）
@@ -423,7 +477,7 @@ python skills/sw-lint-checker/lint_runner.py --auto-fix --json
 python skills/sw-lint-checker/lint_runner.py --files src/main.py --json
 ```
 
-### 3.2 验证部署自定义
+### 4.2 验证部署自定义
 
 ```bash
 # 查看所有可用部署器（local 标有 "local" 标记）
@@ -442,19 +496,19 @@ python skills/sw-deployer/deploy_runner.py --target test --package ./build/app -
 
 ---
 
-## 4. 补充说明
+## 5. 补充说明
 
-### 4.1 文件命名规则
+### 5.1 文件命名规则
 
 `*_local/` 目录中的文件需要遵循：
 - **只会加载** 不以 `_` 开头的 `.py` 文件（`_example.py` 不会加载）
 - **加载顺序** 按文件名排序，多个自定义模块的优先级按 `handles()`/`target` 去重
 
-### 4.2 不修改框架文件
+### 5.2 不修改框架文件
 
 自定义过程中不需要修改 `checkers/`、`deployers/` 或 `lint_runner.py`/`deploy_runner.py` 中的任何框架代码。所有自定义都放在 `*_local/` 目录中。
 
-### 4.3 源码参考
+### 5.3 源码参考
 
 | 文件 | 说明 |
 |------|------|
@@ -474,5 +528,6 @@ python skills/sw-deployer/deploy_runner.py --target test --package ./build/app -
 | sw-lint-checker 完整参考 | [SKILL.md](../skills/sw-lint-checker/SKILL.md) |
 | sw-deployer 完整参考 | [SKILL.md](../skills/sw-deployer/SKILL.md) |
 | 配置参考（business_domain 等） | [configuration.md](configuration.md) |
+| 文档定义包协议 | [document-contracts.md](document-contracts.md) |
 | Agent 架构总览 | [architecture.md](architecture.md) |
 | 常见问题 | [faq.md](faq.md) |

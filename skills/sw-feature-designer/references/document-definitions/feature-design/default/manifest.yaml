@@ -1,0 +1,9 @@
+document_type: feature-design
+variant: default
+contract: sw.feature-design
+version: "1.0"
+
+resources:
+  template: ../../../feature-design-template.md
+  gate: gate.yaml
+  validator: validator.yaml

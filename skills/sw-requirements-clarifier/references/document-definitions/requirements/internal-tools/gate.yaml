@@ -1,0 +1,12 @@
+rules:
+  - id: requirements.internal-tools.gate.sections
+    type: required_sections
+    severity: error
+    sections:
+      - problem_statement
+      - scope
+      - user_scenarios
+      - functional_requirements
+      - acceptance_criteria
+      - constraints
+      - risks_assumptions

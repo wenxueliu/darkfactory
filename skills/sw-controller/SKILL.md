@@ -63,7 +63,7 @@ When Intent Gate classifies the request as a new feature, implementation, or ope
 1. **Requirements Clarification** — Delegate to `sw-requirements-clarifier`. It runs progressive 4-step clarification dialogue (Listen First → Ambiguity Scan → Prioritized Question Queue → Incremental Spec Update). Stops when Substantiality Threshold is met. Writes `requirements/{id}.md`.
 2. **Value Assessment** — Delegate to `sw-value-judgment`. Scores 5 dimensions (Impact / Effort / Risk / Dependencies / Strategic Fit). If P3 (don't do), archive the requirement. Writes `value-assessment/{id}.md`.
 3. **Knowledge Base Pre-Query** — Delegate to `sw-knowledge-agent`. Scans for relevant ADRs, patterns, lessons, and API contracts. Writes `knowledge-base/pre-query-{id}.md`.
-4. **Requirements Gate** — Read gate results from `references/requirements-gate.md`. Check G1-G4 (Completeness / Measurability / Value Alignment / Risk Readiness). Only proceed to design when all gates PASS. Max 3 retries → escalate to human.
+4. **Requirements Gate** — Resolve the `requirements/{business_domain}` definition through the layered document resolver and execute its selected `gate.yaml` and `validator.yaml`. Only proceed to design when all resolved rules PASS. Max 3 retries → escalate to human.
 5. **Phase Transition** — When all ideation gates PASS → proceed to design phase (3-Stage delegation). See Phase Transition Rules below for `ideation → design` criteria.
 
 Skip ideation for: Trivial (direct execution — but MUST verbalize intent first), Exploratory (research → answer), Ambiguous (ask one question → re-classify). Explicit requests MUST pass ideation — surface clarity is not a substitute for requirements verification.
@@ -142,7 +142,7 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 | 需求规格生成 | Delegate to `sw-requirements-clarifier` |
 | 需求价值判断 | Delegate to `sw-value-judgment` |
 | ROI 评估 | Delegate to `sw-value-judgment` |
-| 需求门禁检查 | Check gate results; escalate on failure |
+| 需求门禁检查 | Resolve the requirements definition and execute its gate/validator; escalate on failure |
 
 ### 设计阶段 (Design) — 3-Stage 委托
 
@@ -156,7 +156,7 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 | Stage 3: E2E 测试设计 | Delegate to `sw-e2e-designer` |
 | 架构决策记录 (ADR) | Load `references/adr-template.md` |
 | 多模型交叉验证 | Load `references/design-validator.md` |
-| 设计门禁检查 | Load `references/design-gate.md` |
+| 设计门禁检查 | Resolve and execute the feature, service, and E2E definition gates; aggregate results and escalate on failure |
 
 ### 知识库 (Knowledge)
 | Capability | Route |
@@ -178,7 +178,7 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 | Capability | Route |
 | ---------- | ----- |
 | 集成测试执行 | Delegate to `sw-integration-tester` |
-| API 测试执行 (Newman) | Delegate to `sw-integration-tester` — schema 文件见 `skills/sw-integration-tester/references/api-test-postman-schema.md` |
+| API 测试执行 (Newman) | Delegate to `sw-integration-tester`; that Skill owns its API test schema |
 | 浏览器 E2E 测试执行 | Delegate to `sw-browser-tester` |
 | 浏览器自动化测试 | Delegate to `sw-browser-tester` |
 

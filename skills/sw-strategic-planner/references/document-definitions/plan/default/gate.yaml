@@ -1,0 +1,14 @@
+rules:
+  - id: plan.gate.sections
+    type: required_sections
+    severity: error
+    sections:
+      - tldr
+      - context
+      - work_objectives
+      - verification_strategy
+      - execution_strategy
+      - todos
+      - final_verification
+      - commit_strategy
+      - success_criteria

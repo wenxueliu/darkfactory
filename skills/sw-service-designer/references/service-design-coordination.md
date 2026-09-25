@@ -12,7 +12,7 @@
 2. 读取 `service-registry.yaml` → 查找当前 `{service_id}`
 3. 如果 `services[].type` 有值 → 使用显式类型
 4. 否则，根据 `services[].language` 推断类型
-5. 加载对应模板: `references/service-design-template-{type}.md`
+5. 解析对应定义包: `service-design/{type}`，使用其 manifest 选择模板、门禁和验证器
 6. 类型无法识别 → 默认 `backend` + 警告
 
 单体模式: 跳过检测，默认 `backend`。

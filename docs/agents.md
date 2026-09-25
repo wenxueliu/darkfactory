@@ -110,11 +110,11 @@
 │                                                                      │
 │   sw-controller 委托给专门 Agent:                                     │
 │   ├── sw-requirements-clarifier → 4-step progressive dialogue       │
-│   │     └── requirements-spec-template.md → requirements/{id}.md    │
+│   │     └── requirements/{variant} definition → requirements/{id}.md│
 │   ├── sw-value-judgment → value-assessment/{id}.md                  │
 │   └── sw-knowledge-agent → KB pre-query (ADR/patterns/lessons)      │
 │                                                                      │
-│   sw-controller: 检查 requirements-gate.md (G1-G4) 结果              │
+│   sw-controller: 执行解析后的 requirements gate/validator            │
 │   Output: requirements/{id}.md, value-assessment/{id}.md            │
 └──────────────────┬───────────────────────────────────────────────────┘
                    │ ✅ Requirements gate PASS
@@ -135,7 +135,7 @@
 │                                                                      │
 │   sw-grill-docs → grill design against CONTEXT.md + ADRs            │
 │                                                                      │
-│   sw-controller: 检查 design-gate.md → design-validator.md 结果      │
+│   sw-controller: 聚合各设计定义包的 gate/validator 结果              │
 │   Output: designs/*.md, ADR documents (adr-template.md)             │
 └──────────────────┬───────────────────────────────────────────────────┘
                    │ ✅ Design gate PASS
@@ -247,8 +247,8 @@
 
 | Phase | Owner | Active Agents | Key References | Gate |
 |-------|-------|---------------|----------------|------|
-| **ideation** | sw-requirements-clarifier | sw-value-judgment, sw-knowledge-agent | requirement-clarification.md, requirements-spec-template.md | requirements-gate.md |
-| **design** | sw-feature-designer | sw-service-designer, sw-e2e-designer, sw-brainstorming, sw-grill-docs, sw-strategic-advisor, sw-codebase-explorer, sw-external-researcher | design-coordination.md, adr-template.md | design-gate.md |
+| **ideation** | sw-requirements-clarifier | sw-value-judgment, sw-knowledge-agent | requirement-clarification.md, `requirements/{variant}` definition package | resolved gate/validator |
+| **design** | sw-feature-designer | sw-service-designer, sw-e2e-designer, sw-brainstorming, sw-grill-docs, sw-strategic-advisor, sw-codebase-explorer, sw-external-researcher | design-coordination.md, ADR | resolved definition gates/validators |
 | **planning** (复杂需求) | sw-strategic-planner | sw-pre-planning-consultant, sw-plan-reviewer, sw-grill-docs, sw-codebase-explorer, sw-external-researcher | interview→research→plan gen→review→grill docs | plan review PASS + grill docs PASS |
 | **decomposition** (简单需求) | sw-task-decomposer | — | task-decomposition.md, parallel-execution.md | dependency check |
 | **execution** | sw-plan-executor | sw-worktree-controller, sw-tdd-agent, sw-reviewer-logic, sw-reviewer-security, sw-reviewer-performance, sw-reviewer-context, sw-receiving-review, sw-lint-checker, sw-verification-before-completion, sw-systematic-debugging | worktree-management.md, quality-gates.md | P0/P1/P2 gate |

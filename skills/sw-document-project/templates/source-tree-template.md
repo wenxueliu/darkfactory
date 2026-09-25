@@ -1,3 +1,9 @@
+---
+document_type: source-tree
+contract: sw.source-tree
+contract_version: "1.0"
+---
+
 # {{project_name}} - Source Tree Analysis
 
 **Date:** {{date}}
@@ -133,3 +139,8 @@ This project is organized into {{parts_count}} distinct parts:
 ---
 
 _Generated using BMAD Method `document-project` workflow_
+---
+document_type: source-tree
+contract: sw.source-tree
+contract_version: "1.0"
+---

@@ -1,3 +1,9 @@
+---
+document_type: service-design
+contract: sw.service-design
+contract_version: "1.0"
+---
+
 # 后端服务设计模板 (Backend Service Design Template)
 
 ## 使用说明
@@ -13,12 +19,14 @@
 **服务:** `{service_id}` (语言: {language}, 端口: {port})
 **状态:** `draft | reviewed | approved`
 
+<!-- section-id: technical_decisions -->
 ## S1. 技术决策
 
 | ID | 决策 | 理由 | 替代方案 | 权衡 |
 |----|------|------|---------|------|
 | D-{svc}-1 | {本服务的技术选型} | {为什么} | {放弃的方案} | {牺牲了什么} |
 
+<!-- section-id: architecture_design -->
 ## S2. 架构设计
 
 ### 组件图
@@ -46,6 +54,7 @@ INPUT → VALIDATION → BUSINESS LOGIC → PERSISTENCE → OUTPUT
 |------|------|------|------|------|
 | {Name} | {一句话职责} | {输入类型} | {输出类型} | {依赖} |
 
+<!-- section-id: api_design -->
 ## S3. API/接口设计
 
 ### API 端点
@@ -67,6 +76,7 @@ fields:
     description: {business meaning}
 ```
 
+<!-- section-id: state_management -->
 ## S4. 状态管理
 
 ### 状态机
@@ -91,6 +101,7 @@ fields:
 |---------|---------|---------|---------|--------|
 | DRAFT | submit | IN_REVIEW | 必填字段完整 | 发送通知 + 审计日志 |
 
+<!-- section-id: error_handling -->
 ## S5. 错误处理策略
 
 | 错误场景 | 异常类型 | HTTP 状态码 | 用户消息 | 重试策略 | 日志级别 |
@@ -103,6 +114,7 @@ fields:
 
 **最少要求:** ≥ 5 种异常场景。
 
+<!-- section-id: security_design -->
 ## S6. 安全设计
 
 | 关注点 | 方案 | 验证方式 |
@@ -113,6 +125,7 @@ fields:
 | 数据保护 | {方案描述} | {测试方式} |
 | 审计日志 | {方案描述} | {测试方式} |
 
+<!-- section-id: unit_test_design -->
 ## S7. UT 设计 (L1 — 本服务组件)
 
 加载 `test-case-template.md`。对本服务 S2 中的每个组件设计 UT 用例。
@@ -148,6 +161,7 @@ assertThat(result).isEqualTo(expected);
 |---------|-------------|-------------|
 | UT-{id} | AC-{N} | D-{svc}-{N} |
 
+<!-- section-id: api_test_design -->
 ## S8. API 测试设计 (L2 — 本服务端点)
 
 加载 `api-test-case-template.json` 和 `api-test-postman-schema.md`。

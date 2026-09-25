@@ -1,0 +1,32 @@
+rules:
+  - id: requirements.sections.required
+    type: required_sections
+    severity: error
+    sections:
+      - id: problem_statement
+      - id: user_stories
+      - id: acceptance_criteria
+      - id: non_functional_requirements
+      - id: constraints
+      - id: risks_assumptions
+  - id: requirements.sections.non-empty
+    type: non_empty_sections
+    severity: error
+    sections:
+      - id: problem_statement
+      - id: user_stories
+      - id: acceptance_criteria
+  - id: requirements.sections.minimum-length
+    type: min_section_length
+    severity: error
+    minimum: 50
+    sections:
+      - id: problem_statement
+      - id: user_stories
+      - id: acceptance_criteria
+      - id: non_functional_requirements
+      - id: constraints
+      - id: risks_assumptions
+  - id: requirements.no-placeholders
+    type: no_placeholders
+    severity: error

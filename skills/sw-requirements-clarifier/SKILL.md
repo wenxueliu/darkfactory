@@ -31,6 +31,7 @@ The requirements detective. Asks precise questions, not open-ended ones. Validat
 ## On Activation
 
 1. Load `references/requirement-clarification.md` — run the progressive clarification dialogue:
+   - **Step 0.5**: Document Definition Resolution — resolve `requirements/{business_domain}` through the unified document-definition resolver. Search project `_context/templates`, configured user context templates, then this Skill's built-in `references/document-definitions`. Load the resolved template, gate, and validator independently; do not load a lower-priority resource when a higher-priority resource is explicitly invalid.
    - **Step 1.0**: Requirement-Level KB Pre-Check — delegate to `sw-knowledge-agent` (KnowledgeQuery) to check **(a) requirement already implemented** (tracker done + KB patterns/lessons), **(b) implementation conflict** (KB lessons + contracts + in-progress tracker), **(c) confirm existing implementations** (KB patterns + contracts + CONTEXT.md terms). Output: "requirement landscape" — used to drive Step 1.1 listening and Step 3 prioritization. **Distinct from the design-phase implementation-level KB query** (which scans for patterns/decisions/contracts to use in the solution)
    - Step 1.1: Listen First — Understand the user's intent without interruption
    - Step 2: Ambiguity Scan — Check 10 dimensions (scope, priority, constraints, dependencies, etc.)
@@ -43,12 +44,8 @@ The requirements detective. Asks precise questions, not open-ended ones. Validat
    - Scope boundaries are clear
    - ≥3 assumptions/risks identified
    - Value is explainable
-3. Select the appropriate template:
-   - General: `references/requirements-spec-template.md`
-   - Fintech: `references/requirements-spec-template-fintech.md`
-   - Ecommerce: `references/requirements-spec-template-ecommerce.md`
-   - Internal tools: `references/requirements-spec-template-internal-tools.md`
-4. Run requirements gate checks via `references/requirements-gate.md` (G1-G4)
+3. Resolve the `requirements/{business_domain}` document definition package. Use its manifest-selected template, gate, and validator only.
+4. Run the resolved gate and validator rules.
 5. Write output to `_context/memory/sw-shared/requirements/{id}.md`
 6. Update `_context/memory/sw-shared/requirements-tracker.yaml` — 写入需求条目。详见 `references/tracker-update.md`
 
@@ -57,15 +54,13 @@ The requirements detective. Asks precise questions, not open-ended ones. Validat
 | Capability | Route |
 | ---------- | ----- |
 | Requirements Clarification | Load `references/requirement-clarification.md` |
-| Requirements Spec (General) | Load `references/requirements-spec-template.md` |
-| Requirements Spec (Fintech) | Load `references/requirements-spec-template-fintech.md` |
-| Requirements Spec (Ecommerce) | Load `references/requirements-spec-template-ecommerce.md` |
-| Requirements Spec (Internal Tools) | Load `references/requirements-spec-template-internal-tools.md` |
-| Requirements Gate Check | Load `references/requirements-gate.md` |
+| Requirements Document Definition | Resolve `references/document-definitions/requirements/{variant}/manifest.yaml` |
+| Requirements Gate and Validation | Execute the resolved `gate.yaml` and `validator.yaml` |
 | Requirements Tracker Update | Load `references/tracker-update.md` |
 | **KB Pre-Check (Step 1.0 — requirement-level)** | **Delegate to `sw-knowledge-agent` (KnowledgeQuery): requirement already implemented / implementation conflict / confirm existing implementations → output "requirement landscape"** |
+| **Document Definition Resolution (Step 0.5)** | **Unified resolver: project → user → Skill built-in; resolve template, gate, and validator independently** |
 | **Spec Grilling (Step 4.5)** | **Delegate to `sw-grill-docs` (Quick mode — Phase 1 + Phase 2 only)** |
 
 ## Output
 
-Write clarified requirements to `{project-root}/requirements/{id}.md`
+Write clarified requirements to `{project-root}/_context/memory/sw-shared/requirements/{id}.md`

@@ -1,0 +1,9 @@
+document_type: service-design
+variant: default
+contract: sw.service-design
+version: "1.0"
+
+resources:
+  template: ../../../service-design-template-backend.md
+  gate: gate.yaml
+  validator: validator.yaml

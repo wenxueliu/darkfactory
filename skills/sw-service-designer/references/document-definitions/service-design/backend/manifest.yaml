@@ -1,0 +1,7 @@
+document_type: service-design
+variant: backend
+contract: sw.service-design
+version: "1.0"
+
+resources:
+  template: ../../../service-design-template-backend.md

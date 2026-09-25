@@ -182,7 +182,7 @@ Aggregate contributor insights across files:
 - Combine verification steps into `verification_steps`
 - Combine recommended test commands into `suggested_tests`
 
-Load template from `templates/deep-dive-template.md`.
+Resolve `deep-dive/default` and load its selected template.
 Fill template with all collected data from Steps D2-D4.
 Write filled template to: `{project_knowledge}/deep-dive-{sanitized_target_name}.md`.
 Validate deep-dive document completeness.

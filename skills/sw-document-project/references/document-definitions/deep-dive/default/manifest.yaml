@@ -1,0 +1,7 @@
+document_type: deep-dive
+variant: default
+contract: sw.deep-dive
+version: "1.0"
+
+resources:
+  template: ../../../../templates/deep-dive-template.md

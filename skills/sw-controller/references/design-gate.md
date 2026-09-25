@@ -12,15 +12,15 @@
 - [ ] 用户旅程覆盖完整 happy path，每个步骤标注对应 AC 编号（如标注 N/A，需检查是否确实无用户交互）
 - [ ] 页面设计（如涉及 UI）至少有: 页面清单 + 每页组件清单 + 交互细节表
 - [ ] Stage 1 输出: 特性设计文档完整 (`designs/{id}-design.md`)
-- [ ] Stage 1 验证器 PASS: `feature-design-validator.md` (G1-G4)
+- [ ] Stage 1 `feature-design/default` 定义包的 validator/gate PASS
 - [ ] Stage 2 输出: 所有受影响服务的 per-service 设计文档完整 (`designs/{id}-service-{svc}-design.md` × N)
-- [ ] Stage 2 验证器 PASS: 每个服务 `service-design-validator.md` (V1-V4) 通过
+- [ ] Stage 2 每个服务类型定义包的 validator/gate PASS
 - [ ] Stage 3 输出: E2E 测试设计文档完整 (`designs/{id}-e2e-design.md`)
-- [ ] Stage 3 验证器 PASS: `e2e-design-validator.md` (V1-V5) 通过
+- [ ] Stage 3 `e2e/default` 定义包的 validator/gate PASS
 - [ ] UT 设计: 每个组件 ≥ 2 用例 (1 happy + 1 error/boundary)，每个组件 ≥ 1 edge 用例
 - [ ] API 测试设计: 每个端点 ≥ 3 用例 (正常 ×1 + 异常 ×1 + 认证/权限 ×1)
 - [ ] API 测试 JSON 文件已生成: `tests/api-{requirement_id}-{service_id}.json` × N
-- [ ] E2E 测试设计: 按 `e2e-test-case-template.md` Section 6 场景启用矩阵覆盖
+- [ ] E2E 测试设计: 按 `e2e/default` 定义包模板中的场景启用矩阵覆盖
 - [ ] 三层追溯矩阵完整: 每个 AC 至少被一层测试覆盖，空缺有理由
 - [ ] 每个技术决策有被拒绝的替代方案和拒绝理由
 - [ ] API 端点定义了请求/响应 schema 和错误码

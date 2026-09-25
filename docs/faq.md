@@ -23,7 +23,7 @@
 
 1. **ideation-gate.py 硬门禁（PreToolUse Hook）**：任何 Agent/Write/Edit 调用前检查 `ideation.status == done`，未完成直接 DENY。
 2. **Phase Transition Rules**：sw-controller 的 SKILL.md 定义了每阶段转换的前置条件清单，全部 PASS 才能推进。
-3. **Gate 质量门禁**：每阶段有独立门禁文档（requirements-gate / design-gate / quality-gates / delivery-acceptance-gate），全 PASS 才能过渡。
+3. **Gate 质量门禁**：需求和设计阶段通过定义包中的 gate/validator 执行；执行、测试、交付阶段仍有各自的质量门禁，全 PASS 才能过渡。
 
 完整 pipeline：`ideation → design → decomposition → execution → merge → test → delivery`
 
@@ -35,7 +35,7 @@ FAIL → 标记阻塞原因 → 回到当前阶段重新执行 → 最大重试 
        3 轮后仍未 PASS → 升级到人工决策
 ```
 
-- 需求门禁 `requirements-gate.md` 有 G1-G4 四项检查（完整性 / 可测量性 / 价值对齐 / 风险就绪）
+- 需求门禁由 `requirements/{variant}` 定义包中的 `gate.yaml` 和 `validator.yaml` 声明；具体规则随场景定制。
 - `FAIL` 时 tracker 中标记 `ideation.status = blocked` + `block_reason` + `retry_count`
 - 统一模式适用所有阶段门禁，重试上限为 `min_iteration_before_human`（默认 3）
 
@@ -64,10 +64,10 @@ value_assessment 在 YAML 里是一个 phase，但在管道执行逻辑中只是
 
 | 阶段 | 验证器 | 检查维 | 产出 |
 |------|--------|--------|------|
-| Stage 1 | `feature-design-validator.md` | V1 完整性 / V2 一致性 / V3 可过渡性 | designs/{id}-design.md |
-| Stage 2 | `service-design-validator.md` × N | V1 完整性 / V2 UT设计质量 / V3 API测试设计质量 / V4 可执行性 | designs/{id}-service-{svc}-design.md |
-| Stage 3 | `e2e-design-validator.md` | V1 功能E2E / V2 非功能E2E / V3 兼容性E2E / V4 数据自包含 / V5 自定义扩展 | designs/{id}-e2e-design.md |
-| 最终 | `design-gate.md` | G1 完整性 / G2 可实施性 / G3 安全就绪 / G4 知识沉淀 | — |
+| Stage 1 | `feature-design/default` definition | 模板结构 + resolved gate/validator | designs/{id}-design.md |
+| Stage 2 | `service-design/{type}` definition × N | 模板结构 + resolved gate/validator | designs/{id}-service-{svc}-design.md |
+| Stage 3 | `e2e/default` definition | 模板结构 + resolved gate/validator | designs/{id}-e2e-design.md |
+| 最终 | 各设计定义包的 gate/validator | 完整性 / 可实施性 / 安全就绪 / 知识沉淀 | — |
 
 ### 可选：多模型交叉验证
 

@@ -1,0 +1,22 @@
+rules:
+  - id: requirements.internal-tools.sections
+    type: required_sections
+    severity: error
+    sections:
+      - problem_statement
+      - user_scenarios
+      - functional_requirements
+      - acceptance_criteria
+      - constraints
+      - risks_assumptions
+  - id: requirements.internal-tools.non-empty
+    type: non_empty_sections
+    severity: error
+    sections:
+      - problem_statement
+      - user_scenarios
+      - functional_requirements
+      - acceptance_criteria
+  - id: requirements.internal-tools.no-placeholders
+    type: no_placeholders
+    severity: error

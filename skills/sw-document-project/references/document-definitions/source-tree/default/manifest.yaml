@@ -1,0 +1,7 @@
+document_type: source-tree
+variant: default
+contract: sw.source-tree
+version: "1.0"
+
+resources:
+  template: ../../../../templates/source-tree-template.md

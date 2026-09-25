@@ -36,20 +36,18 @@ Load context:
 - Service registry (if `architecture: "microservices"`): `{project-root}/_context/memory/sw-shared/service-registry.yaml`
 - Business domain config: `{project-root}/_context/config.yaml` → `sw.business_domain`
 
-Template resolution (microservices mode):
-1. Load `references/template-router.md` (sw-controller) to determine feature design template by `business_domain`
-2. Load `references/microservice-adaptation.md` (sw-controller) for service impact analysis patterns
-3. Fallback: `references/feature-design-template.md` (general)
-
-In monolith mode, use `references/feature-design-template.md` directly.
+Template resolution:
+1. Resolve the local `feature-design/{variant}` document definition package.
+2. Use the manifest-selected template, gate, and validator from this Skill only.
+3. If a project or user definition is supplied, the unified resolver applies it before this Skill's built-in package.
 
 ## Capabilities
 
 | Capability | Route |
 | ---------- | ----- |
 | 特性设计协调 | Load `references/feature-design-coordination.md` |
-| 特性设计模板 | Load `references/feature-design-template.md` |
-| 特性设计验证器 | Load `references/feature-design-validator.md` |
+| 特性设计定义包 | Resolve `references/document-definitions/feature-design/{variant}/manifest.yaml` |
+| 特性设计验证 | Execute the resolved `gate.yaml` and `validator.yaml` |
 | 架构决策记录 | Load `references/adr-template.md` |
 
 ## Output

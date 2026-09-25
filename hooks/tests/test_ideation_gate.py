@@ -114,36 +114,48 @@ def _write_valid_spec(project_root, req_id="REQ-100"):
     spec_dir = Path(project_root) / "_context" / "memory" / "sw-shared" / "requirements"
     spec_dir.mkdir(parents=True, exist_ok=True)
     spec = spec_dir / f"{req_id}.md"
-    spec.write_text(f"""# {req_id} Test Spec
+    spec.write_text(f"""---
+document_type: requirements
+contract: sw.requirements
+contract_version: "1.0"
+---
 
+# {req_id} Test Spec
+
+<!-- section-id: problem_statement -->
 ## 问题陈述
 
 This is a sufficiently long problem statement that explains the issue in
 detail with concrete measurable signals and the affected user population.
 
+<!-- section-id: user_stories -->
 ## 用户故事
 
 As a user I want to do X so that Y is achieved, and this provides business
 value because of the following reason that we are documenting.
 
+<!-- section-id: acceptance_criteria -->
 ## 验收标准
 
 - AC1: Given X, when Y, then Z measurable result with specific threshold
 - AC2: Given error condition, when handled, then specific error returned
 - AC3: Performance: response < 200ms under 100 RPS concurrent load
 
+<!-- section-id: non_functional_requirements -->
 ## 非功能需求
 
 Security: HTTPS only, JWT auth, no PII in logs.
 Performance: < 200ms P99 latency, supports 1000 RPS.
 Availability: 99.9% uptime SLA.
 
+<!-- section-id: constraints -->
 ## 约束
 
 - Must work on Linux/macOS/Windows
 - Python 3.11+
 - No new external services
 
+<!-- section-id: risks_assumptions -->
 ## 风险与假设
 
 - Risk 1: Database migration could fail; mitigation: feature flag + rollback
@@ -172,8 +184,14 @@ def test_validate_spec_missing_sections():
     with tempfile.TemporaryDirectory() as tmp:
         spec_dir = Path(tmp) / "_context" / "memory" / "sw-shared" / "requirements"
         spec_dir.mkdir(parents=True, exist_ok=True)
-        (spec_dir / "REQ-X.md").write_text("""
+        (spec_dir / "REQ-X.md").write_text("""---
+document_type: requirements
+contract: sw.requirements
+contract_version: "1.0"
+---
+
 # Partial spec
+<!-- section-id: problem_statement -->
 ## 问题陈述
 This is a long enough problem statement that passes the 50 char threshold.
 """, encoding="utf-8")
@@ -185,12 +203,20 @@ def test_validate_spec_too_short_section():
     with tempfile.TemporaryDirectory() as tmp:
         spec_dir = Path(tmp) / "_context" / "memory" / "sw-shared" / "requirements"
         spec_dir.mkdir(parents=True, exist_ok=True)
-        (spec_dir / "REQ-Y.md").write_text("""
+        (spec_dir / "REQ-Y.md").write_text("""---
+document_type: requirements
+contract: sw.requirements
+contract_version: "1.0"
+---
+
 # Spec
+<!-- section-id: problem_statement -->
 ## 问题陈述
 Long enough problem statement that passes the 50 char threshold easily.
+<!-- section-id: user_stories -->
 ## 用户故事
 Short
+<!-- section-id: acceptance_criteria -->
 ## 验收标准
 """, encoding="utf-8")
         errors = ideation_gate.validate_spec_content(tmp, "REQ-Y")

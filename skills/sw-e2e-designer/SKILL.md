@@ -35,14 +35,15 @@ Load context:
 - Per-service designs: `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-service-*-design.md` (API contracts, data models)
 - Business domain config: `{project-root}/_context/config.yaml` → `sw.business_domain` (drives scenario enablement matrix)
 - E2E extensions config: `{project-root}/_context/config.yaml` → `sw.e2e_extensions` (custom scenarios, categories, hooks)
+- Resolve the local `e2e/{variant}` document definition package and use its manifest-selected template, gate, and validator.
 
 ## Capabilities
 
 | Capability | Route |
 | ---------- | ----- |
 | E2E设计协调 | Load `references/e2e-design-coordination.md` |
-| E2E测试用例模板 | Load `references/e2e-test-case-template.md` |
-| E2E设计验证器 | Load `references/e2e-design-validator.md` |
+| E2E 文档定义包 | Resolve `references/document-definitions/e2e/{variant}/manifest.yaml` |
+| E2E 设计验证 | Execute the resolved `gate.yaml` and `validator.yaml` |
 
 ## Output
 

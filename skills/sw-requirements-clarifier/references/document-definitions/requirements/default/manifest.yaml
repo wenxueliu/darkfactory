@@ -1,0 +1,9 @@
+document_type: requirements
+variant: default
+contract: sw.requirements
+version: "1.0"
+
+resources:
+  template: ../../../requirements-spec-template.md
+  gate: gate.yaml
+  validator: validator.yaml

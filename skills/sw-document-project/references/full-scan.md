@@ -189,7 +189,7 @@ project-root/
 │   │   └── services/    # Business logic
 ```
 
-IMMEDIATELY write `source-tree-analysis.md` using `templates/source-tree-template.md`. Validate structure. Purge: "Source tree with {count} critical folders".
+IMMEDIATELY resolve `source-tree/default`, write `source-tree-analysis.md` using its selected template, and validate it. Purge: "Source tree with {count} critical folders".
 
 ---
 
@@ -255,7 +255,7 @@ For each architecture file: write immediately, validate, purge. Keep only: "Arch
 
 ## Step 9: Generate Supporting Documentation Files
 
-Generate **project-overview.md** using `templates/project-overview-template.md` with:
+Generate **project-overview.md** using the resolved `project-overview/default` definition with:
 - Project name and purpose (from README or user input)
 - Executive summary, tech stack summary table
 - Architecture type classification
@@ -285,7 +285,7 @@ Write each file immediately after generation. Validate each file. Purge after wr
 
 ## Step 10: Generate Master Index
 
-Create `index.md` using `templates/index-template.md` as the primary AI retrieval entry point.
+Create `index.md` using the resolved `project-index/default` definition as the primary AI retrieval entry point.
 
 **Incomplete documentation marker convention**: When a document SHOULD be generated but wasn't (due to quick scan or missing data), use EXACTLY this marker: `(To be generated)` at the end of the markdown link line.
 Example: `- [API Contracts - Server](./api-contracts-server.md) (To be generated)`

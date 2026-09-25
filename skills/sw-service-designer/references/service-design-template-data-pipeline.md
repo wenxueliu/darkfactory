@@ -1,3 +1,9 @@
+---
+document_type: service-design
+contract: sw.service-design
+contract_version: "1.0"
+---
+
 # 数据管道服务设计模板 (Data Pipeline Service Design Template)
 
 ## 使用说明
@@ -13,6 +19,7 @@
 **服务:** `{service_id}` (语言: {language})
 **状态:** `draft | reviewed | approved`
 
+<!-- section-id: technical_decisions -->
 ## S1. 技术决策
 
 | ID | 决策 | 理由 | 替代方案 | 权衡 |
@@ -20,6 +27,7 @@
 | D-{svc}-1 | {处理框架} | {为什么} | {放弃的方案} | {牺牲了什么} |
 | D-{svc}-2 | {checkpoint/offset 策略} | {为什么} | {放弃的方案} | {牺牲了什么} |
 
+<!-- section-id: architecture_design -->
 ## S2. 管道架构
 
 ```
@@ -37,6 +45,7 @@ SOURCE → TRANSFORM → SINK
 | 处理模式 | batch / streaming / micro-batch | {说明} |
 | 并行度 | {N} | {说明} |
 
+<!-- section-id: api_design -->
 ## S3. 数据 Schema 与转换规则
 
 ### 输入 Schema
@@ -66,6 +75,7 @@ fields:
 | validate | raw_data | validated_data | {校验规则} | 写入 DLQ |
 | transform | validated_data | enriched_data | {转换逻辑} | 跳过 + 告警 |
 
+<!-- section-id: state_management -->
 ## S4. 状态管理
 
 ### Checkpoint / Offset 策略
@@ -83,6 +93,7 @@ fields:
 | 输入源不可用 | 重试 {N} 次 | {评估} |
 | 输出目标不可用 | spillover + 告警 | {评估} |
 
+<!-- section-id: error_handling -->
 ## S5. 错误处理与重试策略
 
 | 错误类型 | 处理方式 | 重试 | 死信 |
@@ -91,6 +102,7 @@ fields:
 | 临时性故障 | 重试 | 指数退避 ×3 | DLQ |
 | 业务规则违反 | 跳过 + 告警 | 不重试 | DLQ + 通知 |
 
+<!-- section-id: security_design -->
 ## S6. 安全设计
 
 | 关注点 | 方案 |
@@ -100,6 +112,7 @@ fields:
 | 数据访问控制 | IAM role / service account |
 | 审计 | 记录每次运行: input_count, output_count, error_count, lag |
 
+<!-- section-id: unit_test_design -->
 ## S7. UT 设计 (L1)
 
 加载 `test-case-template.md`。
@@ -111,6 +124,7 @@ fields:
 
 **最少要求:** 每个转换函数 ≥ 2 UT 用例。
 
+<!-- section-id: api_test_design -->
 ## S8. 集成测试设计 (L2)
 
 | 用例 ID | 场景 | 输入数据 | 预期输出 | 预期副作用 |

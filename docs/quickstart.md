@@ -338,8 +338,12 @@ sw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 - `_context/config.yaml` — 调整 review 严格度、业务领域、人力介入频率
 
 **我想扩展新的业务领域模板：**
-- `skills/sw-controller/references/template-router.md` — 如何新增一个业务领域模板
-- `skills/sw-controller/references/requirements-spec-template.md` — 通用模板结构
+- `docs/document-contracts.md` — 文档定义包、分层解析和验证协议
+- `skills/sw-requirements-clarifier/references/document-definitions/requirements/` — 内置需求定义包
+
+**我想只为当前项目定制文档模板：**
+
+在项目根目录创建 `_context/templates/<document-type>/<variant>/`，放入 `manifest.yaml`、`template.md`，以及可选的 `gate.yaml` / `validator.yaml`。解析优先级是项目 → 用户 → Skill 内置；完整示例见 [configuration.md](configuration.md)。
 
 **我遇到了问题：**
 - 检查 `_context/memory/sw-shared/human-interventions.md` — 是否有阻塞升级

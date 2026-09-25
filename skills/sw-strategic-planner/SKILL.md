@@ -125,6 +125,7 @@ description: "战略规划Agent. Strategic planning consultant that interviews, 
 2. 读取 `{project-root}/_context/config.user.yaml` — 获取用户偏好（communication_language, user_name 等）
 3. 读取 `{project-root}/_context/memory/sw-shared/design-decisions.md` — 了解已有的架构决策
 4. 读取 `{project-root}/_context/memory/sw-shared/tasks.yaml` — 了解当前任务状态
+5. 解析本 Skill 的 `plan/default` 文档定义包，加载其模板、门禁和验证器。
 
 ### Step 1: 进入访谈模式（默认）
 
@@ -175,7 +176,7 @@ ANY NO -> 继续访谈，提出具体的未明确问题。
 
 **强制步骤**：
 1. 调用 sw-pre-planning-consultant 进行缺口分析（MANDATORY — 不可跳过）
-2. 构建完整计划骨架（TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, Final Verification Wave, Commit Strategy, Success Criteria）
+2. 按解析后的 `plan` 文档契约构建计划骨架
 3. 向计划文件写入骨架（单次 Write）
 4. 以每批 2-4 个任务的节奏分批追加 TODOs（多次 Edit）
 5. 每批追加后 Read 验证完整性
@@ -206,7 +207,7 @@ ANY NO -> 继续访谈，提出具体的未明确问题。
 | Capability | Route |
 |------------|-------|
 | 计划生成完整流程 — TodoWrite 注册、Metis 缺口分析、骨架构建、增量写入、自审查 | Load `references/plan-generation.md` |
-| 计划模板 — 完整章节结构、占位符标记、格式规则 | Load `references/plan-template.md` |
+| 计划定义包 — 模板、稳定 section ID、门禁和验证器 | Resolve `plan/default` |
 | 并行化设计 — 波构造规则、依赖最小化策略、跨波依赖处理 | Load `references/parallelism-design.md` |
 
 ### 审查与交接
@@ -274,7 +275,7 @@ ANY NO -> 继续访谈，提出具体的未明确问题。
 
 最终计划文件保存到 `{project-root}/_context/memory/sw-shared/plans/{plan-name}.md`。
 
-计划包含以下必需章节（详见 `references/plan-template.md`）：
+计划包含以下必需章节（以解析后的 `plan/default` 定义包为准）：
 1. **TL;DR** — 摘要 + 交付物 + 工作量估算 + 并行性 + 关键路径
 2. **Context** — 原始请求 + 访谈摘要 + 研究发现 + 预规划审查
 3. **Work Objectives** — 核心目标 + 具体交付物 + 完成定义 + 必须有 + 绝不能有

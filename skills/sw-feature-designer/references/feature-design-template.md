@@ -1,3 +1,9 @@
+---
+document_type: feature-design
+contract: sw.feature-design
+contract_version: "1.0"
+---
+
 # 特性设计文档模板 (Feature Design Template)
 
 ## 使用说明
@@ -15,7 +21,7 @@
 
 ### 模板可定制
 
-通过 `_context/config.yaml` 的 `business_domain` 自动选择领域专属模板（如 `feature-design-template-fintech.md`）。也可通过 `sw.design_phase.custom_templates.feature_design` 指定完全自定义模板。
+通过 `business_domain` 选择 `feature-design/{variant}` 定义包。项目或用户级自定义必须提供同一契约的 `manifest.yaml`，由统一解析器按项目 → 用户 → Skill 内置顺序加载。
 
 ---
 
@@ -27,6 +33,7 @@
 **状态:** `draft | reviewed | approved | implemented`
 **创建时间:** `{timestamp}`
 
+<!-- section-id: feature_overview -->
 ## 1. 特性总览
 
 {3-5 句话描述这个特性要解决什么问题、核心方案思路、成功标准。一个新加入的工程师应该在 60 秒内理解这个特性的全貌。}
@@ -38,6 +45,7 @@
 | 1 | {标准描述} | {如何衡量} | {目标值} |
 | 2 | {标准描述} | {如何衡量} | {目标值} |
 
+<!-- section-id: service_impact -->
 ## 2. 服务影响分析
 
 {列出此特性影响的所有服务/模块。微服务模式下从 `service-registry.yaml` 获取服务列表。}
@@ -52,6 +60,7 @@
 - 跨服务依赖必须显式标注
 - 风险等级: 高 = 涉及资金/安全/数据迁移；中 = 新增跨服务调用/修改契约；低 = 独立变更
 
+<!-- section-id: user_journey -->
 ## 3. 用户旅程设计
 
 需求规格描述了用户"应该经历什么"（WHAT）。本章节描述系统"如何交付这个体验"（HOW）——从系统视角设计用户在功能中的每一步交互。如果功能没有用户交互（纯后端服务/数据管道），本章可标注 N/A 后跳过。
@@ -88,6 +97,7 @@
 | 步骤1 | {正常展示} | {skeleton/spinner} | {引导文案} | {错误提示 + 重试} | {极限输入/并发} |
 | 步骤2 | {正常展示} | {进度条} | {创建引导} | {降级方案} | {权限不足} |
 
+<!-- section-id: page_design -->
 ## 4. 页面设计
 
 如果功能涉及 UI 页面，为每个页面编写设计说明。纯后端/API 功能可标注 N/A 后跳过本章。
@@ -126,6 +136,7 @@ P-1 → P-2 → P-3
 (含路由参数传递)
 ```
 
+<!-- section-id: service_interactions -->
 ## 5. 服务交互设计
 
 {微服务模式必填。单体模式下标注 N/A 跳过。}
@@ -153,6 +164,7 @@ P-1 → P-2 → P-3
 |------|---------|----------|---------|---------|
 | {场景描述} | {svc A, svc B} | 强一致/最终一致 | Saga/2PC/Outbox/... | {补偿操作} |
 
+<!-- section-id: cross_service_contracts -->
 ## 6. 跨服务契约
 
 {微服务模式必填。定义服务间 API 调用的契约。单体模式下标注 N/A 跳过。}
@@ -179,6 +191,7 @@ paths:
 - 契约变更必须兼容（additive change）或版本升级（breaking change）
 - `contract_first: true` 时，契约必须先于实现代码存在
 
+<!-- section-id: deployment_strategy -->
 ## 7. 部署策略
 
 ### 7.1 发布序列
@@ -205,12 +218,14 @@ paths:
 |------|------|------|---------|
 | {metric_name} | latency/error_rate/throughput/... | {threshold} | P0/P1/P2 |
 
+<!-- section-id: open_questions -->
 ## 8. 开放问题
 
 - {在 per-service 设计前需要澄清的问题}
 - {跨服务交互中未达成共识的决策}
 - {如果某个问题需要特定角色决策，标注负责人}
 
+<!-- section-id: downstream_references -->
 ## 9. 下游引用
 
 - 需求规格: `requirements/{requirement_id}.md`

@@ -25,7 +25,7 @@
 | `kb.freshness.confidence_decay.user-stated` | 0 | user-stated 不衰减（人类知识稳定） |
 | `kb.freshness.stale_threshold_days` | 90 | 超过此天数 + effective confidence ≤5 即标记 stale |
 | `kb.freshness.auto_expire_days` | 365 | 超过此天数标记为 expired，触发审查 |
-| `custom_templates` | (空) | 可选。覆盖内置模板的自定义路径，优先级高于 business_domain |
+| `sw.document_contracts.user_context_root` | (空) | 用户级文档定义包根目录；项目级资源优先于用户级，用户级优先于 Skill 内置 |
 
 ---
 
@@ -35,14 +35,67 @@
 
 | business_domain | 需求模板 | 特点 |
 |-----------------|---------|------|
-| `general` | `requirements-spec-template.md` | 通用 10 章节，适用大多数场景 |
-| `fintech` | `requirements-spec-template-fintech.md` | 增加合规/监管/审计追踪/交易一致性/SLA 章节 |
-| `ecommerce` | `requirements-spec-template-ecommerce.md` | 增加用户旅程/转化指标/支付结算/A/B 测试/库存状态机 |
-| `internal-tools` | `requirements-spec-template-internal-tools.md` | 简化版，减少 ceremony，专注集成点和运维手册 |
+| `general` | `requirements/default` | 通用需求结构，适用大多数场景 |
+| `fintech` | `requirements/fintech` | 增加合规/监管/审计追踪/交易一致性/SLA 章节 |
+| `ecommerce` | `requirements/ecommerce` | 增加用户旅程/转化指标/支付结算/A/B 测试/库存状态机 |
+| `internal-tools` | `requirements/internal-tools` | 简化版，减少 ceremony，专注集成点和运维手册 |
 
-**新增业务领域：** 创建 `requirements-spec-template-{domain}.md` → 在 `template-router.md` 添加一行映射 → 提交 PR。Agent 核心逻辑零改动。
+**新增业务领域：** 在对应 Skill 的 `references/document-definitions/{document-type}/{variant}/` 中创建定义包；项目专属场景放在 `_context/templates/{document-type}/{variant}/`。详细规则见 [document-contracts.md](document-contracts.md)。
 
-**完全自定义模板：** 在 `_context/config.yaml` 中指定 `custom_templates.requirements` 路径，覆盖内置模板。
+## 文档定义包定制
+
+项目级定义包优先级最高，用户级定义包用于多个项目共享，Skill 内置定义包作为最后兜底：
+
+```text
+项目：_context/templates/<document-type>/<variant>/
+用户：<user_context_root>/templates/<document-type>/<variant>/
+内置：skills/<owner-skill>/references/document-definitions/<document-type>/<variant>/
+```
+
+例如，为当前项目定制金融需求文档：
+
+```text
+_context/templates/requirements/fintech/
+├── manifest.yaml
+├── template.md
+├── gate.yaml          # 可选
+└── validator.yaml     # 可选
+```
+
+`manifest.yaml` 至少声明文档身份和模板资源：
+
+```yaml
+document_type: requirements
+variant: fintech
+contract: sw.requirements
+version: "1.0"
+
+resources:
+  template: template.md
+  gate: gate.yaml
+  validator: validator.yaml
+```
+
+项目/用户层也可以只声明需要替换的 `gate` 或 `validator`，其他资源按层级继承；最终解析结果必须能解析出模板。资源已声明但文件不存在时会直接失败，不会静默回退。
+
+用户级根目录通过以下配置指定：
+
+```yaml
+sw:
+  document_contracts:
+    user_context_root: "../shared-harness-context"
+```
+
+修改模板结构时，同时更新模板中的 `document_type`、`contract`、`contract_version` frontmatter 和稳定的 `section-id`，再使用统一 CLI 验证：
+
+```bash
+python3 -m document_contracts validate \
+  --document-type requirements \
+  --variant fintech \
+  --document _context/memory/sw-shared/requirements/REQ-001.md \
+  --root project=./_context/templates \
+  --root skill=./skills/sw-requirements-clarifier/references/document-definitions
+```
 
 ---
 

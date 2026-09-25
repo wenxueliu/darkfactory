@@ -1,0 +1,7 @@
+document_type: service-design
+variant: frontend
+contract: sw.service-design
+version: "1.0"
+
+resources:
+  template: ../../../service-design-template-frontend.md

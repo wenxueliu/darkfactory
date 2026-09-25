@@ -22,7 +22,7 @@ E2E 测试设计的目标是基于 Stage 1 的用户旅程和 Stage 2 的 per-se
 
 ### 第 2 步: 场景规划
 
-加载 `references/e2e-test-case-template.md`，根据 `business_domain` 查 Section 6 场景启用矩阵:
+使用解析后的 `e2e/{variant}` 定义包；根据 `business_domain` 查其模板中的场景启用矩阵:
 
 | 类别 | 需要确定的内容 |
 |------|-------------|
@@ -39,7 +39,7 @@ E2E 测试设计的目标是基于 Stage 1 的用户旅程和 Stage 2 的 per-se
 
 ### 第 3 步: 用例填充
 
-对每个确定的场景类别，按 `e2e-test-case-template.md` 的 GIVEN/WHEN/THEN/CLEANUP 结构填充:
+对每个确定的场景类别，按解析模板的 GIVEN/WHEN/THEN/CLEANUP 结构填充:
 
 #### 功能 E2E
 

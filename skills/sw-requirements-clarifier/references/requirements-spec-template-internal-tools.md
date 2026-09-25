@@ -1,3 +1,9 @@
+---
+document_type: requirements
+contract: sw.requirements
+contract_version: "1.0"
+---
+
 # 需求规格模板 — 内部工具/轻量领域
 
 ## 使用说明
@@ -15,6 +21,7 @@
 **业务领域:** `internal-tools`
 **创建时间:** `{timestamp}`
 
+<!-- section-id: problem_statement -->
 ## 1. 问题陈述
 
 {1-2 句话。内部工具语境下：谁、什么痛点、频率多高。}
@@ -23,6 +30,7 @@
 **痛点:** {具体有多痛苦 —— 每周花多少时间？出错率？}
 **不做会怎样:** {继续忍受现有方案的成本}
 
+<!-- section-id: scope -->
 ## 2. 范围定义
 
 ### In Scope
@@ -31,12 +39,14 @@
 ### Out of Scope
 - {明确不做 —— 避免 scope creep（内部工具最容易过度建设）}
 
+<!-- section-id: user_scenarios -->
 ## 3. 用户与场景
 
 | 用户角色 | 使用频率 | 使用场景 | 技术能力 |
 |---------|---------|---------|---------|
 | {角色} | 每天/每周/偶尔 | {什么时候用} | 命令行/Web UI/API |
 
+<!-- section-id: functional_requirements -->
 ## 4. 功能需求
 
 | ID | 功能 | 输入 | 输出 | 优先级 |
@@ -44,6 +54,7 @@
 | F-1 | {功能描述} | {输入} | {输出} | P0/P1/P2 |
 | F-2 | {功能描述} | {输入} | {输出} | P0/P1/P2 |
 
+<!-- section-id: acceptance_criteria -->
 ## 5. 验收标准
 
 | ID | 关联 F | 标准（可测量） |
@@ -52,6 +63,7 @@
 
 **最少接受标准:** 每个功能至少 1 个 AC。内部工具不要求 2 个（一个正常路径即可）。
 
+<!-- section-id: integration_points -->
 ## 6. 集成点 (内部系统)
 
 | 集成系统 | 集成方式 | 认证方式 | 状态 |
@@ -59,12 +71,14 @@
 | {系统名} | API/DB/File | Token/OAuth/Key | 已有/需新建 |
 | {系统名} | API/DB/File | Token/OAuth/Key | 已有/需新建 |
 
+<!-- section-id: authorization_model -->
 ## 7. 权限模型
 
 - [ ] 谁可以使用: {角色/团队}
 - [ ] 认证方式: {SSO/OAuth/API Key/免认证（内部网络）}
 - [ ] 权限粒度: {全局/按资源/只读 vs 读写}
 
+<!-- section-id: operations_runbook -->
 ## 8. 运维手册
 
 - [ ] 部署方式: {Docker/JAR/脚本}
@@ -72,18 +86,21 @@
 - [ ] 监控/告警: {需要监控什么？什么人需要被通知？}
 - [ ] 备份/恢复: {是否需要？如何做？}
 
+<!-- section-id: constraints -->
 ## 9. 约束
 
 - **技术约束:** {必须在现有技术栈内 — 内部工具不建议引入新技术栈}
 - **时间约束:** {截止日期}
 - **维护预期:** {谁会长期维护？}
 
+<!-- section-id: risks_assumptions -->
 ## 10. 风险
 
 | 风险 | 概率 | 影响 | 缓解 |
 |------|------|------|------|
 | {描述} | H/M/L | H/M/L | {措施} |
 
+<!-- section-id: value_assessment -->
 ## 11. 价值评估 (简化)
 
 **为什么值得做:** {一句话}
@@ -92,6 +109,7 @@
 
 **优先级:** `P0 (马上做) | P1 (这个月) | P2 (有空再做)`
 
+<!-- section-id: status_history -->
 ## 12. 状态历史
 
 | 时间 | 状态变更 | 操作人 |

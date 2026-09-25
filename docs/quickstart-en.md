@@ -269,8 +269,12 @@ Congrats! You've used Black灯 Factory. Here's where to go next:
 - Adjust `_context/config.yaml` — review strictness, business domain, human intervention frequency
 
 **I want to add a new business domain template:**
-- `skills/sw-controller/references/template-router.md` — how to register a new domain template
-- `skills/sw-controller/references/requirements-spec-template.md` — base template structure
+- `docs/document-contracts.md` — document definition packages, layered resolution, and validation
+- `skills/sw-requirements-clarifier/references/document-definitions/requirements/` — built-in requirement definitions
+
+**I want to customize documents for this project only:**
+
+Create `_context/templates/<document-type>/<variant>/` under the project root with `manifest.yaml`, `template.md`, and optional `gate.yaml` / `validator.yaml`. Resolution order is project → user → built-in Skill. See [configuration.md](configuration.md) for a complete example.
 
 **I ran into a problem:**
 - Check `_context/memory/sw-shared/human-interventions.md` — any blocking escalations

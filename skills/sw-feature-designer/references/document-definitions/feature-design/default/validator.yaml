@@ -1,0 +1,17 @@
+rules:
+  - id: feature-design.sections
+    type: required_sections
+    severity: error
+    sections:
+      - feature_overview
+      - service_impact
+      - user_journey
+      - page_design
+      - service_interactions
+      - cross_service_contracts
+      - deployment_strategy
+      - open_questions
+      - downstream_references
+  - id: feature-design.no-placeholders
+    type: no_placeholders
+    severity: error

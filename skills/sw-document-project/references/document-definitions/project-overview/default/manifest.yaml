@@ -1,0 +1,7 @@
+document_type: project-overview
+variant: default
+contract: sw.project-overview
+version: "1.0"
+
+resources:
+  template: ../../../../templates/project-overview-template.md

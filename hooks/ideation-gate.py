@@ -24,6 +24,16 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from document_contracts import DefinitionResolver, DocumentValidator, ResourceRoot
+except ModuleNotFoundError:
+    # The hook is commonly executed as a standalone script, so its repository
+    # root is not guaranteed to be on sys.path.
+    _repo_root = Path(__file__).resolve().parent.parent
+    if str(_repo_root) not in sys.path:
+        sys.path.insert(0, str(_repo_root))
+    from document_contracts import DefinitionResolver, DocumentValidator, ResourceRoot
+
 # Implementation agents that require completed ideation first
 IMPLEMENTATION_PATTERN = re.compile(
     r"sw-tdd-agent|sw-plan-executor|sw-worktree-controller|sw-controller",
@@ -123,20 +133,8 @@ def parse_yaml_ideation_status(tracker_path: str) -> tuple[bool, str | None, lis
     return False, first_id, []
 
 
-# Mandatory sections in requirements/{id}.md spec
-MANDATORY_SPEC_SECTIONS = [
-    "问题陈述",        # Problem statement
-    "用户故事",        # User stories
-    "验收标准",        # Acceptance criteria
-    "非功能需求",      # Non-functional requirements
-    "约束",            # Constraints
-    "风险",            # Risks (or 风险与假设 / 风险与决策)
-]
-MIN_SECTION_LENGTH = 50  # chars; below this, section is considered empty
-
-
 def validate_spec_content(project_root: str, req_id: str | None) -> list[str]:
-    """Verify that requirements/{id}.md exists and has all mandatory sections.
+    """Verify a requirement document through the layered document contract.
 
     Returns list of error messages (empty list = valid).
     """
@@ -144,17 +142,13 @@ def validate_spec_content(project_root: str, req_id: str | None) -> list[str]:
     if not req_id:
         return errors  # No req_id to validate against; tracker-level check handles this
 
-    # Try common spec filenames
-    candidates = [
-        os.path.join(project_root, "_context", "memory", "sw-shared", "requirements", f"{req_id}.md"),
-        os.path.join(project_root, "_context", "memory", "sw-shared", "requirements", f"REQ-{req_id}.md"),
-        os.path.join(project_root, "requirements", f"{req_id}.md"),
-    ]
-    spec_path = next((p for p in candidates if os.path.isfile(p)), None)
-    if not spec_path:
+    spec_path = os.path.join(
+        project_root, "_context", "memory", "sw-shared", "requirements", f"{req_id}.md"
+    )
+    if not os.path.isfile(spec_path):
         return [
-            f"Spec file not found. Expected one of: {', '.join(candidates)}. "
-            f"sw-requirements-clarifier must write requirements/{{id}}.md before marking ideation done."
+            f"Spec file not found at the canonical path: {spec_path}. "
+            "sw-requirements-clarifier must write requirements/{id}.md before marking ideation done."
         ]
 
     try:
@@ -162,34 +156,73 @@ def validate_spec_content(project_root: str, req_id: str | None) -> list[str]:
     except OSError as e:
         return [f"Cannot read spec file {spec_path}: {e}"]
 
-    # Find which mandatory sections are present and validate length
-    missing: list[str] = []
-    too_short: list[str] = []
-    for section in MANDATORY_SPEC_SECTIONS:
-        # Match `## {section}` or `## {section} xxx` (allow sub-headings)
-        pattern = re.compile(rf"^##\s+{re.escape(section)}(?:\s|$)", re.MULTILINE)
-        m = pattern.search(content)
-        if not m:
-            # Try softer match (some sections have prefixes like 风险与假设)
-            if not re.search(rf"^##.*{re.escape(section[:2])}", content, re.MULTILINE):
-                missing.append(section)
-            continue
-        # Find end of section (next ## heading or EOF)
-        start = m.end()
-        next_heading = re.search(r"^##\s+", content[start:], re.MULTILINE)
-        end = start + next_heading.start() if next_heading else len(content)
-        section_text = content[start:end].strip()
-        if len(section_text) < MIN_SECTION_LENGTH:
-            too_short.append(f"{section} ({len(section_text)} chars)")
+    try:
+        definition = _resolve_requirements_definition(project_root)
+        result = DocumentValidator().validate(definition, content, include_gate=False)
+    except Exception as exc:  # Hooks must fail closed with an actionable message.
+        return [f"Cannot validate spec {spec_path} with document contract: {exc}"]
 
-    if missing:
-        errors.append(f"Spec {spec_path} is missing mandatory sections: {', '.join(missing)}")
-    if too_short:
-        errors.append(
-            f"Spec {spec_path} has too-short sections (< {MIN_SECTION_LENGTH} chars): "
-            f"{', '.join(too_short)}"
-        )
+    for finding in result.findings:
+        if finding.rule_id == "requirements.sections.required":
+            errors.append(f"Spec {spec_path} is missing mandatory sections: {finding.message.split(': ', 1)[-1]}")
+        elif finding.rule_id == "requirements.sections.minimum-length":
+            errors.append(f"Spec {spec_path} has too-short sections (< 50 chars): {finding.message.split(': ', 1)[-1]}")
+        else:
+            errors.append(f"Spec {spec_path}: {finding.message}")
     return errors
+
+
+def _resolve_requirements_definition(project_root: str):
+    """Resolve project custom resources before the built-in requirements package."""
+    project = Path(project_root).resolve()
+    roots = [ResourceRoot("project", project / "_context" / "templates")]
+    user_context = _configured_user_context(project)
+    if user_context:
+        roots.append(ResourceRoot("user", user_context / "templates"))
+    builtin = Path(__file__).resolve().parent.parent / "skills" / "sw-requirements-clarifier" / "references" / "document-definitions"
+    roots.append(ResourceRoot("skill", builtin))
+    return DefinitionResolver(roots).resolve(
+        "requirements",
+        _configured_business_domain(project),
+    )
+
+
+def _load_project_config(project_root: Path) -> dict:
+    try:
+        import yaml
+        data: dict = {}
+        for filename in ("config.yaml", "config.user.yaml"):
+            path = project_root / "_context" / filename
+            if path.is_file():
+                loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+                if isinstance(loaded, dict):
+                    previous_sw = data.get("sw")
+                    loaded_sw = loaded.get("sw")
+                    if isinstance(previous_sw, dict) and isinstance(loaded_sw, dict):
+                        data = {**data, **loaded, "sw": {**previous_sw, **loaded_sw}}
+                    else:
+                        data.update(loaded)
+        return data
+    except (ImportError, OSError, ValueError):
+        return {}
+
+
+def _configured_business_domain(project_root: Path) -> str:
+    config = _load_project_config(project_root)
+    sw = config.get("sw", {})
+    return str(sw.get("business_domain", "general")) if isinstance(sw, dict) else "general"
+
+
+def _configured_user_context(project_root: Path) -> Path | None:
+    config = _load_project_config(project_root)
+    sw = config.get("sw", {})
+    if not isinstance(sw, dict):
+        return None
+    contracts = sw.get("document_contracts", {})
+    if not isinstance(contracts, dict) or not contracts.get("user_context_root"):
+        return None
+    root = Path(str(contracts["user_context_root"]))
+    return (project_root / root).resolve() if not root.is_absolute() else root.resolve()
 
 
 def is_source_code_file(file_path: str) -> bool:

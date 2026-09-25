@@ -56,7 +56,7 @@ knowledge-base/
 4. `service-registry.yaml` 已生成，服务依赖图无循环
 5. 基线测试全部 PASS（已知 flaky 已标记）
 
-详见 `skills/sw-setup/references/service-bootstrap.md` 和 `skills/sw-knowledge-agent/references/service-discovery.md`。
+服务初始化由 `sw-setup` 负责，服务发现由 `sw-knowledge-agent` 负责；分别委托对应 Skill，不跨 Skill 读取内部文件。
 
 **所有服务必须放在同一个项目根目录下（monorepo-style co-location），不引入服务级 Agent。**
 
@@ -295,7 +295,7 @@ Stage 3: sw-e2e-designer      → designs/{id}-e2e-design.md (E2E 集成测试�
 
 #### Per-Service 设计文档模板 (按服务类型)
 
-sw-service-designer 自动检测服务类型并加载对应模板。模板文件位于 `skills/sw-service-designer/references/`:
+`sw-service-designer` 自动检测服务类型并解析自己的 `service-design/{type}` 定义包：
 
 | 服务类型 | 检测依据 | 模板 | 章节 |
 |---------|---------|------|------|
@@ -304,7 +304,7 @@ sw-service-designer 自动检测服务类型并加载对应模板。模板文件
 | bff | `language: typescript-next / *-bff / *-gateway` | `service-design-template-bff.md` | S1-S8 |
 | data-pipeline | `language: python-data / java-spark / *-etl` | `service-design-template-data-pipeline.md` | S1-S8 |
 
-详见 `skills/sw-service-designer/references/service-type-detection.md`。
+服务类型检测规则由 `sw-service-designer` 自己维护。
 
 ```markdown
 # Per-Service 设计: {service_id} — {需求标题}
@@ -828,7 +828,7 @@ sw:
 
 | 阶段 | 注入方式 | 注入内容 |
 |------|---------|---------|
-| 需求 | 追加到 requirements-spec-template | 服务影响分析表 |
+| 需求 | 追加到 `requirements/{variant}` 定义包 | 服务影响分析表 |
 | 需求 | 追加到 requirement-clarification | 跨服务依赖提问 |
 | 设计 | 追加到 design-doc-template | 服务交互设计 + 跨服务契约 |
 | 拆分 | 覆盖 task-decomposition | 按服务分组 + CONTRACT 依赖类型 |

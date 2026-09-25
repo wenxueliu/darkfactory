@@ -1,0 +1,7 @@
+document_type: requirements
+variant: fintech
+contract: sw.requirements
+version: "1.0"
+
+resources:
+  template: ../../../requirements-spec-template-fintech.md

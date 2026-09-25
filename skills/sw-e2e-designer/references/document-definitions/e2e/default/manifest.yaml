@@ -1,0 +1,9 @@
+document_type: e2e
+variant: default
+contract: sw.e2e
+version: "1.0"
+
+resources:
+  template: ../../../e2e-test-case-template.md
+  gate: gate.yaml
+  validator: validator.yaml

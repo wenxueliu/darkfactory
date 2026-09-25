@@ -224,7 +224,7 @@ sw-requirements-clarifier:
   Step 1-4: 4-step progressive clarification → writes requirements/{id}.md
   [sw-grill-docs called here] → grill spec against CONTEXT.md + ADRs (Quick mode)
   Step 4.5 Result:
-    PASS → enter requirements-gate
+    PASS → execute the resolved requirements definition gate/validator
     CONCERNS → back to Step 3 with new questions
     CONFLICT → must resolve before continuing
 ```

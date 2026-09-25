@@ -1,3 +1,9 @@
+---
+document_type: service-design
+contract: sw.service-design
+contract_version: "1.0"
+---
+
 # BFF 服务设计模板 (BFF Service Design Template)
 
 ## 使用说明
@@ -13,12 +19,14 @@
 **服务:** `{service_id}` (语言: {language})
 **状态:** `draft | reviewed | approved`
 
+<!-- section-id: technical_decisions -->
 ## S1. 技术决策
 
 | ID | 决策 | 理由 | 替代方案 | 权衡 |
 |----|------|------|---------|------|
 | D-{svc}-1 | {BFF 框架} | {为什么} | {放弃的方案} | {牺牲了什么} |
 
+<!-- section-id: architecture_design -->
 ## S2. BFF 架构
 
 ### 聚合模式
@@ -35,6 +43,7 @@ Frontend → BFF → ┬→ {backend-service-A}
 | GET /api/bff/{page_data} | {页面名} 初始化 | user-service + order-service | 并行请求 |
 | POST /api/bff/{action} | {操作名} | user-service → order-service | 串行链式 |
 
+<!-- section-id: api_design -->
 ## S3. API 设计 (双面)
 
 ### 前端面 (对 Frontend 暴露)
@@ -50,6 +59,7 @@ Frontend → BFF → ┬→ {backend-service-A}
 | user-service | GET /api/v1/users/{id} | {条件} | 2s | 返回缓存或 null |
 | order-service | GET /api/v1/orders?userId={id} | {条件} | 3s | 返回空列表 |
 
+<!-- section-id: state_management -->
 ## S4. 数据聚合与转换
 
 ### 聚合逻辑
@@ -68,6 +78,7 @@ function aggregate{PageData}(userId): {PageData} {
 | `user.created_at` | `memberSince` | `formatDate(created_at, locale)` |
 | `order.amount_cents` | `amount` | `amount_cents / 100` |
 
+<!-- section-id: error_handling -->
 ## S5. 错误处理与降级
 
 | 后端服务故障 | BFF 行为 | 前端看到的效果 |
@@ -76,6 +87,7 @@ function aggregate{PageData}(userId): {PageData} {
 | order-service 500 | 返回空列表 + `orderError: true` | 订单区域 "加载失败" + 重试 |
 | 全部后端不可用 | 返回 503 | 全页降级 UI |
 
+<!-- section-id: security_design -->
 ## S6. 安全设计
 
 | 关注点 | 方案 |
@@ -85,6 +97,7 @@ function aggregate{PageData}(userId): {PageData} {
 | 速率限制 | 按用户/IP 限制 BFF 端点调用频率 |
 | 输入校验 | 校验前端传入参数，不信任客户端 |
 
+<!-- section-id: unit_test_design -->
 ## S7. UT 设计 (L1)
 
 加载 `test-case-template.md`。
@@ -97,6 +110,7 @@ function aggregate{PageData}(userId): {PageData} {
 
 **最少要求:** 每个聚合函数 ≥ 3 UT 用例 (全正常 + 部分失败 + 全部失败)。
 
+<!-- section-id: api_test_design -->
 ## S8. API 测试设计 (L2)
 
 加载 `api-test-case-template.json`。

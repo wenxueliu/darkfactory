@@ -53,7 +53,7 @@ pytest --cov --cov-report=term tests/unit/
 
 # Standards check (delegate to sw-lint-checker for all languages)
 # Covers: ruff/eslint/golangci-lint/shellcheck/markdownlint/etc.
-# See skills/sw-lint-checker/references/ for language-specific tool instructions
+# Language-specific lint instructions are owned by sw-lint-checker.
 
 security-scan.sh
 

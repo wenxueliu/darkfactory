@@ -1,0 +1,9 @@
+document_type: plan
+variant: default
+contract: sw.plan
+version: "1.0"
+
+resources:
+  template: ../../../plan-template.md
+  gate: gate.yaml
+  validator: validator.yaml

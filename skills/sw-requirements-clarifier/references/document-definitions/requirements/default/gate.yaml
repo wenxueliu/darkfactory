@@ -1,0 +1,15 @@
+rules:
+  - id: requirements.gate.required-sections
+    type: required_sections
+    severity: error
+    sections:
+      - id: problem_statement
+      - id: scope
+      - id: user_stories
+      - id: acceptance_criteria
+  - id: requirements.gate.required-non-functional
+    type: required_sections
+    severity: error
+    sections:
+      - id: non_functional_requirements
+      - id: risks_assumptions

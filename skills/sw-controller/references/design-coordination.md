@@ -83,7 +83,7 @@
 **委托:** Delegate to `sw-feature-designer`
 **输入:** 需求规格文档 + 知识库 (ADRs, patterns, lessons) + 服务注册表 (微服务模式)
 **输出:** `designs/{id}-design.md` — 跨服务特性设计文档
-**验证:** 输出后调用 `feature-design-validator.md` 检查 G1-G4
+**验证:** 解析 `feature-design/default` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 
 ##### Stage 1 前置: 服务能力调查 (Service Capability Investigation) ← 必须执行
 
@@ -166,7 +166,7 @@
 **委托:** Delegate to `sw-service-designer` — 对每个受影响服务并行启动
 **输入:** Stage 1 输出 (服务影响分析 + 服务能力摘要 + 服务交互 + 跨服务契约) + 服务注册表 + 服务代码仓库 (`services/{id}/`)
 **输出:** `designs/{id}-service-{service_id}-design.md` × N + `tests/api-{id}-{service_id}.json` × N
-**验证:** 对每个服务调用 `service-design-validator.md` 检查 V1-V4
+**验证:** 对每个服务解析 `service-design/{service_type}` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 **内容 (后端):** S1 技术决策 → S2 架构设计 → S3 API/接口 → S4 状态管理 → S5 错误处理 → S6 安全 → S7 UT 设计 → S8 API 测试设计
 **内容 (前端):** S1 技术决策 → S2 组件架构 → S3 API 集成 → S4 客户端状态 → S5 错误 UI → S6 安全 → S7 UT 设计 → S8 集成测试
 **并行度:** 最多 `max_parallel_services` 个服务同时设计 (默认 4)
@@ -177,7 +177,7 @@
 **委托:** Delegate to `sw-e2e-designer`
 **输入:** Stage 1 输出 (用户旅程 + 服务交互 + 降级策略) + 所有 Stage 2 输出 (API 契约 + 错误处理)
 **输出:** `designs/{id}-e2e-design.md`
-**验证:** 调用 `e2e-design-validator.md` 检查 V1-V5
+**验证:** 解析 `e2e/default` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 **内容:**
 - 功能 E2E (每用户旅程 happy + error + boundary)
 - 非功能 E2E (性能/安全/可靠性/无障碍, 按 business_domain 矩阵启用)
@@ -442,7 +442,7 @@ Stage 2 消费:
 
 ### 单体模式
 
-- [ ] 设计文档 13 个章节全部完成（design-doc-template.md）
+- [ ] 各阶段设计文档满足对应定义包声明的稳定 section ID
 - [ ] 至少 1 个 ADR 写入知识库
 - [ ] 安全/逻辑/性能三个审查完成，P0/P1/P2 全部解决
 - [ ] 可追溯性矩阵完成——每个 AC 有对应设计决策和预估任务

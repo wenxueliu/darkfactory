@@ -1,0 +1,7 @@
+document_type: project-index
+variant: default
+contract: sw.project-index
+version: "1.0"
+
+resources:
+  template: ../../../../templates/index-template.md

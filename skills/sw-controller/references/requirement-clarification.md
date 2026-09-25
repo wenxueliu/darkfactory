@@ -61,7 +61,7 @@
    # 找相关领域术语定义（用于"参考已有实现"，确保命名一致）
    cat CONTEXT.md  # 读取领域术语表
    ```
-   完整命令清单与新鲜度规则见 `../sw-knowledge-agent/references/knowledge-query.md`（用 `Load` 指令加载，或委托 sw-knowledge-agent 读取）。
+   完整命令清单与新鲜度规则由 `sw-knowledge-agent` 自己维护；委托该 Skill 查询即可。
 
 3. **生成本步输出**（"需求全景图"），写入对话上下文：
    ```markdown
@@ -119,7 +119,7 @@
 
 ### 第 2 步: 歧义扫描 (Ambiguity Scan)
 
-对照 `requirements-spec-template.md` 的 10 个章节，逐项评估状态:
+对照解析后的 `requirements/{variant}` 定义包及其稳定 section ID，逐项评估状态:
 
 | 维度 | 检查内容 | 状态 |
 |------|---------|------|
@@ -205,7 +205,7 @@ C) {自定义 — 用自己的话描述}
 
 | Result | 行动 |
 |--------|------|
-| **PASS** | 零 CONFLICT、零 GAP → 进入需求门禁 (`requirements-gate.md`) |
+| **PASS** | 零 CONFLICT、零 GAP → 执行解析后的需求门禁与验证器 |
 | **CONCERNS** | 有 CHALLENGE 需要澄清 → 把 CHALLENGE 转化为新问题，回到第 3 步优先队列 |
 | **CONFLICT** | 与 CONTEXT.md 或 ADR 直接矛盾 → 立即告知用户，给出两种选择：(a) 修订规格 (b) 创建新 ADR 覆盖 |
 
@@ -237,15 +237,15 @@ C) {自定义 — 用自己的话描述}
 
 ## 连接到需求规格
 
-澄清完后，将收集到的信息填入 `requirements-spec-template.md` 结构，写入 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`。
+澄清完后，将收集到的信息填入解析后的定义包结构，写入 `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`。
 
-然后触发 `requirements-gate.md` 门禁检查。
+然后执行定义包中解析得到的 `gate.yaml` 和 `validator.yaml`。
 
 ## 连接到价值评估
 
 如果需求的价值维度（用户价值/业务价值/战略对齐）仍然是 Partial，在澄清流程中调度价值评估能力:
 
-Load `../sw-value-judgment/references/value-assessment.md`
+Delegate value assessment to `sw-value-judgment`; that Skill owns its assessment protocol.
 
 对需求进行 5 维度评分（Impact / Effort / Risk / Dependencies / Strategic Fit），结果写入 `{project-root}/_context/memory/sw-shared/value-assessment/{requirement_id}.md`。
 
@@ -253,7 +253,7 @@ Load `../sw-value-judgment/references/value-assessment.md`
 
 如果在澄清过程中发现了可复用的模式、经验教训或设计决策，写入知识库:
 
-Load `../sw-knowledge-agent/references/knowledge-update.md`
+Delegate the update to `sw-knowledge-agent`; that Skill owns its knowledge-update protocol.
 
 ## 需求规格质询 (Spec Grilling — sw-grill-docs)
 
@@ -307,7 +307,7 @@ Load `../sw-knowledge-agent/references/knowledge-update.md`
    python scripts/kb-search.py "<需求关键词>" --type lesson
    python scripts/kb-search.py "<需求关键词>" --type api
    ```
-   完整命令清单与新鲜度规则见 `../sw-knowledge-agent/references/knowledge-query.md`。
+   完整命令清单与新鲜度规则由 `sw-knowledge-agent` 自己维护。
 2. 检查是否有与当前需求相关的已有 ADR、设计模式、经验教训、API 契约
 3. 如果有冲突或需要参考的历史决策，在需求规格中注明，并提供知识库链接
 4. 知识库查询结果作为设计阶段的输入，确保设计不会重复造轮子或偏离既有架构方向

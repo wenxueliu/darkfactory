@@ -1,3 +1,9 @@
+---
+document_type: plan
+contract: sw.plan
+contract_version: "1.0"
+---
+
 # 计划模板 (Plan Template)
 
 完整的工作计划 markdown 模板。包含所有必需的章节和子章节。在下文中的 `{placeholder}` 标记替换为具体内容。
@@ -18,6 +24,7 @@
 
 ---
 
+<!-- section-id: tldr -->
 ## TL;DR
 
 > **Quick Summary**: [1-2 句话捕获核心目标和方案]
@@ -40,6 +47,7 @@
 
 ---
 
+<!-- section-id: context -->
 ## Context
 
 ### Original Request
@@ -79,6 +87,7 @@
 
 ---
 
+<!-- section-id: work_objectives -->
 ## Work Objectives
 
 ### Core Objective
@@ -121,6 +130,7 @@
 
 ---
 
+<!-- section-id: verification_strategy -->
 ## Verification Strategy (MANDATORY)
 
 > **ZERO HUMAN INTERVENTION** - ALL verification is agent-executed. No exceptions.
@@ -145,6 +155,7 @@ Evidence saved to `{project-root}/_context/memory/sw-shared/evidence/task-{N}-{s
 
 ---
 
+<!-- section-id: execution_strategy -->
 ## Execution Strategy
 
 ### Parallel Execution Waves
@@ -214,6 +225,7 @@ Max Concurrent: {N} (Wave {X})
 
 ---
 
+<!-- section-id: todos -->
 ## TODOs
 
 > Implementation + Test = ONE Task. Never separate.
@@ -340,6 +352,7 @@ Max Concurrent: {N} (Wave {X})
 
 ---
 
+<!-- section-id: final_verification -->
 ## Final Verification Wave (MANDATORY — after ALL implementation tasks)
 
 > 4 review agents run in PARALLEL. ALL must PASS. Present consolidated results to user and get explicit "okay" before completing.
@@ -392,6 +405,7 @@ Max Concurrent: {N} (Wave {X})
 
 ---
 
+<!-- section-id: commit_strategy -->
 ## Commit Strategy
 
 {将任务分组到逻辑提交中}
@@ -410,6 +424,7 @@ Commit 2: {type}({scope}): {description}
 
 ---
 
+<!-- section-id: success_criteria -->
 ## Success Criteria
 
 ### Verification Commands

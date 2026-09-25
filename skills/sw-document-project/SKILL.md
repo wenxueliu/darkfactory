@@ -63,6 +63,17 @@ If the user's request is ambiguous:
 - Unclear scope (full scan vs deep dive): ask "Would you like a full project scan or a deep dive into a specific area?"
 - Unclear scan level: present the three options with time estimates
 
+### Document Definition Resolution
+
+Resolve each generated document through the local definition package before writing:
+
+- `project-overview/default`
+- `project-index/default`
+- `source-tree/default`
+- `deep-dive/default`
+
+The unified resolver applies project `_context/templates`, configured user context templates, and this Skill's built-in `references/document-definitions` in that order. Use the resolved template and execute any resolved gate or validator before reporting the document complete.
+
 ## Capabilities
 
 | Capability | Route |
@@ -72,10 +83,10 @@ If the user's request is ambiguous:
 | Deep-dive documentation (exhaustive area-specific analysis) | Load `references/deep-dive.md` |
 | Validation checklist | Load `references/checklist.md` |
 | Project type detection matrix | Load `documentation-requirements.csv` |
-| Master index template | Load `templates/index-template.md` |
-| Project overview template | Load `templates/project-overview-template.md` |
-| Source tree analysis template | Load `templates/source-tree-template.md` |
-| Deep dive document template | Load `templates/deep-dive-template.md` |
+| Master index definition | Resolve `project-index/default` |
+| Project overview definition | Resolve `project-overview/default` |
+| Source tree definition | Resolve `source-tree/default` |
+| Deep dive definition | Resolve `deep-dive/default` |
 
 ## Output
 

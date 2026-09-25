@@ -1,3 +1,9 @@
+---
+document_type: project-overview
+contract: sw.project-overview
+contract_version: "1.0"
+---
+
 # {{project_name}} - Project Overview
 
 **Date:** {{date}}
@@ -101,3 +107,8 @@ For detailed information, see:
 ---
 
 _Generated using BMAD Method `document-project` workflow_
+---
+document_type: project-overview
+contract: sw.project-overview
+contract_version: "1.0"
+---

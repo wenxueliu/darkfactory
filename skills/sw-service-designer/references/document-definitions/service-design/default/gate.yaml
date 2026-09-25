@@ -1,0 +1,13 @@
+rules:
+  - id: service-design.gate.sections
+    type: required_sections
+    severity: error
+    sections:
+      - technical_decisions
+      - architecture_design
+      - api_design
+      - state_management
+      - error_handling
+      - security_design
+      - unit_test_design
+      - api_test_design

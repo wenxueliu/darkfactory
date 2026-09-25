@@ -1,0 +1,14 @@
+rules:
+  - id: e2e.gate.sections
+    type: required_sections
+    severity: error
+    sections:
+      - metadata
+      - functional_scenarios
+      - non_functional_scenarios
+      - compatibility_scenarios
+      - custom_extensions
+      - scenario_matrix
+      - case_structure
+      - integration
+      - output_artifacts

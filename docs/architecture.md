@@ -75,9 +75,9 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 
 | Phase | Templates | Gate Check | Tracker 更新者 |
 |-------|-----------|------------|---------------|
-| **ideation (需求)** | `requirements-spec-template.md`, value assessment | `requirements-gate.md` | sw-requirements-clarifier |
+| **ideation (需求)** | `requirements/{variant}` definition package, value assessment | resolved `gate.yaml` + `validator.yaml` | sw-requirements-clarifier |
 | **value_assessment (价值)** | `value-assessment.md`, `roi-evaluation.md` | value scoring | sw-value-judgment |
-| **design (设计)** | `design-doc-template.md`, `adr-template.md` | `design-gate.md` | sw-feature-designer |
+| **design (设计)** | `feature-design/default`, `service-design/{type}`, `e2e/default` definition packages, ADR | resolved definition gates + validators | sw-feature-designer |
 | **decomposition (拆分)** | `task-decomposition.md` → `tasks.yaml` | dependency check | sw-task-decomposer |
 | **execution (执行)** | TDD cycles + lint check + parallel review | P0/P1/P2 gate | sw-plan-executor |
 | **merge (合并)** | `merge-management.md` | conflict-free merge | sw-controller |
@@ -85,6 +85,22 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 | **delivery (交付)** | `delivery-checklist.md`, `release-notes-template.md` | `delivery-acceptance-gate.md` | sw-delivery-manager |
 
 知识库在所有阶段持续维护：ADR 在 `decisions/`、模式在 `patterns/`、经验教训在 `lessons/`。
+
+### 文档契约边界
+
+需求、特性设计、服务设计、E2E 设计、计划和项目文档属于正式文档产物，由各自产出 Skill 的定义包维护模板、门禁和验证器。组合运行时只传递 `document_type`、`contract`、`contract_version` 和稳定 `section-id`，不依赖标题或章节编号。
+
+```text
+项目 _context/templates/
+        ↓ 覆盖
+用户共享 templates/
+        ↓ 覆盖
+Skill 内置 document-definitions/
+        ↓
+统一解析 + 验证 → 文档产物
+```
+
+`sw-controller` 负责选择文档类型、编排 Skill 和汇总门禁，不直接读取其他 Skill 的模板文件。完整协议见 [document-contracts.md](document-contracts.md)。
 
 ---
 

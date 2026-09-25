@@ -131,7 +131,7 @@ Todo Items (计划生成):
 
 ## Step 3: 构建计划骨架
 
-在调用 Metis 并获得结果后，构建计划文件的完整骨架。加载 `references/plan-template.md` 获取精确的章节结构和格式。
+在调用 Metis 并获得结果后，解析 `plan/default` 定义包，构建计划文件的完整骨架，并以其模板、稳定 section ID 和验证规则为准。
 
 ### 骨架包含以下所有章节（但不含单个任务的细节）:
 

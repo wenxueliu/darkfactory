@@ -1,3 +1,9 @@
+---
+document_type: e2e
+contract: sw.e2e
+contract_version: "1.0"
+---
+
 # E2ETestCaseTemplate: 端到端测试用例模板
 
 ## What This Is
@@ -12,6 +18,7 @@
 
 ---
 
+<!-- section-id: metadata -->
 ## 1. 用例元数据 (统一格式，所有类别共用)
 
 | Field | Value |
@@ -26,6 +33,7 @@
 
 ---
 
+<!-- section-id: functional_scenarios -->
 ## 2. 功能测试场景 (Functional)
 
 ### 2.1 正常流程 (Happy Path)
@@ -125,6 +133,7 @@ AND   副作用: {通知/审计日志/下游更新}
 
 ---
 
+<!-- section-id: non_functional_scenarios -->
 ## 3. 非功能测试场景 (Non-Functional)
 
 非功能场景按 `business_domain` 选择性启用。`internal-tools` 可跳过大多数非功能场景。
@@ -211,6 +220,7 @@ THEN  {指标} < {阈值}
 
 ---
 
+<!-- section-id: compatibility_scenarios -->
 ## 4. 兼容性测试场景 (Compatibility)
 
 ### 4.1 浏览器兼容
@@ -263,6 +273,7 @@ THEN  全部 PASS
 
 ---
 
+<!-- section-id: custom_extensions -->
 ## 5. 用户自定义扩展 (User-Defined Extensions)
 
 ### 5.1 扩展方式概览
@@ -421,6 +432,7 @@ sw:
 
 ---
 
+<!-- section-id: scenario_matrix -->
 ## 6. 场景启用矩阵
 
 不同 `business_domain` 自动启用不同的场景组合：
@@ -455,6 +467,7 @@ sw:
 
 ---
 
+<!-- section-id: case_structure -->
 ## 7. E2E 用例结构模板
 
 所有类别和子类别的用例统一使用此结构：
@@ -503,6 +516,7 @@ CLEANUP:
 
 ---
 
+<!-- section-id: integration -->
 ## 8. 与三层体系的集成
 
 ```
@@ -522,6 +536,7 @@ L3 E2E (e2e-test-case-template.md) ← 本模板
 
 ---
 
+<!-- section-id: output_artifacts -->
 ## 9. 输出产物
 
 | 产物 | 路径 | 何时生成 |
