@@ -23,7 +23,6 @@ paths:
     user: null
     skill: skills/sw-requirements-clarifier/references/document-definitions
   evidence:
-    tracker: _context/memory/sw-shared/requirements-tracker.yaml
     context_files: [CONTEXT.md]
     context_maps: [CONTEXT-MAP.md]
     decision_roots: [knowledge/_enterprise/decisions]
@@ -36,7 +35,7 @@ paths:
     requirement_document: _context/memory/sw-shared/requirements/{requirement_id}.md
     gate_report: _context/memory/sw-shared/requirements/{requirement_id}-gate.md
     value_assessment: _context/memory/sw-shared/value-assessment/{requirement_id}.md
-    knowledge_prequery: knowledge/pre-query-{requirement_id}.md
+    tracker: _context/memory/sw-shared/requirements-tracker.yaml
     knowledge_root: knowledge
     tasks: _context/memory/sw-shared/tasks.yaml
     reviews: _context/memory/sw-shared/reviews
@@ -45,8 +44,8 @@ paths:
 ## 边界规则
 
 - `definition_roots` 只负责查找模板、门禁和验证器；项目、用户、Skill 三层资源仍按统一解析器的优先级处理。
-- `evidence` 是只读输入；缺失的 tracker、上下文或知识目录只记录 `NOT_FOUND`，不自动创建。
-- `artifact_targets` 是写入目标；正式写入前必须满足用户确认和对应阶段门禁。
+- `evidence` 是只读输入；缺失的上下文或知识目录只记录 `NOT_FOUND`，不自动创建、不写入。
+- `artifact_targets` 是写入目标，包含跨 Agent 共享的 `tracker`（本 Skill 是它的第一个写入者）；正式写入前必须满足用户确认和对应阶段门禁。
 - `knowledge_root` 只用于知识沉淀，不作为需求文档或 tracker 的替代位置。
 - 模板中引用的下游任务、评审等路径通过 `artifact_targets.tasks` 和 `artifact_targets.reviews` 获取，不在流程中拼接物理目录。
 - `user` 定义根可以由调用方直接提供，也可以由 `config_file` 中的 `sw.document_contracts.user_context_root` 推导为其 `templates` 子目录。

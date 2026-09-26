@@ -57,7 +57,7 @@ The Skill accepts a user request plus optional execution context. Missing option
 | `request` | Yes | User's requirement, problem statement, or change intent |
 | `project_root` | No | Project root; defaults to the current workspace |
 | `requirement_id` | No | Existing ID to update; otherwise generate a new `REQ-YYYYMMDD-NNN` ID |
-| `variant` | No | Requirement definition variant; defaults to `sw.business_domain` or `default` |
+| `variant` | No | Requirement definition variant; defaults to the variant mapped from `sw.business_domain` via the scenario mapping (`general` → `default`), falling back to that layer's `default` when no exact variant exists |
 | `evidence_paths` | No | Additional tracker, context, contract, or decision files for this run |
 | `paths` | No | Semantic path overrides; defaults and merge rules are in `references/path-defaults.yaml` and `references/path-resolution.md` |
 | `communication_language` | No | Output language; defaults to project configuration or Chinese |
@@ -97,9 +97,9 @@ Only the three entries declared in frontmatter are external dependencies of this
    - ≥3 assumptions/risks identified
    - Value is explainable
 4. Resolve the `requirements/{variant}` document definition package. Use its manifest-selected template, gate, and validator only, and report each resource's resolved source.
-5. Run the resolved gate and validator rules.
+5. Run the resolved gate and validator rules (machine layer), then apply the G1–G4 judgment checklist in `references/requirements-gate.md` (≥2 AC per user story, ≥3 assumptions, value alignment, risk mitigation). The two layers are both required — structural rules cannot express the judgment criteria.
 6. Write output to `paths.artifact_targets.requirement_document`
-7. Update `paths.evidence.tracker` — 写入需求条目。详见 `references/tracker-update.md`
+7. Update `paths.artifact_targets.tracker` — 写入需求条目。详见 `references/tracker-update.md`
 
 ## Capabilities
 
@@ -107,7 +107,8 @@ Only the three entries declared in frontmatter are external dependencies of this
 | ---------- | ----- |
 | Requirements Clarification | Load `references/requirement-clarification.md` |
 | Requirements Document Definition | Resolve `paths.definition_roots` through the unified resolver |
-| Requirements Gate and Validation | Execute the resolved `gate.yaml` and `validator.yaml` |
+| Requirements Gate and Validation (machine layer) | Execute the resolved `gate.yaml` and `validator.yaml` |
+| Requirements Gate Checklist (judgment layer) | Load `references/requirements-gate.md` — G1–G4 criteria that YAML rules cannot express |
 | Requirements Tracker Update | Load `references/tracker-update.md` |
 | Semantic Path Resolution | Load `references/path-defaults.yaml` and `references/path-resolution.md` |
 | **KB Pre-Check (Step 1.0 — requirement-level)** | **Optional `sw-knowledge-agent` (KnowledgeQuery): requirement already implemented / implementation conflict / existing implementations → output "requirement landscape"; unavailable = `SKIPPED` + local fallback** |
@@ -148,7 +149,7 @@ external_capabilities:
 artifacts:
   requirement: "{resolved paths.artifact_targets.requirement_document}"
   gate_report: "{resolved paths.artifact_targets.gate_report}"
-  tracker: "{resolved paths.evidence.tracker}"
+  tracker: "{resolved paths.artifact_targets.tracker}"
 resolved_paths:
   config_file: "{resolved paths.config_file}"
   definition_roots: {}
@@ -184,6 +185,6 @@ The requirement clarification continues; this is not a direct failure.
 | Risks and dependencies | At least three assumptions/risks are recorded; dependencies, sequencing, and mitigations are identified | Risk/dependency sections | Yes |
 | Consistency and evidence | Available context, tracker, contracts, and optional grill/KB evidence are reflected; missing evidence is labeled rather than guessed | Evidence summary + external status | Yes for contradiction; no for missing optional evidence |
 | External capability degradation | Unavailable external Skills are recorded as `SKIPPED` with reason, impact, fallback, and user warning; the run continues | `external_capabilities` | No |
-| Gate and validation | Resolved validator and gate are executed; results are `PASS`, `FAIL`, or `NOT_RUN`, with actionable findings | Validation result + gate report | Yes when declared |
+| Gate and validation | Resolved validator and gate are executed (machine layer) **and** the G1–G4 checklist is applied with evidence (judgment layer); machine results are `PASS`, `FAIL`, or `NOT_RUN` with actionable findings | Validation result + gate report + checklist evidence | Yes when declared |
 | Artifact and traceability | Requirement document, gate report, tracker update, and optional reports use resolved targets; decisions are traceable to questions and answers | Artifact paths + tracker entry | Yes |
-| Human approval and status | No unconfirmed decision is marked final; final result matches the matrix (`READY_FOR_GATE`, `GATE_PASSED`, `GATE_FAILED`, or `BLOCKED`) | Confirmation record + result | Yes |
+| Human approval and status | No unconfirmed decision is marked final; final result is one of the contract values (`NEEDS_USER_INPUT`, `READY_FOR_GATE`, `GATE_PASSED`, `GATE_FAILED`, `BLOCKED`) | Confirmation record + result | Yes |

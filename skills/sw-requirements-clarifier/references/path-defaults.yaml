@@ -7,12 +7,13 @@ paths:
   config_user_file: _context/config.user.yaml
 
   definition_roots:
-    project: /templates
+    project: knowledge/templates
     user: null
     skill: skills/sw-requirements-clarifier/references/document-definitions
 
+  # 只读输入：缺失时只记录 NOT_FOUND，不创建、不写入。
+  # tracker 是可写的共享状态，因此不放在本命名空间下，见 artifact_targets。
   evidence:
-    tracker: knowledge/requirements-tracker.yaml
     context_files:
       - knowledge/CONTEXT.md
     context_maps:
@@ -25,11 +26,12 @@ paths:
       contracts: knowledge/contracts
       decisions: knowledge/decisions
 
+  # 写入目标：本 Skill 产出或更新的文件。
   artifact_targets:
     requirement_document: knowledge/requirements/{requirement_id}/{requirement_id}.md
     gate_report: knowledge/requirements/{requirement_id}/{requirement_id}-gate.md
     value_assessment: knowledge/requirements/{requirement_id}/value-assessment.md
-    knowledge_prequery: knowledge/requirements/{requirement_id}/pre-query-{requirement_id}.md
+    tracker: knowledge/requirements-tracker.yaml
     knowledge_root: knowledge
     tasks: knowledge/requirements/{requirement_id}/tasks.yaml
     reviews: knowledge/requirements/{requirement_id}/reviews

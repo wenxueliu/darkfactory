@@ -44,8 +44,8 @@ The requirement clarification continues; this is not a direct failure.
 
 | 目的 | 检出场景 | 查询目标 |
 |------|---------|---------|
-| **需求已实现** | 防止重复造轮子 — 避免做出已经被做过的需求 | `paths.evidence.tracker` (status: done) + `paths.evidence.knowledge_roots.lessons` + `paths.evidence.knowledge_roots.patterns` |
-| **需求实现冲突** | 防止新需求与已有实现矛盾（API 行为不一致、数据模型冲突、UX 不一致） | `paths.evidence.knowledge_roots.lessons` + `paths.evidence.knowledge_roots.contracts` + `paths.evidence.tracker` (status: in_progress) |
+| **需求已实现** | 防止重复造轮子 — 避免做出已经被做过的需求 | `paths.artifact_targets.tracker` (status: done) + `paths.evidence.knowledge_roots.lessons` + `paths.evidence.knowledge_roots.patterns` |
+| **需求实现冲突** | 防止新需求与已有实现矛盾（API 行为不一致、数据模型冲突、UX 不一致） | `paths.evidence.knowledge_roots.lessons` + `paths.evidence.knowledge_roots.contracts` + `paths.artifact_targets.tracker` (status: in_progress) |
 | **确有已有需求的实现** | 帮助新需求继承/参考已有实现（命名一致、概念对齐、避免另起炉灶） | 已解析上下文中的领域术语 + 知识库 patterns/contracts |
 
 **与设计阶段 KB 预检的边界：**
@@ -123,7 +123,7 @@ The requirement clarification continues; this is not a direct failure.
 
 ### 第 2 步: 歧义扫描 (Ambiguity Scan)
 
-对照解析后的 `requirements/{variant}` 定义包及其稳定 section ID，逐项评估状态:
+以解析后的 `requirements/{variant}` 定义包模板的 section 集合为基准，逐项评估状态。下表是通用维度框架，不是硬性字段表：变体模板没有对应 section 的维度标注 `N/A`（例如 `internal-tools` 没有用户旅程 section），不要为它补造 section:
 
 | 维度 | 检查内容 | 状态 |
 |------|---------|------|
@@ -294,11 +294,11 @@ C) {自定义 — 用自己的话描述}
 - 规格是 trivial typo fix / 配置微调 → 跳过
 - 用户明确说"快进到设计" → 跳过，但在 tracker 中记录 `grill_skipped: true`
 
-## 知识库预查询 (进入设计前)
+## 知识库预查询的职责边界 (不在本 Skill 范围)
 
-> **与 Step 1.0 的分工**：本节是**实现层**的 KB 预检（在需求澄清完成后、进入设计阶段前执行），由 sw-feature-designer 触发；Step 1.0 是**需求层**的 KB 预检（在澄清开始时执行），由 sw-requirements-clarifier 触发。两者的查询目标、产出、消费者都不同。
+> 本节只**声明边界**：实现层预查询不由本 Skill 执行，也不写入本 Skill 的任何写入目标。
 
-| 维度 | 需求层 (Step 1.0) | 实现层 (本节) |
+| 维度 | 需求层 (Step 1.0，本 Skill) | 实现层 (设计阶段) |
 |------|------------|-----------|
 | 触发时机 | 澄清开始时（提问用户之前） | 澄清完成后、开始设计之前 |
 | 触发者 | sw-requirements-clarifier | sw-feature-designer（或 sw-strategic-planner） |
@@ -306,18 +306,9 @@ C) {自定义 — 用自己的话描述}
 | 主要消费者 | 澄清对话的优先级与问题设计 | 设计的方案选择与一致性 |
 | 核心问题 | "我们做过类似的吗？和它什么关系？" | "用什么模式实现？参考什么契约？" |
 | 典型查询 | 查询 pattern/lesson/api/decision + tracker 状态 | 查询 decision/pattern/api |
-| 输出产物 | "需求全景图"（写到对话上下文） | `paths.artifact_targets.knowledge_prequery`（独立文件） |
+| 输出产物 | "需求全景图"（写到对话上下文，不落盘） | 由设计阶段 Skill 自己声明写入目标（**不是**本 Skill 的写入目标） |
 
-在需求澄清完成、进入设计阶段之前，可以执行一次知识库快速扫描：
-
-1. 尝试调用 `sw-knowledge-agent` KnowledgeQuery 能力执行快速扫描。查询命令和新鲜度规则由该 Skill 自己维护，本 Skill 不直接依赖其脚本；不可用时记录 `SKIPPED` 并继续。
-2. 检查是否有与当前需求相关的已有 ADR、设计模式、经验教训、API 契约
-3. 如果有冲突或需要参考的历史决策，在需求规格中注明，并提供知识库链接
-4. 知识库查询结果作为设计阶段的输入，确保设计不会重复造轮子或偏离既有架构方向
-5. **方案继承性检查**：检查设计是否与已有实现保持术语/契约/模式一致
-6. **方案一致性检查**：检查设计是否与已有架构决策（ADR）一致
-
-预查询结果写入 `paths.artifact_targets.knowledge_prequery`。
+实现层预查询的流程、查询命令、新鲜度规则、产物路径和降级处理全部由 `sw-feature-designer` 自己维护。本 Skill 不执行它、不声明它的产物路径、也不依赖它是否已经执行。
 
 ## 输出产物
 
@@ -327,6 +318,5 @@ C) {自定义 — 用自己的话描述}
 | 澄清日志 | 嵌入在需求规格文件末尾 | 每次回答后增量更新 |
 | 价值评估 | `paths.artifact_targets.value_assessment` | 如果价值维度 Partial 且能力可用 |
 | 知识条目 | `paths.artifact_targets.knowledge_root` | 如果发现可复用知识 |
-| 知识预查询 | `paths.artifact_targets.knowledge_prequery` | 澄清完成后，进入设计前且能力可用 |
 | **规格质询报告** | **嵌入在需求规格"澄清记录"段** | **第 4.5 步质询完成后；不可用则嵌入 `SKIPPED` 记录** |
 | 门禁结果 | `paths.artifact_targets.gate_report` | 需求规格完成后 |

@@ -36,6 +36,11 @@ Load context:
 - Service registry: `{project-root}/_context/memory/sw-shared/service-registry.yaml`, generated from repositories under `{project-root}/services/`
 - Business domain config: `{project-root}/_context/config.yaml` → `sw.business_domain`
 
+实现层 KB 预查询（本 Skill 负责，需求澄清完成后、开始设计前）:
+- 委托 `sw-knowledge-agent` (KnowledgeQuery) 扫描相关 ADR、设计模式、经验教训和 API 契约，产物写入 `knowledge/pre-query-{requirement_id}.md`
+- 这是**实现层**预查询（需求-实现关系），区别于 `sw-requirements-clarifier` Step 1.0 的**需求层**预查询（需求-需求关系）
+- `sw-knowledge-agent` 不可用时记录 `SKIPPED`（原因/影响/fallback/用户提示）并继续，不阻断设计
+
 Template resolution:
 1. Resolve the local `feature-design/{variant}` document definition package.
 2. Use the manifest-selected template, gate, and validator from this Skill only.
@@ -48,6 +53,7 @@ Template resolution:
 | 特性设计协调 | Load `references/feature-design-coordination.md` |
 | 特性设计定义包 | Resolve `references/document-definitions/feature-design/{variant}/manifest.yaml` |
 | 特性设计验证 | Execute the resolved `gate.yaml` and `validator.yaml` |
+| 实现层知识库预查询 | Delegate `sw-knowledge-agent` (KnowledgeQuery); unavailable = `SKIPPED` and continue |
 | 架构决策记录 | Load `references/adr-template.md` |
 
 ## Output

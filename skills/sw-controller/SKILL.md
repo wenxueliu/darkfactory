@@ -60,11 +60,12 @@ Before any action, verify intent:
 
 When Intent Gate classifies the request as a new feature, implementation, or open-ended change (Explicit/Open-ended), **delegate ideation work to specialized agents — never execute directly**:
 
-1. **Requirements Clarification** — Delegate to `sw-requirements-clarifier`. It runs progressive 4-step clarification dialogue (Listen First → Ambiguity Scan → Prioritized Question Queue → Incremental Spec Update). Stops when Substantiality Threshold is met. Writes `requirements/{id}.md`.
+1. **Requirements Clarification** — Delegate to `sw-requirements-clarifier`. It runs the progressive clarification dialogue (Step 0.5 definition resolution → Step 1.0 requirement-level KB pre-check → Step 1.1 Listen First → Step 2 Ambiguity Scan → Step 3 Decision Tree & Frontier → Step 4 Incremental Spec Update → Step 4.5 optional Spec Grilling), stopping when the Substantiality Threshold is met. Writes `requirements/{id}.md`.
 2. **Value Assessment** — Delegate to `sw-value-judgment`. Scores 5 dimensions (Impact / Effort / Risk / Dependencies / Strategic Fit). If P3 (don't do), archive the requirement. Writes `value-assessment/{id}.md`.
-3. **Knowledge Base Pre-Query** — Delegate to `sw-knowledge-agent`. Scans for relevant ADRs, patterns, lessons, and API contracts. Writes `knowledge/pre-query-{id}.md`.
-4. **Requirements Gate** — Resolve the `requirements/{business_domain}` definition through the layered document resolver and execute its selected `gate.yaml` and `validator.yaml`. Only proceed to design when all resolved rules PASS. Max 3 retries → escalate to human.
-5. **Phase Transition** — When all ideation gates PASS → proceed to design phase (3-Stage delegation). See Phase Transition Rules below for `ideation → design` criteria.
+3. **Requirements Gate** — Delegate to `sw-requirements-clarifier`, which resolves the requirements variant mapped from `sw.business_domain` (scenario mapping: `general` → `default`) through the layered document resolver, executes its selected `gate.yaml` and `validator.yaml` (machine layer), and applies its own G1–G4 judgment checklist. Only proceed to design when both layers PASS. Max 3 retries → escalate to human.
+4. **Phase Transition** — When all ideation gates PASS → proceed to design phase (3-Stage delegation). See Phase Transition Rules below for `ideation → design` criteria.
+
+> **实现层 KB 预查询不属于 ideation 门禁。** 它在需求澄清完成后、开始设计前由设计阶段入口 `sw-feature-designer`（或 `sw-strategic-planner`）触发，写入 `knowledge/pre-query-{id}.md`。ideation 不检查该产物，也不因它缺失而阻塞。
 
 Skip ideation for: Trivial (direct execution — but MUST verbalize intent first), Exploratory (research → answer), Ambiguous (ask one question → re-classify). Explicit requests MUST pass ideation — surface clarity is not a substitute for requirements verification.
 

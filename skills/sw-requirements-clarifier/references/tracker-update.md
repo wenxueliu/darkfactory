@@ -2,11 +2,11 @@
 
 ## Purpose
 
-此文档定义如何更新解析后的 `paths.evidence.tracker`。sw-requirements-clarifier 是第一个写入者——在完成需求澄清和规格文档后，将需求条目写入 tracker。
+此文档定义如何更新解析后的 `paths.artifact_targets.tracker`。sw-requirements-clarifier 是第一个写入者——在完成需求澄清和规格文档后，将需求条目写入 tracker。
 
 ## Resolved Paths
 
-- Tracker：`paths.evidence.tracker`
+- Tracker：`paths.artifact_targets.tracker`
 - Requirement document：`paths.artifact_targets.requirement_document`
 - Config：`paths.config_file`
 - 如果 tracker 不存在且没有调用方提供的初始化模板，只记录 `NOT_FOUND` 并提示初始化；不要在未声明目标时凭空创建另一套 tracker。
@@ -14,14 +14,14 @@
 ## Tracker File Path
 
 ```
-paths.evidence.tracker
+paths.artifact_targets.tracker
 ```
 
 ## Operation: Create or Append Requirement Entry
 
 ### Step 1: Read the tracker
 
-读取 `paths.evidence.tracker`。
+读取 `paths.artifact_targets.tracker`。
 
 ### Step 2: Determine mode
 
@@ -35,11 +35,13 @@ paths.evidence.tracker
 
 | Tracker 字段 | 数据来源 | 示例值 |
 |-------------|---------|--------|
-| `id` | 需求规格第 13 行 `需求ID` | `REQ-20260526-001` |
-| `title` | 需求规格第 11 行 `需求标题` | `用户登录优化` |
-| `description` | 需求规格第 1 节「问题陈述」1-3 句摘要 | 见规格文档 |
+| `id` | 需求文档头部元数据的 `需求ID` 字段 | `REQ-20260526-001` |
+| `title` | 需求文档 H1 标题 | `用户登录优化` |
+| `description` | `section-id: problem_statement` 章节的 1-3 句摘要 | 见规格文档 |
 | `business_domain` | `paths.config_file` → `sw.business_domain` | `general` |
-| `priority` | 需求规格第 131 行「综合优先级」 | `P1` |
+| `priority` | `section-id: value_assessment` 章节的「综合优先级」 | `P1` |
+
+> 按 frontmatter、`section-id` 或字段标签定位取值，**不要按行号**。行号会随模板演进而失效；`section-id` 才是契约，标题和编号只是展示文本（见 `docs/document-contracts.md`）。
 | `created_at` | 今天日期 `YYYY-MM-DD` | `2026-05-26` |
 | `updated_at` | 同上 | `2026-05-26` |
 | `current_phase` | `ideation` | `ideation` |

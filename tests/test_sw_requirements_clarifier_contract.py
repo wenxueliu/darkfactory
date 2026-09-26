@@ -60,8 +60,11 @@ def test_paths_are_input_overrides_with_skill_defaults() -> None:
     assert defaults["paths"]["definition_roots"]["project"]
     assert "decision_roots" in defaults["paths"]["evidence"]
     assert "artifact_targets" in defaults["paths"]
+    # tracker 是可写共享状态，必须留在只读的 evidence 命名空间之外。
+    assert "tracker" not in defaults["paths"]["evidence"]
+    assert "tracker" in defaults["paths"]["artifact_targets"]
     assert "调用方输入的 `paths`" in resolution
-    assert "paths.evidence.tracker" in TRACKER_GUIDE.read_text(encoding="utf-8")
+    assert "paths.artifact_targets.tracker" in TRACKER_GUIDE.read_text(encoding="utf-8")
 
 
 def test_acceptance_is_multi_dimensional() -> None:
