@@ -14,31 +14,33 @@
 
 ## 输入结构
 
+以下示例与 `path-defaults.yaml` 的默认值一致；`path-defaults.yaml` 是路径的权威来源，本示例仅展示 `paths` 对象的结构：
+
 ```yaml
 paths:
   config_file: _context/config.yaml
   config_user_file: _context/config.user.yaml
   definition_roots:
-    project: _context/templates
+    project: knowledge/templates
     user: null
     skill: skills/sw-requirements-clarifier/references/document-definitions
   evidence:
-    context_files: [CONTEXT.md]
-    context_maps: [CONTEXT-MAP.md]
-    decision_roots: [knowledge/_enterprise/decisions]
+    context_files: [knowledge/CONTEXT.md]
+    context_maps: [knowledge/CONTEXT-MAP.md]
+    decision_roots: [knowledge/decisions]
     knowledge_roots:
-      patterns: knowledge/_enterprise/patterns
-      lessons: knowledge/_enterprise/lessons
-      contracts: knowledge/_enterprise/contracts
-      decisions: knowledge/_enterprise/decisions
+      patterns: knowledge/patterns
+      lessons: knowledge/lessons
+      contracts: knowledge/contracts
+      decisions: knowledge/decisions
   artifact_targets:
-    requirement_document: _context/memory/sw-shared/requirements/{requirement_id}.md
-    gate_report: _context/memory/sw-shared/requirements/{requirement_id}-gate.md
-    value_assessment: _context/memory/sw-shared/value-assessment/{requirement_id}.md
-    tracker: _context/memory/sw-shared/requirements-tracker.yaml
+    requirement_document: knowledge/requirements/{requirement_id}/{requirement_id}.md
+    gate_report: knowledge/requirements/{requirement_id}/{requirement_id}-gate.md
+    value_assessment: knowledge/requirements/{requirement_id}/value-assessment.md
+    tracker: knowledge/requirements-tracker.yaml
     knowledge_root: knowledge
-    tasks: _context/memory/sw-shared/tasks.yaml
-    reviews: _context/memory/sw-shared/reviews
+    tasks: knowledge/requirements/{requirement_id}/tasks.yaml
+    reviews: knowledge/requirements/{requirement_id}/reviews
 ```
 
 ## 边界规则

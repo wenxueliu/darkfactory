@@ -40,12 +40,12 @@ paths.artifact_targets.tracker
 | `description` | `section-id: problem_statement` 章节的 1-3 句摘要 | 见规格文档 |
 | `business_domain` | `paths.config_file` → `sw.business_domain` | `general` |
 | `priority` | `section-id: value_assessment` 章节的「综合优先级」 | `P1` |
-
-> 按 frontmatter、`section-id` 或字段标签定位取值，**不要按行号**。行号会随模板演进而失效；`section-id` 才是契约，标题和编号只是展示文本（见 `docs/document-contracts.md`）。
 | `created_at` | 今天日期 `YYYY-MM-DD` | `2026-05-26` |
 | `updated_at` | 同上 | `2026-05-26` |
 | `current_phase` | `ideation` | `ideation` |
 | `status` | 推导（见下方规则） | `active` |
+
+> 按 frontmatter、`section-id` 或字段标签定位取值，**不要按行号**。行号会随模板演进而失效；`section-id` 才是契约，标题和编号只是展示文本（见 `docs/document-contracts.md`）。
 
 ### Step 4: Build phases block
 

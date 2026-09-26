@@ -26,7 +26,8 @@ paths:
       contracts: knowledge/contracts
       decisions: knowledge/decisions
 
-  # 写入目标：本 Skill 产出或更新的文件。
+  # 写入目标：本 Skill 产出或更新的文件，以及模板下游引用所需的位置。
+  # tasks/reviews 本 Skill 不写入，只作为模板引用目标提供给下游 Skill。
   artifact_targets:
     requirement_document: knowledge/requirements/{requirement_id}/{requirement_id}.md
     gate_report: knowledge/requirements/{requirement_id}/{requirement_id}-gate.md

@@ -57,11 +57,11 @@ The Skill accepts a user request plus optional execution context. Missing option
 | `request` | Yes | User's requirement, problem statement, or change intent |
 | `project_root` | No | Project root; defaults to the current workspace |
 | `requirement_id` | No | Existing ID to update; otherwise generate a new `REQ-YYYYMMDD-NNN` ID |
-| `variant` | No | Requirement definition variant; defaults to the variant mapped from `sw.business_domain` via the scenario mapping (`general` → `default`), falling back to that layer's `default` when no exact variant exists |
+| `variant` | No | Requirement definition variant; defaults to the variant mapped from `sw.business_domain` via the scenario mapping (`general` → `default`; full table in `references/requirement-clarification.md` Step 0.5), falling back to that layer's `default` when no exact variant exists |
 | `evidence_paths` | No | Additional tracker, context, contract, or decision files for this run |
 | `paths` | No | Semantic path overrides; defaults and merge rules are in `references/path-defaults.yaml` and `references/path-resolution.md` |
 | `communication_language` | No | Output language; defaults to project configuration or Chinese |
-| `mode` | No | `interactive` (default) or `draft`; draft mode must still report unresolved decisions |
+| `mode` | No | `interactive` (default) or `draft`; behavior defined in `references/requirement-clarification.md` 执行模式 — draft mode must still report unresolved decisions and cannot end as `GATE_PASSED` |
 
 The caller must not provide internal prompts, private state, or a dependency on another Skill's directory. External Skill results may be supplied as evidence, but are never required for activation. `paths` may override project, user, evidence, and artifact locations without changing the Skill logic.
 
@@ -96,7 +96,7 @@ Only the three entries declared in frontmatter are external dependencies of this
    - Scope boundaries are clear
    - ≥3 assumptions/risks identified
    - Value is explainable
-4. Resolve the `requirements/{variant}` document definition package. Use its manifest-selected template, gate, and validator only, and report each resource's resolved source.
+4. Resolve the `requirements/{variant}` document definition package and report each resource's resolved scope and path. Resolution is per-resource: the exact variant first, then that layer's `default` — so a variant whose manifest declares only a template (e.g. `fintech`, `ecommerce`) inherits the `default` gate and validator. A resource that is declared but missing is a configuration error and must fail, not silently fall back to a lower-priority resource.
 5. Run the resolved gate and validator rules (machine layer), then apply the G1–G4 judgment checklist in `references/requirements-gate.md` (≥2 AC per user story, ≥3 assumptions, value alignment, risk mitigation). The two layers are both required — structural rules cannot express the judgment criteria.
 6. Write output to `paths.artifact_targets.requirement_document`
 7. Update `paths.artifact_targets.tracker` — 写入需求条目。详见 `references/tracker-update.md`

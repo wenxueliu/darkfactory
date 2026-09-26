@@ -34,7 +34,42 @@ The requirement clarification continues; this is not a direct failure.
 
 将记录同时加入 `Requirements Clarification Report.external_capabilities` 和规格文档的“澄清记录”（如果规格文档已经创建）。
 
+## 执行模式 (mode)
+
+`mode` 决定澄清是否与用户进行交互轮次：
+
+| mode | 行为 |
+|------|------|
+| `interactive`（默认） | 按第 3 步的 frontier 轮次与用户往返提问，直到实质完备度阈值满足 |
+| `draft` | 不发起交互轮次：基于调用方证据、tracker 与已解析上下文直接成稿 |
+
+`draft` 模式的约束：
+
+- 未经证据确认的决策逐条写入 `clarification.unresolved`，不得默认为已确认
+- 不因缺少用户回答而跳过机器层门禁/验证器；判断层 G1–G4 对未决项按 `NEEDS_USER_INPUT` 处理，而不是判 `PASS`
+- 可选能力（`sw-grill-docs` / `sw-value-judgment` / `sw-knowledge-agent`）不可用时仍按降级协议记 `SKIPPED`
+- 存在未决项时结果不得为 `GATE_PASSED`，只能是 `NEEDS_USER_INPUT` 或 `READY_FOR_GATE`
+
 ## 澄清流程 (主流程 + 可选增强)
+
+### 第 0.5 步: 定义包解析 (Document Definition Resolution)
+
+在向用户提问之前解析 `requirements/{variant}` 定义包，确定本次使用的模板、门禁和验证器。
+
+**确定 variant：** 调用方显式传入时直接使用；否则由 `paths.config_file` 的 `sw.business_domain` 经场景映射得到：
+
+| business_domain | requirements variant |
+|-----------------|----------------------|
+| `general` | `default` |
+| `fintech` | `fintech` |
+| `ecommerce` | `ecommerce` |
+| `internal-tools` | `internal-tools` |
+| `java-springboot-enterprise` | `default` |
+| 其它 / 未配置 | `default` |
+
+**解析：** 通过统一文档定义解析器按 `paths.definition_roots`（`project → user → skill`）解析。资源逐个解析：先精确 variant，再同层 `default`——因此只声明了模板的变体（如 `fintech`、`ecommerce`）会继承同层 `default` 的门禁和验证器。显式声明但不存在的资源是配置错误，必须失败，不得静默降级到低优先级资源。
+
+**输出：** 记录模板、门禁、验证器各自的来源 scope 与路径；第 2 步的维度扫描以解析出的模板 section 集合为基准，第 5 步执行解析出的门禁与验证器。
 
 ### 第 1 步: 理解问题空间 (Listen First)
 
