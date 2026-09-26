@@ -15,7 +15,7 @@
 
 | Agent | Role | Trigger |
 |-------|------|---------|
-| `sw-requirements-clarifier` | Requirements clarifier — 4-step progressive dialogue, ambiguity scan (10 dimensions), generates spec document. Stops when Substantiality Threshold met. (NEW) | 需求澄清, requirements clarification, clarify requirements |
+| `sw-requirements-clarifier` | Requirements clarifier — progressive clarification dialogue (frontier rounds), variant-driven ambiguity scan, generates spec document. Stops when Substantiality Threshold met. (NEW) | 需求澄清, requirements clarification, clarify requirements |
 | `sw-value-judgment` | Requirements value assessor — 5-dimension scoring (Impact/Effort/Risk/Dependencies/Strategic Fit), ROI evaluation, priority ranking. (REVIVED: was collapsed into controller) | 需求价值, ROI评估, 优先级判断 |
 
 ## 规划层 (Planning Layer, 4 NEW)
@@ -109,7 +109,7 @@
 │ Phase 1: ideation (需求澄清)                                          │
 │                                                                      │
 │   sw-controller 委托给专门 Agent:                                     │
-│   ├── sw-requirements-clarifier → 4-step progressive dialogue       │
+│   ├── sw-requirements-clarifier → progressive dialogue rounds       │
 │   │     └── requirements/{variant} definition → requirements/{id}.md│
 │   ├── sw-value-judgment → value-assessment/{id}.md                  │
 │   └── sw-knowledge-agent → KB pre-query (ADR/patterns/lessons)      │

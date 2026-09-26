@@ -35,7 +35,7 @@ The system has 38 skills in v2 (37 sw-* specialists + 1 `using-harness` bootstra
 sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
   │
   ├── [需求层 — Ideation]
-  │     sw-requirements-clarifier (NEW: 需求澄清 — 4轮渐进对话→规格文档)
+  │     sw-requirements-clarifier (NEW: 需求澄清 — 渐进澄清对话(frontier)→规格文档)
   │     sw-value-judgment (REVIVED: 需求价值评估)
   │
   ├── [规划层 — Planning]
@@ -148,7 +148,7 @@ These rules are enforced by Claude Code hooks (`hooks/hooks.json` → PreToolUse
 **The sw-controller and sw-plan-executor MUST delegate non-trivial work to specialized subagents.** Direct tool calls are for trivial tasks only. After 3+ direct tool calls without using the Agent tool, the hook injects a reminder.
 
 When to delegate (MUST):
-- Requirements clarification → `sw-requirements-clarifier` (4-step progressive dialogue → spec document)
+- Requirements clarification → `sw-requirements-clarifier` (progressive clarification dialogue (frontier rounds) → spec document)
 - Value assessment → `sw-value-judgment` (ROI + strategic alignment + 5-dimension scoring)
 - Knowledge base query/update → `sw-knowledge-agent` (ADR, patterns, lessons, service discovery)
 - Task decomposition → `sw-task-decomposer` (service identification → DAG → Wave → tasks.yaml)

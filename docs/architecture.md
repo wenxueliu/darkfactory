@@ -10,7 +10,7 @@
 sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
   │
   ├── [需求层 — Ideation]
-  │     sw-requirements-clarifier (NEW: 需求澄清 — 4轮渐进对话→规格文档)
+  │     sw-requirements-clarifier (NEW: 需求澄清 — 渐进澄清对话(frontier)→规格文档)
   │     sw-value-judgment (REVIVED: 需求价值评估)
   │
   ├── [规划层 — Planning]
