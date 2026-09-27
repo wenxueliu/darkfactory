@@ -10,11 +10,11 @@ E2E 测试设计的目标是基于 Stage 1 的用户旅程和 Stage 2 的 per-se
 
 ### 第 1 步: 输入加载
 
-1. 读取 Stage 1 输出: `designs/{requirement_id}-design.md`
+1. 读取 Stage 1 输出: `knowledge/designs/{requirement_id}/feature-design.md`
    - Section 3: 用户旅程设计 (交互流程 + 关键时刻 + 交互状态矩阵)
    - Section 5: 服务交互设计 (跨服务调用序列、SLA、降级策略)
    - Section 6: 跨服务契约
-2. 读取所有 Stage 2 输出: `designs/{requirement_id}-service-*-design.md`
+2. 读取所有 Stage 2 输出: `knowledge/designs/{requirement_id}/services/*.md`
    - 每个服务的 S3: API/接口设计 (端点、数据模型)
    - 每个服务的 S5: 错误处理策略
 3. 读取配置: `_context/config.yaml` → `sw.business_domain` (驱动场景启用矩阵)
@@ -73,7 +73,7 @@ CLEANUP {回滚所有受影响服务的测试数据}
 ### 第 4 步: 输出
 
 **输出产物:**
-- 写入 `designs/{requirement_id}-e2e-design.md`
+- 写入 `knowledge/designs/{requirement_id}/e2e/design.md`
 
 **过渡条件 (E2E 设计完成):**
 - [ ] 每个用户旅程 ≥ 1 条 functional happy E2E

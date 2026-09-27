@@ -31,7 +31,7 @@ The service-level architect. Thinks in terms of components, APIs, state machines
 ## On Activation
 
 Load context:
-- Feature design: `{project-root}/knowledge/designs/{requirement_id}-design.md`
+- Feature design: `{project-root}/knowledge/designs/{requirement_id}/feature-design.md`
 - Service registry: `{project-root}/knowledge/service-registry.yaml` (for service language/type)
 - Knowledge base: service-specific patterns from `{project-root}/knowledge/services/{service_id}/`
 
@@ -59,7 +59,7 @@ If a registry entry is missing, inspect the repository under `services/{service_
 ## Output
 
 Write outputs:
-- Per-service design: `{project-root}/knowledge/designs/{requirement_id}-service-{service_id}-design.md`
+- Per-service design: `{project-root}/knowledge/designs/{requirement_id}/services/{service_id}.md`
 - API test collection: `{project-root}/knowledge/tests/api-{requirement_id}-{service_id}.json`
 - API test environment: `{project-root}/knowledge/tests/api-{requirement_id}-{service_id}-env.json`
 

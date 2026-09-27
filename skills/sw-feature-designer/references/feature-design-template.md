@@ -8,7 +8,7 @@ contract_version: "1.0"
 
 ## 使用说明
 
-此模板在需求门禁 PASS 后使用。由 sw-feature-designer 加载，基于 `requirements/{requirement_id}.md` 填充。填入后写入 `{project-root}/knowledge/designs/{requirement_id}-design.md`。
+此模板在需求门禁 PASS 后使用。由 sw-feature-designer 加载，基于解析后的需求规格路径填充。填入后写入 `paths.artifact_targets.design_document`（默认：`{project-root}/knowledge/designs/{requirement_id}/feature-design.md`）。
 
 特性设计文档是跨服务的 "大图"——定义用户旅程、服务影响范围、服务间交互和契约、部署策略。它不涉及任何服务的内部实现细节（那是 Stage 2 per-service 设计文档的职责）。
 
@@ -226,8 +226,7 @@ paths:
 ## 9. 下游引用
 
 - 需求规格: `requirements/{requirement_id}.md`
-- 头脑风暴记录: `designs/{requirement_id}-brainstorm.md` (如有)
-- Per-service 设计文档 (Stage 2 产出):
-{列出所有受影响服务的 per-service 设计文档路径}
-- E2E 测试设计 (Stage 3 产出): `designs/{requirement_id}-e2e-design.md`
+- 头脑风暴记录: `knowledge/designs/{requirement_id}/brainstorm.md` (如有)
+- Per-service 设计文档 (Stage 2 产出): `knowledge/designs/{requirement_id}/services/`
+- E2E 测试设计 (Stage 3 产出): `knowledge/designs/{requirement_id}/e2e/design.md`
 - 知识库: `knowledge/_enterprise/decisions/`

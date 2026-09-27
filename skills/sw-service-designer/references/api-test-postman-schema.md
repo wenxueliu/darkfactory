@@ -27,7 +27,7 @@ knowledge/tests/
 {
   "info": {
     "name": "{requirement_id} — {需求标题}",
-    "description": "关联设计: designs/{requirement_id}-design.md\n生成时间: {timestamp}",
+    "description": "关联设计: knowledge/designs/{requirement_id}/feature-design.md\n生成时间: {timestamp}",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

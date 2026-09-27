@@ -19,7 +19,7 @@
 | 经验教训 | `knowledge/_enterprise/lessons/` | 过去类似场景踩过什么坑？ |
 | 服务注册表 | `service-registry.yaml` | 哪些服务存在？它们的 API 和依赖是什么？ |
 | 需求规格 | `requirements/{id}.md` | 需求的具体约束和 AC 是什么？ |
-| 头脑风暴输出 | `designs/{id}-brainstorm.md` | 推荐的技术方向是什么？ |
+| 头脑风暴输出 | `knowledge/designs/{id}/brainstorm.md` | 推荐的技术方向是什么？ |
 
 **查询后行动:**
 1. 给人类一个简短摘要: "根据知识库，已有 {N} 个相关 ADR。本次设计受 {M} 个已有决策约束。涉及 {X} 个服务。"
@@ -36,13 +36,13 @@
 2. **从用户旅程反推:** 旅程的每个步骤调用哪些服务？
 3. **从数据依赖反推:** 需求涉及的数据在哪个服务的数据库中？
 
-**输出:** 填充解析后的 `feature-design/{variant}` 定义包中的稳定 section `service_impact`:
+**输出:** 填充解析后的 `feature-design/{variant}` 定义包中的稳定 section `service_impact`。候选服务、仓库和证据路径来自 `paths.evidence.service_registry` 与 `paths.evidence.service_roots`，不要在流程中拼接固定物理目录:
 - 每个受影响服务一行
 - 标注影响类型 (新增 API / 修改 API / 新增 consumer / 新增事件 / 数据迁移 / UI 变更)
 - 标注跨服务依赖
 - 评估风险等级
 
-从 `service-registry.yaml` 获取 `services/` 下的仓库列表并交叉比对；只有一个仓库时仍输出一行仓库影响分析。
+从解析后的 `paths.evidence.service_registry` 获取 `paths.evidence.service_roots` 下的仓库列表并交叉比对；只有一个仓库时仍输出一行仓库影响分析。
 
 ### 第 3 步: 渐进式填充 (Progressive Fill)
 
@@ -72,7 +72,9 @@
 ### 第 4 步: 输出与过渡
 
 **输出产物:**
-- 写入 `designs/{requirement_id}-design.md`
+- 写入 `paths.artifact_targets.design_document`（默认：`knowledge/designs/{requirement_id}/feature-design.md`）
+- 门禁结果写入 `paths.artifact_targets.gate_report`
+- 写入 `paths.artifact_targets.manifest`，登记 Stage 1、Stage 2、Stage 3 产物位置
 
 **过渡条件 (可以进入 Stage 2 的条件):**
 - [ ] 9 个章节完整 (标注 N/A 的除外)

@@ -2,7 +2,7 @@
 
 ## 触发时机
 
-Per-service 设计文档 (`designs/{requirement_id}-service-{service_id}-design.md`) 完成后，进入 Stage 3 之前。
+Per-service 设计文档 (`knowledge/designs/{requirement_id}/services/{service_id}.md`) 完成后，进入 Stage 3 之前。
 
 ## 验证清单
 

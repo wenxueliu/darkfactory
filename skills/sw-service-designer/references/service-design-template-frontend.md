@@ -15,7 +15,7 @@ contract_version: "1.0"
 # 服务详细设计: {service_id} (frontend)
 
 **设计ID:** `{DESIGN-YYYYMMDD-NNN}-{service_id}`
-**关联特性设计:** `designs/{requirement_id}-design.md`
+**关联特性设计:** `knowledge/designs/{requirement_id}/feature-design.md`
 **服务:** `{service_id}` (语言: {language})
 **状态:** `draft | reviewed | approved`
 

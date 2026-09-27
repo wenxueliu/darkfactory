@@ -2,7 +2,7 @@
 
 ## 触发时机
 
-E2E 测试设计文档 (`designs/{requirement_id}-e2e-design.md`) 完成后，进入设计门禁之前。
+E2E 测试设计文档 (`knowledge/designs/{requirement_id}/e2e/design.md`) 完成后，进入设计门禁之前。
 
 ## 验证清单
 

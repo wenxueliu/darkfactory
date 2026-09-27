@@ -2,7 +2,8 @@
 
 ## 触发时机
 
-特性设计文档 (`designs/{requirement_id}-design.md`) 完成后，进入 Stage 2 之前。
+特性设计文档（`paths.artifact_targets.design_document`，默认
+`knowledge/designs/{requirement_id}/feature-design.md`）完成后，进入 Stage 2 之前。
 
 ## 验证清单
 

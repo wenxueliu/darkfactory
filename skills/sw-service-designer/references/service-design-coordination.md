@@ -19,7 +19,7 @@
 
 ### 第 2 步: 上下文加载
 
-1. 读取 `designs/{requirement_id}-design.md` (Stage 1 输出)
+1. 读取 `knowledge/designs/{requirement_id}/feature-design.md` (Stage 1 输出)
 2. 从 Section 2 "服务影响分析" 提取该服务的变更内容
 3. 从 Section 5 "服务交互设计" 提取该服务参与的调用序列
 4. 从 Section 6 "跨服务契约" 提取该服务提供/消费的契约
@@ -57,7 +57,7 @@
 ### 第 5 步: 输出与过渡
 
 **输出产物:**
-- `designs/{requirement_id}-service-{service_id}-design.md`
+- `knowledge/designs/{requirement_id}/services/{service_id}.md`
 - `tests/api-{requirement_id}-{service_id}.json`
 - `tests/api-{requirement_id}-{service_id}-env.json`
 

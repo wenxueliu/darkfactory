@@ -25,7 +25,7 @@
 
 所有文档都以 `services/` 下的代码仓为边界。一个仓库就是一个服务单元；仓库数量决定是否并行，不决定是否加载另一套架构模板。
 
-**Per-service 文档** (`designs/{id}-service-{service_id}-design.md`) — 使用本模板的 Section 4-10.4:
+**Per-service 文档** (`knowledge/designs/{id}/services/{service_id}.md`) — 使用本模板的 Section 4-10.4:
 - Section 4 技术决策 → per-service S1
 - Section 5 架构设计 → per-service S2
 - Section 6 API/接口设计 → per-service S3
@@ -34,7 +34,7 @@
 - Section 9 安全设计 → per-service S6
 - Section 10.1-10.4 测试设计 (UT + API) → per-service S7-S8
 
-**全局特性文档** (`designs/{id}-design.md`) — 使用本模板的其余章节:
+**全局特性文档** (`knowledge/designs/{id}/feature-design.md`) — 使用本模板的其余章节:
 - Section 1-3 设计概述/用户旅程/页面设计
 - Section 10.5 E2E 测试设计
 - Section 10.6-10.7 三层追溯矩阵/测试数据策略
@@ -43,7 +43,7 @@
 
 **拆分原因:** UT 和 API 测试随仓库——测试的是该仓库的代码和端点。需要时，E2E 和契约测试验证跨仓库用户旅程；没有跨仓库交互时明确标记 N/A。
 
-填入后写入 `{project-root}/knowledge/designs/{requirement_id}-design.md`。
+填入后写入 `{project-root}/knowledge/designs/{requirement_id}/feature-design.md`。
 
 设计文档是开发阶段的唯一技术事实源。代码实现必须回溯到设计决策。
 

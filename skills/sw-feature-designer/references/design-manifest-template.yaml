@@ -1,0 +1,21 @@
+schema_version: "1.0"
+document_type: design-bundle
+requirement_id: REQ-YYYYMMDD-NNN
+definition:
+  document_type: feature-design
+  variant: default
+  contract: sw.feature-design
+  version: "1.0"
+status: draft | gate_failed | stage1_passed | stage2_in_progress | complete
+artifacts:
+  feature_design: feature-design.md
+  gate_report: feature-design-gate.md
+  pre_query: pre-query.md | NOT_CREATED
+  service_design_dir: services/
+  e2e_design: e2e/design.md
+traceability:
+  acceptance_criteria_covered: []
+  affected_services: []
+  cross_service_contracts: []
+open_questions: []
+updated_at: YYYY-MM-DD

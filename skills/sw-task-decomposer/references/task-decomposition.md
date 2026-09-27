@@ -20,9 +20,9 @@
 **输入 (按加载顺序):**
 
 1. **服务注册表:** `knowledge/service-registry.yaml` — 所有已注册服务的权威列表（auto-generated, 由 sw-knowledge-agent 维护）
-2. **Stage 1 跨服务设计:** `designs/{id}-design.md` — 其中的「服务影响分析」表列出了本次需求实际涉及的服务（从 service-registry 中筛选，不可臆想）
-3. **Stage 2 Per-service 设计:** `designs/{id}-service-{svc}-design.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
-4. **Stage 3 E2E 测试设计:** `designs/{id}-e2e-design.md` — 用于最后一个 wave 的 E2E 任务
+2. **Stage 1 跨服务设计:** `knowledge/designs/{id}/feature-design.md` — 其中的「服务影响分析」表列出了本次需求实际涉及的服务（从 service-registry 中筛选，不可臆想）
+3. **Stage 2 Per-service 设计:** `knowledge/designs/{id}/services/{svc}.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
+4. **Stage 3 E2E 测试设计:** `knowledge/designs/{id}/e2e/design.md` — 用于最后一个 wave 的 E2E 任务
 5. **需求规格:** `requirements/{id}.md` — 验收条件来源
 6. **ADR:** `knowledge/_enterprise/decisions/ADR-*.md` — 架构约束
 
@@ -33,7 +33,7 @@
 
   ┌─ 第 1 优先: service-registry.yaml 存在?
   │     ├─ YES → 读取所有已注册服务（权威事实源）
-  │     │        读取 designs/{id}-design.md 的「服务影响分析」表
+  │     │        读取 knowledge/designs/{id}/feature-design.md 的「服务影响分析」表
   │     │        交叉验证: 影响分析表中的服务必须在 registry 中存在
   │     │        验证通过 → 跳转到「加载 per-service 设计文档」
   │     │        验证失败 → 阻塞，升级人工
@@ -56,7 +56,7 @@
   │     如果 services/ 目录为空或不存在 → 进入第 3 优先
   │
   ├─ 第 3 优先: 从 Stage 1 设计文档直接提取
-  │     读取 designs/{id}-design.md 的「服务影响分析」表
+  │     读取 knowledge/designs/{id}/feature-design.md 的「服务影响分析」表
   │     如果表中有服务列表 → 直接使用（跳过 service-registry 验证，因为 registry 不存在）
   │     警告用户: "service-registry.yaml 不存在，已从设计文档直接提取服务列表。建议运行 sw-knowledge-agent service-discovery 生成注册表。"
   │     如果设计文档也没有服务影响分析表 → 进入第 4 优先
@@ -190,7 +190,7 @@ Task-{id}: {名称}
 - 实现任务自包含: UT 用例 + API 用例在**同一个任务内部**完成
 - TDD 铁律: 任务内先写 UT（RED → GREEN → REFACTOR），再写 API 测试（RED → GREEN → REFACTOR），两层都通过才算任务完成
 - E2E 用例分配给独立的 E2E 任务（最后一个 wave），依赖所有服务任务完成
-- UT 用例从 per-service 设计文档 Section 10.3 提取，API 用例从 Section 10.4 提取，E2E 用例从 Stage 3 的 `designs/{id}-e2e-design.md` 提取
+- UT 用例从 per-service 设计文档 Section 10.3 提取，API 用例从 Section 10.4 提取，E2E 用例从 Stage 3 的 `knowledge/designs/{id}/e2e/design.md` 提取
 
 **API 测试执行时机（三轮，详见 `quality-gates.md` GATE 1/3）:**
 
@@ -274,7 +274,7 @@ tasks:
     repo_url: "{服务 git 仓库地址，来自 service-registry.yaml repo}"
     language: "{服务语言/框架，来自 service-registry.yaml language，如 java-springboot}"
     component: "{对应设计文档中的组件名（如适用）}"
-    design_doc: "designs/{id}-service-{svc}-design.md"
+    design_doc: "knowledge/designs/{id}/services/{svc}.md"
     worktree_path: "{worktree_base}/sw-task-{NNN}"
     wave: {1|2|3|...}
     estimated_hours: {n}
@@ -319,7 +319,7 @@ tasks:
     name: "E2E 集成测试"
     description: "跨服务端到端测试，验证完整用户旅程"
     service: null
-    design_doc: "designs/{id}-e2e-design.md"
+    design_doc: "knowledge/designs/{id}/e2e/design.md"
     worktree_path: "{worktree_base}/sw-task-E2E-{NNN}"
     wave: {final}
     estimated_hours: {n}
@@ -333,7 +333,7 @@ tasks:
 
     acceptance_criteria:
       - ac_id: "AC-{N}"
-        source: "designs/{id}-e2e-design.md"
+        source: "knowledge/designs/{id}/e2e/design.md"
         description: "E2E 测试场景全部通过"
 
     test_bindings:
@@ -432,7 +432,7 @@ worktrees:
       "metadata": {
         "task_id": "sw-001",
         "component": "UserController",
-        "design_doc": "designs/REQ-001-service-user-service-design.md",
+        "design_doc": "knowledge/designs/REQ-001/services/user-service.md",
         "estimated_hours": 2,
         "capability_verified": true,
         "capability_checks": [
@@ -465,7 +465,7 @@ worktrees:
       "metadata": {
         "task_id": "sw-002",
         "component": "OrderController",
-        "design_doc": "designs/REQ-001-service-order-service-design.md",
+        "design_doc": "knowledge/designs/REQ-001/services/order-service.md",
         "estimated_hours": 2,
         "capability_verified": true,
         "capability_checks": [
@@ -496,7 +496,7 @@ worktrees:
       "depends_on": ["wave-1-merge"],
       "metadata": {
         "task_id": "sw-E2E-001",
-        "design_doc": "designs/REQ-001-e2e-design.md",
+        "design_doc": "knowledge/designs/REQ-001/e2e/design.md",
         "estimated_hours": 1.5,
         "test_bindings": {
           "e2e_cases": ["E2E-1", "E2E-2"]

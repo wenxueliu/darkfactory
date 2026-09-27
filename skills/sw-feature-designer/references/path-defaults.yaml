@@ -1,0 +1,44 @@
+# Fallback semantic paths for standalone sw-feature-designer execution.
+# Call-time paths and project configuration take precedence.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  definition_roots:
+    project: knowledge/templates
+    user: null
+    skill: skills/sw-feature-designer/references/document-definitions
+
+  evidence:
+    requirements_root: knowledge/requirements
+    context_files:
+      - knowledge/CONTEXT.md
+    context_maps:
+      - knowledge/CONTEXT-MAP.md
+    decision_roots:
+      - knowledge/_enterprise/decisions
+      - knowledge/decisions
+    pattern_roots:
+      - knowledge/_enterprise/patterns
+      - knowledge/patterns
+    lesson_roots:
+      - knowledge/_enterprise/lessons
+      - knowledge/lessons
+    contract_roots:
+      - knowledge/_enterprise/contracts
+      - knowledge/contracts
+    service_registry: knowledge/service-registry.yaml
+    service_roots: services
+
+  artifact_targets:
+    design_dir: knowledge/designs/{requirement_id}
+    design_document: knowledge/designs/{requirement_id}/feature-design.md
+    gate_report: knowledge/designs/{requirement_id}/feature-design-gate.md
+    pre_query: knowledge/designs/{requirement_id}/pre-query.md
+    manifest: knowledge/designs/{requirement_id}/manifest.yaml
+    service_design_dir: knowledge/designs/{requirement_id}/services
+    e2e_design: knowledge/designs/{requirement_id}/e2e/design.md
+    tracker: knowledge/requirements-tracker.yaml
+    adr_root: knowledge/_enterprise/decisions

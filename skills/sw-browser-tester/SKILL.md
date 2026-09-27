@@ -20,7 +20,7 @@ Inspired by gstack browse's snapshot-based QA patterns, adapted to the multiagen
 ## Principles
 
 - **Real browser, real rendering** — Tests run in Chromium (Playwright), not simulated environments
-- **Design-driven execution** — Test scripts are generated from the E2E design document (`{requirement_id}-e2e-design.md`), not written from scratch
+- **Design-driven execution** — Test scripts are generated from the E2E design document (`knowledge/designs/{requirement_id}/e2e/design.md`), not written from scratch
 - **Evidence-first** — Every assertion backed by screenshot, console log, or network trace. No "probably works"
 - **Self-contained tests** — Each GIVEN seeds its own data, each CLEANUP restores state. Tests do not depend on execution order
 - **Snapshot-aware** — Baseline screenshots before actions, comparison after. Diff-based verification catches visual regressions
@@ -30,7 +30,7 @@ Inspired by gstack browse's snapshot-based QA patterns, adapted to the multiagen
 
 ### Step 1: Load Test Cases
 
-Load the E2E design document from `knowledge/designs/{requirement_id}-e2e-design.md`.
+Load the E2E design document from `knowledge/designs/{requirement_id}/e2e/design.md`.
 
 Parse the GIVEN/WHEN/THEN/CLEANUP structured test cases. From the E2E test case template, identify:
 - **Functional** scenarios: happy path, error path, boundary, state transition, authorization

@@ -26,7 +26,7 @@
 | 服务级知识 | `kb-search.py "{上下文关键词}" --scope service --trusted-only --max-results 5 --json` | 具体受影响服务有什么既有知识？ |
 | API 契约 | `kb-search.py "{上下文关键词}" --type api --scope enterprise --trusted-only --max-results 5 --json` | 有哪些 API 契约不能破坏？ |
 | 需求规格 | `requirements/{id}.md` (直接读取) | 需求的具体约束是什么？ |
-| 头脑风暴输出 | `designs/{id}-brainstorm.md` (直接读取) | 推荐方向是什么？关键假设有哪些？ |
+| 头脑风暴输出 | `knowledge/designs/{id}/brainstorm.md` (直接读取) | 推荐方向是什么？关键假设有哪些？ |
 
 > `{上下文关键词}` 替换为具体的技术关键词。如: "用户认证"、"订单状态机"、"支付回调"。
 > 用空格分隔多个关键词获得更好召回（kb-search.py 的内部评分机制会匹配各个词）。
@@ -82,7 +82,7 @@
 
 **委托:** Delegate to `sw-feature-designer`
 **输入:** 需求规格文档 + 知识库 (ADRs, patterns, lessons) + 从 `services/` 生成的服务注册表
-**输出:** `designs/{id}-design.md` — 跨服务特性设计文档
+**输出:** `knowledge/designs/{id}/feature-design.md` — 跨服务特性设计文档
 **验证:** 解析 `feature-design/default` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 
 ##### Stage 1 前置: 服务能力调查 (Service Capability Investigation) ← 必须执行
@@ -165,7 +165,7 @@
 
 **委托:** Delegate to `sw-service-designer` — 对每个受影响服务并行启动
 **输入:** Stage 1 输出 (服务影响分析 + 服务能力摘要 + 服务交互 + 跨服务契约) + 服务注册表 + 服务代码仓库 (`services/{id}/`)
-**输出:** `designs/{id}-service-{service_id}-design.md` × N + `tests/api-{id}-{service_id}.json` × N
+**输出:** `knowledge/designs/{id}/services/{service_id}.md` × N + `tests/api-{id}-{service_id}.json` × N
 **验证:** 对每个服务解析 `service-design/{service_type}` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 **内容 (后端):** S1 技术决策 → S2 架构设计 → S3 API/接口 → S4 状态管理 → S5 错误处理 → S6 安全 → S7 UT 设计 → S8 API 测试设计
 **内容 (前端):** S1 技术决策 → S2 组件架构 → S3 API 集成 → S4 客户端状态 → S5 错误 UI → S6 安全 → S7 UT 设计 → S8 集成测试
@@ -176,7 +176,7 @@
 
 **委托:** Delegate to `sw-e2e-designer`
 **输入:** Stage 1 输出 (用户旅程 + 服务交互 + 降级策略) + 所有 Stage 2 输出 (API 契约 + 错误处理)
-**输出:** `designs/{id}-e2e-design.md`
+**输出:** `knowledge/designs/{id}/e2e/design.md`
 **验证:** 解析 `e2e/default` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 **内容:**
 - 功能 E2E (每用户旅程 happy + error + boundary)
@@ -411,13 +411,13 @@ Stage 2 消费:
 
 | 产物 | 路径 | 何时生成 |
 |------|------|---------|
-| 全局特性设计文档 | `designs/{id}-design.md` | 第 2 步完成 |
-| 仓库级设计文档 × N | `designs/{id}-service-{service_id}-design.md` | 按受影响仓库并行完成 |
+| 全局特性设计文档 | `knowledge/designs/{id}/feature-design.md` | 第 2 步完成 |
+| 仓库级设计文档 × N | `knowledge/designs/{id}/services/{service_id}.md` | 按受影响仓库并行完成 |
 | 必要的跨仓库契约 | `knowledge/_enterprise/contracts/{service_id}-openapi.yaml` | 设计阶段定义 |
 | ADR | `knowledge/_enterprise/decisions/ADR-{NNNN}-{slug}.md` | 第 3 步完成 |
 | 仓库级安全/逻辑/性能审查 | `reviews/{id}-service-{service_id}-review-{type}.md` | 各仓库设计完成后 |
 | 冲突记录 | `reviews/{id}-conflicts.md` | 如有审查者冲突 |
-| 设计门禁结果 | `designs/{id}-design-gate.md` | 所有问题解决后 |
+| 设计门禁结果 | `knowledge/designs/{id}/feature-design-gate.md` | 所有问题解决后 |
 
 ## 过渡门禁
 

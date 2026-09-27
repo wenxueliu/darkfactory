@@ -79,7 +79,7 @@ requirements:
   #     design:
   #       status: done
   #       artifacts:
-  #         - knowledge/designs/REQ-20260411-001-design.md
+  #         - knowledge/designs/REQ-20260411-001/feature-design.md
   #       completed_at: '2026-04-11'
   #     decomposition:
   #       status: done

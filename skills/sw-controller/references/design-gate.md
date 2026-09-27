@@ -11,11 +11,11 @@
 - [ ] 所有必填章节完整（设计概述、用户旅程设计、页面设计（如涉及 UI）、技术决策、架构设计、API/接口设计、状态管理、错误处理、安全设计、测试设计（三层验收循环））
 - [ ] 用户旅程覆盖完整 happy path，每个步骤标注对应 AC 编号（如标注 N/A，需检查是否确实无用户交互）
 - [ ] 页面设计（如涉及 UI）至少有: 页面清单 + 每页组件清单 + 交互细节表
-- [ ] Stage 1 输出: 特性设计文档完整 (`designs/{id}-design.md`)
+- [ ] Stage 1 输出: 特性设计文档完整 (`knowledge/designs/{id}/feature-design.md`)
 - [ ] Stage 1 `feature-design/default` 定义包的 validator/gate PASS
-- [ ] Stage 2 输出: 所有受影响服务的 per-service 设计文档完整 (`designs/{id}-service-{svc}-design.md` × N)
+- [ ] Stage 2 输出: 所有受影响服务的 per-service 设计文档完整 (`knowledge/designs/{id}/services/{svc}.md` × N)
 - [ ] Stage 2 每个服务类型定义包的 validator/gate PASS
-- [ ] Stage 3 输出: E2E 测试设计文档完整 (`designs/{id}-e2e-design.md`)
+- [ ] Stage 3 输出: E2E 测试设计文档完整 (`knowledge/designs/{id}/e2e/design.md`)
 - [ ] Stage 3 `e2e/default` 定义包的 validator/gate PASS
 - [ ] UT 设计: 每个组件 ≥ 2 用例 (1 happy + 1 error/boundary)，每个组件 ≥ 1 edge 用例
 - [ ] API 测试设计: 每个端点 ≥ 3 用例 (正常 ×1 + 异常 ×1 + 认证/权限 ×1)
@@ -72,4 +72,4 @@ FAIL: → 标记阻塞原因，回到设计修订。最大重试 3 轮。
 
 ## 输出文件
 
-门禁结果写入 `{project-root}/knowledge/designs/{requirement_id}-design-gate.md`
+门禁结果写入 `{project-root}/knowledge/designs/{requirement_id}/feature-design-gate.md`

@@ -455,7 +455,7 @@ python3 -m document_contracts resolve \
 python3 -m document_contracts validate \
   --document-type feature-design \
   --variant default \
-  --document ./knowledge/designs/REQ-001-design.md \
+  --document ./knowledge/designs/REQ-001/feature-design.md \
   --root project=./knowledge/templates \
   --root skill=./skills/sw-feature-designer/references/document-definitions
 ```

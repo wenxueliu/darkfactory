@@ -8,14 +8,14 @@ contract_version: "1.0"
 
 ## 使用说明
 
-用于后端服务 (Java/Go/Python/Rust 等) 的详细设计。由 sw-service-designer 加载填充，输出至 `designs/{requirement_id}-service-{service_id}-design.md`。
+用于后端服务 (Java/Go/Python/Rust 等) 的详细设计。由 sw-service-designer 加载填充，输出至 `knowledge/designs/{requirement_id}/services/{service_id}.md`。
 
 ---
 
 # 服务详细设计: {service_id} (backend)
 
 **设计ID:** `{DESIGN-YYYYMMDD-NNN}-{service_id}`
-**关联特性设计:** `designs/{requirement_id}-design.md`
+**关联特性设计:** `knowledge/designs/{requirement_id}/feature-design.md`
 **服务:** `{service_id}` (语言: {language}, 端口: {port})
 **状态:** `draft | reviewed | approved`
 
