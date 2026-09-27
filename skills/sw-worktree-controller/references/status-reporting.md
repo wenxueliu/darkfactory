@@ -16,7 +16,7 @@ Top Controller has accurate, timely information about worktree progress. Status 
 
 ## Report Format
 
-Update `{project-root}/_context/memory/sw-controller/worktree-registry.yaml`:
+Update `{project-root}/knowledge/sw-controller/worktree-registry.yaml`:
 
 ```yaml
 worktrees:

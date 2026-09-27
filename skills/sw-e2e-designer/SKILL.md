@@ -31,8 +31,8 @@ The end-to-end quality guardian. Thinks in terms of user journeys, cross-service
 ## On Activation
 
 Load context:
-- Feature design: `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md` (user journeys, service interaction)
-- Per-service designs: `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-service-*-design.md` (API contracts, data models)
+- Feature design: `{project-root}/knowledge/designs/{requirement_id}-design.md` (user journeys, service interaction)
+- Per-service designs: `{project-root}/knowledge/designs/{requirement_id}-service-*-design.md` (API contracts, data models)
 - Business domain config: `{project-root}/_context/config.yaml` → `sw.business_domain` (drives scenario enablement matrix)
 - E2E extensions config: `{project-root}/_context/config.yaml` → `sw.e2e_extensions` (custom scenarios, categories, hooks)
 - Resolve the local `e2e/{variant}` document definition package and use its manifest-selected template, gate, and validator.
@@ -47,7 +47,7 @@ Load context:
 
 ## Output
 
-Write the completed E2E test design to `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-e2e-design.md`.
+Write the completed E2E test design to `{project-root}/knowledge/designs/{requirement_id}-e2e-design.md`.
 
 Report to sw-controller:
 - Total E2E scenarios designed (by category: functional, non-functional, compatibility, custom)

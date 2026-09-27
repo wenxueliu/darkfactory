@@ -69,23 +69,23 @@ requirements:
   #     ideation:
   #       status: done
   #       artifacts:
-  #         - _context/memory/sw-shared/requirements/REQ-20260411-001.md
+  #         - knowledge/requirements/REQ-20260411-001.md
   #       completed_at: '2026-04-11'
   #     value_assessment:
   #       status: done
   #       artifacts:
-  #         - _context/memory/sw-shared/value-assessment/REQ-20260411-001.md
+  #         - knowledge/value-assessment/REQ-20260411-001.md
   #       completed_at: '2026-04-11'
   #     design:
   #       status: done
   #       artifacts:
-  #         - _context/memory/sw-shared/designs/REQ-20260411-001-design.md
+  #         - knowledge/designs/REQ-20260411-001-design.md
   #       completed_at: '2026-04-11'
   #     decomposition:
   #       status: done
   #       artifacts:
-  #         - _context/memory/sw-shared/tasks.yaml
-  #         - _context/memory/sw-controller/worktree-registry.yaml
+  #         - knowledge/tasks.yaml
+  #         - knowledge/sw-controller/worktree-registry.yaml
   #         - _context-output/REQ-20260411-001/dependencies.json
   #       completed_at: '2026-04-11'
   #     execution:
@@ -96,8 +96,8 @@ requirements:
   #         worktrees_active: 0
   #         tasks_blocked: 0
   #       artifacts:
-  #         - _context/memory/sw-shared/plans/example-plan.md
-  #         - _context/memory/sw-shared/reviews/
+  #         - knowledge/plans/example-plan.md
+  #         - knowledge/reviews/
   #       completed_at: '2026-04-11'
   #     merge:
   #       status: done

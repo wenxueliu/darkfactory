@@ -95,23 +95,26 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 ├── services/                         # 用户放入的一个或多个独立源码仓库
 │   ├── {repository-name}/            # 每个直接子目录都是一个 Git 仓库/服务单元
 │   └── ...
-├── knowledge/                        # 工作区级、可读、可积累的项目知识
+├── knowledge/                        # 工作区级、可读、可积累的知识与工作流状态
 │   ├── _enterprise/                  # ADR、跨仓库契约、通用模式和经验
 │   ├── domains/                      # 领域知识
-│   └── services/{service-id}/        # 服务发现生成的概览、API、Schema
-└── _context/                         # 配置、需求状态、任务状态和运行时编排数据
+│   ├── services/{service-id}/        # 服务发现生成的概览、API、Schema
+│   ├── requirements-tracker.yaml     # 需求全生命周期状态
+│   ├── tasks.yaml                    # 任务定义和状态
+│   └── sw-{agent}/                   # Agent 私有状态
+└── _context/                         # 配置与框架状态
 ```
 
 初始化完成后，用户必须将待修改的代码仓放入 `services/{repository-name}/`。一个仓库是这个模型的自然特例，仍然执行同一套服务发现、设计、拆分和质量门禁；`services/` 为空时不得退回到工作区根目录寻找业务源码，流程必须阻塞并提示用户补充仓库。
 
-服务注册表由 `sw-knowledge-agent` 扫描 `services/` 后生成到 `_context/memory/sw-shared/service-registry.yaml`。注册表是运行时索引，不替代 `knowledge/` 中的人类可读知识。
+服务注册表由 `sw-knowledge-agent` 扫描 `services/` 后生成到 `knowledge/service-registry.yaml`。注册表是运行时索引，不替代 `knowledge/` 中的人类可读知识。
 
 ### 文档契约边界
 
 需求、特性设计、服务设计、E2E 设计、计划和项目文档属于正式文档产物，由各自产出 Skill 的定义包维护模板、门禁和验证器。组合运行时只传递 `document_type`、`contract`、`contract_version` 和稳定 `section-id`，不依赖标题或章节编号。
 
 ```text
-项目 _context/templates/
+项目 knowledge/templates/
         ↓ 覆盖
 用户共享 templates/
         ↓ 覆盖
@@ -176,10 +179,10 @@ multiagents/
 │   └── using-harness/       # Bootstrap skill
 ├── agents/                  # Standalone agent prompt templates
 ├── hooks/                   # Session-start bootstrap injection
-├── _context/                   # BMAD framework
+├── knowledge/               # Project knowledge + workflow state (shared + sw-{agent}/)
+├── _context/                # BMAD framework
 │   ├── config.yaml          # Module configuration
 │   ├── config.user.yaml     # User-specific settings
-│   ├── memory/              # Agent memory (sw-shared/, sw-controller/)
 │   └── bmm/                 # BMAD module manager
 ├── docs/                    # Project documentation
 ├── .claude-plugin/          # Claude Code plugin manifest
@@ -197,18 +200,16 @@ multiagents/
 
 ```
 services/                         # User-provided source repositories
-knowledge/                        # Independent project knowledge
+knowledge/                        # Project knowledge + cross-agent workflow state
 ├── _enterprise/                  # ADRs, patterns, lessons, cross-repository contracts
 ├── domains/                      # Domain-scoped knowledge
-└── services/{service-id}/        # Repository-scoped generated knowledge
-_context/memory/
-├── sw-shared/                    # Cross-agent shared state
-│   ├── requirements-tracker.yaml # Requirement lifecycle tracking (phase status, progress, artifacts)
-│   ├── tasks.yaml                # Task definitions and status
-│   ├── service-registry.yaml     # Generated index of services/
-│   ├── human-interventions.md    # Human intervention history
-│   ├── reviews/                  # Code review outputs
-│   └── value-assessment/         # Requirements value assessments
+├── services/{service-id}/        # Repository-scoped generated knowledge
+├── requirements-tracker.yaml     # Requirement lifecycle tracking (phase status, progress, artifacts)
+├── tasks.yaml                    # Task definitions and status
+├── service-registry.yaml         # Generated index of services/
+├── human-interventions.md        # Human intervention history
+├── reviews/                      # Code review outputs
+├── value-assessment/             # Requirements value assessments
 └── sw-controller/                # Controller-private state
     ├── global-state.yaml         # Current phase, progress, blockers
     └── worktree-registry.yaml    # Worktree status and task assignments

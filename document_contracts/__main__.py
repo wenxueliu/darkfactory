@@ -13,7 +13,7 @@ from .validation import DocumentValidator
 
 def _root(value: str) -> ResourceRoot:
     if "=" not in value:
-        raise argparse.ArgumentTypeError("root must use SCOPE=PATH, for example project=./_context/templates")
+        raise argparse.ArgumentTypeError("root must use SCOPE=PATH, for example project=./knowledge/templates")
     scope, path = value.split("=", 1)
     if not scope or not path:
         raise argparse.ArgumentTypeError("root must use SCOPE=PATH")

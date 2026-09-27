@@ -235,7 +235,7 @@ def test_main_precheck_failure_exits_2(tmp_path, capsys, monkeypatch):
 def test_main_newman_missing_exits_3(tmp_path, capsys, monkeypatch):
     # Create files but no newman binary
     (tmp_path / ".git").mkdir()
-    tests_dir = tmp_path / "_context" / "memory" / "sw-shared" / "tests"
+    tests_dir = tmp_path / "knowledge" / "tests"
     tests_dir.mkdir(parents=True)
     (tests_dir / "api-R1.json").touch()
     (tests_dir / "api-R1-env.json").touch()

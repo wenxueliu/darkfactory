@@ -134,9 +134,9 @@ Launch both in parallel when applicable. Formulate specific search directives fo
 This agent is **read-only** and **stateless** across invocations. It does not write to the shared memory.
 
 **Reads (optional):**
-- `{project-root}/_context/memory/sw-shared/design-decisions.md` — existing architecture decisions for context
+- `{project-root}/knowledge/design-decisions.md` — existing architecture decisions for context
 - `{project-root}/knowledge/` — institutional knowledge for pattern matching
-- `{project-root}/_context/memory/sw-shared/tasks.yaml` — current task status for context on mid-sized tasks
+- `{project-root}/knowledge/tasks.yaml` — current task status for context on mid-sized tasks
 
 **Does NOT write** anything. Output is delivered directly in the response.
 

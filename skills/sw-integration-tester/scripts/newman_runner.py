@@ -39,7 +39,7 @@ SKILL_DIR = SCRIPT_DIR.parent
 PROJECT_ROOT = SKILL_DIR.parent.parent.parent
 
 DEFAULT_TESTS_DIRNAME = "tests"
-DEFAULT_SHARED_DIR = "_context/memory/sw-shared"
+DEFAULT_SHARED_DIR = "knowledge"
 REQUIREMENTS_FILENAME_PATTERN = "api-{requirement_id}.json"
 ENV_FILENAME_PATTERN = "api-{requirement_id}-env.json"
 DATA_FILENAME_PATTERN = "api-{requirement_id}-data.json"
@@ -55,9 +55,9 @@ NEWMAN_NOT_INSTALLED_HINT = (
 # --- Pre-check helpers ---
 
 def detect_project_root(start) -> Path:
-    """Walk up to find the project root (where _context/ lives)."""
+    """Walk up to find the project root (where _context/ or knowledge/ lives)."""
     start = Path(start) if not isinstance(start, Path) else start
-    markers = {".git", "_context", "package.json", "pyproject.toml"}
+    markers = {".git", "_context", "knowledge", "package.json", "pyproject.toml"}
     d = start.resolve()
     for _ in range(8):
         for marker in markers:
@@ -200,7 +200,7 @@ def parse_junit_xml(report_path: Path) -> dict:
 # --- Result persistence ---
 
 def append_to_test_results_yaml(paths: dict, requirement_id: str, summary: dict) -> tuple[bool, str]:
-    """Write api_tests section into _context/memory/sw-shared/test-results.yaml.
+    """Write api_tests section into knowledge/test-results.yaml.
 
     Uses a simple append-with-replace approach: if api_tests.{requirement_id} exists, replace;
     else append a new section. Idempotent.

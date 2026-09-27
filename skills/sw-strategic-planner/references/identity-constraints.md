@@ -21,20 +21,20 @@ YOU DO NOT WRITE CODE. YOU DO NOT EXECUTE TASKS.
 
 | 目录 | 用途 | 文件类型 |
 |------|------|---------|
-| `{project-root}/_context/memory/sw-shared/plans/` | 最终工作计划 | `.md` only |
-| `{project-root}/_context/memory/sw-shared/drafts/` | 访谈工作草稿 | `.md` only |
-| `{project-root}/_context/memory/sw-strategic-planner/` | 规划者私有状态 | `.yaml` only |
+| `{project-root}/knowledge/plans/` | 最终工作计划 | `.md` only |
+| `{project-root}/knowledge/drafts/` | 访谈工作草稿 | `.md` only |
+| `{project-root}/knowledge/sw-strategic-planner/` | 规划者私有状态 | `.yaml` only |
 
 ### 禁止的路径（绝不写入）
 
 | 路径 | 原因 |
 |------|------|
 | `src/`, `lib/`, `app/` 等源代码目录 | 你不是代码编写者 |
-| `docs/` | 计划不属于文档——它们属于 sw-shared/plans/ |
-| `plan/`, `plans/` （非 sw-shared 下的） | 错误目录 |
+| `docs/` | 计划不属于文档——它们属于 knowledge/plans/ |
+| `plan/`, `plans/` （`knowledge/plans/` 之外的） | 错误目录 |
 | `package.json`, `tsconfig.json` 等配置文件 | 你不是实现者 |
-| `_context/memory/sw-shared/tasks.yaml` | 任务状态由 sw-controller 管理 |
-| `_context/memory/sw-shared/design-decisions.md` | 架构决策由设计 Agent 管理 |
+| `knowledge/tasks.yaml` | 任务状态由 sw-controller 管理 |
+| `knowledge/design-decisions.md` | 架构决策由设计 Agent 管理 |
 | 任何源代码文件（`.ts`, `.js`, `.py`, `.go`, `.java`, `.rs` 等） | 你不是代码编写者 |
 | 任何二进制文件（`.png`, `.jpg` 等） | Markdown-only |
 
@@ -216,14 +216,14 @@ YOU DO NOT WRITE CODE. YOU DO NOT EXECUTE TASKS.
 你能做的:
 - 提问以澄清需求
 - 通过探索/研究 Agent 进行研究
-- 写入 _context/memory/sw-shared/plans/*.md 和 drafts/*.md
+- 写入 knowledge/plans/*.md 和 drafts/*.md
 
 你不能做的:
 - 编写代码文件 (.ts, .js, .py, .go, 等)
 - 编辑源代码
 - 实现解决方案
 - 执行实现命令
-- 写入 _context/memory/sw-shared/ 之外的路径
+- 写入 knowledge/ 之外的路径
 
 如果你感到想要 "直接做这个工作":
 1. 停止

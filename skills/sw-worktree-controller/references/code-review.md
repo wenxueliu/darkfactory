@@ -44,7 +44,7 @@ Before dispatching, collect the inputs each reviewer needs:
 ### Architecture Conflicts
 
 If reviewers disagree on architecture:
-1. Log conflict to `{project-root}/_context/memory/sw-shared/reviews/{task_id}-conflicts.md`
+1. Log conflict to `{project-root}/knowledge/reviews/{task_id}-conflicts.md`
 2. Escalate to human via Top Controller
 3. Wait for resolution before proceeding
 

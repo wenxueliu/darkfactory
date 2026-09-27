@@ -211,7 +211,7 @@ sw:
 每次验证运行后，更新累计成本:
 
 ```yaml
-# _context/memory/sw-controller/cost-tracking.yaml
+# knowledge/sw-controller/cost-tracking.yaml
 validation_runs:
   - design_id: "DESIGN-20260501-001"
     timestamp: "2026-05-01T15:30:00Z"
@@ -231,7 +231,7 @@ validation_runs:
 |------|------|------|
 | 验证报告 | `reviews/{id}-validation-report.md` | 聚合结果表 + 共识分析 + 分歧记录 |
 | 各验证者原始输出 | `reviews/{id}-validation-{profile}.json` | 各模型的原始发现（可审计、可对比） |
-| 成本记录 | `_context/memory/sw-controller/cost-tracking.yaml` | 追加本次验证成本 |
+| 成本记录 | `knowledge/sw-controller/cost-tracking.yaml` | 追加本次验证成本 |
 
 ### 验证报告模板
 

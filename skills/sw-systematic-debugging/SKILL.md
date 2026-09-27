@@ -361,7 +361,7 @@ If systematic investigation reveals issue is truly environmental, timing-depende
 2. Document what you investigated and why no root cause was found
 3. Implement appropriate handling (retry, timeout, error message, graceful degradation)
 4. Add monitoring/logging for future investigation
-5. Write to `_context/memory/sw-shared/lessons/` for institutional knowledge
+5. Write to `knowledge/lessons/` for institutional knowledge
 
 **But:** 95% of "no root cause" cases are incomplete investigation.
 

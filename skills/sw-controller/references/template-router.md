@@ -18,7 +18,7 @@ skills/<skill>/references/document-definitions/
 项目级和用户级定义包使用同样的目录结构：
 
 ```text
-{project-root}/_context/templates/<document-type>/<variant>/
+{project-root}/knowledge/templates/<document-type>/<variant>/
 {user-context-root}/templates/<document-type>/<variant>/
 ```
 
@@ -54,7 +54,7 @@ project → user → skill
 python3 -m document_contracts resolve \
   --document-type requirements \
   --variant fintech \
-  --root project=./_context/templates \
+  --root project=./knowledge/templates \
   --root user=../shared-harness-context/templates \
   --root skill=./skills/sw-requirements-clarifier/references/document-definitions
 ```
@@ -77,4 +77,4 @@ skills/sw-requirements-clarifier/references/document-definitions/
     └── manifest.yaml
 ```
 
-项目专属场景直接放入项目 `_context/templates`，不需要修改 Skill 文件。
+项目专属场景直接放入项目 `knowledge/templates`，不需要修改 Skill 文件。

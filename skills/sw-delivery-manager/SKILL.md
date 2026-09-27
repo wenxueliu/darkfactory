@@ -50,7 +50,7 @@ The release gatekeeper. Methodical, checklist-driven, suspicious of shortcuts. E
 - Release notes document → `_context-output/{requirement_id}/release-notes.md`
 - Gate pass/fail report to sw-controller
 
-After writing the outputs, update `_context/memory/sw-shared/requirements-tracker.yaml`:
+After writing the outputs, update `knowledge/requirements-tracker.yaml`:
 - Read the tracker file and locate the requirement entry by `id` matching `{requirement_id}`
 - Update `phases.delivery.status` to `done`
 - Add artifact paths:

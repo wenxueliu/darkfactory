@@ -52,7 +52,7 @@ Final Verification Wave 是计划执行的最后关卡。在所有实现任务�
 - Tasks completed: {N/N}
 - Files modified: {文件列表}
 - Key decisions: {引用 decisions.md 中的关键决策}
-- Notepad: {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/
+- Notepad: {project-root}/knowledge/sw-plan-executor/notepads/{plan-name}/
 ```
 
 ### Step 3: 并行启动所有审查
@@ -70,7 +70,7 @@ Final Verification Wave 是计划执行的最后关卡。在所有实现任务�
 任务: 对计划 {plan-name} 的实现进行逻辑审查
 范围: 所有修改的文件
 上下文: {修改文件列表、关键决策、notepad 位置}
-输出: {project-root}/_context/memory/sw-shared/reviews/{plan-name}-logic.md
+输出: {project-root}/knowledge/reviews/{plan-name}-logic.md
 
 审查重点:
 - 逻辑正确性: 代码是否实现了所需功能
@@ -95,7 +95,7 @@ Final Verification Wave 是计划执行的最后关卡。在所有实现任务�
 任务: 对计划 {plan-name} 的实现进行安全审查
 范围: 所有修改的文件
 上下文: {修改文件列表、关键决策、notepad 位置}
-输出: {project-root}/_context/memory/sw-shared/reviews/{plan-name}-security.md
+输出: {project-root}/knowledge/reviews/{plan-name}-security.md
 
 审查重点:
 - 注入攻击: SQL/命令/代码注入
@@ -116,7 +116,7 @@ Final Verification Wave 是计划执行的最后关卡。在所有实现任务�
 任务: 对计划 {plan-name} 的实现进行性能审查
 范围: 所有修改的文件
 上下文: {修改文件列表、关键决策、notepad 位置}
-输出: {project-root}/_context/memory/sw-shared/reviews/{plan-name}-performance.md
+输出: {project-root}/knowledge/reviews/{plan-name}-performance.md
 
 审查重点:
 - N+1 查询: 循环中的数据库查询
@@ -204,7 +204,7 @@ ORCHESTRATION COMPLETE - FINAL WAVE PASSED
 ============================================
 
 Plan: {plan-name}
-Location: {project-root}/_context/memory/sw-shared/plans/{plan-name}.md
+Location: {project-root}/knowledge/plans/{plan-name}.md
 
 TASKS COMPLETED: N/N
 
@@ -217,12 +217,12 @@ FILES MODIFIED:
   {文件列表}
 
 NOTEPAD:
-  {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/
+  {project-root}/knowledge/sw-plan-executor/notepads/{plan-name}/
 
 REVIEW REPORTS:
-  {project-root}/_context/memory/sw-shared/reviews/{plan-name}-logic.md
-  {project-root}/_context/memory/sw-shared/reviews/{plan-name}-security.md
-  {project-root}/_context/memory/sw-shared/reviews/{plan-name}-performance.md
+  {project-root}/knowledge/reviews/{plan-name}-logic.md
+  {project-root}/knowledge/reviews/{plan-name}-security.md
+  {project-root}/knowledge/reviews/{plan-name}-performance.md
 ============================================
 ```
 
@@ -252,7 +252,7 @@ Recommendation: {建议人工审查 Performance Review 的剩余问题}
 所有审查报告写入共享审查目录:
 
 ```
-{project-root}/_context/memory/sw-shared/reviews/
+{project-root}/knowledge/reviews/
 ├── {plan-name}-logic.md
 ├── {plan-name}-security.md
 └── {plan-name}-performance.md

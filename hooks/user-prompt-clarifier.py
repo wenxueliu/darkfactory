@@ -15,7 +15,7 @@ This hook is INTENTIONALLY SOFT (additionalContext, not deny):
 Detection logic:
 1. Match the user message against implementation verbs (zh + en)
 2. If matched:
-   a. Read _context/memory/sw-shared/requirements-tracker.yaml
+   a. Read knowledge/requirements-tracker.yaml
    b. If tracker is missing OR has no in-progress requirements OR
       the message contains "新" / "new" / "创建" / "create" without any
       in-progress entry — emit a hint via additionalContext
@@ -50,7 +50,7 @@ EXPLICIT_SKIP = re.compile(
 
 def detect_project_root(start_dir: str) -> str:
     """Walk up to find the project root."""
-    markers = {".git", "_context", "pyproject.toml", "go.mod", "Cargo.toml", "package.json"}
+    markers = {".git", "_context", "knowledge", "pyproject.toml", "go.mod", "Cargo.toml", "package.json"}
     d = Path(start_dir).resolve()
     for _ in range(8):
         for marker in markers:
@@ -76,7 +76,7 @@ def read_tracker_status(project_root: str) -> dict:
         }
     """
     tracker_path = os.path.join(
-        project_root, "_context", "memory", "sw-shared", "requirements-tracker.yaml"
+        project_root, "knowledge", "requirements-tracker.yaml"
     )
     if not os.path.isfile(tracker_path):
         return {

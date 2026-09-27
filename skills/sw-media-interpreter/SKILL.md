@@ -101,9 +101,9 @@ For diagrams:
 
 This agent is **stateless**. It does not read from or write to any shared memory:
 
-- Does NOT read `_context/memory/sw-shared/tasks.yaml`
-- Does NOT write to `_context/memory/sw-shared/reviews/`
-- Does NOT access `_context/memory/sw-controller/`
+- Does NOT read `knowledge/tasks.yaml`
+- Does NOT write to `knowledge/reviews/`
+- Does NOT access `knowledge/sw-controller/`
 - Has no private memory directory
 
 All context comes from the caller's `file_path` and `goal` parameters. All output returns directly to the caller as the response.

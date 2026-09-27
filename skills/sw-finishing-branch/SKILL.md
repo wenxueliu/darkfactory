@@ -32,7 +32,7 @@ The terminal conductor. When implementation is done, presents clear choices with
 
 1. Run project's test suite to verify all tests pass
 2. Determine the base branch (check `_context/config.yaml` for `merge_strategy`)
-3. Identify worktree location from git or `_context/memory/sw-controller/worktree-registry.yaml`
+3. Identify worktree location from git or `knowledge/sw-controller/worktree-registry.yaml`
 4. Present the 4 options (only if tests pass)
 
 ## The Process
@@ -152,7 +152,7 @@ If confirmed:
 
 **For Options 1 and 4:** Remove the worktree if one was created for this task.
 
-Check `{project-root}/_context/memory/sw-controller/worktree-registry.yaml` for worktree path. Remove worktree and update registry.
+Check `{project-root}/knowledge/sw-controller/worktree-registry.yaml` for worktree path. Remove worktree and update registry.
 
 **For Option 2:** Keep worktree (PR may need follow-up commits).
 
@@ -202,4 +202,4 @@ Check `{project-root}/_context/memory/sw-controller/worktree-registry.yaml` for 
 **Integrates with:**
 - `sw-verification-before-completion` — verification gate before presenting options
 - `sw-controller` — merge and delivery phase transitions
-- `_context/memory/sw-controller/worktree-registry.yaml` — worktree cleanup tracking
+- `knowledge/sw-controller/worktree-registry.yaml` — worktree cleanup tracking

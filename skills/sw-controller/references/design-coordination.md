@@ -322,7 +322,7 @@ Stage 2 消费:
 **并行执行规则:**
 - 安全、逻辑、性能三个审查同时启动（互不依赖）
 - 每个审查者只拿到设计文档的路径（不是内容），自己去读
-- 审查结果写入 `{project-root}/_context/memory/sw-shared/reviews/{design-id}-review-{type}.md`
+- 审查结果写入 `{project-root}/knowledge/reviews/{design-id}-review-{type}.md`
 
 **审查结果汇总:**
 
@@ -348,7 +348,7 @@ Stage 2 消费:
 **审查者冲突处理:**
 如果两个审查者的建议互相矛盾（如: 安全要求加密 → 性能担心加密开销）:
 
-1. **记录冲突:** 写入 `{project-root}/_context/memory/sw-shared/reviews/{design-id}-conflicts.md`:
+1. **记录冲突:** 写入 `{project-root}/knowledge/reviews/{design-id}-conflicts.md`:
    ```markdown
    | # | 冲突 | 审查者 A | 审查者 B | 影响 |
    |---|------|---------|---------|------|

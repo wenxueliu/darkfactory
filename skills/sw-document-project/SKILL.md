@@ -72,7 +72,7 @@ Resolve each generated document through the local definition package before writ
 - `source-tree/default`
 - `deep-dive/default`
 
-The unified resolver applies project `_context/templates`, configured user context templates, and this Skill's built-in `references/document-definitions` in that order. Use the resolved template and execute any resolved gate or validator before reporting the document complete.
+The unified resolver applies project `knowledge/templates`, configured user context templates, and this Skill's built-in `references/document-definitions` in that order. Use the resolved template and execute any resolved gate or validator before reporting the document complete.
 
 ## Capabilities
 

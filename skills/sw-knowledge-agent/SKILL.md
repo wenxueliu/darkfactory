@@ -69,4 +69,4 @@ The institutional memory keeper. Ensures lessons learned aren't forgotten and pa
 
 ## Output
 
-All knowledge writes go to `{project-root}/knowledge/`. Source repositories belong in `{project-root}/services/`; workflow state belongs in `{project-root}/_context/`.
+All knowledge writes go to `{project-root}/knowledge/`. Source repositories belong in `{project-root}/services/`; workflow state (requirements, designs, tasks, tracker) is also written under `{project-root}/knowledge/`, while `_context/` holds configuration only.

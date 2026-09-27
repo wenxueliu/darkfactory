@@ -111,7 +111,7 @@ REQ-010:
 # --- validate_spec_content tests ---
 
 def _write_valid_spec(project_root, req_id="REQ-100"):
-    spec_dir = Path(project_root) / "_context" / "memory" / "sw-shared" / "requirements"
+    spec_dir = Path(project_root) / "knowledge" / "requirements"
     spec_dir.mkdir(parents=True, exist_ok=True)
     spec = spec_dir / f"{req_id}.md"
     spec.write_text(f"""---
@@ -182,7 +182,7 @@ def test_validate_spec_missing_file():
 
 def test_validate_spec_missing_sections():
     with tempfile.TemporaryDirectory() as tmp:
-        spec_dir = Path(tmp) / "_context" / "memory" / "sw-shared" / "requirements"
+        spec_dir = Path(tmp) / "knowledge" / "requirements"
         spec_dir.mkdir(parents=True, exist_ok=True)
         (spec_dir / "REQ-X.md").write_text("""---
 document_type: requirements
@@ -201,7 +201,7 @@ This is a long enough problem statement that passes the 50 char threshold.
 
 def test_validate_spec_too_short_section():
     with tempfile.TemporaryDirectory() as tmp:
-        spec_dir = Path(tmp) / "_context" / "memory" / "sw-shared" / "requirements"
+        spec_dir = Path(tmp) / "knowledge" / "requirements"
         spec_dir.mkdir(parents=True, exist_ok=True)
         (spec_dir / "REQ-Y.md").write_text("""---
 document_type: requirements
@@ -229,8 +229,8 @@ def test_check_done_with_valid_spec():
     with tempfile.TemporaryDirectory() as tmp:
         _write_valid_spec(tmp, "REQ-DONE")
         # Write tracker
-        (Path(tmp) / "_context" / "memory" / "sw-shared").mkdir(parents=True, exist_ok=True)
-        (Path(tmp) / "_context" / "memory" / "sw-shared" / "requirements-tracker.yaml").write_text("""
+        (Path(tmp) / "knowledge").mkdir(parents=True, exist_ok=True)
+        (Path(tmp) / "knowledge" / "requirements-tracker.yaml").write_text("""
 requirements:
   - id: REQ-DONE
     phases:
@@ -245,8 +245,8 @@ requirements:
 
 def test_check_done_but_spec_missing():
     with tempfile.TemporaryDirectory() as tmp:
-        (Path(tmp) / "_context" / "memory" / "sw-shared").mkdir(parents=True, exist_ok=True)
-        (Path(tmp) / "_context" / "memory" / "sw-shared" / "requirements-tracker.yaml").write_text("""
+        (Path(tmp) / "knowledge").mkdir(parents=True, exist_ok=True)
+        (Path(tmp) / "knowledge" / "requirements-tracker.yaml").write_text("""
 requirements:
   - id: REQ-NOSPEC
     phases:
@@ -261,8 +261,8 @@ requirements:
 
 def test_check_not_done():
     with tempfile.TemporaryDirectory() as tmp:
-        (Path(tmp) / "_context" / "memory" / "sw-shared").mkdir(parents=True, exist_ok=True)
-        (Path(tmp) / "_context" / "memory" / "sw-shared" / "requirements-tracker.yaml").write_text("""
+        (Path(tmp) / "knowledge").mkdir(parents=True, exist_ok=True)
+        (Path(tmp) / "knowledge" / "requirements-tracker.yaml").write_text("""
 requirements:
   - id: REQ-WIP
     phases:

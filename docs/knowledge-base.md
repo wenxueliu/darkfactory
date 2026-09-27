@@ -71,13 +71,13 @@ KB 目录结构的建立分两阶段，各自在不同时机触发：
 
 ### 第一阶段：手动创建骨架（项目搭建时，一次性）
 
-在项目工作空间创建 `_context/` 配置的同时，创建空的 KB 目录骨架：
+在项目工作空间创建 `_context/` 配置的同时，创建空的 `knowledge/` 目录骨架：
 
 ```bash
 mkdir -p services knowledge/_enterprise/{patterns,decisions,lessons,contracts}
 mkdir -p knowledge/{domains,services}
-mkdir -p _context/memory/sw-shared/reviews
-mkdir -p _context/memory/sw-controller
+mkdir -p knowledge/reviews
+mkdir -p knowledge/sw-controller
 ```
 
 此阶段产物：**空的目录结构**，没有任何知识内容。这一步由人在项目初始化时手动完成。
@@ -90,16 +90,16 @@ mkdir -p _context/memory/sw-controller
 
 | 检测维度 | 检测方式 | 生成产物 |
 |---------|---------|---------|
-| 技术栈 | 检测 `build.gradle`/`package.json`/`go.mod`/`pyproject.toml` 等 | `_context/memory/sw-shared/service-registry.yaml` |
+| 技术栈 | 检测 `build.gradle`/`package.json`/`go.mod`/`pyproject.toml` 等 | `knowledge/service-registry.yaml` |
 | API 端点 | 扫描 Controller/Route/Handler 文件中的路由注解 | `knowledge/services/{id}/api-endpoints.md` |
 | 数据库 Schema | 扫描 Flyway migration / Prisma schema / SQLAlchemy model / GORM struct | `knowledge/services/{id}/db-schema.md` |
-| 基础设施依赖 | 检测 redis/kafka/postgresql 等驱动依赖 | `_context/memory/sw-shared/service-registry.yaml` |
-| 跨服务依赖 | 扫描代码中对外部服务 URL 的引用 | `_context/memory/sw-shared/service-registry.yaml` 依赖图 |
+| 基础设施依赖 | 检测 redis/kafka/postgresql 等驱动依赖 | `knowledge/service-registry.yaml` |
+| 跨服务依赖 | 扫描代码中对外部服务 URL 的引用 | `knowledge/service-registry.yaml` 依赖图 |
 | 服务概览 | 综合以上信息 + README 摘要 | `knowledge/services/{id}/overview.md` |
 
 此阶段产物：**每个服务的自动生成知识文件 + 服务注册表**。
 
-> 服务信息从 `services/` 下的代码仓自动学习，而非人工配置。`_context/memory/sw-shared/service-registry.yaml` 是生成的运行时索引，不是手写的输入。
+> 服务信息从 `services/` 下的代码仓自动学习，而非人工配置。`knowledge/service-registry.yaml` 是生成的运行时索引，不是手写的输入。
 
 ### 两阶段对比
 
@@ -107,7 +107,7 @@ mkdir -p _context/memory/sw-controller
 |------|---------|---------|
 | 触发 | 项目搭建时手动执行 | `/sw-controller 初始化` |
 | 执行者 | 人 | sw-knowledge-agent（自动） |
-| 产物 | 空目录骨架 | 服务级 KB 文件 + `_context/memory/sw-shared/service-registry.yaml` |
+| 产物 | 空目录骨架 | 服务级 KB 文件 + `knowledge/service-registry.yaml` |
 | 频率 | 一次性 | 首次初始化 + 后续持续更新 |
 | 前提条件 | `services/` 与 `knowledge/` 已创建 | services/ 下各仓库已放入、依赖已安装、基线测试通过 |
 
@@ -120,7 +120,7 @@ mkdir -p _context/memory/sw-controller
 | `knowledge/services/{id}/overview.md` | 自动检测 + README 提取 | 自动更新。职责描述如无法提取则标记 `NEEDS_MANUAL` |
 | `knowledge/services/{id}/api-endpoints.md` | 自动扫描 Controller/Route | 任务完成后增量更新 |
 | `knowledge/services/{id}/db-schema.md` | 自动扫描 Migration/Model | 任务完成后增量更新 |
-| `_context/memory/sw-shared/service-registry.yaml` | 自动扫描 `services/` 下所有仓库 | 全量或增量更新 |
+| `knowledge/service-registry.yaml` | 自动扫描 `services/` 下所有仓库 | 全量或增量更新 |
 | `knowledge/_enterprise/contracts/` | 设计阶段自动生成 + 人工审核 | sw-controller 写入，人审核确认 |
 | `knowledge/_enterprise/decisions/` (ADR) | 设计阶段 sw-controller 自动写入 | 自动写入，重大决策需人工确认 |
 | `knowledge/_enterprise/patterns/` | sw-knowledge-agent 自动沉淀 | 自动提取，可人工补充 |
@@ -151,7 +151,7 @@ KB 不是一次生成就完事的——它随项目持续演进。三种更新�
 每个需求的所有任务完成后，全量重新发现一次：
 
 - 重新扫描所有服务的技术栈、API、Schema、依赖
-- 重建 `_context/memory/sw-shared/service-registry.yaml`
+- 重建 `knowledge/service-registry.yaml`
 - 重建所有 `knowledge/services/{id}/*.md`
 - 与上一版本对比，标记新增、修改、删除
 
@@ -267,7 +267,7 @@ ideation → design → decomposition → execution → merge → test → deliv
 
 ### Q: KB 在工作空间根目录还是服务仓库里？
 
-在工作空间根目录的 `knowledge/`。每个 `services/{id}/` 保持独立的 Git 仓库，知识全部沉淀在工作空间层；`_context/` 只保存编排状态。
+在工作空间根目录的 `knowledge/`。每个 `services/{id}/` 保持独立的 Git 仓库，知识和编排状态全部沉淀在工作空间层；`_context/` 只保存配置。
 
 ### Q: 新增一个服务后需要重新初始化吗？
 

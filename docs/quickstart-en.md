@@ -36,12 +36,10 @@ Answer three questions before you start:
 
 ### Step 2: Create Configuration
 
-Create `_context/` under your project root:
+Create the workspace directories under your project root, then add the two config files:
 
 ```bash
-mkdir -p _context/memory/sw-shared
-mkdir -p _context/memory/sw-controller
-mkdir -p services knowledge
+mkdir -p _context services knowledge/sw-controller
 ```
 
 **`_context/config.yaml`** (adjust based on your answers above):
@@ -120,9 +118,7 @@ mkdir my-project && cd my-project
 git init
 
 # Create workspace roots; source repositories go under services/
-mkdir -p services knowledge
-mkdir -p _context/memory/sw-shared
-mkdir -p _context/memory/sw-controller
+mkdir -p services knowledge/sw-controller
 mkdir -p skills
 ```
 
@@ -223,7 +219,7 @@ sw:
 /sw-controller initialize: discover all services and build registry
 ```
 
-sw-controller invokes sw-knowledge-agent to scan every repo under `services/`, auto-generating `_context/memory/sw-shared/service-registry.yaml`. It detects language, framework, API endpoints, and DB schema for each service — no manual metadata entry needed.
+sw-controller invokes sw-knowledge-agent to scan every repo under `services/`, auto-generating `knowledge/service-registry.yaml`. It detects language, framework, API endpoints, and DB schema for each service — no manual metadata entry needed.
 
 ### Step 5: Start a Cross-Service Requirement
 
@@ -282,11 +278,11 @@ Congrats! You've used Black灯 Factory. Here's where to go next:
 
 **I want to customize documents for this project only:**
 
-Create `_context/templates/<document-type>/<variant>/` under the project root with `manifest.yaml`, `template.md`, and optional `gate.yaml` / `validator.yaml`. Resolution order is project → user → built-in Skill. See [configuration.md](configuration.md) for a complete example.
+Create `knowledge/templates/<document-type>/<variant>/` under the project root with `manifest.yaml`, `template.md`, and optional `gate.yaml` / `validator.yaml`. Resolution order is project → user → built-in Skill. See [configuration.md](configuration.md) for a complete example.
 
 **I ran into a problem:**
-- Check `_context/memory/sw-shared/human-interventions.md` — any blocking escalations
-- Check `_context/memory/sw-controller/global-state.yaml` — current phase and progress
+- Check `knowledge/human-interventions.md` — any blocking escalations
+- Check `knowledge/sw-controller/global-state.yaml` — current phase and progress
 - Describe the problem directly to sw-controller — it self-diagnoses
 
 ---
@@ -307,8 +303,8 @@ Create `_context/templates/<document-type>/<variant>/` under the project root wi
 | Directory | Contents | Maintained by |
 |-----------|----------|---------------|
 | `_context/config.yaml` | Project configuration | You (human) |
-| `_context/memory/sw-shared/` | Requirements, designs, tasks, reviews | sw-controller (auto) |
-| `_context/memory/sw-controller/` | Orchestration state, worktree registry | sw-controller (auto) |
+| `knowledge/` | Requirements, designs, tasks, reviews | sw-controller (auto) |
+| `knowledge/sw-controller/` | Orchestration state, worktree registry | sw-controller (auto) |
 | `.worktree/` | Isolated dev environments | Auto created/destroyed |
 | `skills/` | Agent skill definitions | Updated with HW releases |
 | `knowledge/_enterprise/contracts/` | Cross-repository API contracts | sw-controller + human review |

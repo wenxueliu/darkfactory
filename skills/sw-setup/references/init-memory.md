@@ -19,9 +19,9 @@ The shared memory structure is created with proper permissions and initial conte
 {project-root}/knowledge/_enterprise/contracts/
 {project-root}/knowledge/domains/
 {project-root}/knowledge/services/
-{project-root}/_context/memory/sw-shared/
-{project-root}/_context/memory/sw-shared/reviews/
-{project-root}/_context/memory/sw-controller/
+{project-root}/knowledge/reviews/
+{project-root}/knowledge/value-assessment/
+{project-root}/knowledge/sw-controller/
 ```
 
 ### Create Initial Files
@@ -30,13 +30,13 @@ For each file below: read the template from `references/<template>` and write it
 
 | Target Path | Template Source |
 |-------------|----------------|
-| `_context/memory/sw-shared/requirements-tracker.yaml` | `references/requirements-tracker-template.yaml` |
-| `_context/memory/sw-shared/tasks.yaml` | `references/tasks-template.yaml` |
-| `_context/memory/sw-shared/design-decisions.md` | `references/design-decisions-template.md` |
-| `_context/memory/sw-shared/human-interventions.md` | `references/human-interventions-template.md` |
+| `knowledge/requirements-tracker.yaml` | `references/requirements-tracker-template.yaml` |
+| `knowledge/tasks.yaml` | `references/tasks-template.yaml` |
+| `knowledge/design-decisions.md` | `references/design-decisions-template.md` |
+| `knowledge/human-interventions.md` | `references/human-interventions-template.md` |
 | `knowledge/index.md` | `references/knowledge-base-index-template.md` |
-| `_context/memory/sw-controller/global-state.yaml` | `references/global-state-template.yaml` |
-| `_context/memory/sw-controller/worktree-registry.yaml` | `references/worktree-registry-template.yaml` |
+| `knowledge/sw-controller/global-state.yaml` | `references/global-state-template.yaml` |
+| `knowledge/sw-controller/worktree-registry.yaml` | `references/worktree-registry-template.yaml` |
 
 ### Verify Permissions
 

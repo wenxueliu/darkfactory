@@ -109,7 +109,7 @@ done
 ```
 
 **服务发现必须产生:**
-- `_context/memory/sw-shared/service-registry.yaml` — 机器可读的服务元数据
+- `knowledge/service-registry.yaml` — 机器可读的服务元数据
 - `knowledge/services/{id}/overview.md` — 人类可读的服务概览
 - `knowledge/services/{id}/api-endpoints.md`
 - `knowledge/services/{id}/db-schema.md`

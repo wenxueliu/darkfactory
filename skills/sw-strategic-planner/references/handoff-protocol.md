@@ -12,7 +12,7 @@
 
 ```
 # 正确 — 引用而非复制
-参考: _context/memory/sw-shared/plans/{plan-name}.md (第 3-5 章详细说明技术方案)
+参考: knowledge/plans/{plan-name}.md (第 3-5 章详细说明技术方案)
 参考: docs/adr/0003-jwt-auth.md (JWT 认证决策及其理由)
 
 # 错误 — 重复已有内容
@@ -47,7 +47,7 @@ JWT 认证的决策是：我们选择了 access token + refresh token 方案...
 在向用户呈现计划之前，完成以下所有检查:
 
 ```
-□ 计划文件存在于 _context/memory/sw-shared/plans/{plan-name}.md
+□ 计划文件存在于 knowledge/plans/{plan-name}.md
 □ 计划文件包含所有 9 个必需章节
 □ 所有 TODOs 具有 WHAT TO DO + QA SCENARIOS
 □ 所有 QA SCENARIOS 具有具体工具 + 步骤 + 断言 + 证据路径
@@ -120,8 +120,8 @@ JWT 认证的决策是：我们选择了 access token + refresh token 方案...
 - [Skill 3 — purpose]
 
 ### Files
-- **Plan**: _context/memory/sw-shared/plans/{plan-name}.md
-- **Draft**: _context/memory/sw-shared/drafts/{name}.md (will be deleted on handoff)
+- **Plan**: knowledge/plans/{plan-name}.md
+- **Draft**: knowledge/drafts/{name}.md (will be deleted on handoff)
 - **Referenced Artifacts**:
   - [ADR/PRD/Issue path]
 ```
@@ -179,7 +179,7 @@ Which do you prefer?
 草稿已完成其目的。清理:
 
 ```
-Delete "{project-root}/_context/memory/sw-shared/drafts/{name}.md"
+Delete "{project-root}/knowledge/drafts/{name}.md"
 ```
 
 **为什么删除**:
@@ -191,16 +191,16 @@ Delete "{project-root}/_context/memory/sw-shared/drafts/{name}.md"
 ### 4b. 引导用户运行 sw-plan-executor
 
 ```
-Plan saved to: _context/memory/sw-shared/plans/{plan-name}.md
-Draft cleaned up: _context/memory/sw-shared/drafts/{name}.md (deleted)
+Plan saved to: knowledge/plans/{plan-name}.md
+Draft cleaned up: knowledge/drafts/{name}.md (deleted)
 
 To begin execution, delegate to sw-plan-executor with the plan path:
-  sw-plan-executor _context/memory/sw-shared/plans/{plan-name}.md
+  sw-plan-executor knowledge/plans/{plan-name}.md
 
 This will:
 1. Register the plan as the active work scope
 2. Execute tasks wave by wave with maximum parallelism
-3. Run all QA scenarios and capture evidence to _context/memory/sw-shared/evidence/
+3. Run all QA scenarios and capture evidence to knowledge/evidence/
 4. Present results after each wave
 5. Enable session recovery if interrupted
 ```
@@ -210,7 +210,7 @@ This will:
 更新规划者私有状态:
 
 ```
-{project-root}/_context/memory/sw-strategic-planner/planning-state.yaml:
+{project-root}/knowledge/sw-strategic-planner/planning-state.yaml:
   last_plan: {plan-name}.md
   completed_at: {timestamp}
   review_mode: [none | high-accuracy]

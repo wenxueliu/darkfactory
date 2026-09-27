@@ -46,12 +46,12 @@ The investigator. Digs through git history, GitHub, Slack, and the codebase itse
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `tasks.yaml` | `{project-root}/_context/memory/sw-shared/` | Task definition with goal/requirements (read) |
-| `design-decisions.md` | `{project-root}/_context/memory/sw-shared/` | Existing ADRs and decisions (read) |
+| `tasks.yaml` | `{project-root}/knowledge/` | Task definition with goal/requirements (read) |
+| `design-decisions.md` | `{project-root}/knowledge/` | Existing ADRs and decisions (read) |
 
 ## Output
 
-Write review to `{project-root}/_context/memory/sw-shared/reviews/{task_id}-context.md`
+Write review to `{project-root}/knowledge/reviews/{task_id}-context.md`
 
 ## Capabilities
 

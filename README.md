@@ -29,8 +29,8 @@
 **Step 1: Create project structure**
 
 ```bash
-mkdir -p _context/memory/sw-shared
-mkdir -p _context/memory/sw-controller
+mkdir -p knowledge
+mkdir -p knowledge/sw-controller
 mkdir -p services knowledge
 ```
 
@@ -54,7 +54,7 @@ communication_language: Chinese
 user_name: Your Name
 ```
 
-After initialization, put every source repository to be modified under `services/{repository-name}/`. One repository and multiple repositories use the same flow. Project knowledge is written to `knowledge/`; `_context/` is reserved for harness state.
+After initialization, put every source repository to be modified under `services/{repository-name}/`. One repository and multiple repositories use the same flow. Project knowledge and workflow state are written to `knowledge/`; `_context/` is reserved for configuration.
 
 **Step 3: Copy skills**
 
@@ -189,11 +189,10 @@ multiagents/
 │   └── ...                  # 24 more specialized skills
 ├── agents/                  # Standalone agent prompt templates
 ├── services/                # User-provided source repositories
-├── knowledge/               # Project knowledge
-├── _context/                   # BMAD framework (config + memory)
+├── knowledge/               # Project knowledge + workflow state
+├── _context/                # BMAD framework configuration
 │   ├── config.yaml          # Project configuration
-│   ├── config.user.yaml     # User-specific settings
-│   └── memory/              # Agent shared state
+│   └── config.user.yaml     # User-specific settings
 ├── docs/                    # Documentation
 ├── hooks/                   # Session-start bootstrap
 ├── scripts/                 # Knowledge base management tools
@@ -250,8 +249,8 @@ multiagents/
 **第一步：创建项目结构**
 
 ```bash
-mkdir -p _context/memory/sw-shared
-mkdir -p _context/memory/sw-controller
+mkdir -p knowledge
+mkdir -p knowledge/sw-controller
 mkdir -p services knowledge
 ```
 
@@ -410,11 +409,10 @@ multiagents/
 │   └── ...                  # 其余 18 个专项技能
 ├── agents/                  # 独立 Agent prompt 模板
 ├── services/                # 用户放入的源码仓库
-├── knowledge/               # 项目知识
-├── _context/                   # BMAD 框架（配置 + 记忆）
+├── knowledge/               # 项目知识 + 工作流状态
+├── _context/                # BMAD 框架配置
 │   ├── config.yaml          # 项目配置
-│   ├── config.user.yaml     # 用户配置
-│   └── memory/              # Agent 共享状态
+│   └── config.user.yaml     # 用户配置
 ├── docs/                    # 文档
 ├── hooks/                   # 会话启动引导
 ├── scripts/                 # 知识库管理工具
@@ -447,4 +445,4 @@ multiagents/
 ---
 
 **开始你的第一次人机协同开发：** 打开 Claude Code，输入 `/sw-controller {你的需求}`
-初始化完成后，请将需要修改的一个或多个独立 Git 代码仓放入 `services/{仓库名}/`；项目知识写入独立的 `knowledge/`，`_context/` 仅保存黑灯工厂运行状态。
+初始化完成后，请将需要修改的一个或多个独立 Git 代码仓放入 `services/{仓库名}/`；项目知识与工作流状态写入独立的 `knowledge/`，`_context/` 仅保存配置。

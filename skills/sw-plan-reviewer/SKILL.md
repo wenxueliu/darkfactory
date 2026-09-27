@@ -77,8 +77,8 @@ description: "计划审查Agent. Practical work plan reviewer -- blocker-finder,
 本 Agent 为**只读审查者**。不写入任何共享状态文件。
 
 读取以下共享状态以理解上下文：
-- `{project-root}/_context/memory/sw-shared/tasks.yaml` — 任务定义和状态（如审查的工作计划与此关联）
-- `{project-root}/_context/memory/sw-shared/design-decisions.md` — 了解架构决策背景
+- `{project-root}/knowledge/tasks.yaml` — 任务定义和状态（如审查的工作计划与此关联）
+- `{project-root}/knowledge/design-decisions.md` — 了解架构决策背景
 
 ## Output
 

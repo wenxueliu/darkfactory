@@ -66,12 +66,12 @@ Load config:
 
 ## Output
 
-Write assessment to `{project-root}/_context/memory/sw-shared/value-assessment/{requirement_id}.md`
+Write assessment to `{project-root}/knowledge/value-assessment/{requirement_id}.md`
 
-After writing the assessment, update `_context/memory/sw-shared/requirements-tracker.yaml`:
+After writing the assessment, update `knowledge/requirements-tracker.yaml`:
 - Read the tracker file and locate the requirement entry by `id` matching `{requirement_id}`
 - Update `phases.value_assessment.status` to `done`
-- Add artifact path `_context/memory/sw-shared/value-assessment/{requirement_id}.md`
+- Add artifact path `knowledge/value-assessment/{requirement_id}.md`
 - Set `phases.value_assessment.completed_at` to today's date (`YYYY-MM-DD`)
 - Update `updated_at` to today
 - Re-derive overall `status` per the derivation rules in the tracker header

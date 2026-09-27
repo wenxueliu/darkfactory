@@ -199,7 +199,7 @@ Hook state files in `hooks/hook-state/*.json` are automatically cleaned on `PreC
 - **Branching:** Create a feature branch for non-trivial changes. If already on the correct branch, keep using it — do not create additional branches or worktrees unless requested.
 - **Safety:** Do not delete or overwrite user data. Avoid destructive commands.
 - **Configuration:** Project config lives in `_context/config.yaml` and `_context/config.user.yaml`. Read config before assuming defaults.
-- **Shared state:** All cross-agent state lives in `_context/memory/sw-shared/`. Agent-private state lives in `_context/memory/sw-{agent}/`.
+- **Shared state:** All cross-agent state lives under `knowledge/` — durable project knowledge (ADRs, patterns, lessons, contracts) and workflow artifacts (requirements, designs, tasks, tracker). Agent-private state lives in `knowledge/sw-{agent}/`. `_context/` holds configuration only.
 - **Worktrees:** Isolated task execution happens in `{worktree_base}` (default: `.worktree/` at project root). This directory must be gitignored.
 - **Language:** This project uses Chinese for agent communication and documentation. Config defaults to `document_output_language: Chinese`.
 - **Delegate complex work:** Prefer delegating complex, multi-step, or cross-file search/analysis tasks to subagents. Run independent subagents in parallel to reduce main context window consumption.
@@ -215,15 +215,14 @@ multiagents/
 ├── agents/                  # Standalone agent prompt templates
 ├── docs/                    # Documentation
 ├── services/                # User-provided source repositories (one or more)
-├── knowledge/               # Independent project knowledge
+├── knowledge/               # Project knowledge + workflow state
+│   ├── requirements-tracker.yaml  # Requirement lifecycle tracking
+│   ├── tasks.yaml                 # Task definitions
+│   ├── sw-{agent}/                # Agent-private state
+│   └── ...
 ├── hooks/                   # Session-start bootstrap
-├── _context/                   # BMAD framework (config + memory)
-│   ├── config.yaml              # Module configuration
-│   └── memory/                  # Agent shared state
-│       └── sw-shared/
-│           ├── requirements-tracker.yaml  # Requirement lifecycle tracking
-│           ├── tasks.yaml                 # Task definitions
-│           └── ...
+├── _context/                # BMAD framework configuration
+│   └── config.yaml          # Module configuration
 ├── .claude-plugin/          # Claude Code plugin manifest
 ├── .codex-plugin/           # Codex plugin manifest
 └── .opencode/               # OpenCode plugin + config
@@ -235,7 +234,7 @@ multiagents/
 
 > Memory architecture: [docs/architecture.md](docs/architecture.md).
 
-Workspace boundary: after initialization, the user must place every source repository to be modified under `services/{repository-name}/`. A single repository is valid and uses the same service discovery and gate flow. Project knowledge belongs in `knowledge/`; `_context/` is reserved for configuration, workflow artifacts, and generated state.
+Workspace boundary: after initialization, the user must place every source repository to be modified under `services/{repository-name}/`. A single repository is valid and uses the same service discovery and gate flow. Project knowledge and workflow artifacts belong in `knowledge/`; `_context/` is reserved for configuration and framework state.
 
 ## Configuration
 

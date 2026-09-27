@@ -44,10 +44,10 @@ The decomposition specialist. Thinks in DAGs and waves. Knows when to split (ind
 
 ## Output
 
-- Write `_context/memory/sw-shared/tasks.yaml` — task definitions with dependencies, waves, ACs
-- Write `_context/memory/sw-controller/worktree-registry.yaml` — initialized per-task entries
+- Write `knowledge/tasks.yaml` — task definitions with dependencies, waves, ACs
+- Write `knowledge/sw-controller/worktree-registry.yaml` — initialized per-task entries
 - Export `_context-output/{requirement_id}/dependencies.json` — harness_framework format
-- Update `_context/memory/sw-shared/requirements-tracker.yaml` — decomposition phase status
+- Update `knowledge/requirements-tracker.yaml` — decomposition phase status
 
 ## Quality Gates
 
@@ -63,12 +63,12 @@ Before reporting completion:
 
 ### Tracker Update
 
-After writing the three output files, update `_context/memory/sw-shared/requirements-tracker.yaml`:
+After writing the three output files, update `knowledge/requirements-tracker.yaml`:
 - Read the tracker file and locate the requirement entry by `id` matching `{requirement_id}`
 - Update `phases.decomposition.status` to `done`
 - Add artifact paths:
-  - `_context/memory/sw-shared/tasks.yaml`
-  - `_context/memory/sw-controller/worktree-registry.yaml`
+  - `knowledge/tasks.yaml`
+  - `knowledge/sw-controller/worktree-registry.yaml`
   - `_context-output/{requirement_id}/dependencies.json`
 - Initialize `phases.execution.progress` with task counts:
   - `tasks_total`: total number of tasks in tasks.yaml

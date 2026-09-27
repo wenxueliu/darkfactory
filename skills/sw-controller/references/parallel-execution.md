@@ -103,7 +103,7 @@ Worktree Controller 4 ← Task sw-004 (wave 1)  同时启动
 **状态聚合:**
 
 ```yaml
-# _context/memory/sw-controller/global-state.yaml
+# knowledge/sw-controller/global-state.yaml
 phase: execution
 wave: {current_wave}
 started_at: "{timestamp}"

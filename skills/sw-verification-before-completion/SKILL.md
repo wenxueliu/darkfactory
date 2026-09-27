@@ -92,7 +92,7 @@ Before reporting DONE to sw-controller:
 
 ```
 Before claiming review complete:
-✅ Review file written: _context/memory/sw-shared/reviews/{task_id}-{type}.md
+✅ Review file written: knowledge/reviews/{task_id}-{type}.md
 ✅ Review contains: specific file:line references, severity ratings, fix recommendations
 ✅ Review covers: full diff, not just changed files
 ```

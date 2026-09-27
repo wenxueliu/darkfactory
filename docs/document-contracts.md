@@ -3,14 +3,14 @@
 文档资源由统一解析器按以下优先级查找：
 
 ```text
-项目级：{project-root}/_context/templates/
+项目级：{project-root}/knowledge/templates/
 用户级：{user-context-root}/templates/
 Skill 内置：skills/<owner-skill>/references/document-definitions/
 ```
 
 优先级从高到低。每个资源单独回退：项目或用户层可以只覆盖模板、门禁或验证器，未声明的资源继续继承下一层。一个完整的解析结果必须有可用模板；门禁和验证器可以缺省，因此覆盖层可以只声明需要替换的资源。
 
-文档定义与文档产物分离：定义包只负责模板、门禁和验证器；正式需求/设计文档仍写入 `_context/memory/` 下对应的工作流目录，长期可复用的 ADR、契约、模式和经验写入独立的 `knowledge/`。不要把源码仓库放进 `knowledge/` 或 `_context/`，源码统一位于 `services/`。
+文档定义与文档产物分离：定义包只负责模板、门禁和验证器；正式需求/设计文档等文档产物写入 `knowledge/` 下对应的工作流目录，定义包放在 `knowledge/templates/`（项目级），长期可复用的 ADR、契约、模式和经验沉淀在 `knowledge/_enterprise/`。不要把源码仓库放进 `knowledge/` 或 `_context/`，源码统一位于 `services/`。
 
 ## 定义包目录
 
@@ -78,7 +78,7 @@ sw:
     user_context_root: "../shared-harness-context"
 ```
 
-相对路径相对于项目根目录解析。项目级模板根目录固定为 `_context/templates`；用户级模板根目录为 `{user_context_root}/templates`。
+相对路径相对于项目根目录解析。项目级模板根目录固定为 `knowledge/templates`；用户级模板根目录为 `{user_context_root}/templates`。
 
 ## 解析和验证
 
@@ -86,15 +86,15 @@ sw:
 python3 -m document_contracts resolve \
   --document-type requirements \
   --variant fintech \
-  --root project=./_context/templates \
+  --root project=./knowledge/templates \
   --root user=../shared-harness-context/templates \
   --root skill=./skills/sw-requirements-clarifier/references/document-definitions
 
 python3 -m document_contracts validate \
   --document-type requirements \
   --variant fintech \
-  --document ./_context/memory/sw-shared/requirements/REQ-001.md \
-  --root project=./_context/templates \
+  --document ./knowledge/requirements/REQ-001.md \
+  --root project=./knowledge/templates \
   --root user=../shared-harness-context/templates \
   --root skill=./skills/sw-requirements-clarifier/references/document-definitions
 ```

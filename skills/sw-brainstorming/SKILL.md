@@ -74,7 +74,7 @@ Explore Context → Assess Scope → Clarifying Questions (one at a time)
 
 Before asking questions, understand the current state:
 - Read `_context/config.yaml` for business domain and project settings
-- Check `_context/memory/sw-shared/design-decisions.md` for existing ADRs
+- Check `knowledge/design-decisions.md` for existing ADRs
 - Check `knowledge/` for relevant patterns and lessons
 - Check `_context-output/designs/` for related design documents
 - Check recent git history for active areas of development

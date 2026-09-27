@@ -55,7 +55,7 @@ Load config:
 
 ## Output
 
-Write review to `{project-root}/_context/memory/sw-shared/reviews/{task_id}-logic.md`
+Write review to `{project-root}/knowledge/reviews/{task_id}-logic.md`
 
 ## Capabilities
 

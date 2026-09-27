@@ -31,7 +31,7 @@ def test_scan_in_progress_no_file(tmp_path, monkeypatch):
 
 def test_scan_in_progress_yaml(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    kb_dir = tmp_path / "_context" / "memory" / "sw-shared"
+    kb_dir = tmp_path / "knowledge"
     kb_dir.mkdir(parents=True)
     (kb_dir / "tasks.yaml").write_text("""
 tasks:
@@ -50,7 +50,7 @@ tasks:
 
 def test_scan_in_progress_yaml_multiple(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    kb_dir = tmp_path / "_context" / "memory" / "sw-shared"
+    kb_dir = tmp_path / "knowledge"
     kb_dir.mkdir(parents=True)
     (kb_dir / "tasks.yaml").write_text("""
 tasks:
@@ -121,7 +121,7 @@ def test_main_clean_state_exits_silently(tmp_path, monkeypatch, capsys):
 
 def test_main_in_progress_emits_warning(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    kb_dir = tmp_path / "_context" / "memory" / "sw-shared"
+    kb_dir = tmp_path / "knowledge"
     kb_dir.mkdir(parents=True)
     (kb_dir / "tasks.yaml").write_text("""
 tasks:

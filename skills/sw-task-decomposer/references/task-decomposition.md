@@ -19,7 +19,7 @@
 
 **输入 (按加载顺序):**
 
-1. **服务注册表:** `_context/memory/sw-shared/service-registry.yaml` — 所有已注册服务的权威列表（auto-generated, 由 sw-knowledge-agent 维护）
+1. **服务注册表:** `knowledge/service-registry.yaml` — 所有已注册服务的权威列表（auto-generated, 由 sw-knowledge-agent 维护）
 2. **Stage 1 跨服务设计:** `designs/{id}-design.md` — 其中的「服务影响分析」表列出了本次需求实际涉及的服务（从 service-registry 中筛选，不可臆想）
 3. **Stage 2 Per-service 设计:** `designs/{id}-service-{svc}-design.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
 4. **Stage 3 E2E 测试设计:** `designs/{id}-e2e-design.md` — 用于最后一个 wave 的 E2E 任务
@@ -259,7 +259,7 @@ Final Wave: E2E 测试任务（依赖所有实现任务）
 **tasks.yaml 完整 Schema:**
 
 ```yaml
-# _context/memory/sw-shared/tasks.yaml
+# knowledge/tasks.yaml
 requirement_id: "{REQ-YYYYMMDD-NNN}"
 created_at: "{timestamp}"
 total_estimated_hours: {n}
@@ -357,7 +357,7 @@ waves:
 **同时初始化 worktree-registry.yaml:**
 
 ```yaml
-# _context/memory/sw-controller/worktree-registry.yaml
+# knowledge/sw-controller/worktree-registry.yaml
 requirement_id: "{REQ-YYYYMMDD-NNN}"
 created_at: "{timestamp}"
 

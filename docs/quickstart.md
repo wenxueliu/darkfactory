@@ -36,12 +36,10 @@
 
 ### 第二步：创建配置
 
-在你的项目根目录下创建 `_context/` 目录，新增两个文件：
+在你的项目根目录下创建工作区目录，随后新增两个配置文件：
 
 ```bash
-mkdir -p _context/memory/sw-shared
-mkdir -p _context/memory/sw-controller
-mkdir -p services knowledge
+mkdir -p _context services knowledge/sw-controller
 ```
 
 **`_context/config.yaml`**（根据上面的回答调整）：
@@ -133,9 +131,7 @@ mkdir my-project && cd my-project
 git init
 
 # 创建基础目录；业务源码仓库放到 services/ 下
-mkdir -p services knowledge
-mkdir -p _context/memory/sw-shared
-mkdir -p _context/memory/sw-controller
+mkdir -p services knowledge/sw-controller
 mkdir -p skills
 ```
 
@@ -231,13 +227,13 @@ git clone git@github.com:org/web-frontend.git services/web-frontend
 
 ### 第三步：创建配置和知识库骨架
 
-创建 `_context/` 目录结构——这是**手动一次性**操作，建立空的记忆目录骨架：
+创建 `knowledge/` 目录结构——这是**手动一次性**操作，建立空的目录骨架：
 
 ```bash
 mkdir -p services knowledge/_enterprise/{patterns,decisions,lessons,contracts}
 mkdir -p knowledge/{domains,services}
-mkdir -p _context/memory/sw-shared/reviews
-mkdir -p _context/memory/sw-controller
+mkdir -p knowledge/reviews
+mkdir -p knowledge/sw-controller
 ```
 
 **`_context/config.yaml`**：
@@ -283,7 +279,7 @@ python /path/to/harness/services/multiagents/install.py --target .
 
 | 产物 | 路径 |
 |------|------|
-| 服务注册表 | `_context/memory/sw-shared/service-registry.yaml` |
+| 服务注册表 | `knowledge/service-registry.yaml` |
 | 服务概览 | `knowledge/services/{id}/overview.md` |
 | API 端点文档 | `knowledge/services/{id}/api-endpoints.md` |
 | 数据库 Schema | `knowledge/services/{id}/db-schema.md` |
@@ -351,11 +347,11 @@ sw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 
 **我想只为当前项目定制文档模板：**
 
-在项目根目录创建 `_context/templates/<document-type>/<variant>/`，放入 `manifest.yaml`、`template.md`，以及可选的 `gate.yaml` / `validator.yaml`。解析优先级是项目 → 用户 → Skill 内置；完整示例见 [configuration.md](configuration.md)。
+在项目根目录创建 `knowledge/templates/<document-type>/<variant>/`，放入 `manifest.yaml`、`template.md`，以及可选的 `gate.yaml` / `validator.yaml`。解析优先级是项目 → 用户 → Skill 内置；完整示例见 [configuration.md](configuration.md)。
 
 **我遇到了问题：**
-- 检查 `_context/memory/sw-shared/human-interventions.md` — 是否有阻塞升级
-- 检查 `_context/memory/sw-controller/global-state.yaml` — 当前阶段和进度
+- 检查 `knowledge/human-interventions.md` — 是否有阻塞升级
+- 检查 `knowledge/sw-controller/global-state.yaml` — 当前阶段和进度
 - 直接对 sw-controller 描述你的问题，它会自主诊断
 
 ---
@@ -376,17 +372,17 @@ sw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 | 目录 | 内容 | 谁维护 |
 |------|------|--------|
 | `_context/config.yaml` | 项目配置 | 你（人工） |
-| `_context/memory/sw-shared/` | 需求、设计、任务、审查 | sw-controller（自动） |
+| `knowledge/` | 需求、设计、任务、审查 | sw-controller（自动） |
 | `services/` | 一个或多个独立源码仓库 | 用户放入，Agent 只读/修改受影响仓库 |
 | `knowledge/_enterprise/` | 全局 ADR、契约、跨仓库模式 | sw-controller + 人工审核 |
 | `knowledge/domains/` | 业务领域级知识 | sw-controller（自动分类） |
 | `knowledge/services/` | 每个代码仓的 API、Schema、概览 | sw-knowledge-agent（自动生成） |
-| `_context/memory/sw-controller/` | 编排状态、worktree 注册表 | sw-controller（自动） |
+| `knowledge/sw-controller/` | 编排状态、worktree 注册表 | sw-controller（自动） |
 | `.worktree/` | 隔离开发环境 | 自动创建/销毁 |
 | `skills/` | Agent 技能定义（Claude Code） | 随黑灯工厂更新 |
 | `agents/` | Agent 独立 prompt 模板（Codex/OpenCode） | 随黑灯工厂更新 |
 | `knowledge/_enterprise/contracts/` | 跨仓库 API 契约 | sw-controller + 人工审核 |
-| `_context/memory/sw-shared/service-registry.yaml` | 服务注册表（技术栈/依赖图） | sw-knowledge-agent（自动生成） |
+| `knowledge/service-registry.yaml` | 服务注册表（技术栈/依赖图） | sw-knowledge-agent（自动生成） |
 
 ---
 

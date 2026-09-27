@@ -8,7 +8,7 @@ contract_version: "1.0"
 
 ## 使用说明
 
-此模板在需求门禁 PASS 后使用。由 sw-feature-designer 加载，基于 `requirements/{requirement_id}.md` 填充。填入后写入 `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md`。
+此模板在需求门禁 PASS 后使用。由 sw-feature-designer 加载，基于 `requirements/{requirement_id}.md` 填充。填入后写入 `{project-root}/knowledge/designs/{requirement_id}-design.md`。
 
 特性设计文档是跨服务的 "大图"——定义用户旅程、服务影响范围、服务间交互和契约、部署策略。它不涉及任何服务的内部实现细节（那是 Stage 2 per-service 设计文档的职责）。
 

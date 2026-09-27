@@ -143,7 +143,7 @@ def validate_spec_content(project_root: str, req_id: str | None) -> list[str]:
         return errors  # No req_id to validate against; tracker-level check handles this
 
     spec_path = os.path.join(
-        project_root, "_context", "memory", "sw-shared", "requirements", f"{req_id}.md"
+        project_root, "knowledge", "requirements", f"{req_id}.md"
     )
     if not os.path.isfile(spec_path):
         return [
@@ -175,7 +175,7 @@ def validate_spec_content(project_root: str, req_id: str | None) -> list[str]:
 def _resolve_requirements_definition(project_root: str):
     """Resolve project custom resources before the built-in requirements package."""
     project = Path(project_root).resolve()
-    roots = [ResourceRoot("project", project / "_context" / "templates")]
+    roots = [ResourceRoot("project", project / "knowledge" / "templates")]
     user_context = _configured_user_context(project)
     if user_context:
         roots.append(ResourceRoot("user", user_context / "templates"))
@@ -277,7 +277,7 @@ def check_ideation_completed(project_root: str) -> tuple[bool, list[str], str | 
     be empty. When is_done is False, errors explain why.
     """
     tracker_file = os.path.join(
-        project_root, "_context", "memory", "sw-shared", "requirements-tracker.yaml"
+        project_root, "knowledge", "requirements-tracker.yaml"
     )
     is_done, req_id, parse_errors = parse_yaml_ideation_status(tracker_file)
     if not is_done:
@@ -343,7 +343,7 @@ def main() -> None:
 
     # Ideation NOT done → DENY (with different messages for "not started" vs "in progress" vs "spec invalid")
     tracker_path = os.path.join(
-        project_root, "_context", "memory", "sw-shared", "requirements-tracker.yaml"
+        project_root, "knowledge", "requirements-tracker.yaml"
     )
     error_details = "; ".join(gate_errors) if gate_errors else "ideation not done"
 

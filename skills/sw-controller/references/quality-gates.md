@@ -138,11 +138,11 @@ API 验证流程 (provider-agnostic):
 
 ```bash
 # Newman 执行 (baseUrl 由 provider.get_endpoint() 动态注入，不硬编码 localhost:8080)
-newman run _context/memory/sw-shared/tests/api-{requirement_id}.json \
-  -e _context/memory/sw-shared/tests/api-{requirement_id}-env.json \
+newman run knowledge/tests/api-{requirement_id}.json \
+  -e knowledge/tests/api-{requirement_id}-env.json \
   --env-var baseUrl={provider_endpoint} \
   --reporters cli,junit \
-  --reporter-junit-export _context/memory/sw-shared/tests/api-{requirement_id}-report.xml
+  --reporter-junit-export knowledge/tests/api-{requirement_id}-report.xml
 ```
 
 **验证规则:**

@@ -245,7 +245,7 @@ Blocked Tasks:
   - task-{id}: {任务描述} -- 外部依赖不可用
     原因: {具体问题}
 
-Notepad: {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/
+Notepad: {project-root}/knowledge/sw-plan-executor/notepads/{plan-name}/
 
 What we need from sw-controller:
   {具体的所需行动}

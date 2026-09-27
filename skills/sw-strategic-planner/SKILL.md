@@ -51,8 +51,8 @@ description: "战略规划Agent. Strategic planning consultant that interviews, 
 
 - 向用户提问以澄清需求
 - 通过探索/研究 Agent 进行研究
-- 工作计划保存到 `{project-root}/_context/memory/sw-shared/plans/{plan-name}.md`
-- 草稿保存到 `{project-root}/_context/memory/sw-shared/drafts/{name}.md`
+- 工作计划保存到 `{project-root}/knowledge/plans/{plan-name}.md`
+- 草稿保存到 `{project-root}/knowledge/drafts/{name}.md`
 
 ### 当用户坚持要直接工作时
 
@@ -92,7 +92,7 @@ description: "战略规划Agent. Strategic planning consultant that interviews, 
 
 2. **自我清关检查（Self-Clearance Check）** — 每个访谈回合后运行 6 项清关清单。全部通过 -> 自动过渡到计划生成。任何一项未通过 -> 继续访谈，提出具体的不明确问题。
 
-3. **Markdown-Only 文件访问** — 只能创建/编辑 `_context/memory/sw-shared/plans/` 和 `_context/memory/sw-shared/drafts/` 下的 `.md` 文件。所有其他路径和文件类型是禁止的。
+3. **Markdown-Only 文件访问** — 只能创建/编辑 `knowledge/plans/` 和 `knowledge/drafts/` 下的 `.md` 文件。所有其他路径和文件类型是禁止的。
 
 4. **单一计划原则（Single Plan Mandate）** — 不管任务多大，所有内容都放入一个计划文件。绝不拆分为多个计划。50+ TODOs 是可以的——一个计划。
 
@@ -123,8 +123,8 @@ description: "战略规划Agent. Strategic planning consultant that interviews, 
 
 1. 读取 `{project-root}/_context/config.yaml` — 获取项目配置（business_domain, supported_languages, enabled_reviewers 等）
 2. 读取 `{project-root}/_context/config.user.yaml` — 获取用户偏好（communication_language, user_name 等）
-3. 读取 `{project-root}/_context/memory/sw-shared/design-decisions.md` — 了解已有的架构决策
-4. 读取 `{project-root}/_context/memory/sw-shared/tasks.yaml` — 了解当前任务状态
+3. 读取 `{project-root}/knowledge/design-decisions.md` — 了解已有的架构决策
+4. 读取 `{project-root}/knowledge/tasks.yaml` — 了解当前任务状态
 5. 解析本 Skill 的 `plan/default` 文档定义包，加载其模板、门禁和验证器。
 
 ### Step 1: 进入访谈模式（默认）
@@ -234,26 +234,26 @@ ANY NO -> 继续访谈，提出具体的未明确问题。
 
 ### 写入
 
-- `{project-root}/_context/memory/sw-shared/plans/{plan-name}.md` — 最终生成的完整工作计划（**唯一**计划文件）
-- `{project-root}/_context/memory/sw-shared/drafts/{name}.md` — 访谈过程中的工作草稿（计划完成后删除）
+- `{project-root}/knowledge/plans/{plan-name}.md` — 最终生成的完整工作计划（**唯一**计划文件）
+- `{project-root}/knowledge/drafts/{name}.md` — 访谈过程中的工作草稿（计划完成后删除）
 
 ### 读取
 
 - `{project-root}/_context/config.yaml` — 项目配置
 - `{project-root}/_context/config.user.yaml` — 用户配置
-- `{project-root}/_context/memory/sw-shared/design-decisions.md` — 已有架构决策
-- `{project-root}/_context/memory/sw-shared/tasks.yaml` — 当前任务状态
+- `{project-root}/knowledge/design-decisions.md` — 已有架构决策
+- `{project-root}/knowledge/tasks.yaml` — 当前任务状态
 - `{project-root}/knowledge/` — 机构知识库
 
 ### 状态文件（规划者私有）
 
-- `{project-root}/_context/memory/sw-strategic-planner/planning-state.yaml` — 当前规划会话状态（意图类型、清关清单状态、草稿路径）
+- `{project-root}/knowledge/sw-strategic-planner/planning-state.yaml` — 当前规划会话状态（意图类型、清关清单状态、草稿路径）
 
 ### 不写入
 
 - 任何非 `.md` 文件
 - `docs/` 目录
-- 任何 `_context/memory/sw-shared/` 外的路径
+- 任何 `knowledge/` 外的路径
 - 源代码文件
 
 ## Output
@@ -273,7 +273,7 @@ ANY NO -> 继续访谈，提出具体的未明确问题。
 
 ### 计划生成阶段输出
 
-最终计划文件保存到 `{project-root}/_context/memory/sw-shared/plans/{plan-name}.md`。
+最终计划文件保存到 `{project-root}/knowledge/plans/{plan-name}.md`。
 
 计划包含以下必需章节（以解析后的 `plan/default` 定义包为准）：
 1. **TL;DR** — 摘要 + 交付物 + 工作量估算 + 并行性 + 关键路径
@@ -310,7 +310,7 @@ ANY NO -> 继续访谈，提出具体的未明确问题。
 **Decisions Needed** (if any):
 - [Question requiring user input]
 
-Plan saved to: _context/memory/sw-shared/plans/{name}.md
+Plan saved to: knowledge/plans/{name}.md
 
 Next: Start Work (委托给 sw-plan-executor) or High Accuracy Review (委托给 sw-plan-reviewer)
 ```

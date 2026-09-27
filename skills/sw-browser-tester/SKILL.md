@@ -30,7 +30,7 @@ Inspired by gstack browse's snapshot-based QA patterns, adapted to the multiagen
 
 ### Step 1: Load Test Cases
 
-Load the E2E design document from `_context/memory/sw-shared/designs/{requirement_id}-e2e-design.md`.
+Load the E2E design document from `knowledge/designs/{requirement_id}-e2e-design.md`.
 
 Parse the GIVEN/WHEN/THEN/CLEANUP structured test cases. From the E2E test case template, identify:
 - **Functional** scenarios: happy path, error path, boundary, state transition, authorization
@@ -105,7 +105,7 @@ For **network condition tests**, the script uses `page.route()` to simulate thro
 
 ### Step 5: Report Results
 
-Load `references/browser-e2e-results-template.md`. Write structured results to `_context/memory/sw-shared/browser-e2e-results.yaml`:
+Load `references/browser-e2e-results-template.md`. Write structured results to `knowledge/browser-e2e-results.yaml`:
 
 ```yaml
 requirement_id: "{id}"
@@ -150,10 +150,10 @@ Update `requirements-tracker.yaml`:
 
 ## Output
 
-- Write `_context/memory/sw-shared/browser-e2e-results.yaml` — structured pass/fail/diagnostic results
+- Write `knowledge/browser-e2e-results.yaml` — structured pass/fail/diagnostic results
 - Write `_context-output/test-artifacts/e2e/{requirement_id}/browser-e2e.spec.ts` — generated test script
 - Screenshots and traces in `_context-output/test-artifacts/e2e/{requirement_id}/output/`
-- Update `_context/memory/sw-shared/requirements-tracker.yaml` → `phases.test.browser_e2e_status`
+- Update `knowledge/requirements-tracker.yaml` → `phases.test.browser_e2e_status`
 
 ## Quality Gates
 

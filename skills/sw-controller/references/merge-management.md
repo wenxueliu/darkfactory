@@ -31,7 +31,7 @@ If merge conflicts occur:
 3. Either:
    - Auto-resolve if trivial
    - Request human help for complex conflicts
-4. Document resolution in `{project-root}/_context/memory/sw-shared/design-decisions.md`
+4. Document resolution in `{project-root}/knowledge/design-decisions.md`
 
 **Cleanup:**
 After successful merge:

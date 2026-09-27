@@ -46,7 +46,7 @@ ideation → design → decomposition → execution → merge → test → deliv
 
 ### 需求生命周期跟踪 (Requirement Lifecycle Tracking)
 
-每个需求从 ideation 到 delivery 的全生命周期状态记录在 `_context/memory/sw-shared/requirements-tracker.yaml` 中。该文件是 **sw-controller 判断阶段转换的权威数据源**。
+每个需求从 ideation 到 delivery 的全生命周期状态记录在 `knowledge/requirements-tracker.yaml` 中。该文件是 **sw-controller 判断阶段转换的权威数据源**。
 
 **跟踪维度：**
 

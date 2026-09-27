@@ -43,7 +43,7 @@
 
 **拆分原因:** UT 和 API 测试随仓库——测试的是该仓库的代码和端点。需要时，E2E 和契约测试验证跨仓库用户旅程；没有跨仓库交互时明确标记 N/A。
 
-填入后写入 `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md`。
+填入后写入 `{project-root}/knowledge/designs/{requirement_id}-design.md`。
 
 设计文档是开发阶段的唯一技术事实源。代码实现必须回溯到设计决策。
 
@@ -433,9 +433,9 @@ JSON 文件格式规范见 `references/api-test-postman-schema.md`。
 
 | 文件 | 路径 | 用途 |
 |------|------|------|
-| Postman Collection | `_context/memory/sw-shared/tests/api-{requirement_id}.json` | Newman 执行 |
-| Environment 文件 | `_context/memory/sw-shared/tests/api-{requirement_id}-env.json` | 环境变量 (baseUrl, tokens) |
-| Newman 报告 | `_context/memory/sw-shared/tests/api-{requirement_id}-report.xml` | CI 集成 |
+| Postman Collection | `knowledge/tests/api-{requirement_id}.json` | Newman 执行 |
+| Environment 文件 | `knowledge/tests/api-{requirement_id}-env.json` | 环境变量 (baseUrl, tokens) |
+| Newman 报告 | `knowledge/tests/api-{requirement_id}-report.xml` | CI 集成 |
 
 ### 10.5 第三层: E2E 测试设计 (端到端集成)
 
@@ -535,5 +535,5 @@ JSON 文件格式规范见 `references/api-test-postman-schema.md`。
 ## 13. 下游引用
 
 - 需求规格: `requirements/{requirement_id}.md`
-- 任务拆分: `_context/memory/sw-shared/tasks.yaml`
+- 任务拆分: `knowledge/tasks.yaml`
 - 知识库: `knowledge/_enterprise/decisions/`

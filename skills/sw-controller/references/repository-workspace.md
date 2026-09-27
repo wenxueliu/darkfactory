@@ -5,8 +5,8 @@
 - `services/` 是源码仓库根目录。
 - `services/` 下每个直接子目录都是一个独立代码仓库，也是一个服务单元。
 - 只有一个代码仓库时，它就是单仓库工作区；这是多仓库模型的自然特例。
-- `knowledge/` 独立存放项目知识，不放源码，也不放编排状态。
-- `_context/` 只存配置、需求产物、任务状态、审查结果和机器生成的注册表。
+- `knowledge/` 存放项目知识与流程状态（需求、任务、审查、注册表），不放源码。
+- `_context/` 只存配置。
 
 ## 初始化后的硬前置条件
 
@@ -23,14 +23,12 @@
 ├── services/                         # 用户放入的源码仓库
 │   ├── application/                 # 一个仓库 = 一个服务单元
 │   └── another-repository/           # 可选的更多仓库
-├── knowledge/                        # 项目知识（可读、可积累）
+├── knowledge/                        # 项目知识 + 流程状态（可读、可积累）
 │   ├── index.md
 │   ├── _enterprise/
 │   ├── domains/
-│   └── services/{service-id}/
-├── _context/
-│   └── memory/sw-shared/
-│       └── service-registry.yaml     # 机器可读的发现结果
+│   ├── services/{service-id}/
+│   └── service-registry.yaml         # 机器可读的发现结果
 └── .worktree/                        # 工作树，按仓库隔离
 ```
 
@@ -43,7 +41,7 @@
 ```text
 扫描 services/{repo}/
   → 检测语言、框架、构建/测试命令、API、数据和依赖
-  → 写入 _context/memory/sw-shared/service-registry.yaml
+  → 写入 knowledge/service-registry.yaml
   → 写入 knowledge/services/{service-id}/*.md
 ```
 
@@ -52,11 +50,11 @@
 | 内容 | 唯一路径 | 维护方式 |
 |------|----------|----------|
 | 源码仓库 | `services/{service-id}/` | 用户放入；各仓库独立 Git 历史 |
-| 服务元数据 | `_context/memory/sw-shared/service-registry.yaml` | 服务发现自动生成 |
+| 服务元数据 | `knowledge/service-registry.yaml` | 服务发现自动生成 |
 | 企业级项目知识 | `knowledge/_enterprise/` | `sw-knowledge-agent` 与人工共同维护 |
 | 领域级项目知识 | `knowledge/domains/` | 按领域维护 |
 | 服务级项目知识 | `knowledge/services/{service-id}/` | 服务发现与人工共同维护 |
-| 流程状态 | `_context/memory/sw-shared/` | 各流程 Skill 按契约写入 |
+| 流程状态 | `knowledge/` | 各流程 Skill 按契约写入 |
 
 ## 统一执行规则
 
@@ -113,6 +111,6 @@ service_groups:
 
 - 不在 `_context/config.yaml` 中增加按仓库数量切换的架构模式分支。
 - 不把源码放进 `knowledge/` 或 `_context/`。
-- 不把项目知识写回 `_context/memory/sw-shared/` 下的旧知识目录。
+- 不把项目知识混入 `knowledge/` 下的流程状态文件（`requirements-tracker.yaml`、`tasks.yaml` 等）；长期知识写入 `knowledge/_enterprise/`、`knowledge/domains/` 或 `knowledge/services/`。
 - 不因为只有一个仓库就跳过服务发现、服务路径、需求影响分析和最小门禁。
 - 不因为有多个仓库就假设一定存在跨仓库调用；是否存在依赖必须由代码、设计和契约证据证明。

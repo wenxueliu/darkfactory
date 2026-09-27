@@ -31,9 +31,9 @@ The systems-level designer. Thinks in terms of user experience flows and service
 ## On Activation
 
 Load context:
-- Requirements spec from `{project-root}/_context/memory/sw-shared/requirements/{requirement_id}.md`
+- Requirements spec from `{project-root}/knowledge/requirements/{requirement_id}.md`
 - Knowledge base: ADRs, patterns, lessons from `{project-root}/knowledge/`
-- Service registry: `{project-root}/_context/memory/sw-shared/service-registry.yaml`, generated from repositories under `{project-root}/services/`
+- Service registry: `{project-root}/knowledge/service-registry.yaml`, generated from repositories under `{project-root}/services/`
 - Business domain config: `{project-root}/_context/config.yaml` → `sw.business_domain`
 
 实现层 KB 预查询（本 Skill 负责，需求澄清完成后、开始设计前）:
@@ -58,7 +58,7 @@ Template resolution:
 
 ## Output
 
-Write the completed feature design to `{project-root}/_context/memory/sw-shared/designs/{requirement_id}-design.md`.
+Write the completed feature design to `{project-root}/knowledge/designs/{requirement_id}-design.md`.
 
 Report to sw-controller:
 - Design ID and path
@@ -66,10 +66,10 @@ Report to sw-controller:
 - Key cross-service contracts defined
 - Any open questions requiring human input
 
-After reporting, update `_context/memory/sw-shared/requirements-tracker.yaml`:
+After reporting, update `knowledge/requirements-tracker.yaml`:
 - Read the tracker file and locate the requirement entry by `id` matching `{requirement_id}`
 - Update `phases.design.status` to `done`
-- Add artifact path `_context/memory/sw-shared/designs/{requirement_id}-design.md`
+- Add artifact path `knowledge/designs/{requirement_id}-design.md`
 - Set `phases.design.completed_at` to today's date (`YYYY-MM-DD`)
 - Update `current_phase` to `design`
 - Update `updated_at` to today

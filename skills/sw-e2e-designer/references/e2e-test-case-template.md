@@ -358,10 +358,10 @@ sw:
 
 ### 5.4 C. 脚本钩子 (Script Hooks)
 
-注入自定义验证逻辑到 E2E 执行流程。在 `_context/memory/sw-shared/e2e-hooks/` 下放置钩子脚本：
+注入自定义验证逻辑到 E2E 执行流程。在 `knowledge/e2e-hooks/` 下放置钩子脚本：
 
 ```
-_context/memory/sw-shared/e2e-hooks/
+knowledge/e2e-hooks/
 ├── before-all.js       # 所有用例执行前: 环境准备、全局 mock
 ├── after-all.js        # 所有用例执行后: 全局清理、报告聚合
 ├── before-each.js      # 每个用例前: 登录、重置状态
@@ -544,4 +544,4 @@ L3 E2E (e2e-test-case-template.md) ← 本模板
 | E2E 用例设计 | `designs/{id}-design.md` Section 10.5 | 设计阶段 (sw-controller 加载本模板填充) |
 | E2E 测试脚本 | `tests/e2e/{requirement_id}/` | 执行阶段 (由 Worktree Controller 协调生成) |
 | 扩展配置 | `_context/config.yaml` (sw.e2e_extensions) | 项目初始化或按需追加 |
-| 钩子脚本 | `_context/memory/sw-shared/e2e-hooks/` | 按需创建 |
+| 钩子脚本 | `knowledge/e2e-hooks/` | 按需创建 |

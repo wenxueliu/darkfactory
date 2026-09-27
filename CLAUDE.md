@@ -203,7 +203,7 @@ Hook state files in `hooks/hook-state/*.json` are automatically cleaned on `PreC
 - **Branching:** Create a feature branch for non-trivial changes. If already on the correct branch, keep using it — do not create additional branches or worktrees unless requested.
 - **Safety:** Do not delete or overwrite user data. Avoid destructive commands.
 - **Configuration:** Project config lives in `_context/config.yaml` and `_context/config.user.yaml`. Read config before assuming defaults.
-- **Shared state:** All cross-agent state lives in `_context/memory/sw-shared/`. Agent-private state lives in `_context/memory/sw-{agent}/`.
+- **Shared state:** All cross-agent state lives under `knowledge/` — durable project knowledge (ADRs, patterns, lessons, contracts) and workflow artifacts (requirements, designs, tasks, tracker). Agent-private state lives in `knowledge/sw-{agent}/`. `_context/` holds configuration only.
 - **Worktrees:** Isolated task execution happens in `{worktree_base}` (default: `.worktree/` at project root). This directory must be gitignored.
 - **Language:** This project uses Chinese for agent communication and documentation. Config defaults to `document_output_language: Chinese`.
 - **Use subagents:** Prefer delegating complex, multi-step, or cross-file search/analysis tasks to subagents via the Agent tool. Run independent subagents in parallel to reduce main context window consumption. 尽量使用 subagent 执行复杂任务。
@@ -220,14 +220,14 @@ multiagents/
 ├── skills/                  # 32 skill directories
 ├── agents/                  # Standalone agent prompt templates
 ├── docs/                    # Documentation
+├── knowledge/               # 项目知识 + 工作流状态
+│   ├── requirements-tracker.yaml  # 需求全生命周期跟踪
+│   ├── tasks.yaml                 # 任务定义
+│   ├── sw-{agent}/                # Agent 私有状态
+│   └── ...
 ├── hooks/                   # Session-start bootstrap
-├── _context/                   # BMAD framework (config + memory)
-│   ├── config.yaml          # Module configuration
-│   └── memory/              # Agent shared state
-│       └── sw-shared/
-│           ├── requirements-tracker.yaml  # 需求全生命周期跟踪
-│           ├── tasks.yaml                 # 任务定义
-│           └── ...
+├── _context/                # BMAD 框架配置
+│   └── config.yaml          # Module configuration
 ├── .claude-plugin/          # Claude Code plugin manifest
 ├── .codex-plugin/           # Codex plugin manifest
 └── .opencode/               # OpenCode plugin + config

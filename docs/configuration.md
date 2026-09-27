@@ -36,9 +36,9 @@
 | 目录 | 约定 |
 |------|------|
 | `services/{repository-name}/` | 用户放入的独立源码仓库；每个直接子目录都是一个服务单元，一个仓库也按同一流程处理 |
-| `knowledge/` | 项目知识，包含 `_enterprise/`、`domains/` 和 `services/{service-id}/` |
-| `_context/` | 配置、需求/任务状态和运行时编排数据，不存放业务源码或持久项目知识 |
-| `_context/memory/sw-shared/service-registry.yaml` | 从 `services/` 自动生成的服务注册表 |
+| `knowledge/` | 项目知识与工作流状态：`_enterprise/`、`domains/`、`services/{service-id}/`，以及需求、任务、审查和注册表等状态文件 |
+| `_context/` | 项目配置（`config.yaml`、`config.user.yaml`），不存放业务源码、项目知识或流程状态 |
+| `knowledge/service-registry.yaml` | 从 `services/` 自动生成的服务注册表 |
 
 初始化后如果 `services/` 没有至少一个可识别的 Git 仓库，控制器会阻塞后续需求处理。完整的目录关系见 [architecture.md](architecture.md#工作区边界)，知识库维护规则见 [knowledge-base.md](knowledge-base.md)。
 
@@ -55,14 +55,14 @@
 | `ecommerce` | `requirements/ecommerce` | 增加用户旅程/转化指标/支付结算/A/B 测试/库存状态机 |
 | `internal-tools` | `requirements/internal-tools` | 简化版，减少 ceremony，专注集成点和运维手册 |
 
-**新增业务领域：** 在对应 Skill 的 `references/document-definitions/{document-type}/{variant}/` 中创建定义包；项目专属场景放在 `_context/templates/{document-type}/{variant}/`。详细规则见 [document-contracts.md](document-contracts.md)。
+**新增业务领域：** 在对应 Skill 的 `references/document-definitions/{document-type}/{variant}/` 中创建定义包；项目专属场景放在 `knowledge/templates/{document-type}/{variant}/`。详细规则见 [document-contracts.md](document-contracts.md)。
 
 ## 文档定义包定制
 
 项目级定义包优先级最高，用户级定义包用于多个项目共享，Skill 内置定义包作为最后兜底：
 
 ```text
-项目：_context/templates/<document-type>/<variant>/
+项目：knowledge/templates/<document-type>/<variant>/
 用户：<user_context_root>/templates/<document-type>/<variant>/
 内置：skills/<owner-skill>/references/document-definitions/<document-type>/<variant>/
 ```
@@ -70,7 +70,7 @@
 例如，为当前项目定制金融需求文档：
 
 ```text
-_context/templates/requirements/fintech/
+knowledge/templates/requirements/fintech/
 ├── manifest.yaml
 ├── template.md
 ├── gate.yaml          # 可选
@@ -107,8 +107,8 @@ sw:
 python3 -m document_contracts validate \
   --document-type requirements \
   --variant fintech \
-  --document _context/memory/sw-shared/requirements/REQ-001.md \
-  --root project=./_context/templates \
+  --document knowledge/requirements/REQ-001.md \
+  --root project=./knowledge/templates \
   --root skill=./skills/sw-requirements-clarifier/references/document-definitions
 ```
 
@@ -148,7 +148,7 @@ sw:
 
 ## 需求跟踪器 (Requirements Tracker)
 
-需求全生命周期跟踪由 `_context/memory/sw-shared/requirements-tracker.yaml` 实现。该文件**不是配置文件**，而是各阶段 Agent 自动写入的共享状态文件——sw-controller 将其作为阶段转换检查的权威数据源。
+需求全生命周期跟踪由 `knowledge/requirements-tracker.yaml` 实现。该文件**不是配置文件**，而是各阶段 Agent 自动写入的共享状态文件——sw-controller 将其作为阶段转换检查的权威数据源。
 
 ### 文件结构
 
@@ -182,7 +182,7 @@ requirements:
 
 ```bash
 # 查看所有需求的阶段状态（一行一个需求）
-grep -A1 '^  - id:' _context/memory/sw-shared/requirements-tracker.yaml
+grep -A1 '^  - id:' knowledge/requirements-tracker.yaml
 
 # 查看特定需求的执行进度
 # 找 phases.execution.progress 字段

@@ -37,7 +37,7 @@ The integration verifier. Treats the test environment as a black box — verify 
    - **Pre-check** (built into the script): `tests/api-{id}.json` and `tests/api-{id}-env.json` must exist. If missing → `exit 2` PRECHECK_FAILED, route back to sw-e2e-designer. **Do not silently skip.**
    - **Execute** (built into the script): `newman run ... --bail --timeout-request 10000` with JUnit XML export. Non-zero newman exit code → `exit 4` FAIL.
    - **Parse** (built into the script): JUnit XML → structured counts (total/passed/failed/errored/skipped/failures[]).
-   - **Persist** (built into the script): Append `api_tests.{requirement_id}` section to `_context/memory/sw-shared/test-results.yaml`. Idempotent re-runs replace the prior block.
+   - **Persist** (built into the script): Append `api_tests.{requirement_id}` section to `knowledge/test-results.yaml`. Idempotent re-runs replace the prior block.
    - Reference (informational only): `references/api-test-postman-schema.md` documents the JSON schema; the script enforces it.
 4. **Report Results** — Confirm both `integration_tests` and `api_tests` sections are present in `test-results.yaml`; surface counts and any failures.
 5. **On Failure** — Diagnose: code issue → route back to worktree; env issue → escalate; newman PRECHECK_FAILED → escalate to sw-controller (e2e designer missed delivery); test data issue → fix and re-run
@@ -52,7 +52,7 @@ The integration verifier. Treats the test environment as a black box — verify 
 
 ## Output
 
-- Write `_context/memory/sw-shared/test-results.yaml` — structured pass/fail/diagnostic results
+- Write `knowledge/test-results.yaml` — structured pass/fail/diagnostic results
 
 ## Quality Gates
 

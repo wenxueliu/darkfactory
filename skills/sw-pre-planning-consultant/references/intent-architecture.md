@@ -99,7 +99,7 @@ Delegate to sw-strategic-advisor with:
 
 ### 决策记录存储位置
 
-- 存储于: `{project-root}/_context/memory/sw-shared/design-decisions.md`
+- 存储于: `{project-root}/knowledge/design-decisions.md`
 - 每个决策独立一节，按时间倒序排列
 - 使用一致的格式使决策可搜索、可比较
 
@@ -154,7 +154,7 @@ SHOULD delegate deep architecture analysis to sw-strategic-advisor when:
   - 3+ systems interact
   - Security/performance trade-offs exist
   - Unfamiliar tech stack involved
-SHOULD store decision records in {project-root}/_context/memory/sw-shared/design-decisions.md.
+SHOULD store decision records in {project-root}/knowledge/design-decisions.md.
 SHOULD set review triggers for reversible decisions (e.g., "revisit in 3 months").
 ```
 
@@ -171,7 +171,7 @@ MAY defer non-critical architecture decisions to implementation phase with expli
 
 1. **[Check]** 决策记录完整:
    ```
-   验证命令: grep -c "## Decision:" {project-root}/_context/memory/sw-shared/design-decisions.md
+   验证命令: grep -c "## Decision:" {project-root}/knowledge/design-decisions.md
    预期: 决策记录数量 >= 本次涉及的架构决策数
    且每个决策包含: Context, Options, Decision, Rationale, Consequences
    ```

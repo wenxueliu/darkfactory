@@ -2,12 +2,12 @@
 
 ## What This Is
 
-Structured output format for browser E2E test results. Written to `_context/memory/sw-shared/browser-e2e-results.yaml` after test execution completes.
+Structured output format for browser E2E test results. Written to `knowledge/browser-e2e-results.yaml` after test execution completes.
 
 ## Results YAML Schema
 
 ```yaml
-# _context/memory/sw-shared/browser-e2e-results.yaml
+# knowledge/browser-e2e-results.yaml
 
 requirement_id: "REQ-YYYYMMDD-NNN"
 requirement_title: "{title}"
@@ -173,7 +173,7 @@ phases:
     status: "done"               # or "failed"
     browser_e2e_status: "pass"   # pass | fail | partial
     browser_e2e_pass_rate: 87.5
-    browser_e2e_results: "_context/memory/sw-shared/browser-e2e-results.yaml"
+    browser_e2e_results: "knowledge/browser-e2e-results.yaml"
     completed_at: "YYYY-MM-DDTHH:MM:SSZ"
 ```
 

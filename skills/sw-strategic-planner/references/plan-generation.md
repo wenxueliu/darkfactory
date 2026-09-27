@@ -187,7 +187,7 @@ Todo Items (计划生成):
 将骨架一次性写入计划文件。这是**唯一一次**使用 Write 操作:
 
 ```
-Write("{project-root}/_context/memory/sw-shared/plans/{plan-name}.md", skeletonContent)
+Write("{project-root}/knowledge/plans/{plan-name}.md", skeletonContent)
 ```
 
 `{plan-name}` 命名规则:
@@ -214,7 +214,7 @@ Write("{project-root}/_context/memory/sw-shared/plans/{plan-name}.md", skeletonC
 使用 Final Verification Wave section 作为追加锚点。每次 Edit 在 Final Verification Wave 之前插入新的任务批次:
 
 ```
-Edit("{project-root}/_context/memory/sw-shared/plans/{plan-name}.md",
+Edit("{project-root}/knowledge/plans/{plan-name}.md",
   oldString="---\n\n## Final Verification Wave",
   newString="- [ ] {N}. {Task Title}\n\n  **What to do**: ...\n  **QA Scenarios**: ...\n\n- [ ] {N+1}. {Task Title}\n\n  **What to do**: ...\n  **QA Scenarios**: ...\n\n---\n\n## Final Verification Wave")
 ```
@@ -231,7 +231,7 @@ Edit("{project-root}/_context/memory/sw-shared/plans/{plan-name}.md",
 
 每次 Edit 追加后:
 ```
-Read("{project-root}/_context/memory/sw-shared/plans/{plan-name}.md", offset={last known line})
+Read("{project-root}/knowledge/plans/{plan-name}.md", offset={last known line})
 ```
 
 验证:

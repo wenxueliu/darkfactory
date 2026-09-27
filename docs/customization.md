@@ -413,7 +413,7 @@ class HelmProductionDeployer(Deployer):
 正式需求、设计、计划和项目文档不再通过修改 Agent 核心逻辑定制，而是通过定义包提供模板、门禁和验证器。每个文档生产 Skill 维护自己的内置定义包，项目和用户可以按相同结构覆盖：
 
 ```text
-项目：_context/templates/<document-type>/<variant>/
+项目：knowledge/templates/<document-type>/<variant>/
 用户：<user_context_root>/templates/<document-type>/<variant>/
 内置：skills/<owner-skill>/references/document-definitions/<document-type>/<variant>/
 ```
@@ -432,7 +432,7 @@ validator.yaml      # 可选，文档验证
 示例：
 
 ```yaml
-# _context/templates/feature-design/default/manifest.yaml
+# knowledge/templates/feature-design/default/manifest.yaml
 document_type: feature-design
 variant: default
 contract: sw.feature-design
@@ -449,14 +449,14 @@ resources:
 python3 -m document_contracts resolve \
   --document-type feature-design \
   --variant default \
-  --root project=./_context/templates \
+  --root project=./knowledge/templates \
   --root skill=./skills/sw-feature-designer/references/document-definitions
 
 python3 -m document_contracts validate \
   --document-type feature-design \
   --variant default \
-  --document ./_context/memory/sw-shared/designs/REQ-001-design.md \
-  --root project=./_context/templates \
+  --document ./knowledge/designs/REQ-001-design.md \
+  --root project=./knowledge/templates \
   --root skill=./skills/sw-feature-designer/references/document-definitions
 ```
 

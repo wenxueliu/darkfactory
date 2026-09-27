@@ -8,7 +8,7 @@
 
 标准路径:
 ```
-{project-root}/_context/memory/sw-shared/plans/{plan-name}.md
+{project-root}/knowledge/plans/{plan-name}.md
 ```
 
 ## 解析步骤

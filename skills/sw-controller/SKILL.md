@@ -118,7 +118,7 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 
 ### Requirements Tracker (需求跟踪)
 
-加载 `{project-root}/_context/memory/sw-shared/requirements-tracker.yaml` 作为需求全生命周期跟踪的权威数据源：
+加载 `{project-root}/knowledge/requirements-tracker.yaml` 作为需求全生命周期跟踪的权威数据源：
 
 - **当前需求状态**: 读取 `current_phase` 和 `status` 确定需求所处阶段
 - **阶段前置条件**: 检查各 phase 的 `status` 是否达到 `done` 才允许 phase transition
@@ -132,7 +132,7 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 1. `{project-root}/services/` 存在，且至少包含一个直接子目录 Git 仓库。
 2. `{project-root}/knowledge/` 存在，并包含 `index.md` 或可由 `sw-setup` 初始化的知识骨架。
 3. 源码只从 `services/{repository-name}/` 读取；项目根目录不再作为业务源码仓。
-4. 服务发现已生成或即将生成 `_context/memory/sw-shared/service-registry.yaml`。
+4. 服务发现已生成或即将生成 `knowledge/service-registry.yaml`。
 
 如果 `services/` 不存在或为空，阻塞需求流程并提示：
 `请先运行 sw-setup，然后将需要修改的一个或多个独立 Git 代码仓放入 services/{repository-name}/。`

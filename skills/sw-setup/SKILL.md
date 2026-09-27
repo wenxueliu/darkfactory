@@ -50,13 +50,18 @@ mkdir -p {project-root}/knowledge
 mkdir -p {project-root}/knowledge/_enterprise/{patterns,decisions,lessons,contracts}
 mkdir -p {project-root}/knowledge/domains
 mkdir -p {project-root}/knowledge/services
-{project-root}/_context/memory/
-├── sw-shared/
-│   ├── requirements-tracker.yaml
-│   ├── tasks.yaml
-│   ├── design-decisions.md
-│   ├── human-interventions.md
-│   └── reviews/
+mkdir -p {project-root}/knowledge/sw-controller
+```
+
+跨 Agent 共享状态与 Agent 私有状态都位于 `knowledge/` 下：
+
+```text
+{project-root}/knowledge/
+├── requirements-tracker.yaml
+├── tasks.yaml
+├── design-decisions.md
+├── human-interventions.md
+├── reviews/
 └── sw-controller/
     ├── global-state.yaml
     └── worktree-registry.yaml
@@ -65,8 +70,8 @@ mkdir -p {project-root}/knowledge/services
 初始化完成后的硬前置条件：
 
 1. 用户将需要修改的一个或多个独立 Git 代码仓放入 `{project-root}/services/{repository-name}/`。
-2. 项目知识统一写入 `{project-root}/knowledge/`（全局知识位于 `knowledge/_enterprise/`）；`_context/` 只保存配置、流程产物和机器状态。
-3. 运行服务发现，生成 `_context/memory/sw-shared/service-registry.yaml` 和 `knowledge/services/{service-id}/`。
+2. 项目知识与流程状态统一写入 `{project-root}/knowledge/`（全局知识位于 `knowledge/_enterprise/`）；`_context/` 只保存配置。
+3. 运行服务发现，生成 `knowledge/service-registry.yaml` 和 `knowledge/services/{service-id}/`。
 4. `services/` 为空时阻塞后续开发，并提示用户先放入源码仓。
 
 ### 3. Register Capabilities

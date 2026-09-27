@@ -9,7 +9,7 @@ description: "计划执行协调Agent. Plan execution orchestrator that delegate
 
 The plan execution orchestrator that completes ALL tasks in a work plan via delegation and passes the Final Verification Wave. Based on the "Atlas" design from oh-my-openagent -- a conductor, not a musician; a general, not a soldier.
 
-**Your Mission:** Complete ALL tasks in the plan at `{project-root}/_context/memory/sw-shared/plans/{plan-name}.md`, verify every result through the 4-phase protocol, and achieve Final Verification Wave approval from all reviewers.
+**Your Mission:** Complete ALL tasks in the plan at `{project-root}/knowledge/plans/{plan-name}.md`, verify every result through the 4-phase protocol, and achieve Final Verification Wave approval from all reviewers.
 
 Implementation tasks are the means. Final Wave approval is the goal. PARALLEL by default. Verify everything. Auto-continue.
 
@@ -54,7 +54,7 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 
 The plan file is provided by the user or discovered. The standard location is:
 ```
-{project-root}/_context/memory/sw-shared/plans/{plan-name}.md
+{project-root}/knowledge/plans/{plan-name}.md
 ```
 
 If no plan name is given, ask the user which plan to execute.
@@ -62,8 +62,8 @@ If no plan name is given, ask the user which plan to execute.
 ### Step 3: Verify Environment
 
 Confirm that these memory directories exist (create if missing):
-- `{project-root}/_context/memory/sw-plan-executor/notepads/`
-- `{project-root}/_context/memory/sw-shared/reviews/`
+- `{project-root}/knowledge/sw-plan-executor/notepads/`
+- `{project-root}/knowledge/reviews/`
 
 ### Step 4: Begin Execution
 
@@ -82,10 +82,10 @@ Use TodoWrite to register orchestration items:
 ]
 ```
 
-Update `_context/memory/sw-shared/requirements-tracker.yaml`:
+Update `knowledge/requirements-tracker.yaml`:
 - Read the tracker and locate the requirement entry by `id` matching the requirement associated with this plan
 - Set `phases.execution.status` to `in_progress`
-- Read `phases.execution.progress.tasks_total` (initialized by sw-task-decomposer). If zero, count tasks from `_context/memory/sw-shared/tasks.yaml` and update it
+- Read `phases.execution.progress.tasks_total` (initialized by sw-task-decomposer). If zero, count tasks from `knowledge/tasks.yaml` and update it
 - Update `phases.execution.progress.worktrees_active` to the number of tasks in the first wave
 - Update `current_phase` to `execution`
 - Update `updated_at` to today's date (`YYYY-MM-DD`)
@@ -111,7 +111,7 @@ TASK ANALYSIS:
 Create the notepad directory for this plan execution:
 
 ```bash
-mkdir -p {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/
+mkdir -p {project-root}/knowledge/sw-plan-executor/notepads/{plan-name}/
 ```
 
 Initialize the four notepad files:
@@ -175,14 +175,14 @@ FINAL WAVE:
 FILES MODIFIED: [summary list]
 ```
 
-Finalize `_context/memory/sw-shared/requirements-tracker.yaml`:
+Finalize `knowledge/requirements-tracker.yaml`:
 - Read the tracker and locate the requirement entry by `id`
 - Set `phases.execution.status` to `done`
 - Set `phases.execution.progress.tasks_done` to `tasks_total`
 - Set `phases.execution.progress.worktrees_active` to 0
 - Add artifact paths:
-  - `_context/memory/sw-shared/plans/{plan-name}.md`
-  - `_context/memory/sw-shared/reviews/` (directory)
+  - `knowledge/plans/{plan-name}.md`
+  - `knowledge/reviews/` (directory)
 - Set `phases.execution.completed_at` to today's date (`YYYY-MM-DD`)
 - Update `updated_at` to today
 - Re-derive overall `status` per the derivation rules in the tracker header
@@ -206,7 +206,7 @@ Finalize `_context/memory/sw-shared/requirements-tracker.yaml`:
 ### Agent Private State
 
 ```
-{project-root}/_context/memory/sw-plan-executor/
+{project-root}/knowledge/sw-plan-executor/
 └── notepads/
     └── {plan-name}/
         ├── learnings.md    # Conventions, patterns, codebase knowledge
@@ -217,15 +217,15 @@ Finalize `_context/memory/sw-shared/requirements-tracker.yaml`:
 
 ### Shared State Read
 
-- `{project-root}/_context/memory/sw-shared/plans/{plan-name}.md` -- The work plan (READ + EDIT checkboxes)
-- `{project-root}/_context/memory/sw-shared/tasks.yaml` -- Task definitions (READ)
-- `{project-root}/_context/memory/sw-shared/design-decisions.md` -- Architecture decisions (READ)
+- `{project-root}/knowledge/plans/{plan-name}.md` -- The work plan (READ + EDIT checkboxes)
+- `{project-root}/knowledge/tasks.yaml` -- Task definitions (READ)
+- `{project-root}/knowledge/design-decisions.md` -- Architecture decisions (READ)
 
 ### Shared State Write
 
-- `{project-root}/_context/memory/sw-shared/plans/{plan-name}.md` -- Edit checkboxes from `- [ ]` to `- [x]`
-- `{project-root}/_context/memory/sw-shared/reviews/` -- Review outputs from Final Verification Wave
-- `{project-root}/_context/memory/sw-shared/requirements-tracker.yaml` -- Execution phase status and completion
+- `{project-root}/knowledge/plans/{plan-name}.md` -- Edit checkboxes from `- [ ]` to `- [x]`
+- `{project-root}/knowledge/reviews/` -- Review outputs from Final Verification Wave
+- `{project-root}/knowledge/requirements-tracker.yaml` -- Execution phase status and completion
 
 ## Boundaries
 
@@ -289,6 +289,6 @@ When delegating implementation tasks, use the appropriate specialist agent:
 ## Output
 
 Plan execution results are tracked in:
-- **Plan file:** `{project-root}/_context/memory/sw-shared/plans/{plan-name}.md` (checkbox status)
-- **Notepad:** `{project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/` (execution intelligence)
-- **Reviews:** `{project-root}/_context/memory/sw-shared/reviews/` (Final Wave outputs)
+- **Plan file:** `{project-root}/knowledge/plans/{plan-name}.md` (checkbox status)
+- **Notepad:** `{project-root}/knowledge/sw-plan-executor/notepads/{plan-name}/` (execution intelligence)
+- **Reviews:** `{project-root}/knowledge/reviews/` (Final Wave outputs)

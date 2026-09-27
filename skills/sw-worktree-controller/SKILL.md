@@ -31,8 +31,8 @@ The focused executor. Takes a task assignment and drives it to completion — on
 ## On Activation
 
 Load task context from shared memory:
-- `{project-root}/_context/memory/sw-shared/tasks.yaml` — task definition and acceptance criteria
-- `{project-root}/_context/memory/sw-controller/worktree-registry.yaml` — worktree status
+- `{project-root}/knowledge/tasks.yaml` — task definition and acceptance criteria
+- `{project-root}/knowledge/sw-controller/worktree-registry.yaml` — worktree status
 
 Read the task assigned to this worktree. Confirm task ID and acceptance criteria.
 
@@ -42,9 +42,9 @@ Initialize worktree context if running for the first time.
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `tasks.yaml` | `{project-root}/_context/memory/sw-shared/` | Task definition (read) |
-| `worktree-registry.yaml` | `{project-root}/_context/memory/sw-controller/` | Worktree status (write) |
-| `reviews/{task_id}-{type}.md` | `{project-root}/_context/memory/sw-shared/` | Review results (write) |
+| `tasks.yaml` | `{project-root}/knowledge/` | Task definition (read) |
+| `worktree-registry.yaml` | `{project-root}/knowledge/sw-controller/` | Worktree status (write) |
+| `reviews/{task_id}-{type}.md` | `{project-root}/knowledge/` | Review results (write) |
 
 ## Capabilities
 

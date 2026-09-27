@@ -3,9 +3,9 @@
 
 Event: SessionEnd
 Purpose: Detect leftover work at session end and inject a warning context.
-         - in_progress tasks in _context/memory/sw-shared/tasks.yaml
+         - in_progress tasks in knowledge/tasks.yaml
          - uncommitted worktrees under .worktree/
-         - unfinished sw-shared sub-agents or phase transitions
+         - unfinished shared-state sub-agents or phase transitions
 
 This hook is INTENTIONALLY SOFT (additionalContext, not deny):
 - Denying session end is hostile UX; the user is leaving
@@ -15,7 +15,7 @@ This hook is INTENTIONALLY SOFT (additionalContext, not deny):
   * completion-gate.md (workflow check, not a hook)
 
 Detection logic:
-1. Walk _context/memory/sw-shared/tasks.yaml → count in_progress
+1. Walk knowledge/tasks.yaml → count in_progress
 2. Walk .worktree/ → count worktree directories
 3. If any leftover work → emit warning via additionalContext
 4. Otherwise: exit 0 silently
@@ -29,14 +29,14 @@ from pathlib import Path
 
 # Configurable: path patterns to scan
 TASKS_FILE_CANDIDATES = [
-    "_context/memory/sw-shared/tasks.yaml",
-    "_context/memory/sw-shared/tasks.json",
+    "knowledge/tasks.yaml",
+    "knowledge/tasks.json",
 ]
 WORKTREE_DIR_CANDIDATES = [".worktree", "worktrees"]
 
 
 def detect_project_root(start_dir: str) -> str:
-    markers = {".git", "_context", "pyproject.toml", "go.mod", "Cargo.toml", "package.json"}
+    markers = {".git", "_context", "knowledge", "pyproject.toml", "go.mod", "Cargo.toml", "package.json"}
     d = Path(start_dir).resolve()
     for _ in range(8):
         for marker in markers:

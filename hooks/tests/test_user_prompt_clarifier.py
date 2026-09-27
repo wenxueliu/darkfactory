@@ -66,7 +66,7 @@ def test_read_tracker_missing(tmp_path, monkeypatch):
 
 def test_read_tracker_with_in_progress(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    kb_dir = tmp_path / "_context" / "memory" / "sw-shared"
+    kb_dir = tmp_path / "knowledge"
     kb_dir.mkdir(parents=True)
     (kb_dir / "requirements-tracker.yaml").write_text("""
 requirements:
@@ -83,7 +83,7 @@ requirements:
 
 def test_read_tracker_no_in_progress(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    kb_dir = tmp_path / "_context" / "memory" / "sw-shared"
+    kb_dir = tmp_path / "knowledge"
     kb_dir.mkdir(parents=True)
     (kb_dir / "requirements-tracker.yaml").write_text("""
 requirements:
@@ -96,7 +96,7 @@ requirements:
 
 def test_read_tracker_malformed(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    kb_dir = tmp_path / "_context" / "memory" / "sw-shared"
+    kb_dir = tmp_path / "knowledge"
     kb_dir.mkdir(parents=True)
     (kb_dir / "requirements-tracker.yaml").write_text("not: valid: yaml: ::", encoding="utf-8")
     status = upc.read_tracker_status(str(tmp_path))
@@ -165,7 +165,7 @@ def test_main_explicit_skip_exits_silently(tmp_path, monkeypatch, capsys):
 
 def test_main_followup_with_in_progress_skips(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    kb_dir = tmp_path / "_context" / "memory" / "sw-shared"
+    kb_dir = tmp_path / "knowledge"
     kb_dir.mkdir(parents=True)
     (kb_dir / "requirements-tracker.yaml").write_text("""
 requirements:

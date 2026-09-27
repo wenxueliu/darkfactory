@@ -70,10 +70,10 @@ ${CLAUDE_PLUGIN_ROOT}/skills/sw-tdd-agent/references/tdd-ut-cycle.md
 
 ```
 # 正确 — 各平台解析为自己的记忆根目录
-Load task from {project-root}/_context/memory/sw-shared/tasks.yaml
+Load task from {project-root}/knowledge/tasks.yaml
 
 # 错误 — 假定特定工作目录
-Load task from /home/user/project/_context/memory/sw-shared/tasks.yaml
+Load task from /home/user/project/knowledge/tasks.yaml
 ```
 
 `{project-root}` token 由每个技能的"On Activation"步骤解析（Claude Code: 工作目录；Codex: 仓库根目录；OpenCode: 项目配置路径）。

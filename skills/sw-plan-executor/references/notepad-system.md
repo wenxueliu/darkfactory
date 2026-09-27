@@ -7,7 +7,7 @@
 ## 目录结构
 
 ```
-{project-root}/_context/memory/sw-plan-executor/notepads/
+{project-root}/knowledge/sw-plan-executor/notepads/
 └── {plan-name}/
     ├── learnings.md    # 发现的模式、约定、代码库知识
     ├── decisions.md    # 架构选择和理由
@@ -159,7 +159,7 @@
 
 **在每个委托之前，必须读取 notepad：**
 
-1. 执行 `glob("{project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/*.md")` 确认文件存在
+1. 执行 `glob("{project-root}/knowledge/sw-plan-executor/notepads/{plan-name}/*.md")` 确认文件存在
 2. 读取 `learnings.md` -- 了解项目模式和约定
 3. 读取 `decisions.md` -- 了解影响当前任务的架构决策
 4. 读取 `issues.md` -- 了解之前遇到的问题和解决方案
@@ -184,8 +184,8 @@
 
 在委托提示的 MUST DO 中，指示子 agent:
 ```
-将发现追加到 {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/learnings.md (追加，不覆盖)
-将发现追加到 {project-root}/_context/memory/sw-plan-executor/notepads/{plan-name}/issues.md (追加，不覆盖)
+将发现追加到 {project-root}/knowledge/sw-plan-executor/notepads/{plan-name}/learnings.md (追加，不覆盖)
+将发现追加到 {project-root}/knowledge/sw-plan-executor/notepads/{plan-name}/issues.md (追加，不覆盖)
 ```
 
 ### 写入格式规则
