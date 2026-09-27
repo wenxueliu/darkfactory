@@ -65,8 +65,8 @@ value_assessment 在 YAML 里是一个 phase，但在管道执行逻辑中只是
 | 阶段 | 验证器 | 检查维 | 产出 |
 |------|--------|--------|------|
 | Stage 1 | `feature-design/default` definition | 模板结构 + resolved gate/validator | knowledge/designs/{id}/feature-design.md |
-| Stage 2 | `service-design/{type}` definition × N | 模板结构 + resolved gate/validator | knowledge/designs/{id}/services/{svc}.md |
-| Stage 3 | `e2e/default` definition | 模板结构 + resolved gate/validator | knowledge/designs/{id}/e2e/design.md |
+| Stage 2 | `service-design/{type}` definition × N | 模板结构 + resolved gate/validator | knowledge/designs/{id}/services/{svc}/design.md |
+| Stage 3 | `e2e/default` definition | 模板结构 + resolved gate/validator | knowledge/designs/{id}/e2e/design.md + gate.md |
 | 最终 | 各设计定义包的 gate/validator | 完整性 / 可实施性 / 安全就绪 / 知识沉淀 | — |
 
 ### 可选：多模型交叉验证

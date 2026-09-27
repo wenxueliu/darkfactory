@@ -25,7 +25,7 @@
 
 所有文档都以 `services/` 下的代码仓为边界。一个仓库就是一个服务单元；仓库数量决定是否并行，不决定是否加载另一套架构模板。
 
-**Per-service 文档** (`knowledge/designs/{id}/services/{service_id}.md`) — 使用本模板的 Section 4-10.4:
+**Per-service 文档** (`knowledge/designs/{id}/services/{service_id}/design.md`) — 使用本模板的 Section 4-10.4:
 - Section 4 技术决策 → per-service S1
 - Section 5 架构设计 → per-service S2
 - Section 6 API/接口设计 → per-service S3
@@ -433,9 +433,9 @@ JSON 文件格式规范见 `references/api-test-postman-schema.md`。
 
 | 文件 | 路径 | 用途 |
 |------|------|------|
-| Postman Collection | `knowledge/tests/api-{requirement_id}.json` | Newman 执行 |
-| Environment 文件 | `knowledge/tests/api-{requirement_id}-env.json` | 环境变量 (baseUrl, tokens) |
-| Newman 报告 | `knowledge/tests/api-{requirement_id}-report.xml` | CI 集成 |
+| Postman Collection | `knowledge/designs/{requirement_id}/services/{service_id}/tests/collection.json` | Newman 执行 |
+| Environment 文件 | `knowledge/designs/{requirement_id}/services/{service_id}/tests/environment.json` | 环境变量 (baseUrl, tokens) |
+| Newman 报告 | `knowledge/designs/{requirement_id}/services/{service_id}/tests/report.xml` | CI 集成 |
 
 ### 10.5 第三层: E2E 测试设计 (端到端集成)
 

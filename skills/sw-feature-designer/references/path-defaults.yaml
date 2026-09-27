@@ -40,5 +40,7 @@ paths:
     manifest: knowledge/designs/{requirement_id}/manifest.yaml
     service_design_dir: knowledge/designs/{requirement_id}/services
     e2e_design: knowledge/designs/{requirement_id}/e2e/design.md
+    e2e_gate_report: knowledge/designs/{requirement_id}/e2e/gate.md
+    e2e_pre_query: knowledge/designs/{requirement_id}/e2e/pre-query.md
     tracker: knowledge/requirements-tracker.yaml
     adr_root: knowledge/_enterprise/decisions

@@ -13,6 +13,10 @@ artifacts:
   pre_query: pre-query.md | NOT_CREATED
   service_design_dir: services/
   e2e_design: e2e/design.md
+  e2e_gate_report: e2e/gate.md
+  e2e_pre_query: e2e/pre-query.md | NOT_CREATED
+service_designs: []
+api_test_artifacts: []
 traceability:
   acceptance_criteria_covered: []
   affected_services: []

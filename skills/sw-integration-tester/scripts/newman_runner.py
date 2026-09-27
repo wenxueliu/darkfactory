@@ -9,7 +9,7 @@ Usage:
     python newman_runner.py --requirement-id REQ-20260107-001
     python newman_runner.py --requirement-id REQ-... --json
     python newman_runner.py --requirement-id REQ-... --no-bail
-    python newman_runner.py --collection path/to/collection.json --env path/to/env.json
+    python newman_runner.py --service-id user-service --requirement-id REQ-20260107-001
 
 Exit codes:
     0  - All tests passed
@@ -31,6 +31,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 # --- Constants ---
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -38,12 +40,9 @@ SKILL_DIR = SCRIPT_DIR.parent
 # Walk up to project root: skills/sw-integration-tester/scripts -> project root
 PROJECT_ROOT = SKILL_DIR.parent.parent.parent
 
-DEFAULT_TESTS_DIRNAME = "tests"
 DEFAULT_SHARED_DIR = "knowledge"
-REQUIREMENTS_FILENAME_PATTERN = "api-{requirement_id}.json"
-ENV_FILENAME_PATTERN = "api-{requirement_id}-env.json"
-DATA_FILENAME_PATTERN = "api-{requirement_id}-data.json"
-REPORT_FILENAME_PATTERN = "api-{requirement_id}-report.xml"
+DESIGNS_DIRNAME = "designs"
+MANIFEST_FILENAME = "manifest.yaml"
 RESULTS_FILENAME = "test-results.yaml"
 
 NEWMAN_NOT_INSTALLED_HINT = (
@@ -70,16 +69,74 @@ def detect_project_root(start) -> Path:
     return start.resolve()
 
 
-def resolve_paths(requirement_id: str, project_root: Path) -> dict:
-    """Resolve the canonical paths for the test artifacts."""
-    tests_dir = project_root / DEFAULT_SHARED_DIR / DEFAULT_TESTS_DIRNAME
+def resolve_paths(requirement_id: str, project_root: Path, service_id: str) -> dict:
+    """Resolve one service's canonical test paths from the bundle layout."""
+    tests_dir = (
+        project_root
+        / DEFAULT_SHARED_DIR
+        / DESIGNS_DIRNAME
+        / requirement_id
+        / "services"
+        / service_id
+        / "tests"
+    )
     return {
-        "collection": tests_dir / REQUIREMENTS_FILENAME_PATTERN.format(requirement_id=requirement_id),
-        "env": tests_dir / ENV_FILENAME_PATTERN.format(requirement_id=requirement_id),
-        "data": tests_dir / DATA_FILENAME_PATTERN.format(requirement_id=requirement_id),
-        "report": tests_dir / REPORT_FILENAME_PATTERN.format(requirement_id=requirement_id),
+        "collection": tests_dir / "collection.json",
+        "env": tests_dir / "environment.json",
+        "data": tests_dir / "data.json",
+        "report": tests_dir / "report.xml",
+        "service_id": service_id,
         "results_yaml": project_root / DEFAULT_SHARED_DIR / RESULTS_FILENAME,
     }
+
+
+def resolve_manifest_path(requirement_id: str, project_root: Path) -> Path:
+    """Return the Stage 1 bundle manifest for a requirement."""
+    return (
+        project_root
+        / DEFAULT_SHARED_DIR
+        / DESIGNS_DIRNAME
+        / requirement_id
+        / MANIFEST_FILENAME
+    )
+
+
+def resolve_all_paths(requirement_id: str, project_root: Path) -> tuple[list[dict], str]:
+    """Load all Stage 2 API artifacts registered by the bundle manifest."""
+    manifest_path = resolve_manifest_path(requirement_id, project_root)
+    if not manifest_path.exists():
+        return [], f"Bundle manifest not found: {manifest_path}"
+
+    try:
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        return [], f"Cannot read bundle manifest {manifest_path}: {exc}"
+
+    entries = manifest.get("api_test_artifacts") or []
+    if not entries:
+        return [], (
+            f"No api_test_artifacts registered in {manifest_path}. "
+            "Every passed Stage 2 service must register its API test artifacts."
+        )
+
+    bundle_dir = manifest_path.parent
+    paths = []
+    for entry in entries:
+        service_id = entry.get("service_id")
+        if not service_id:
+            return [], f"Manifest entry in {manifest_path} is missing service_id"
+        resolved = resolve_paths(requirement_id, project_root, service_id)
+        for key, manifest_key in (
+            ("collection", "collection"),
+            ("env", "environment"),
+            ("data", "data"),
+            ("report", "report"),
+        ):
+            value = entry.get(manifest_key)
+            if value and value != "NOT_CREATED":
+                resolved[key] = bundle_dir / value
+        paths.append(resolved)
+    return paths, ""
 
 
 def pre_check(paths: dict) -> tuple[bool, str]:
@@ -87,7 +144,7 @@ def pre_check(paths: dict) -> tuple[bool, str]:
     if not paths["collection"].exists():
         return False, (
             f"Collection not found: {paths['collection']}. "
-            f"sw-e2e-designer must generate api-{{requirement_id}}.json before integration test runs. "
+            f"sw-service-designer must register a collection for this service before integration test runs. "
             f"Block: this is a hard failure; integration gate cannot pass without it."
         )
     if not paths["env"].exists():
@@ -95,7 +152,7 @@ def pre_check(paths: dict) -> tuple[bool, str]:
         return False, (
             f"Environment file not found: {paths['env']}. "
             f"Required for parameterizing baseUrl and authToken. "
-            f"Generate via sw-e2e-designer alongside the collection."
+            f"Generate via sw-service-designer alongside the collection."
         )
     return True, ""
 
@@ -220,6 +277,8 @@ def append_to_test_results_yaml(paths: dict, requirement_id: str, summary: dict)
         f"    exit_code: {summary['newman_exit_code']}",
         f"    status: {summary['status']}",
     ]
+    if summary.get("services"):
+        new_block_lines.insert(2, f"    services: {', '.join(summary['services'])}")
     new_block = "\n".join(new_block_lines) + "\n"
 
     existing = ""
@@ -259,7 +318,9 @@ def main() -> int:
     )
     parser.add_argument("--requirement-id", required=True,
                         help="Requirement ID (e.g. REQ-20260107-001). "
-                             "Used to locate tests/api-{id}.json and related artifacts.")
+                        "Used to read the Stage 1 bundle manifest and registered Stage 2 artifacts.")
+    parser.add_argument("--service-id",
+                        help="Run only one registered service's API collection; default runs all services.")
     parser.add_argument("--project-root", help="Override project root detection")
     parser.add_argument("--no-bail", action="store_true",
                         help="Disable --bail (run all tests even after first failure)")
@@ -273,19 +334,28 @@ def main() -> int:
     else:
         project_root = detect_project_root(Path.cwd())
 
-    paths = resolve_paths(args.requirement_id, project_root)
+    if args.service_id:
+        service_paths = [resolve_paths(args.requirement_id, project_root, args.service_id)]
+    else:
+        service_paths, err = resolve_all_paths(args.requirement_id, project_root)
+        if err:
+            result = {"status": "PRECHECK_FAILED", "exit_code": 2, "error": err}
+            _emit(result, args.json)
+            return 2
 
-    # --- Pre-check: collection + env files ---
-    ok, err = pre_check(paths)
-    if not ok:
-        result = {
-            "status": "PRECHECK_FAILED",
-            "exit_code": 2,
-            "error": err,
-            "paths": {k: str(v) for k, v in paths.items()},
-        }
-        _emit(result, args.json)
-        return 2
+    # --- Pre-check: every collection + env file ---
+    for paths in service_paths:
+        ok, err = pre_check(paths)
+        if not ok:
+            result = {
+                "status": "PRECHECK_FAILED",
+                "exit_code": 2,
+                "error": err,
+                "service_id": paths["service_id"],
+                "paths": {k: str(v) for k, v in paths.items() if isinstance(v, Path)},
+            }
+            _emit(result, args.json)
+            return 2
 
     # --- Pre-check: newman installed ---
     ok, err = check_newman_installed()
@@ -298,34 +368,46 @@ def main() -> int:
         _emit(result, args.json)
         return 3
 
-    # --- Execute newman ---
-    exit_code, stdout, stderr = run_newman(
-        paths,
-        bail=not args.no_bail,
-        timeout_request_ms=args.timeout_request,
-    )
+    # --- Execute Newman for every registered service ---
+    service_summaries = []
+    for paths in service_paths:
+        exit_code, stdout, stderr = run_newman(
+            paths,
+            bail=not args.no_bail,
+            timeout_request_ms=args.timeout_request,
+        )
+        summary = parse_junit_xml(paths["report"])
+        if "parse_error" in summary:
+            result = {
+                "status": "PARSE_FAILED",
+                "exit_code": 5,
+                "newman_exit_code": exit_code,
+                "service_id": paths["service_id"],
+                "error": summary["parse_error"],
+                "stderr_tail": stderr[-500:] if stderr else "",
+            }
+            _emit(result, args.json)
+            return 5
+        summary["newman_exit_code"] = exit_code
+        summary["service_id"] = paths["service_id"]
+        service_summaries.append(summary)
 
-    # --- Parse JUnit ---
-    summary = parse_junit_xml(paths["report"])
-    if "parse_error" in summary:
-        result = {
-            "status": "PARSE_FAILED",
-            "exit_code": 5,
-            "newman_exit_code": exit_code,
-            "error": summary["parse_error"],
-            "stderr_tail": stderr[-500:] if stderr else "",
-        }
-        _emit(result, args.json)
-        return 5
-
-    # --- Determine overall status ---
-    summary["newman_exit_code"] = exit_code
-    if exit_code == 0 and summary["failed"] == 0 and summary["errored"] == 0:
+    summary = {
+        "total": sum(item["total"] for item in service_summaries),
+        "passed": sum(item["passed"] for item in service_summaries),
+        "failed": sum(item["failed"] for item in service_summaries),
+        "errored": sum(item["errored"] for item in service_summaries),
+        "skipped": sum(item["skipped"] for item in service_summaries),
+        "failures": [failure for item in service_summaries for failure in item.get("failures", [])],
+        "services": [item["service_id"] for item in service_summaries],
+    }
+    if all(item["newman_exit_code"] == 0 for item in service_summaries) and not summary["failed"] and not summary["errored"]:
         summary["status"] = "PASS"
         out_exit = 0
     else:
         summary["status"] = "FAIL"
         out_exit = 4
+    summary["newman_exit_code"] = 0 if out_exit == 0 else 4
 
     # --- Persist to test-results.yaml ---
     ok, err = append_to_test_results_yaml(paths, args.requirement_id, summary)
@@ -334,8 +416,8 @@ def main() -> int:
         summary["persistence_warning"] = err
 
     # --- Final output ---
-    summary["report_path"] = str(paths["report"])
-    summary["collection_path"] = str(paths["collection"])
+    summary["report_paths"] = [str(paths["report"]) for paths in service_paths]
+    summary["collection_paths"] = [str(paths["collection"]) for paths in service_paths]
     result = {
         "status": summary["status"],
         "exit_code": out_exit,

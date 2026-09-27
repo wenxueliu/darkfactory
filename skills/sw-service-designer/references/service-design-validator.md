@@ -2,7 +2,7 @@
 
 ## 触发时机
 
-Per-service 设计文档 (`knowledge/designs/{requirement_id}/services/{service_id}.md`) 完成后，进入 Stage 3 之前。
+Per-service 设计文档 (`knowledge/designs/{requirement_id}/services/{service_id}/design.md`) 完成后，进入 Stage 3 之前。
 
 ## 验证清单
 
@@ -38,6 +38,10 @@ Per-service 设计文档 (`knowledge/designs/{requirement_id}/services/{service_
 - [ ] 安全设计方案有对应的验证方式
 
 ## 输出
+
+门禁报告写入 `paths.artifact_targets.gate_report`。服务设计文档和测试
+产物必须使用解析后的 `paths.artifact_targets`，通过后才更新 Stage 1
+bundle manifest。
 
 ```
 PASS: → 该服务设计完成，等待其他服务设计完成后进入 Stage 3

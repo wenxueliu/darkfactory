@@ -6,19 +6,24 @@ E2E 测试设计的目标是基于 Stage 1 的用户旅程和 Stage 2 的 per-se
 
 **E2E 设计文档是测试执行阶段的输入——由 Playwright/Cypress 等框架运行，验证完整用户旅程。**
 
-## 协调流程 (4 步)
+## 协调流程 (6 步)
 
 ### 第 1 步: 输入加载
 
-1. 读取 Stage 1 输出: `knowledge/designs/{requirement_id}/feature-design.md`
+1. 读取 `paths.evidence.bundle_manifest`、`paths.evidence.feature_design` 和
+   `paths.evidence.feature_gate_report`；确认 Stage 1 Gate 为 `PASS`
    - Section 3: 用户旅程设计 (交互流程 + 关键时刻 + 交互状态矩阵)
    - Section 5: 服务交互设计 (跨服务调用序列、SLA、降级策略)
    - Section 6: 跨服务契约
-2. 读取所有 Stage 2 输出: `knowledge/designs/{requirement_id}/services/*.md`
+2. 按 manifest 的 `service_designs` 读取所有 Stage 2 输出，路径以
+   `paths.evidence.service_design_glob` 和 `paths.evidence.service_gate_glob`
+   解析；每个服务 Gate 必须为 `PASS`
    - 每个服务的 S3: API/接口设计 (端点、数据模型)
    - 每个服务的 S5: 错误处理策略
-3. 读取配置: `_context/config.yaml` → `sw.business_domain` (驱动场景启用矩阵)
-4. 读取扩展配置: `_context/config.yaml` → `sw.e2e_extensions` (自定义场景/类别/钩子)
+3. 读取解析后的配置路径 → `sw.business_domain` (驱动场景启用矩阵)
+4. 读取解析后的配置路径 → `sw.e2e_extensions` (自定义场景/类别/钩子)
+5. 记录所有上游服务、契约、AC、测试数据和部署约束的追溯关系
+6. 缺失或冲突的上游输入返回 `BLOCKED` 或 `NEEDS_USER_INPUT`，不生成最终 E2E 设计
 
 ### 第 2 步: 场景规划
 
@@ -73,7 +78,10 @@ CLEANUP {回滚所有受影响服务的测试数据}
 ### 第 4 步: 输出
 
 **输出产物:**
-- 写入 `knowledge/designs/{requirement_id}/e2e/design.md`
+- 写入 `paths.artifact_targets.design_document`
+- 写入 `paths.artifact_targets.gate_report`
+- 成功执行知识库预查询时写入 `paths.artifact_targets.pre_query`
+- E2E Gate 通过后更新 `paths.artifact_targets.bundle_manifest` 的 E2E 条目和 bundle 状态
 
 **过渡条件 (E2E 设计完成):**
 - [ ] 每个用户旅程 ≥ 1 条 functional happy E2E
@@ -90,9 +98,9 @@ CLEANUP {回滚所有受影响服务的测试数据}
 
 | 上游 | 集成方式 |
 |------|---------|
-| Stage 1 特性设计 | 用户旅程 (Section 3) → E2E 功能场景 |
+| Stage 1 特性设计 | `paths.evidence.feature_design` 的用户旅程 (Section 3) → E2E 功能场景 |
 | Stage 1 特性设计 | 服务交互 SLA (Section 5) → E2E 性能场景 |
 | Stage 1 特性设计 | 降级策略 (Section 5) → E2E 可靠性场景 |
-| Stage 2 Per-service 设计 | API 端点 + 数据模型 → E2E GIVEN 数据构造 |
+| Stage 2 Per-service 设计 | `paths.evidence.service_design_glob` 的 API 端点 + 数据模型 → E2E GIVEN 数据构造 |
 | Stage 2 Per-service 设计 | 错误处理策略 → E2E 异常场景 |
 | Stage 2 Per-service 设计 | 安全方案 → E2E 安全场景 |

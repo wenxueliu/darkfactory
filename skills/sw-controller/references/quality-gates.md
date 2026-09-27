@@ -32,7 +32,7 @@ Worktree Controller 执行:
   │ │                                                  │   │
   │ │ 所有 UT PASS → 进入 API 验证                      │   │
   │ │ provider.start(service) → 本地启动服务             │   │
-  │ │ newman run api-{id}.json                         │   │
+  │ │ newman run services/{svc}/tests/collection.json  │   │
   │ │   --env-var baseUrl={provider.get_endpoint()}     │   │
   │ │ → 所有 API PASS                                  │   │
   │ │ provider.stop(service)                           │   │
@@ -130,7 +130,7 @@ API 验证流程 (provider-agnostic):
      命令来源: service-registry.yaml → lifecycle.local-process.start
   3. provider.wait_healthy([service], timeout=30)     # 轮询 health_check 端点
   4. base_url = provider.get_endpoint(service)         # → "http://localhost:{port}"
-  5. newman run tests/api-{id}-{svc}.json \
+  5. newman run knowledge/designs/{id}/services/{svc}/tests/collection.json \
        --env-var baseUrl={base_url} \
        --reporters cli,junit
   6. 全部 PASS → provider.stop([service]) → 进入 GATE 2
@@ -138,11 +138,11 @@ API 验证流程 (provider-agnostic):
 
 ```bash
 # Newman 执行 (baseUrl 由 provider.get_endpoint() 动态注入，不硬编码 localhost:8080)
-newman run knowledge/tests/api-{requirement_id}.json \
-  -e knowledge/tests/api-{requirement_id}-env.json \
+newman run knowledge/designs/{requirement_id}/services/{service_id}/tests/collection.json \
+  -e knowledge/designs/{requirement_id}/services/{service_id}/tests/environment.json \
   --env-var baseUrl={provider_endpoint} \
   --reporters cli,junit \
-  --reporter-junit-export knowledge/tests/api-{requirement_id}-report.xml
+  --reporter-junit-export knowledge/designs/{requirement_id}/services/{service_id}/tests/report.xml
 ```
 
 **验证规则:**
@@ -279,7 +279,7 @@ review_status:
 7. 全量 API 测试 (所有服务):
    for each service:
      base_url = provider.get_endpoint(service)
-     newman run tests/api-{id}-{svc}.json --env-var baseUrl={base_url}
+     newman run knowledge/designs/{id}/services/{svc}/tests/collection.json --env-var baseUrl={base_url}
 
 8. 契约测试 (跨服务 API 依赖):
    for each contract in knowledge/_enterprise/contracts/:
@@ -330,7 +330,7 @@ review_status:
 | 产物 | 路径 | 内容 |
 |------|------|------|
 | UT 执行报告 | `worktree-registry.yaml` → `test_status.ut` | PASS/FAIL + 覆盖率 |
-| API 测试报告 | `tests/api-{id}-report.xml` | Newman JUnit 报告 |
+| API 测试报告 | `knowledge/designs/{id}/services/{service_id}/tests/report.xml` | Newman JUnit 报告 |
 | 安全审查报告 | `reviews/{task_id}-review-security.md` | P0-P3 列表 |
 | 逻辑审查报告 | `reviews/{task_id}-review-logic.md` | P0-P3 列表 |
 | 性能审查报告 | `reviews/{task_id}-review-performance.md` | P0-P3 列表 |

@@ -228,5 +228,5 @@ paths:
 - 需求规格: `requirements/{requirement_id}.md`
 - 头脑风暴记录: `knowledge/designs/{requirement_id}/brainstorm.md` (如有)
 - Per-service 设计文档 (Stage 2 产出): `knowledge/designs/{requirement_id}/services/`
-- E2E 测试设计 (Stage 3 产出): `knowledge/designs/{requirement_id}/e2e/design.md`
+- E2E 测试设计 (Stage 3 产出): `knowledge/designs/{requirement_id}/e2e/design.md` + `gate.md`
 - 知识库: `knowledge/_enterprise/decisions/`

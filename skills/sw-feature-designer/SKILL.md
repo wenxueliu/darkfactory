@@ -219,11 +219,14 @@ If no context or ADR evidence is available, record `NOT_REQUESTED` or
 3. Write the design document, gate report, and design manifest to the resolved
    artifact targets. The manifest must point to the Stage 1 document, gate
    report, requirement ID, definition variant, and downstream `services/` and
-   `e2e/` directories.
-4. Update the resolved requirements tracker only after a successful design
-   gate: set `phases.design.status: done`, append the design artifact, set
-   `completed_at`, update `current_phase`, and re-derive overall status. On
-   failure, keep the phase `blocked` or `in_progress` with actionable findings.
+   `e2e/` directories. Initialize `service_designs` and `api_test_artifacts`
+   as empty lists for Stage 2 to populate, and set manifest `status` to
+   `stage1_passed` only after the Stage 1 gate passes.
+4. Do not update the requirements tracker. `sw-controller` owns the global
+   `phases.design` state and may mark it `done` only after Stage 1, every Stage
+   2 service, Stage 3, and the aggregate design gate pass. On a successful
+   Stage 1 gate, return `GATE_PASSED` and leave the bundle manifest at
+   `stage1_passed` for the controller to advance.
 5. Return the standard output contract below. No unresolved decision may be
    represented as approved.
 
@@ -284,6 +287,8 @@ artifacts:
   gate_report: "{resolved paths.artifact_targets.gate_report}"
   service_design_dir: "{resolved paths.artifact_targets.service_design_dir}"
   e2e_design: "{resolved paths.artifact_targets.e2e_design}"
+  e2e_gate_report: "{resolved paths.artifact_targets.e2e_gate_report}"
+  e2e_pre_query: "{resolved paths.artifact_targets.e2e_pre_query|NOT_CREATED}"
   tracker: "{resolved paths.artifact_targets.tracker}"
 resolved_paths:
   config_file: "..."
@@ -324,14 +329,14 @@ Status semantics:
 | Deployment readiness | Release order, feature flags where applicable, rollback, migration handling, and monitoring thresholds are defined | `deployment_strategy` section | Yes |
 | Consistency and review | Services in impact, interactions, contracts, journeys, and deployment waves do not contradict each other; grill result is recorded | V2 checklist + grill report | Yes for conflicts |
 | Gate and validation | Resolved machine validator/gate and semantic V1–V3 checklist both run with actionable results | Validation + gate report | Yes when declared |
-| Artifact and tracker | Per-requirement design directory contains the manifest, design document, gate report, optional pre-query, and downstream targets; tracker uses resolved targets and design phase is marked done only after PASS | `artifacts` + tracker | Yes |
+| Artifact and tracker | Per-requirement design directory contains the manifest, design document, gate report, optional pre-query, and downstream targets; controller updates the tracker only after all design stages pass | `artifacts` + controller-owned tracker | Yes |
 | Human approval and status | No unresolved decision is marked final; final result uses the declared status values | `open_questions` + `result` | Yes |
 
 ## Memory and State Boundaries
 
 Read only from resolved evidence paths and caller-provided evidence. Write only
-to resolved artifact targets. The Skill may update the requirements tracker as
-specified above, but must not modify source repositories, service code, or
+to resolved artifact targets. The requirements tracker is controller-owned and
+read-only for this Skill. Do not modify source repositories, service code, or
 unconfigured context/ADR files. Proposed ADRs remain proposals until the user
 confirms them and an explicit ADR target is provided.
 

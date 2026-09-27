@@ -127,7 +127,7 @@
 │     sw-codebase-explorer + sw-external-researcher (并行研究)         │
 │                                                                      │
 │   3-Stage delegation:                                                │
-│     Stage 1: sw-feature-designer → knowledge/designs/{id}/feature.md │
+│     Stage 1: sw-feature-designer → knowledge/designs/{id}/feature-design.md │
 │     Stage 2: sw-service-designer × N (并行) → per-service design    │
 │     Stage 3: sw-e2e-designer → knowledge/designs/{id}/e2e/design.md │
 │                                                                      │

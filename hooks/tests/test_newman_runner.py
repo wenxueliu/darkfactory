@@ -31,19 +31,48 @@ def test_detect_project_root_with_context(tmp_path, monkeypatch):
 
 def test_detect_project_root_no_markers(tmp_path, monkeypatch):
     root = nr.detect_project_root(str(tmp_path))
-    # Falls back to the input path
-    assert root.resolve() == tmp_path.resolve()
+    # It may discover an enclosing repository marker (for example /tmp/.git
+    # in the managed test environment), but must return an ancestor.
+    assert root.resolve() in (tmp_path.resolve(), *tmp_path.resolve().parents)
 
 
 # --- resolve_paths ---
 
 def test_resolve_paths(tmp_path):
-    paths = nr.resolve_paths("REQ-001", tmp_path)
-    assert "REQ-001" in str(paths["collection"])
-    assert "REQ-001-env" in str(paths["env"])
-    assert "REQ-001-data" in str(paths["data"])
-    assert "REQ-001-report" in str(paths["report"])
+    paths = nr.resolve_paths("REQ-001", tmp_path, "user-service")
+    assert str(paths["collection"]).endswith(
+        "knowledge/designs/REQ-001/services/user-service/tests/collection.json"
+    )
+    assert str(paths["env"]).endswith(
+        "knowledge/designs/REQ-001/services/user-service/tests/environment.json"
+    )
+    assert str(paths["data"]).endswith(
+        "knowledge/designs/REQ-001/services/user-service/tests/data.json"
+    )
+    assert str(paths["report"]).endswith(
+        "knowledge/designs/REQ-001/services/user-service/tests/report.xml"
+    )
     assert str(paths["results_yaml"]).endswith("test-results.yaml")
+
+
+def test_resolve_all_paths_reads_manifest(tmp_path):
+    manifest_dir = tmp_path / "knowledge" / "designs" / "REQ-001"
+    manifest_dir.mkdir(parents=True)
+    (manifest_dir / "manifest.yaml").write_text(
+        """api_test_artifacts:
+  - service_id: user-service
+    collection: services/user-service/tests/collection.json
+    environment: services/user-service/tests/environment.json
+    data: NOT_CREATED
+    report: services/user-service/tests/report.xml
+""",
+        encoding="utf-8",
+    )
+    paths, err = nr.resolve_all_paths("REQ-001", tmp_path)
+    assert err == ""
+    assert len(paths) == 1
+    assert paths[0]["service_id"] == "user-service"
+    assert paths[0]["data"].name == "data.json"
 
 
 # --- pre_check ---
@@ -56,7 +85,7 @@ def test_pre_check_missing_collection(tmp_path):
     ok, err = nr.pre_check(paths)
     assert ok is False
     assert "Collection not found" in err
-    assert "e2e-designer" in err
+    assert "service-designer" in err
 
 
 def test_pre_check_missing_env(tmp_path):
@@ -235,10 +264,18 @@ def test_main_precheck_failure_exits_2(tmp_path, capsys, monkeypatch):
 def test_main_newman_missing_exits_3(tmp_path, capsys, monkeypatch):
     # Create files but no newman binary
     (tmp_path / ".git").mkdir()
-    tests_dir = tmp_path / "knowledge" / "tests"
+    tests_dir = tmp_path / "knowledge" / "designs" / "R1" / "services" / "user-service" / "tests"
     tests_dir.mkdir(parents=True)
-    (tests_dir / "api-R1.json").touch()
-    (tests_dir / "api-R1-env.json").touch()
+    (tests_dir / "collection.json").touch()
+    (tests_dir / "environment.json").touch()
+    (tmp_path / "knowledge" / "designs" / "R1" / "manifest.yaml").write_text(
+        """api_test_artifacts:
+  - service_id: user-service
+    collection: services/user-service/tests/collection.json
+    environment: services/user-service/tests/environment.json
+""",
+        encoding="utf-8",
+    )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", [
         "newman_runner.py",

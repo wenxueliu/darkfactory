@@ -143,8 +143,8 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 设计阶段由 3 个专用 Agent 依次执行:
 
 1. **sw-feature-designer** → `knowledge/designs/{id}/feature-design.md` (跨服务特性设计)
-2. **sw-service-designer** × N → `knowledge/designs/{id}/services/{svc}.md` (per-service 详细设计, 并行)
-3. **sw-e2e-designer** → `knowledge/designs/{id}/e2e/design.md` (E2E 集成测试设计)
+2. **sw-service-designer** × N → `knowledge/designs/{id}/services/{svc}/design.md` (per-service 详细设计, 并行)
+3. **sw-e2e-designer** → `knowledge/designs/{id}/e2e/design.md` + `gate.md` (E2E 集成测试设计)
 
 每阶段完成后调用对应验证器验证。全部 3 阶段通过后，进入 ADR 沉淀 + 多模型验证 + 门禁。
 
@@ -277,6 +277,11 @@ When Worktree Controllers report status, respond according to:
 
 在检查阶段过渡条件时，**以 `requirements-tracker.yaml` 为权威数据源**。先读 tracker 确认各 phase 状态，再与以下规则交叉验证。tracker 中 `status: done` 的 phase 即视为已完成，`status: blocked` 的 phase 阻止所有后续过渡。
 
+`sw-controller` 独占写入 `phases.design`：进入设计阶段时置为
+`in_progress`；Stage 1、全部 Stage 2 服务、Stage 3 和总设计门禁全部通过后，
+才置为 `done` 并写入 `completed_at`。Stage 1/2 Agent 只能更新设计 bundle
+manifest，不能提前完成全局设计阶段。
+
 ```
 ideation → design:
   ✅ Requirements spec filled
@@ -288,9 +293,9 @@ ideation → design:
 design → decomposition:
   ✅ Feature design doc complete (Stage 1: knowledge/designs/{id}/feature-design.md)
   ✅ Feature design validator PASS (V1-V3)
-  ✅ Per-service design docs complete (Stage 2: knowledge/designs/{id}/services/{svc}.md × N)
+  ✅ Per-service design docs complete (Stage 2: knowledge/designs/{id}/services/{svc}/design.md × N)
   ✅ Per-service validators PASS (V1-V4) for each service
-  ✅ E2E test design complete (Stage 3: knowledge/designs/{id}/e2e/design.md)
+  ✅ E2E test design complete (Stage 3: knowledge/designs/{id}/e2e/design.md + gate.md)
   ✅ E2E design validator PASS (V1-V5)
   ✅ ADR written for key decisions
   ✅ Design gate PASS

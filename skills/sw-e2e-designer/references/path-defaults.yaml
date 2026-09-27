@@ -1,0 +1,45 @@
+# Fallback semantic paths for standalone sw-e2e-designer execution.
+# Call-time paths and project configuration take precedence.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  definition_roots:
+    project: knowledge/templates
+    user: null
+    skill: skills/sw-e2e-designer/references/document-definitions
+
+  evidence:
+    bundle_manifest: knowledge/designs/{requirement_id}/manifest.yaml
+    feature_design: knowledge/designs/{requirement_id}/feature-design.md
+    feature_gate_report: knowledge/designs/{requirement_id}/feature-design-gate.md
+    service_design_root: knowledge/designs/{requirement_id}/services
+    service_design_glob: knowledge/designs/{requirement_id}/services/*/design.md
+    service_gate_glob: knowledge/designs/{requirement_id}/services/*/gate.md
+    context_files:
+      - knowledge/CONTEXT.md
+    context_maps:
+      - knowledge/CONTEXT-MAP.md
+    decision_roots:
+      - knowledge/_enterprise/decisions
+      - knowledge/decisions
+    pattern_roots:
+      - knowledge/_enterprise/patterns
+      - knowledge/patterns
+    lesson_roots:
+      - knowledge/_enterprise/lessons
+      - knowledge/lessons
+    contract_roots:
+      - knowledge/_enterprise/contracts
+      - knowledge/contracts
+    service_registry: knowledge/service-registry.yaml
+
+  artifact_targets:
+    design_dir: knowledge/designs/{requirement_id}/e2e
+    design_document: knowledge/designs/{requirement_id}/e2e/design.md
+    gate_report: knowledge/designs/{requirement_id}/e2e/gate.md
+    pre_query: knowledge/designs/{requirement_id}/e2e/pre-query.md
+    bundle_manifest: knowledge/designs/{requirement_id}/manifest.yaml
+    tracker: knowledge/requirements-tracker.yaml

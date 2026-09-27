@@ -541,7 +541,7 @@ L3 E2E (e2e-test-case-template.md) ← 本模板
 
 | 产物 | 路径 | 何时生成 |
 |------|------|---------|
-| E2E 用例设计 | `knowledge/designs/{id}/feature-design.md` Section 10.5 | 设计阶段 (sw-controller 加载本模板填充) |
+| E2E 用例设计 | `paths.artifact_targets.design_document` (默认 `knowledge/designs/{id}/e2e/design.md`) | Stage 3 (`sw-e2e-designer`) |
 | E2E 测试脚本 | `tests/e2e/{requirement_id}/` | 执行阶段 (由 Worktree Controller 协调生成) |
 | 扩展配置 | `_context/config.yaml` (sw.e2e_extensions) | 项目初始化或按需追加 |
 | 钩子脚本 | `knowledge/e2e-hooks/` | 按需创建 |

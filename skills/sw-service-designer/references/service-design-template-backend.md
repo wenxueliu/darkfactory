@@ -8,7 +8,7 @@ contract_version: "1.0"
 
 ## 使用说明
 
-用于后端服务 (Java/Go/Python/Rust 等) 的详细设计。由 sw-service-designer 加载填充，输出至 `knowledge/designs/{requirement_id}/services/{service_id}.md`。
+用于后端服务 (Java/Go/Python/Rust 等) 的详细设计。由 sw-service-designer 加载填充，输出至 `knowledge/designs/{requirement_id}/services/{service_id}/design.md`。
 
 ---
 
@@ -180,5 +180,5 @@ assertThat(result).isEqualTo(expected);
 
 | 文件 | 路径 |
 |------|------|
-| Postman Collection | `tests/api-{requirement_id}-{service_id}.json` |
-| Environment | `tests/api-{requirement_id}-{service_id}-env.json` |
+| Postman Collection | `paths.artifact_targets.api_collection` |
+| Environment | `paths.artifact_targets.api_environment` |

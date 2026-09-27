@@ -2,9 +2,9 @@
 
 ## 检测优先级
 
-1. `service-registry.yaml` 中 `services[].type` 显式声明 → 直接使用
-2. `service-registry.yaml` 中 `services[].language` 字段 → 按规则推断
-3. 注册表缺少当前仓库条目 → 直接检查 `services/{service_id}/` 的文件并按规则推断；无法识别时默认 `backend` 并警告
+1. `paths.evidence.service_registry` 中 `services[].type` 显式声明 → 直接使用
+2. `paths.evidence.service_registry` 中 `services[].language` 字段 → 按规则推断
+3. 注册表缺少当前仓库条目 → 直接检查 `paths.evidence.service_roots/{service_id}/` 的文件并按规则推断；无法识别时默认 `backend` 并警告
 
 ## 语言 → 类型映射
 

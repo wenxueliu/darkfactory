@@ -7,10 +7,10 @@ API 层测试用例使用 Postman Collection v2.1 JSON 格式承载，通过 New
 ## 文件组织
 
 ```
-knowledge/tests/
-├── api-{requirement_id}.json          # Postman Collection — 所有 API 测试用例
-├── api-{requirement_id}-env.json      # Postman Environment — 变量（baseUrl, tokens, 动态值）
-└── api-{requirement_id}-data.json     # 测试数据文件 (Newman -d 参数) — 数据驱动测试的数据集
+knowledge/designs/{requirement_id}/services/{service_id}/tests/
+├── collection.json       # Postman Collection — 当前服务的 API 测试用例
+├── environment.json      # Postman Environment — 变量（baseUrl, tokens, 动态值）
+└── data.json              # 可选测试数据文件 (Newman -d 参数)
 ```
 
 ## Postman Collection 结构模板
@@ -27,7 +27,7 @@ knowledge/tests/
 {
   "info": {
     "name": "{requirement_id} — {需求标题}",
-    "description": "关联设计: knowledge/designs/{requirement_id}/feature-design.md\n生成时间: {timestamp}",
+    "description": "关联服务设计: knowledge/designs/{requirement_id}/services/{service_id}/design.md\n关联特性设计: knowledge/designs/{requirement_id}/feature-design.md\n生成时间: {timestamp}",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -302,19 +302,19 @@ pm.sendRequest({
 
 ```bash
 # 基础执行
-newman run knowledge/tests/api-{requirement_id}.json \
-  -e knowledge/tests/api-{requirement_id}-env.json \
+newman run knowledge/designs/{requirement_id}/services/{service_id}/tests/collection.json \
+  -e knowledge/designs/{requirement_id}/services/{service_id}/tests/environment.json \
   --reporters cli,junit \
-  --reporter-junit-export knowledge/tests/api-{requirement_id}-report.xml
+  --reporter-junit-export knowledge/designs/{requirement_id}/services/{service_id}/tests/report.xml
 
 # 数据驱动执行 (如有多个数据集)
-newman run knowledge/tests/api-{requirement_id}.json \
-  -e knowledge/tests/api-{requirement_id}-env.json \
-  -d knowledge/tests/api-{requirement_id}-data.json
+newman run knowledge/designs/{requirement_id}/services/{service_id}/tests/collection.json \
+  -e knowledge/designs/{requirement_id}/services/{service_id}/tests/environment.json \
+  -d knowledge/designs/{requirement_id}/services/{service_id}/tests/data.json
 
 # CI 模式 — 失败立即退出 + 超时
-newman run knowledge/tests/api-{requirement_id}.json \
-  -e knowledge/tests/api-{requirement_id}-env.json \
+newman run knowledge/designs/{requirement_id}/services/{service_id}/tests/collection.json \
+  -e knowledge/designs/{requirement_id}/services/{service_id}/tests/environment.json \
   --bail \
   --timeout-request 10000
 ```
@@ -339,7 +339,7 @@ newman run knowledge/tests/api-{requirement_id}.json \
 
 | 产物 | 路径 | 用途 |
 |------|------|------|
-| Postman Collection | `tests/api-{requirement_id}.json` | Newman 执行的主文件 |
-| Environment 文件 | `tests/api-{requirement_id}-env.json` | 环境变量配置 |
-| 测试数据文件 (可选) | `tests/api-{requirement_id}-data.json` | 数据驱动测试 |
-| Newman 执行报告 | `tests/api-{requirement_id}-report.xml` | CI 集成 |
+| Postman Collection | `knowledge/designs/{requirement_id}/services/{service_id}/tests/collection.json` | Newman 执行的主文件 |
+| Environment 文件 | `knowledge/designs/{requirement_id}/services/{service_id}/tests/environment.json` | 环境变量配置 |
+| 测试数据文件 (可选) | `knowledge/designs/{requirement_id}/services/{service_id}/tests/data.json` | 数据驱动测试 |
+| Newman 执行报告 | `knowledge/designs/{requirement_id}/services/{service_id}/tests/report.xml` | CI 集成 |

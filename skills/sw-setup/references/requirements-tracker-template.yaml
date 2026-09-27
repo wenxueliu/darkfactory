@@ -3,7 +3,7 @@
 # DO NOT EDIT MANUALLY
 #
 # 记录所有需求从 ideation 到 delivery 的完整阶段状态和产出物路径。
-# 各阶段 Agent 负责更新对应阶段的 status/artifacts/completed_at。
+# 各阶段 Agent 更新自身产物；全局阶段状态由 sw-controller 按门禁结果统一更新。
 # sw-controller 读取此文件作为阶段转换检查的权威数据源。
 #
 # --- 字段说明 ---
@@ -45,7 +45,7 @@
 #
 #   sw-requirements-clarifier:  创建条目 + phases.ideation
 #   sw-value-judgment:          更新 phases.value_assessment
-#   sw-feature-designer:        更新 phases.design
+#   sw-controller:              进入设计阶段时置 in_progress，Stage 1/2/3 和总设计门禁通过后置 done
 #   sw-task-decomposer:         更新 phases.decomposition
 #   sw-plan-executor:           更新 phases.execution (start → in_progress, end → done) + progress
 #   sw-finishing-branch:        更新 phases.merge

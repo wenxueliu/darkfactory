@@ -18,7 +18,8 @@ Skill 的物理目录。字段按以下优先级合并：
   `feature-design.md`、`feature-design-gate.md`、`manifest.yaml`，以及成功执行
   知识库预查询时创建 `pre-query.md`。Stage 2/3 分别使用同一目录下的
   `services/` 和 `e2e/` 子目录。
-- `tracker` 是跨阶段共享状态，只有通过设计门禁后才更新 `phases.design`。
+- `tracker` 是跨阶段共享状态，由 `sw-controller` 独占写入；本 Skill 只读
+  tracker，不得在 Stage 1 Gate 通过时将 `phases.design` 标记为完成。
 - `pre_query` 只有在 `sw-knowledge-agent` 成功返回时写入；失败时记录 `SKIPPED`，不创建伪造的报告。
 - `adr_root` 只表示允许的 ADR 目标位置；没有用户确认和显式写入授权时不创建 ADR。
 - 外部 Skill 的内部路径不属于本 Skill 的 `paths`，外部能力不可用时按降级协议继续。
@@ -34,8 +35,19 @@ knowledge/designs/{requirement_id}/
 ├── feature-design-gate.md
 ├── pre-query.md
 ├── services/
+│   └── {service_id}/
+│       ├── design.md
+│       ├── gate.md
+│       ├── pre-query.md
+│       └── tests/
+│           ├── collection.json
+│           ├── environment.json
+│           ├── data.json
+│           └── report.xml
 └── e2e/
-    └── design.md
+    ├── design.md
+    ├── gate.md
+    └── pre-query.md
 ```
 
 ## 定义资源解析

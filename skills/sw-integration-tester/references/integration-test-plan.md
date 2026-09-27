@@ -79,7 +79,7 @@ SKIP: {N}/{total} cases skipped
 
 ### 6.1 API 测试 (Newman, 硬执行)
 
-`sw-integration-tester` 必须在集成测试阶段通过 `python scripts/newman_runner.py --requirement-id {requirement_id}` 调用 newman。**此步骤不可跳过、不可选做。**
+`sw-integration-tester` 必须在集成测试阶段通过 `python scripts/newman_runner.py --requirement-id {requirement_id}` 调用 newman。脚本读取该需求 manifest 中所有 Stage 2 服务的 API 测试产物并逐个执行。**此步骤不可跳过、不可选做。**
 
 通过标准（全部满足才视为 PASS）:
 - `newman run` exit code == 0
@@ -90,7 +90,7 @@ SKIP: {N}/{total} cases skipped
 | 退出码 | 含义 | 路由 |
 |-------|------|------|
 | 0 | 全部通过 | 进入下一步 |
-| 2 | PRECHECK_FAILED (collection/env 缺失) | 回 sw-controller → sw-e2e-designer 补产出 |
+| 2 | PRECHECK_FAILED (某服务 collection/env 缺失) | 回 sw-controller → 对应 sw-service-designer 补产出并更新 manifest |
 | 3 | NEWMAN_MISSING (newman 未安装) | 升级到人工安装 |
 | 4 | FAIL (newman 报告失败) | 诊断 → 修代码或修测试数据 |
 | 5 | PARSE_FAILED (JUnit 解析异常) | 升级到人工（通常 newman/工具链不匹配） |

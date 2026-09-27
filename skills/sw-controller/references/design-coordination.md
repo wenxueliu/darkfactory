@@ -165,7 +165,7 @@
 
 **委托:** Delegate to `sw-service-designer` — 对每个受影响服务并行启动
 **输入:** Stage 1 输出 (服务影响分析 + 服务能力摘要 + 服务交互 + 跨服务契约) + 服务注册表 + 服务代码仓库 (`services/{id}/`)
-**输出:** `knowledge/designs/{id}/services/{service_id}.md` × N + `tests/api-{id}-{service_id}.json` × N
+**输出:** `knowledge/designs/{id}/services/{service_id}/design.md` × N + `knowledge/designs/{id}/services/{service_id}/tests/collection.json` × N
 **验证:** 对每个服务解析 `service-design/{service_type}` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 **内容 (后端):** S1 技术决策 → S2 架构设计 → S3 API/接口 → S4 状态管理 → S5 错误处理 → S6 安全 → S7 UT 设计 → S8 API 测试设计
 **内容 (前端):** S1 技术决策 → S2 组件架构 → S3 API 集成 → S4 客户端状态 → S5 错误 UI → S6 安全 → S7 UT 设计 → S8 集成测试
@@ -176,7 +176,7 @@
 
 **委托:** Delegate to `sw-e2e-designer`
 **输入:** Stage 1 输出 (用户旅程 + 服务交互 + 降级策略) + 所有 Stage 2 输出 (API 契约 + 错误处理)
-**输出:** `knowledge/designs/{id}/e2e/design.md`
+**输出:** `knowledge/designs/{id}/e2e/design.md` + `knowledge/designs/{id}/e2e/gate.md`
 **验证:** 解析 `e2e/default` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 **内容:**
 - 功能 E2E (每用户旅程 happy + error + boundary)
@@ -186,9 +186,9 @@
 
 #### 阶段协调
 
-1. Stage 1 完成 → 总控收集服务影响列表 + 各服务的**能力摘要**（代码调查产物）→ 启动 Stage 2 (并行)
+1. 进入设计阶段时，总控将 tracker 的 `phases.design` 置为 `in_progress`；Stage 1 完成后，总控收集服务影响列表 + 各服务的**能力摘要**（代码调查产物）→ 启动 Stage 2 (并行)
 2. 所有 Stage 2 完成 → 总控收集所有 per-service 设计路径 → 启动 Stage 3
-3. Stage 3 完成 → 进入 ADR 创建和多模型验证
+3. Stage 3 完成 → 进入 ADR 创建和多模型验证；总设计门禁和知识沉淀全部通过后，总控将 `phases.design` 置为 `done`，写入 `completed_at` 和 manifest 路径
 4. 任一步骤失败 → 回到对应步骤修订，最多 3 轮
 
 **Stage 1 → Stage 2 → 任务拆分的产物传递链:**
@@ -412,7 +412,7 @@ Stage 2 消费:
 | 产物 | 路径 | 何时生成 |
 |------|------|---------|
 | 全局特性设计文档 | `knowledge/designs/{id}/feature-design.md` | 第 2 步完成 |
-| 仓库级设计文档 × N | `knowledge/designs/{id}/services/{service_id}.md` | 按受影响仓库并行完成 |
+| 仓库级设计文档 × N | `knowledge/designs/{id}/services/{service_id}/design.md` | 按受影响仓库并行完成 |
 | 必要的跨仓库契约 | `knowledge/_enterprise/contracts/{service_id}-openapi.yaml` | 设计阶段定义 |
 | ADR | `knowledge/_enterprise/decisions/ADR-{NNNN}-{slug}.md` | 第 3 步完成 |
 | 仓库级安全/逻辑/性能审查 | `reviews/{id}-service-{service_id}-review-{type}.md` | 各仓库设计完成后 |

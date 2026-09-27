@@ -21,7 +21,7 @@
 
 1. **服务注册表:** `knowledge/service-registry.yaml` — 所有已注册服务的权威列表（auto-generated, 由 sw-knowledge-agent 维护）
 2. **Stage 1 跨服务设计:** `knowledge/designs/{id}/feature-design.md` — 其中的「服务影响分析」表列出了本次需求实际涉及的服务（从 service-registry 中筛选，不可臆想）
-3. **Stage 2 Per-service 设计:** `knowledge/designs/{id}/services/{svc}.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
+3. **Stage 2 Per-service 设计:** `knowledge/designs/{id}/services/{svc}/design.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
 4. **Stage 3 E2E 测试设计:** `knowledge/designs/{id}/e2e/design.md` — 用于最后一个 wave 的 E2E 任务
 5. **需求规格:** `requirements/{id}.md` — 验收条件来源
 6. **ADR:** `knowledge/_enterprise/decisions/ADR-*.md` — 架构约束
@@ -201,7 +201,7 @@ Task-{id}: {名称}
     1. 从 per-service 设计文档 Section 10.4 加载 API 测试用例
     2. 在 worktree 内启动服务 (如 ./gradlew bootRun / npm run dev / go run .)
     3. 确认服务健康检查通过 (curl /actuator/health or equivalent)
-    4. 执行 API 测试 (newman run tests/api-{id}-{svc}.json)
+    4. 执行 API 测试 (newman run knowledge/designs/{id}/services/{svc}/tests/collection.json)
     5. RED (API 测试 FAIL) → 实现 API 端点 → GREEN (API 测试 PASS) → REFACTOR
     6. 所有 API 用例 PASS → GATE 1 通过 → 进入 GATE 2 (审查)
   环境: worktree 本地 (不需要集成环境)
@@ -274,7 +274,7 @@ tasks:
     repo_url: "{服务 git 仓库地址，来自 service-registry.yaml repo}"
     language: "{服务语言/框架，来自 service-registry.yaml language，如 java-springboot}"
     component: "{对应设计文档中的组件名（如适用）}"
-    design_doc: "knowledge/designs/{id}/services/{svc}.md"
+    design_doc: "knowledge/designs/{id}/services/{svc}/design.md"
     worktree_path: "{worktree_base}/sw-task-{NNN}"
     wave: {1|2|3|...}
     estimated_hours: {n}
@@ -432,7 +432,7 @@ worktrees:
       "metadata": {
         "task_id": "sw-001",
         "component": "UserController",
-        "design_doc": "knowledge/designs/REQ-001/services/user-service.md",
+        "design_doc": "knowledge/designs/REQ-001/services/user-service/design.md",
         "estimated_hours": 2,
         "capability_verified": true,
         "capability_checks": [
@@ -465,7 +465,7 @@ worktrees:
       "metadata": {
         "task_id": "sw-002",
         "component": "OrderController",
-        "design_doc": "knowledge/designs/REQ-001/services/order-service.md",
+        "design_doc": "knowledge/designs/REQ-001/services/order-service/design.md",
         "estimated_hours": 2,
         "capability_verified": true,
         "capability_checks": [

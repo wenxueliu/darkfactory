@@ -2,7 +2,7 @@
 
 ## 触发时机
 
-E2E 测试设计文档 (`knowledge/designs/{requirement_id}/e2e/design.md`) 完成后，进入设计门禁之前。
+E2E 测试设计文档 (`paths.artifact_targets.design_document`) 完成后，进入设计门禁之前。
 
 ## 验证清单
 
@@ -42,6 +42,18 @@ E2E 测试设计文档 (`knowledge/designs/{requirement_id}/e2e/design.md`) 完�
 
 - [ ] 如果 `sw.e2e_extensions.custom_categories` 有定义，对应场景已填充
 - [ ] 如果 `sw.e2e_extensions.priority_overrides` 有定义，优先级已生效
+
+## 输出
+
+门禁报告写入 `paths.artifact_targets.gate_report`。E2E 设计文档和预查询
+产物必须使用解析后的 `paths.artifact_targets`；通过后才更新 Stage 1 bundle
+manifest。全局 `phases.design` 由 `sw-controller` 统一更新。
+
+```
+PASS: → E2E 设计完成，进入总设计门禁
+FAIL: → 标记缺失项，回到 E2E 设计修订。最大重试 3 轮。
+       3 轮后仍未 PASS → 升级到人工决策。
+```
 
 ## 输出
 

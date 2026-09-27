@@ -9,7 +9,7 @@
 ### 第 1 步: 服务类型检测
 
 1. Load `references/service-type-detection.md`
-2. 读取 `service-registry.yaml` → 查找当前 `{service_id}`
+2. 读取 `paths.evidence.service_registry` → 查找当前 `{service_id}`
 3. 如果 `services[].type` 有值 → 使用显式类型
 4. 否则，根据 `services[].language` 推断类型
 5. 解析对应定义包: `service-design/{type}`，使用其 manifest 选择模板、门禁和验证器
@@ -19,11 +19,11 @@
 
 ### 第 2 步: 上下文加载
 
-1. 读取 `knowledge/designs/{requirement_id}/feature-design.md` (Stage 1 输出)
+1. 读取 `paths.evidence.bundle_manifest` 和 `paths.evidence.feature_design`（Stage 1 输出）
 2. 从 Section 2 "服务影响分析" 提取该服务的变更内容
 3. 从 Section 5 "服务交互设计" 提取该服务参与的调用序列
 4. 从 Section 6 "跨服务契约" 提取该服务提供/消费的契约
-5. 读取 `knowledge/services/{service_id}/` 下的现有知识
+5. 读取 `paths.evidence.service_knowledge_root` 下的现有知识
 
 ### 第 3 步: 架构与接口设计
 
@@ -50,16 +50,21 @@
 1. Load `references/api-test-case-template.json`
 2. Load `references/api-test-postman-schema.md`
 3. 每个端点 ≥ 3 API 用例 (正常 ×1 + 异常 ×1 + 认证/权限 ×1)
-4. 生成 `tests/api-{requirement_id}-{service_id}.json` (Postman Collection)
-5. 生成 `tests/api-{requirement_id}-{service_id}-env.json` (Environment 文件)
-6. JSON 中的 `item[].name` 前缀与设计文档的用例 ID 一一对应
+4. 生成 `paths.artifact_targets.api_collection` (Postman Collection)
+5. 生成 `paths.artifact_targets.api_environment` (Environment 文件)
+6. 有数据驱动场景时生成 `paths.artifact_targets.api_data`；执行 Newman
+   时将报告写入 `paths.artifact_targets.api_report`
+7. JSON 中的 `item[].name` 前缀与设计文档的用例 ID 一一对应
 
 ### 第 5 步: 输出与过渡
 
 **输出产物:**
-- `knowledge/designs/{requirement_id}/services/{service_id}.md`
-- `tests/api-{requirement_id}-{service_id}.json`
-- `tests/api-{requirement_id}-{service_id}-env.json`
+- `paths.artifact_targets.design_document`
+- `paths.artifact_targets.gate_report`
+- `paths.artifact_targets.api_collection`
+- `paths.artifact_targets.api_environment`
+- 可选的 `paths.artifact_targets.api_data` 和 `paths.artifact_targets.api_report`
+- 成功时更新 `paths.artifact_targets.bundle_manifest` 中的当前服务条目
 
 **过渡条件:**
 - S1-S8 所有章节完整
