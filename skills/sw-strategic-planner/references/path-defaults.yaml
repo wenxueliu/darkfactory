@@ -1,0 +1,31 @@
+# Fallback semantic paths for standalone sw-strategic-planner execution.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  definition_roots:
+    project: knowledge/templates
+    user: null
+    skill: skills/sw-strategic-planner/references/document-definitions
+
+  evidence:
+    requirements_root: knowledge/requirements
+    context_files:
+      - knowledge/CONTEXT.md
+    context_maps:
+      - knowledge/CONTEXT-MAP.md
+    decision_roots:
+      - knowledge/_enterprise/decisions
+      - knowledge/decisions
+    plan_dependencies:
+      - knowledge/tasks.yaml
+      - knowledge/design-decisions.md
+    service_roots: services
+
+  artifact_targets:
+    plan_root: knowledge/plans
+    plan: knowledge/plans/{plan_name}.md
+    draft_root: knowledge/drafts
+    draft: knowledge/drafts/{plan_name}.md

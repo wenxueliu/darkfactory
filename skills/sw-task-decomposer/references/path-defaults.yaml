@@ -1,0 +1,29 @@
+# Fallback semantic paths for standalone sw-task-decomposer execution.
+# Call-time paths and project configuration take precedence.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  evidence:
+    tracker: knowledge/requirements-tracker.yaml
+    manifest: knowledge/designs/{requirement_id}/manifest.yaml
+    feature_design: knowledge/designs/{requirement_id}/feature-design.md
+    feature_gate: knowledge/designs/{requirement_id}/feature-design-gate.md
+    service_design_glob: knowledge/designs/{requirement_id}/services/*/design.md
+    service_gate_glob: knowledge/designs/{requirement_id}/services/*/gate.md
+    e2e_design: knowledge/designs/{requirement_id}/e2e/design.md
+    e2e_gate: knowledge/designs/{requirement_id}/e2e/gate.md
+    requirements_root: knowledge/requirements
+    service_registry: knowledge/service-registry.yaml
+    service_roots: services
+    decision_roots:
+      - knowledge/_enterprise/decisions
+      - knowledge/decisions
+
+  artifact_targets:
+    tasks: knowledge/tasks.yaml
+    worktree_registry: knowledge/sw-controller/worktree-registry.yaml
+    dependencies: _context-output/{requirement_id}/dependencies.json
+    tracker: knowledge/requirements-tracker.yaml

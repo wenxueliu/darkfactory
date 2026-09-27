@@ -1,0 +1,19 @@
+# Fallback semantic paths for standalone sw-integration-tester execution.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  evidence:
+    manifest: knowledge/designs/{requirement_id}/manifest.yaml
+    api_test_root: knowledge/designs/{requirement_id}/services
+    integration_plan: knowledge/tests/integration-plan-{requirement_id}.md
+    test_environment: _context/test-environment.md
+    tracker: knowledge/requirements-tracker.yaml
+
+  artifact_targets:
+    test_results: knowledge/test-results.yaml
+    junit_root: knowledge/designs/{requirement_id}/services
+    tracker: knowledge/requirements-tracker.yaml
+    runner: skills/sw-integration-tester/scripts/newman_runner.py

@@ -19,6 +19,7 @@ Final Verification Wave 是计划执行的最后关卡。在所有实现任务�
 | Logic Review | `sw-reviewer-logic` | 正确性、边界情况、错误处理、逻辑 bug |
 | Security Review | `sw-reviewer-security` | 漏洞、数据暴露、注入攻击、认证授权 |
 | Performance Review | `sw-reviewer-performance` | 瓶颈、N+1 查询、内存泄漏、扩展性 |
+| Context Review | `sw-reviewer-context` | 需求遗漏、上下文冲突、范围漂移（启用时） |
 
 ### 可选的审查者
 

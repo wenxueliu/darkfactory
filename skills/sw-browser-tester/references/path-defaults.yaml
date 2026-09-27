@@ -1,0 +1,22 @@
+# Fallback semantic paths for standalone sw-browser-tester execution.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  evidence:
+    manifest: knowledge/designs/{requirement_id}/manifest.yaml
+    e2e_design: knowledge/designs/{requirement_id}/e2e/design.md
+    e2e_gate: knowledge/designs/{requirement_id}/e2e/gate.md
+    browser_test_plan: skills/sw-browser-tester/references/browser-test-plan.md
+    tracker: knowledge/requirements-tracker.yaml
+
+  artifact_targets:
+    test_root: _context-output/test-artifacts/e2e/{requirement_id}
+    test_script: _context-output/test-artifacts/e2e/{requirement_id}/browser-e2e.spec.ts
+    output_dir: _context-output/test-artifacts/e2e/{requirement_id}/output
+    traces_dir: _context-output/test-artifacts/e2e/{requirement_id}/traces
+    json_report: _context-output/test-artifacts/e2e/{requirement_id}/results.json
+    result_file: knowledge/browser-e2e-results.yaml
+    tracker: knowledge/requirements-tracker.yaml

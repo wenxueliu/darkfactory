@@ -1,0 +1,17 @@
+# Fallback semantic paths for standalone sw-finishing-branch execution.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  evidence:
+    execution_root: knowledge/sw-plan-executor/notepads/{plan_name}
+    plan: knowledge/plans/{plan_name}.md
+    tasks: knowledge/tasks.yaml
+    worktree_registry: knowledge/sw-controller/worktree-registry.yaml
+    tracker: knowledge/requirements-tracker.yaml
+
+  artifact_targets:
+    merge_report: knowledge/merge-results/{requirement_id}.yaml
+    tracker: knowledge/requirements-tracker.yaml

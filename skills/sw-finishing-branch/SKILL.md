@@ -1,205 +1,225 @@
 ---
 name: sw-finishing-branch
-description: "分支收尾Agent. Use when implementation is complete, all tests pass, and you need to decide how to integrate the work — guides completion of development by presenting structured options for merge, PR, or cleanup. [trigger: 完成开发, 分支收尾, 合并, merge, PR, 提交代码, finish branch, complete development, 收尾]"
+description: "黑灯工厂分支收尾 Agent。Use when verified implementation is ready for the terminal integration decision: local merge, push/PR, keep branch, or discard with explicit confirmation. [trigger: 完成开发, 分支收尾, 合并, merge, PR, 提交代码, finish branch]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-verification-before-completion
+      version: "*"
+      type: SKILL
+      required: true
+      purpose: independent pre-finish verification
+    - name: sw-controller
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: merge-phase state transition and delivery handoff
+    - name: git
+      version: "*"
+      type: TOOL
+      required: true
+      purpose: branch, worktree, merge, and status operations
+    - name: gh
+      version: "*"
+      type: TOOL
+      required: false
+      purpose: pull-request creation when the user selects PR flow
 ---
 
-# 黑灯工厂 分支收尾 (sw-finishing-branch)
+# 黑灯工厂分支收尾 (sw-finishing-branch)
 
 ## Overview
 
-Guide completion of development work by presenting clear options and handling the chosen workflow. Eliminates ambiguity about "what next" after implementation is done.
+This Skill owns the **merge-phase terminal decision** after execution and
+review gates pass. It verifies the actual worktree, presents exactly four
+integration options, executes only the selected option, and records the result.
 
-**Your Mission:** Verify everything is clean, present exactly 4 structured options, execute the chosen one, and clean up appropriately.
+**Mission:** make branch completion explicit and recoverable. It never assumes
+that the user wants a merge, PR, retention, or deletion.
 
-## Identity
+**Contract version:** `2.0.0` (frontmatter metadata).
 
-The terminal conductor. When implementation is done, presents clear choices without elaboration. Verifies before presenting. Executes precisely. Cleans up what should be cleaned up. Never assumes what the user wants — presents options and waits.
+## Identity and Principles
 
-## Communication Style
+- **Verification first:** no option is offered while tests, build, diagnostics,
+  or required review evidence are failing.
+- **Exactly four choices:** local merge, push/create PR, keep as-is, discard.
+- **Destructive confirmation:** discard requires the exact text `discard` after
+  the complete target list is shown.
+- **No force-push:** force operations require an explicit user request.
+- **Option-scoped cleanup:** options 1 and 4 clean up; options 2 and 3 keep the
+  worktree and branch.
+- **State traceability:** the selected option, branch identities, test evidence,
+  and resulting commit/PR are recorded.
 
-- **Concrete, not chatty** — State facts: "Tests passing (42/42)." Not "Great news, tests passed!"
-- **Concise options** — Present exactly 4 options, no elaboration, no recommendations
-- **Wait for input** — After presenting options, stop and wait for user choice
+## Input Contract
 
-## Principles
+| Input | Required | Description |
+|---|---:|---|
+| `project_root` | No | Workspace root; defaults to the current workspace. |
+| `requirement_id` | No | Requirement ID used to locate registry and merge report; derive only when unambiguous. |
+| `worktree_path` | No | Worktree under review; otherwise resolve from git or registry. |
+| `feature_branch` | No | Branch to finish; otherwise resolve from the worktree. |
+| `base_branch` | No | Explicit merge target; otherwise use project config, then `main`/`master` only if unambiguous. |
+| `paths` | No | Semantic path overrides in `references/path-defaults.yaml`. |
+| `selected_option` | No | One of `merge`, `pr`, `keep`, or `discard`; if absent, present the four choices and wait. |
+| `confirmation` | No | Must equal `discard` for destructive cleanup. |
+| `request` | No | User-specified terminal action or bounded workflow constraint. |
 
-- **Test gate first** — Verify tests pass before presenting ANY options
-- **Exactly 4 options, no more, no less** — Local merge / PR / Keep / Discard
-- **Typed confirmation for destructive actions** — "discard" must be explicitly typed
-- **Clean up only when appropriate** — Options 1 and 4 clean up worktree; Options 2 and 3 preserve it
+Required upstream evidence:
+
+- the execution report is `COMPLETED` or the user explicitly supplies
+  equivalent evidence;
+- task-level tests and the final reviewer gate pass;
+- the target worktree and branch can be resolved;
+- merge strategy and base branch are known before a merge or PR action.
+
+If any prerequisite is missing, return `BLOCKED` and do not mutate branches.
+
+## External Dependency Metadata
+
+`git` and `sw-verification-before-completion` are required. `gh` is required
+only for the PR option; `sw-controller` is optional for direct use but its
+state transition must be reported when available.
+
+Record each dependency as `USED`, `SKIPPED`, or `NOT_REQUESTED` with reason,
+impact, and fallback. If `gh` is unavailable after the user chooses PR,
+return `BLOCKED` with the branch push result and a manual PR command; do not
+silently claim that a PR exists.
 
 ## On Activation
 
-1. Run project's test suite to verify all tests pass
-2. Determine the base branch (check `_context/config.yaml` for `merge_strategy`)
-3. Identify worktree location from git or `knowledge/sw-controller/worktree-registry.yaml`
-4. Present the 4 options (only if tests pass)
+### Step 0: Resolve paths and branch context
 
-## The Process
+Load the semantic paths from `references/path-defaults.yaml` and
+`references/path-resolution.md`.
+Resolve config, execution evidence, worktree registry, branch identity, base
+branch, and merge-report target. Report the effective paths and commit IDs.
 
-### Step 1: Verify Tests
+### Step 1: Run the verification gate
 
-**Before presenting options, run verification:**
+Invoke `sw-verification-before-completion`, run the configured test suite,
+diagnostics, and build checks, and inspect the diff for unaccounted files.
+If any required check fails, return `BLOCKED` with exact evidence and stop.
 
-- Invoke `sw-verification-before-completion` to verify all claims
-- Run the project's test suite (language auto-detected)
-- Check diagnostics are clean
-- Check build succeeds
+### Step 2: Present the terminal choices
 
-**If anything fails:**
-```
-Verification failed:
-- [List failures]
+Present exactly these four options and no recommendation:
 
-Cannot proceed with merge/PR until all checks pass.
-```
-Stop. Do NOT proceed to Step 2.
-
-**If all pass:** Continue to Step 2.
-
-### Step 2: Determine Base Branch
-
-Check git for the base branch (main or master). If ambiguous, ask: "This branch split from main — is that correct?"
-
-### Step 3: Present Options
-
-Present exactly these 4 options with NO additional explanation:
-
-```
+```text
 Implementation complete. All checks pass. What would you like to do?
 
 1. Merge back to <base-branch> locally
 2. Push and create a Pull Request
-3. Keep the branch as-is (I'll handle it later)
+3. Keep the branch as-is
 4. Discard this work
 
 Which option?
 ```
 
-### Step 4: Execute Choice
+Wait for `selected_option` when it was not supplied. For option 4, list the
+branch, commits, and worktree that will be deleted and wait for exact
+`confirmation: discard`.
 
-#### Option 1: Merge Locally
+### Step 3: Execute only the selected option
 
-```
-1. Switch to base branch and pull latest
-2. Merge feature branch
-3. Run test suite on merged result
-4. If tests pass: delete feature branch
-5. Clean up worktree (Step 5)
-```
+- **merge:** update the base branch as configured, merge, rerun the suite on
+  the merged result, then remove the finished worktree/branch if safe.
+- **pr:** push the feature branch, create a structured PR when `gh` exists,
+  keep the worktree, and return the PR URL or an explicit manual command.
+- **keep:** make no branch/worktree mutation and report their locations.
+- **discard:** after exact confirmation, remove only the resolved feature
+  worktree and branch; never target an unresolved broad directory.
 
-#### Option 2: Push and Create PR
+### Step 4: Record and hand off
 
-```
-1. Push branch to remote
-2. Create PR with structured body:
-   - Summary: 2-3 bullets of what changed
-   - Test Plan: verification steps checklist
-   - Link to design docs in _context-output/
-3. Keep worktree (don't clean up)
-4. Report PR URL
-```
+Write the resolved merge report, include before/after commit IDs, command
+results, test evidence, cleanup result, and next action. Update merge state
+only after the selected operation has actually completed.
 
-**PR body template:**
-```
-## Summary
-- <change 1>
-- <change 2>
+## Capabilities
 
-## Test Plan
-- [ ] Unit tests passing
-- [ ] Integration tests passing
-- [ ] Manual verification steps
+| Capability | Route |
+|---|---|
+| Semantic path resolution | `references/path-defaults.yaml` + `references/path-resolution.md` |
+| Completion verification | Required `sw-verification-before-completion` |
+| Branch and worktree operations | `git` CLI |
+| Pull request creation | Optional `gh` CLI |
+| Lifecycle state transition | Optional `sw-controller` |
 
-## Design
-- Design doc: _context-output/designs/<design-doc>.md
+## Output Contract
 
-Generated with [Claude Code](https://claude.ai/code)
-via [Happy](https://happy.engineering)
+Return a `Branch Finishing Report` and write the merge report when the
+operation reaches a terminal state.
 
-Co-Authored-By: Claude <noreply@anthropic.com>
-Co-Authored-By: Happy <yesreply@happy.engineering>
-```
+**Contract version:** `2.0.0`.
 
-#### Option 3: Keep As-Is
-
-Report: "Keeping branch `<name>`. Worktree preserved at `<path>`."
-
-**Do NOT clean up worktree. Do NOT delete branch.**
-
-#### Option 4: Discard
-
-**Confirm first:**
-```
-This will permanently delete:
-- Branch <name>
-- All commits on this branch
-- Worktree at <path>
-
-Type 'discard' to confirm.
-```
-
-Wait for exact "discard" confirmation. Do NOT proceed on "yes", "ok", "sure", or any other input.
-
-If confirmed:
-```
-1. Switch to base branch
-2. Force delete feature branch
-3. Clean up worktree (Step 5)
+```yaml
+result: NEEDS_USER_INPUT | READY_TO_FINISH | MERGED | PR_OPENED | KEPT | DISCARDED | BLOCKED
+requirement_id: REQ-YYYYMMDD-NNN | NOT_PROVIDED
+resolved_paths:
+  config_file: "..."
+  worktree: "..."
+  registry: "..."
+  merge_report: "..."
+branches:
+  feature: "..."
+  base: "..."
+  before_commit: "..."
+  after_commit: "..."
+verification:
+  completion_skill: PASS | FAIL | NOT_RUN
+  tests: PASS | FAIL | NOT_RUN
+  diagnostics: PASS | FAIL | NOT_RUN
+  build: PASS | FAIL | NOT_RUN
+selection:
+  option: merge | pr | keep | discard | NOT_SELECTED
+  confirmation: "..."
+operation:
+  status: PASS | FAIL | NOT_RUN
+  pr_url: "..."
+  cleanup: PERFORMED | PRESERVED | NOT_PERFORMED
+  commands: []
+external_capabilities: []
+artifacts:
+  merge_report: "..."
+  tracker: "..."
+next_action: "..."
 ```
 
-### Step 5: Cleanup Worktree
+Status semantics:
 
-**For Options 1 and 4:** Remove the worktree if one was created for this task.
+- `NEEDS_USER_INPUT`: no option or destructive confirmation was supplied.
+- `READY_TO_FINISH`: verification passed and choices are ready to present.
+- `MERGED`, `PR_OPENED`, `KEPT`, `DISCARDED`: the selected terminal operation
+  completed and its evidence is recorded.
+- `BLOCKED`: verification, branch resolution, permission, or an operation
+  failed; no unverified success may be reported.
 
-Check `{project-root}/knowledge/sw-controller/worktree-registry.yaml` for worktree path. Remove worktree and update registry.
+## Acceptance Criteria
 
-**For Option 2:** Keep worktree (PR may need follow-up commits).
+| Dimension | Acceptance criterion | Evidence | Blocking |
+|---|---|---|---:|
+| Input and paths | Effective worktree, feature branch, base branch, and report target are reported | `resolved_paths` + branches | Yes |
+| Dependency metadata | Required tools/skills and option-dependent dependencies have runtime status | Frontmatter + `external_capabilities` | Yes |
+| Verification gate | Completion skill, tests, diagnostics, build, and diff checks pass before choices | Verification block | Yes |
+| Choice contract | Exactly four options are presented; no implicit selection | Selection record | Yes |
+| Merge safety | Base branch and merge strategy are explicit; merged result is tested | Git log + test evidence | Yes for merge |
+| PR truthfulness | Push and PR URL are separately verified; missing `gh` is a blocker, not a success | Operation evidence | Yes for PR |
+| Destructive safety | Discard requires exact `discard` confirmation and resolved targets | Confirmation + commands | Yes for discard |
+| Cleanup policy | Cleanup matches selected option and registry is updated | Cleanup result | Yes |
+| Artifact integrity | Merge report records option, commits, commands, and next action | Merge report | Yes |
 
-**For Option 3:** Keep worktree (user will handle later).
+## Memory and State Boundaries
 
-## Quick Reference
+Read resolved execution reports, repository metadata, configuration, and
+worktree registry. Write only the merge report and permitted merge/cleanup
+state. Never rewrite source code, task definitions, design documents, or a
+remote branch without explicit user choice.
 
-| Option | Merge | Push | Keep Worktree | Delete Branch |
-|--------|-------|------|---------------|---------------|
-| 1. Merge locally | Yes | No | No | Yes |
-| 2. Create PR | No | Yes | Yes | No |
-| 3. Keep as-is | No | No | Yes | No |
-| 4. Discard | No | No | No | Yes (force) |
+## Handoff
 
-## Common Mistakes
-
-| Mistake | Fix |
-|---------|-----|
-| Skipping test verification | Always verify tests before offering options |
-| Open-ended questions ("What should I do next?") | Present exactly 4 structured options |
-| Automatic worktree cleanup for Option 2 | Keep worktree — PR may need follow-up |
-| No confirmation for discard | Require typed "discard" confirmation |
-| Auto-merging without checking base branch | Verify base branch first |
-
-## Red Flags
-
-**Never:**
-- Proceed with failing tests
-- Merge without verifying tests on merged result
-- Delete work without typed "discard" confirmation
-- Force-push without explicit request
-- Present more or fewer than 4 options
-
-**Always:**
-- Run `sw-verification-before-completion` before offering options
-- Present exactly 4 options with no elaboration
-- Get typed "discard" confirmation for Option 4
-- Clean up worktree for Options 1 and 4 only
-
-## Integration
-
-**Called by:**
-- `sw-plan-executor` — after all tasks complete
-- `sw-worktree-controller` — after task DONE with gates passed
-- Developer directly — when manually finishing work
-
-**Integrates with:**
-- `sw-verification-before-completion` — verification gate before presenting options
-- `sw-controller` — merge and delivery phase transitions
-- `knowledge/sw-controller/worktree-registry.yaml` — worktree cleanup tracking
+After `MERGED` or `PR_OPENED`, report the resulting commit/PR and hand off to
+`sw-controller` for the test or delivery transition. After `KEPT`, report the
+preserved branch. After `DISCARDED`, report exactly what was removed and that
+the operation is not recoverable through this Skill.

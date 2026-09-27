@@ -1,0 +1,21 @@
+# Fallback semantic paths for standalone sw-plan-executor execution.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  evidence:
+    plan_root: knowledge/plans
+    tasks: knowledge/tasks.yaml
+    dependencies: _context-output/{requirement_id}/dependencies.json
+    worktree_registry: knowledge/sw-controller/worktree-registry.yaml
+    tracker: knowledge/requirements-tracker.yaml
+    design_decisions: knowledge/design-decisions.md
+    service_roots: services
+
+  artifact_targets:
+    plan: knowledge/plans/{plan_name}.md
+    notepad_root: knowledge/sw-plan-executor/notepads/{plan_name}
+    review_root: knowledge/reviews
+    tracker: knowledge/requirements-tracker.yaml

@@ -207,15 +207,15 @@ This will:
 
 ### 4c. 最终状态更新
 
-更新规划者私有状态:
+规划状态只作为当前会话的运行时上下文返回，不创建额外的 YAML 状态文件。
+最终报告应包含：
 
-```
-{project-root}/knowledge/sw-strategic-planner/planning-state.yaml:
-  last_plan: {plan-name}.md
-  completed_at: {timestamp}
-  review_mode: [none | high-accuracy]
-  review_iterations: {N}
-  handoff_to: sw-plan-executor
+```yaml
+last_plan: knowledge/plans/{plan-name}.md
+completed_at: {timestamp}
+review_mode: none | high-accuracy
+review_iterations: {N}
+handoff_to: sw-plan-executor
 ```
 
 ---
