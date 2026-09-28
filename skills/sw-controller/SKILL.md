@@ -1,6 +1,24 @@
 ---
 name: sw-controller
 description: "黑灯工厂总控协调Agent. Use when coordinating enterprise development flow from requirements to delivery, managing parallel worktrees, or orchestrating multi-agent review. [trigger: 黑灯工厂, 协调, 总控, 启动开发流程]"
+metadata:
+  version: "2.1.0"
+  external_dependencies:
+    - name: sw-setup
+      version: "2.0.0"
+      type: SKILL
+      required: false
+      purpose: package installation, publication, upgrade, and workspace initialization
+    - name: package.py
+      version: "1.0.0"
+      type: TOOL
+      required: false
+      purpose: verified Harness package lifecycle operations
+    - name: sw-change-propagator
+      version: "1.0.0"
+      type: SKILL
+      required: false
+      purpose: version and propagate approved requirement changes through current and downstream phases
 ---
 
 # 黑灯工厂总控 (sw-controller)
@@ -51,6 +69,8 @@ Before any action, verify intent:
 | "explain X", "how does Y work" | Research/understanding | codebase-explorer/external-researcher → synthesize → answer |
 | "implement X", "add Y", "create Z" (Explicit — appears clear but must pass clarification) | Implementation (needs verification) | ideation (requirement-clarification) → design → plan → delegate or execute |
 | "create X", "build Y", "new feature" (no clear design) | Implementation (design needed) | ideation (requirement-clarification) → sw-brainstorming → sw-strategic-planner → sw-plan-executor |
+| "install", "download", "package", "publish", "initialize Harness" | Setup/distribution | `sw-setup` interview → package verification → workspace init → service discovery |
+| "需求变更", "局部调整", "改需求", "变更影响" | Change propagation | `sw-change-propagator` → version current/downstream phases → re-gate → resume |
 | "look into X", "check Y", "investigate" | Investigation | codebase-explorer → report findings |
 | "what do you think about X?" | Evaluation | evaluate → propose → wait for confirmation |
 | "X is broken", "I'm seeing error Y" | Fix needed | **clarify first** (what exactly? confirmed?) → diagnose → fix minimally → verify |
@@ -150,6 +170,31 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 
 ## Capabilities
 
+### 安装与发布 (Setup & Distribution)
+| Capability | Route |
+| ---------- | ----- |
+| 项目打包 | Delegate to `sw-setup` → `package.py build` |
+| 本地/远程发布 | Delegate to `sw-setup` → `package.py publish`; remote Git requires explicit authorization |
+| 一键下载 | Delegate to `sw-setup` → `package.py download` |
+| 一键安装到项目/目录 | Delegate to `sw-setup` → `package.py install` |
+| Agent 对话初始化 | Delegate to `sw-setup` interview → `package.py init` |
+
+The setup route must complete manifest/checksum verification before the
+controller starts service discovery or any development phase. If the target's
+`services/` directory is empty, setup may be `READY` but the development route
+remains blocked until the user adds a source repository.
+
+### 变更传播 (Change Propagation)
+| Capability | Route |
+| ---------- | ----- |
+| 小修改 | Delegate to `sw-change-propagator`; edit only the current step |
+| 部分改动 | Delegate to `sw-change-propagator`; regenerate from earliest affected phase through delivery |
+| 大修改 | Delegate to `sw-change-propagator`; create a new requirement and restart ideation |
+| 已完成下游修改 | Consume `change-propagation.yaml` and each `phase-deltas/*.md`; never reuse superseded artifacts |
+
+`change_requested` is a blocking phase status. The controller may resume a
+phase only when its target revision is written and its gate passes.
+
 ### 需求阶段 (Ideation)
 | Capability | Route |
 | ---------- | ----- |
@@ -241,12 +286,13 @@ Load available config from `{project-root}/_context/config.yaml` and `{project-r
 
 - **Delegate by default.** Work yourself only when the task is trivially simple (single file, known location, <10 lines). Your role is Intent Gate + Phase Transition — route and gate, never execute phase work.
 - **Ideation phase:** Delegate requirements clarification to `sw-requirements-clarifier`, value assessment to `sw-value-judgment`, KB query to `sw-knowledge-agent`.
+- **Requirement changes:** Delegate all non-trivial changes to `sw-change-propagator` before modifying a completed downstream artifact or task.
 - **Planning phase:** Delegate to sw-strategic-planner for any multi-step, ambiguous, or complex request. The planner interviews the user and generates a structured plan.
 - **Design phase:** Use the existing 3-stage delegation: sw-feature-designer → sw-service-designer (parallel per service) → sw-e2e-designer.
 - **Decomposition phase:** Delegate to `sw-task-decomposer`. It handles service identification, DAG construction, wave batching, tasks.yaml + dependencies.json output.
 - **Execution phase:** Delegate to sw-plan-executor with the plan file path. It handles all task fan-out and verification.
 - **Merge phase:** Delegate to `sw-finishing-branch` for the 4-option terminal state.
-- **Test phase:** Delegate to `sw-integration-tester` for env health check, integration test execution, and API result analysis. Delegate to `sw-browser-tester` for L3 browser E2E test execution (generates Playwright scripts, runs visual regression, captures console/network diagnostics).
+- **Test phase:** Delegate to `sw-integration-tester` for env health check, integration test execution, and API result analysis. Delegate to `sw-browser-tester` for L3 browser E2E execution through Kimi WebBridge (real browser session, snapshots, screenshots, visual evidence, and network diagnostics).
 - **Delivery phase:** Delegate to `sw-delivery-manager` for checklist verification and release notes. Delegate KB update to `sw-knowledge-agent`.
 - **Research:** Fire sw-codebase-explorer (internal) and sw-external-researcher (external) in PARALLEL for non-trivial questions. Always run in background.
 - **Deep consultation:** Delegate to sw-strategic-advisor for complex architecture, security/performance questions, or after 3+ consecutive failures.
@@ -276,6 +322,8 @@ When Worktree Controllers report status, respond according to:
 ## Phase Transition Rules
 
 在检查阶段过渡条件时，**以 `requirements-tracker.yaml` 为权威数据源**。先读 tracker 确认各 phase 状态，再与以下规则交叉验证。tracker 中 `status: done` 的 phase 即视为已完成，`status: blocked` 的 phase 阻止所有后续过渡。
+
+`change_requested`、`stale` 和存在 `superseded_by` 的 phase 也阻止正常过渡；必须先读取对应的 `change-propagation.yaml`，完成该 phase 的目标 revision 和门禁，再继续向后推进。
 
 `sw-controller` 独占写入 `phases.design`：进入设计阶段时置为
 `in_progress`；Stage 1、全部 Stage 2 服务、Stage 3 和总设计门禁全部通过后，

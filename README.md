@@ -22,6 +22,24 @@
 
 ### Installation
 
+#### One-click package lifecycle
+
+Harness can be distributed as a verified package. Build once, publish to a
+local directory or remote Git repository, then let an Agent download, install,
+and initialize a project:
+
+```bash
+python package.py build --version 2.0.0 --output dist
+python package.py publish --package dist/harness-multiagents-2.0.0.tar.gz --repository /srv/harness-packages
+python package.py init --target /path/to/project --platform all
+```
+
+For the conversational flow, tell the Agent where to install, which package
+repository/version to use, and which platforms/reviewers to enable. It routes
+to `sw-setup`, verifies the manifest/checksums, preserves existing config, and
+creates the `services/`, `knowledge/`, `_context/`, and `.worktree/` skeleton.
+See [the package lifecycle guide](docs/package-lifecycle.md).
+
 #### Claude Code
 
 **Prerequisites:** [Claude Code](https://claude.ai/code) installed.
@@ -185,6 +203,7 @@ multiagents/
 │   ├── sw-reviewer-performance/ # Performance review
 │   ├── sw-strategic-planner/ # Strategic planner (NEW)
 │   ├── sw-plan-executor/    # Plan execution orchestrator (NEW)
+│   ├── sw-change-propagator/ # Requirement change propagation (NEW)
 │   ├── sw-brainstorming/    # Pre-design exploration (NEW)
 │   └── ...                  # 24 more specialized skills
 ├── agents/                  # Standalone agent prompt templates
@@ -195,6 +214,7 @@ multiagents/
 │   └── config.user.yaml     # User-specific settings
 ├── docs/                    # Documentation
 ├── hooks/                   # Session-start bootstrap
+├── package.py               # Build/publish/download/install/init CLI
 ├── scripts/                 # Knowledge base management tools
 ├── .claude-plugin/          # Claude Code plugin manifest
 ├── .codex-plugin/           # Codex plugin manifest

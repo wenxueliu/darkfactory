@@ -27,8 +27,8 @@ metadata:
 
 This Skill owns **Stage 3 of the design phase**. It consumes the passed Stage 1
 feature design and every passed Stage 2 service design, then produces the
-cross-service E2E design that execution Agents can turn into Playwright,
-Cypress, API-E2E, or equivalent tests.
+cross-service E2E design that execution Agents can run through Kimi WebBridge,
+API-E2E, or equivalent real-browser/test-environment sessions.
 
 **Mission:** validate complete user journeys across service boundaries under
 normal, failure, boundary, performance, security, compatibility, and configured

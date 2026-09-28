@@ -215,7 +215,7 @@ Prometheus: "我发现了一些信息:
 
 无论你选择什么，每个任务都会包含 Agent-Executed QA Scenarios——
 执行 Agent 将直接运行交付物并验证其行为
-(Playwright for browser UI, curl for APIs, CLI commands for backend)。
+(Kimi WebBridge for browser UI, curl for APIs, CLI commands for backend)。
 每个场景都会超级详细: 精确步骤、选择器、断言和证据捕获。"
 ```
 

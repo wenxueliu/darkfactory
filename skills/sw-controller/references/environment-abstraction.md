@@ -317,7 +317,7 @@ sw:
 4. provider.get_endpoint(user-service)
    → "http://user-service:8080"  (容器网络)
 5. newman run api-tests.json --env-var baseUrl=http://user-service:8080
-6. npx playwright test e2e/ --baseURL=http://web-frontend:3000
+6. sw-browser-tester 通过 Kimi WebBridge 会话执行浏览器 E2E，目标为 http://web-frontend:3000
 7. provider.stop(all_services)
    → docker compose down
 

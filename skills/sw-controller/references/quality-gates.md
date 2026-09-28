@@ -170,7 +170,7 @@ E2E 测试在所有 worktree 合并后执行（见 GATE 3 跨任务回归）。�
 
 E2E 测试分为两层：
 - **L2 API/集成测试**：由 `sw-integration-tester` 执行（Newman + Postman Schema）
-- **L3 浏览器 E2E 测试**：由 `sw-browser-tester` 执行（Playwright 脚本生成 + 视觉回归 + 控制台/网络证据采集）
+- **L3 浏览器 E2E 测试**：由 `sw-browser-tester` 执行（Kimi WebBridge 真实会话 + snapshot/截图 + 视觉/网络证据采集）
 
 ## GATE 2: 审查门禁 (Heterogeneous Review)
 
@@ -286,18 +286,15 @@ review_status:
      newman run knowledge/_enterprise/contracts/{svc}-contract-tests.json \
        --env-var baseUrl={provider.get_endpoint(provider_svc)}
 
-9. API E2E 测试 (L2):
+9. 浏览器 E2E 测试 (L3):
    web_url = provider.get_endpoint(web-frontend)
-   npx playwright test e2e/ --baseURL={web_url}
-
-10. 浏览器 E2E 测试 (L3):
-   sw-browser-tester 生成并执行 Playwright 测试脚本
-   → 功能 + 非功能 + 兼容性 + 视觉回归 全覆盖
-   → 控制台错误 + 网络故障 + 性能指标采集
+   sw-browser-tester 通过 Kimi WebBridge 打开 web_url 并执行设计用例
+   → 功能 + 非功能 + 兼容性 + 视觉证据 全覆盖
+   → snapshot + 截图 + 网络故障 + 性能指标采集
    → 输出 browser-e2e-results.yaml
 
-11. 全部 PASS → provider.stop(all_services) → 合并到主分支
-12. 有 FAIL → 定位问题 worktree → 修复或回滚
+10. 全部 PASS → provider.stop(all_services) → 合并到主分支
+11. 有 FAIL → 定位问题 worktree → 修复或回滚
 ```
 
 **回归定位流程:**

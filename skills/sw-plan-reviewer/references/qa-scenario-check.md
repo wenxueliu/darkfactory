@@ -130,7 +130,7 @@ QA for Task 3 (user validation logic):
 
 ```
 QA for Task 5 (login page UI):
-- 工具: 浏览器 / Playwright
+- 工具: 浏览器 / Kimi WebBridge
 - 步骤:
   1. 访问 http://localhost:3000/login
   2. 检查 input#username 元素存在且可聚焦

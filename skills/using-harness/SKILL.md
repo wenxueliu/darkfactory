@@ -77,7 +77,7 @@ When multiple skills could apply, traverse the hierarchy from top to bottom:
 
 0. **Brainstorming before all creative work** — `sw-brainstorming` for ANY new feature, creation, or design task (HARD-GATE: no implementation without approved design)
 1. **Process skills first** — `sw-systematic-debugging` for any bug/error/test failure (BEFORE proposing fixes); `sw-verification-before-completion` before declaring ANY completion; `sw-receiving-review` when processing review feedback
-2. **Orchestration second** — `sw-controller` for any development workflow; `sw-setup` for environment initialization
+2. **Orchestration second** — `sw-controller` for any development workflow; `sw-setup` for package build/publish/download/install and environment initialization
 3. **Execution third** — `sw-worktree-controller` dispatches `sw-tdd-agent` per task
 4. **Review fourth** — `sw-reviewer-logic`, `sw-reviewer-security`, `sw-reviewer-performance`, `sw-reviewer-context` run in parallel after TDD cycles
 5. **Design skills** — `sw-feature-designer`, `sw-service-designer`, `sw-e2e-designer` are invoked by sw-controller during design phases

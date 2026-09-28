@@ -148,7 +148,7 @@ contract_version: "1.0"
 Every task MUST include agent-executed QA scenarios.
 Evidence saved to `{project-root}/knowledge/evidence/task-{N}-{scenario-slug}.{ext}`.
 
-- **Frontend/UI**: Use Playwright (browser automation skill) — Navigate, interact, assert DOM, screenshot
+- **Frontend/UI**: Use Kimi WebBridge (browser session skill) — Navigate, snapshot, interact, assert visible state, screenshot, and capture network evidence
 - **TUI/CLI**: Use tmux (interactive bash) — Run command, send keystrokes, validate output
 - **API/Backend**: Use Bash (curl) — Send requests, assert status + response fields
 - **Library/Module**: Use Bash (REPL or test runner) — Import, call functions, compare output
@@ -308,7 +308,7 @@ Max Concurrent: {N} (Wave {X})
 
   ```
   Scenario: {Happy path — what SHOULD work}
-    Tool: [Playwright / interactive_bash / Bash (curl) / Bash (test runner)]
+    Tool: [Kimi WebBridge / interactive_bash / Bash (curl) / Bash (test runner)]
     Preconditions: [Exact setup state — server running, DB populated with X, etc.]
     Steps:
       1. [Exact action — specific command/selector/endpoint, no vagueness]
@@ -381,7 +381,7 @@ Max Concurrent: {N} (Wave {X})
 
   Output: `Build [PASS/FAIL] | Lint [PASS/FAIL] | Tests [N pass/N fail] | Files [N clean/N issues] | VERDICT: APPROVE/REJECT`
 
-- [ ] F3. **Real Manual QA** (recommended: `unspecified-high` + Playwright/browser skill if UI)
+- [ ] F3. **Real Browser QA** (recommended: `unspecified-high` + Kimi WebBridge if UI)
 
   Start from clean state. Execute EVERY QA scenario from EVERY task:
   - **Per-Scenario Execution**: Follow exact steps from each task's QA scenarios, capture evidence

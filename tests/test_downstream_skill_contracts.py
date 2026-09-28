@@ -43,13 +43,20 @@ SKILLS = {
         "required_refs": ("path-defaults.yaml", "path-resolution.md"),
     },
     "sw-browser-tester": {
+        "version": "3.0.0",
         "required_sections": (
             "## Input Contract",
             "## External Dependency Metadata",
             "## Output Contract",
             "## Acceptance Criteria",
         ),
-        "required_refs": ("path-defaults.yaml", "path-resolution.md"),
+        "required_refs": (
+            "path-defaults.yaml",
+            "path-resolution.md",
+            "webbridge-test-template.md",
+            "webbridge-evidence-strategy.md",
+            "webbridge-visual-evidence.md",
+        ),
     },
     "sw-strategic-planner": {
         "required_sections": (
@@ -73,7 +80,7 @@ def test_downstream_skills_declare_v2_contracts_and_dependencies() -> None:
         content = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
         frontmatter = _frontmatter(content)
 
-        assert frontmatter["metadata"]["version"] == "2.0.0"
+        assert frontmatter["metadata"]["version"] == contract.get("version", "2.0.0")
         dependencies = frontmatter["metadata"]["external_dependencies"]
         assert dependencies
         for dependency in dependencies:
@@ -117,9 +124,26 @@ def test_terminal_and_test_skills_keep_stage_boundaries() -> None:
     assert "must never be silently skipped" in integration
     assert "API-only cases belong to `sw-integration-tester`" in browser
     assert "real browser" in browser
+    assert "kimi-webbridge" in browser
+    assert "Do not generate local test-script files" in browser
     assert "sw-pre-planning-consultant" in planner
     assert "exactly one executable plan" in planner
     assert "The interview state is runtime context" in planner
+
+
+def test_browser_contract_has_no_playwright_dependency_or_artifact() -> None:
+    browser = (ROOT / "skills/sw-browser-tester/SKILL.md").read_text(encoding="utf-8")
+    defaults = yaml.safe_load(
+        (ROOT / "skills/sw-browser-tester/references/path-defaults.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert "playwright" not in browser.lower()
+    assert "kimi-webbridge" in browser
+    artifacts = defaults["paths"]["artifact_targets"]
+    assert artifacts["session_log"].endswith("browser-e2e-session.json")
+    assert "test_script" not in artifacts
 
 
 def test_path_defaults_are_valid_yaml_and_have_artifact_targets() -> None:

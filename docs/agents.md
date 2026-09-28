@@ -59,7 +59,7 @@
 | Agent | Role | Trigger |
 |-------|------|---------|
 | `sw-integration-tester` | Integration tester — env health check → smoke test → integration test execution → result analysis → test-results.yaml. Connects to real backends. (NEW) | 集成测试, integration test, 测试执行 |
-| `sw-browser-tester` | Browser E2E tester — generates Playwright `.spec.ts` from E2E design → executes against real Chromium → visual regression + console/network diagnostics → browser-e2e-results.yaml. Adapted from gstack browse snapshot-based QA patterns. (NEW) | 浏览器测试, 浏览器E2E, browser test, Playwright, 前端自动化测试 |
+| `sw-browser-tester` | Browser E2E tester — executes approved E2E cases through Kimi WebBridge real browser sessions → screenshots/snapshots/network diagnostics/visual evidence → browser-e2e-results.yaml. (NEW) | 浏览器测试, 浏览器E2E, browser test, Kimi WebBridge, 前端自动化测试 |
 
 ## 交付层 (Delivery Layer, 2 NEW)
 
@@ -83,6 +83,7 @@
 | Agent | Role | Trigger |
 |-------|------|---------|
 | `sw-setup` | Module installer — configures directories and memory structure | setup, 安装配置 |
+| `sw-change-propagator` | Requirement change manager — classifies small/partial/large changes and versions current/downstream phases | requirement change, 需求变更, 局部调整, impact analysis |
 | `sw-knowledge-agent` | Knowledge base manager — query (knowledge-query.md), update (knowledge-update.md), index, service discovery. KB health checks, staleness detection, freshness decay. (REVIVED: was collapsed into controller) | knowledge query, 知识库, KB管理 |
 | `sw-systematic-debugging` | Systematic debugging — root cause before fixes | debugging, 调试 |
 | `sw-verification-before-completion` | Pre-completion verification gate | verification, 验证 |
@@ -217,7 +218,7 @@
 │   └── API 测试 (api-test-postman-schema.md)                          │
 │                                                                      │
 │   sw-browser-tester (L3 浏览器 E2E 测试):                             │
-│   ├── 从 E2E 设计文档生成 Playwright .spec.ts 脚本                    │
+│   ├── 通过 Kimi WebBridge 真实浏览器会话执行 E2E 用例                │
 │   ├── 执行浏览器 E2E (功能 + 非功能 + 兼容性 + 视觉回归)             │
 │   └── 控制台错误 + 网络故障 + 性能指标采集                            │
 │                                                                      │
@@ -253,7 +254,7 @@
 | **decomposition** (简单需求) | sw-task-decomposer | — | task-decomposition.md, parallel-execution.md | dependency check |
 | **execution** | sw-plan-executor | sw-worktree-controller, sw-tdd-agent, sw-reviewer-logic, sw-reviewer-security, sw-reviewer-performance, sw-reviewer-context, sw-receiving-review, sw-lint-checker, sw-verification-before-completion, sw-systematic-debugging | worktree-management.md, quality-gates.md | P0/P1/P2 gate |
 | **merge** | sw-finishing-branch | — | merge-management.md | conflict-free |
-| **test** | sw-integration-tester | sw-browser-tester | test-environment.md, integration-test-plan.md, api-test-postman-schema.md, playwright-test-template.md, snapshot-strategy.md, visual-regression.md | all IT PASS + all browser E2E PASS |
+| **test** | sw-integration-tester | sw-browser-tester | test-environment.md, integration-test-plan.md, api-test-postman-schema.md, webbridge-test-template.md, webbridge-evidence-strategy.md, webbridge-visual-evidence.md | all IT PASS + all browser E2E PASS |
 | **delivery** | sw-delivery-manager | sw-knowledge-agent | delivery-checklist.md, release-notes-template.md | delivery-acceptance-gate.md |
 
 > 详细阶段转换规则（含每阶段的具体检查项和失败处理）见 `skills/sw-controller/SKILL.md` → Phase Transition Rules。

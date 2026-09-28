@@ -170,6 +170,21 @@ requirements:
       delivery:           { status: pending, artifacts: [], completed_at: null }
 ```
 
+### 需求变更传播
+
+需求进入设计、拆分或执行阶段后，不能直接覆盖已完成的下游产物。由
+`sw-change-propagator` 生成 `knowledge/changes/{requirement_id}/{change_id}/`
+变更包：
+
+- `small`：只修改当前步骤，不传播 revision；
+- `partial`：从最早受影响阶段开始，生成当前及后续阶段的 revision 和
+  `phase-deltas/*.md`，并将旧阶段标记为 `change_requested`；
+- `large`：创建新需求，从 `ideation` 重新开始，原需求保持历史状态。
+
+应用变更后，受影响阶段增加 `previous_status`、`revision`、
+`superseded_by` 和 `change_packet`。控制器在目标 revision 和阶段门禁通过前，
+不得继续向后推进。
+
 ### 与 harness_framework 的协作
 
 | 层级 | 跟踪文件 | 粒度 | 用途 |

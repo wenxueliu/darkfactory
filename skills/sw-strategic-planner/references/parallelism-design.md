@@ -110,7 +110,7 @@ Wave 3 (After Wave 2 — integration):
 Wave FINAL (After ALL tasks — 4 parallel reviews):
 ├── F1: Plan Compliance Audit [oracle]
 ├── F2: Code Quality Review [unspecified-high]
-├── F3: Real Manual QA [unspecified-high + playwright]
+├── F3: Real Browser QA [unspecified-high + kimi-webbridge]
 └── F4: Scope Fidelity Check [deep]
 ```
 

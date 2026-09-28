@@ -67,7 +67,7 @@ sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协�
   │
   ├── [测试层 — Test]
   │     sw-integration-tester (NEW: 集成测试 — env health check + newman 硬执行)
-  │     sw-browser-tester (NEW: 浏览器E2E测试 — Playwright脚本生成+视觉回归+证据采集)
+  │     sw-browser-tester (NEW: 浏览器E2E测试 — Kimi WebBridge真实会话+视觉证据采集)
   │
   ├── [交付层 — Delivery]
   │     sw-delivery-manager (NEW: 交付管理 — 检查清单+Release Notes)
@@ -306,4 +306,3 @@ python install.py --claude --codex
 - Include agent scope: `feat(sw-controller):`, `fix(sw-reviewer-security):`, etc.
 - Keep commits bisectable — one logical change per commit
 - Skills are product code even though they are Markdown — use `feat:`/`fix:`, not `docs:`
-

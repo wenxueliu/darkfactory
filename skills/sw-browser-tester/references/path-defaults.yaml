@@ -10,13 +10,16 @@ paths:
     e2e_design: knowledge/designs/{requirement_id}/e2e/design.md
     e2e_gate: knowledge/designs/{requirement_id}/e2e/gate.md
     browser_test_plan: skills/sw-browser-tester/references/browser-test-plan.md
+    webbridge_test_template: skills/sw-browser-tester/references/webbridge-test-template.md
+    webbridge_evidence_strategy: skills/sw-browser-tester/references/webbridge-evidence-strategy.md
+    webbridge_visual_evidence: skills/sw-browser-tester/references/webbridge-visual-evidence.md
     tracker: knowledge/requirements-tracker.yaml
 
   artifact_targets:
     test_root: _context-output/test-artifacts/e2e/{requirement_id}
-    test_script: _context-output/test-artifacts/e2e/{requirement_id}/browser-e2e.spec.ts
+    session_log: _context-output/test-artifacts/e2e/{requirement_id}/browser-e2e-session.json
     output_dir: _context-output/test-artifacts/e2e/{requirement_id}/output
-    traces_dir: _context-output/test-artifacts/e2e/{requirement_id}/traces
-    json_report: _context-output/test-artifacts/e2e/{requirement_id}/results.json
+    network_log: _context-output/test-artifacts/e2e/{requirement_id}/network.json
+    visual_evidence_dir: _context-output/test-artifacts/e2e/{requirement_id}/visual
     result_file: knowledge/browser-e2e-results.yaml
     tracker: knowledge/requirements-tracker.yaml

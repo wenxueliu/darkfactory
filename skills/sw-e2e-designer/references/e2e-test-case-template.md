@@ -10,7 +10,7 @@ contract_version: "1.0"
 
 端到端 (E2E) 测试用例的结构化设计模板。覆盖功能、非功能、兼容性三大类测试场景，并支持用户自定义扩展。E2E 验证从用户入口到数据库再返回的完整链路——跨页面、跨组件、跨服务。
 
-**定位:** 设计阶段由 sw-controller 加载，填充后写入设计文档 Section 10.5。执行阶段由 `sw-browser-tester` 生成 Playwright `.spec.ts` 脚本并通过 `npx playwright test` 运行。E2E 不在 TDD Agent 的两层循环（UT+API）内——E2E 用例在 UT+API 全量通过后再执行。
+**定位:** 设计阶段由 sw-controller 加载，填充后写入设计文档 Section 10.5。执行阶段由 `sw-browser-tester` 通过 Kimi WebBridge 真实浏览器会话执行，并写入 session log、snapshot、截图和网络证据。E2E 不在 TDD Agent 的两层循环（UT+API）内——E2E 用例在 UT+API 全量通过后再执行。
 
 ## When to Use
 
@@ -29,7 +29,7 @@ contract_version: "1.0"
 | **Priority** | P0 / P1 / P2 / P3 |
 | **Related Requirement** | AC-{N} 或 Task ID |
 | **Related User Journey** | Section 2.1 中的旅程名，标注 N/A 如不涉及 UI |
-| **Framework** | Playwright / Cypress / Selenium / 其他 |
+| **Execution** | Kimi WebBridge session / API-E2E / 其他明确执行方式 |
 
 ---
 
@@ -51,7 +51,7 @@ AND   {持久化验证: DB/API 状态一致}
 |---------|------|------|
 | 起始状态 | 具体的数据行、配置、权限 | `INSERT INTO users VALUES ('e2e-u-001', 'e2e@test.com', role='member', balance=1000.00)` |
 | 操作步骤 | 每步含: 页面路由 + 元素定位(data-testid 必填) + 操作 + 等待条件 | `1. 打开 /products → 2. data-testid="search-input" type "test-product" → 3. 等待 .result-list 可见 → 4. data-testid="buy-btn" click` |
-| 选择器 | **必须指定 `data-testid`**，供 `sw-browser-tester` 生成 Playwright 脚本使用。回退: ARIA role/name → text → CSS class | `data-testid="search-input"`, `data-testid="buy-btn"`, `data-testid="order-number"` |
+| 交互目标 | 优先指定可由 accessibility snapshot 识别的语义目标；同时提供 `data-testid` 作为 CSS fallback。`sw-browser-tester` 执行前必须重新获取 `@e` ref。 | `role=button name=Buy`, `data-testid="search-input"`, `data-testid="order-number"` |
 | 验证点 | UI 断言 + API 断言 + DB 断言 | `页面显示"支付成功" AND GET /orders?userId=e2e-u-001 → status=PAID AND DB orders 表 status='PAID'` |
 | 数据清理 | 具体的 DELETE/UPDATE 语句，恢复原始状态 | `DELETE FROM orders WHERE user_id='e2e-u-001'; UPDATE inventory SET stock=100 WHERE id=1` |
 
@@ -65,7 +65,7 @@ AND   {持久化验证: DB/API 状态一致}
 |---------|---------|--------|
 | **输入校验失败** | 提交空表单、非法格式、超长输入 | 前端错误提示可见 + 数据未写入 DB |
 | **服务器错误** | Mock API 返回 500 / 模拟后端宕机 | 用户看到友好错误页 + 重试按钮可用 |
-| **网络中断** | 断网 / 超时 (Playwright `route.abort()`) | 离线提示可见 + 数据不丢失 |
+| **网络中断** | 测试环境故障注入、timeout profile 或浏览器/环境级网络开关 | 离线提示可见 + 数据不丢失 |
 | **并发冲突** | 两个用户同时修改同一资源 | 后者看到冲突提示 + 数据一致性保持 |
 | **资源不存在** | 访问已删除的资源 ID | 404 页面 + 引导回首页 |
 | **会话过期** | Token 过期后继续操作 | 跳转登录页 + 未保存数据提示 |
@@ -230,7 +230,7 @@ THEN  {指标} < {阈值}
 | Chrome | Latest, Latest-1 | P0 用例全量 |
 | Firefox | Latest | P0 用例全量 |
 | Safari | Latest (macOS/iOS) | P0 用例全量 + apple pay 等平台特性 |
-| Edge | Latest | P0 用例抽样 (基于 Chromium，与 Chrome 高度一致) |
+| Chrome/Edge session | Latest | P0 用例抽样 (通过用户浏览器 session 执行) |
 
 ```
 GIVEN 浏览器: {Chrome 130 / Firefox 128 / Safari 18}
@@ -525,7 +525,7 @@ L1 UT (test-case-template.md)
 L2 API (api-test-case-template.json)
   └─ 端点/契约 → 秒~分钟级 → Newman + sw-tdd-agent (GATE 1B), sw-integration-tester (GATE 3)
 L3 E2E (e2e-test-case-template.md) ← 本模板
-  └─ 用户旅程 → 分钟级 → Playwright + sw-browser-tester 执行 (GATE 3)
+  └─ 用户旅程 → 分钟级 → Kimi WebBridge + sw-browser-tester 执行 (GATE 3)
       ├─ 功能 (happy/error/boundary/state/auth)
       ├─ 非功能 (perf/security/a11y/reliability/i18n)
       ├─ 兼容性 (browser/device/screen/network)
