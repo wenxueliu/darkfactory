@@ -1,6 +1,6 @@
 # Agent 目录 (Agent Catalog)
 
-> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了 v2 全部 38 个 Agent 的技能、角色和触发词。
+> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了当前 44 个 skill 目录中的 Agent、流程技能和辅助技能、角色及触发词。
 
 ---
 
@@ -78,7 +78,7 @@
 | `sw-multi-search` | Multi-source search orchestrator — fans out to codebase-explorer/external-researcher/media-interpreter in parallel, then aggregates and ranks. Use when source of truth is unknown. (NEW) | multi-source, comprehensive search, cross-reference, 多源搜索, 跨源检索 |
 | `sw-media-interpreter` | Media file interpreter — PDFs, images, diagrams. Based on Multimodal Looker. | PDF解读, image analysis, 图表解读 |
 
-## 基础设施层 (Infrastructure Layer, 10 — 5 existing, 5 NEW)
+## 基础设施层 (Infrastructure Layer, 11)
 
 | Agent | Role | Trigger |
 |-------|------|---------|
@@ -98,7 +98,8 @@
 
 ## 需求端到端流程 (E2E Requirements Flow)
 
-一个需求从提出到交付，经过 7 个阶段，38 个 Agent 各司其职。
+一个需求从提出到交付，经过 7 个阶段；需求发生变化时，由
+`sw-change-propagator` 负责版本传播和下游重生成。
 
 > **两条路径：** 简单需求走 设计(3-stage) → 拆分 路径；复杂/多步骤需求在头脑风暴后进入 **规划层** (sw-strategic-planner)，由规划层替代设计+拆分，直接产出可执行计划。
 
@@ -258,6 +259,20 @@
 | **delivery** | sw-delivery-manager | sw-knowledge-agent | delivery-checklist.md, release-notes-template.md | delivery-acceptance-gate.md |
 
 > 详细阶段转换规则（含每阶段的具体检查项和失败处理）见 `skills/sw-controller/SKILL.md` → Phase Transition Rules。
+
+### 需求变更路由
+
+变更处理遵循“最早受影响阶段”原则：
+
+```text
+small   → 当前步骤
+partial → 当前阶段及所有后续阶段
+large   → 新需求，从 ideation 开始
+```
+
+`sw-change-propagator` 先生成 `change-propagation.yaml` 和阶段 delta，获得
+确认后才更新 `requirements-tracker.yaml`。被影响的已完成阶段会进入
+`change_requested`，旧产物通过 `superseded_by` 保留为历史证据。
 
 ### 水平支撑 (贯穿全流程)
 

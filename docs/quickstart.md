@@ -21,6 +21,35 @@
 
 ---
 
+## 一键接入（推荐）
+
+如果不想手工复制 skills 和 hooks，让 Agent 先确认目标目录、来源、版本、
+平台和配置，再执行：
+
+```bash
+python /path/to/harness/services/multiagents/package.py init \
+  --target /path/to/project \
+  --platform all \
+  --business-domain general
+```
+
+也可以先发布到本地或远程 Git 包仓库，再从仓库初始化：
+
+```bash
+python /path/to/harness/services/multiagents/package.py build --version 2.0.0 --output dist
+python /path/to/harness/services/multiagents/package.py publish \
+  --package dist/harness-multiagents-2.0.0.tar.gz \
+  --repository /srv/harness-packages
+python /path/to/harness/services/multiagents/package.py init \
+  --target /path/to/project \
+  --package /srv/harness-packages \
+  --platform codex
+```
+
+完整说明见 [package-lifecycle.md](package-lifecycle.md)。
+
+---
+
 ## 场景 A：已有项目接入
 
 ### 第一步：了解你的项目
@@ -324,6 +353,37 @@ sw-controller 会跳过配置检查，用默认参数跑一个最短路径：
 预计 5-10 分钟走完。
 
 ---
+
+## 需求中途变化
+
+先按影响范围分类：
+
+- `small`：只修改当前步骤；
+- `partial`：从最早受影响阶段开始，重新生成当前及后续阶段；
+- `large`：创建新需求，从需求澄清阶段重新开始。
+
+局部变更先生成变更包，不会立即修改 tracker：
+
+```bash
+python /path/to/harness/services/multiagents/change.py plan \
+  --project-root . \
+  --requirement-id REQ-001 \
+  --kind partial \
+  --current-phase service_design \
+  --change "新增权限校验"
+```
+
+确认变更包中的阶段、revision 和内容 delta 后再应用：
+
+```bash
+python /path/to/harness/services/multiagents/change.py apply \
+  --project-root . \
+  --packet knowledge/changes/REQ-001/CHG-*/change-propagation.yaml \
+  --approve
+```
+
+变更包会保留旧产物，标记 `superseded_by`，并阻止控制器继续消费旧版本。
+详见 [change-propagation.md](../skills/sw-change-propagator/references/change-propagation.md)。
 
 ## 第一次使用后
 

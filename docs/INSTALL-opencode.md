@@ -6,6 +6,21 @@ Complete guide for using Harness with [OpenCode.ai](https://opencode.ai).
 
 ## Installation
 
+### Package-based installation
+
+Install the OpenCode plugin and skills into a project from a verified package:
+
+```bash
+python /path/to/harness/services/multiagents/package.py install \
+  --source /srv/harness-packages \
+  --target /path/to/project \
+  --scope project \
+  --platform opencode
+```
+
+The installer preserves an existing `.opencode/opencode.json` and records the
+installed package in `.harness/installation.json`. See [package lifecycle](package-lifecycle.md).
+
 Harness auto-installs via OpenCode's plugin system. Add to your `opencode.json` (global or project-level):
 
 ```json

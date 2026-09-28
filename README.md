@@ -10,7 +10,7 @@
 
 黑灯工厂 (Black-light Factory) is a **human-AI collaborative software generation system** — orchestrate multiple specialized AI Agents in a pipeline from requirements to delivery. It implements the **Harness Engineering** philosophy: humans own strategic decisions, AI Agents handle execution and review.
 
-**32 skills** covering the full E2E pipeline (v2), following acceptance-driven development with a strict TDD iron law (no failing test, no production code).
+**44 skills** covering the full E2E pipeline (v2), including package lifecycle and requirement-change propagation, following acceptance-driven development with a strict TDD iron law (no failing test, no production code).
 
 ### Supported Platforms
 
@@ -39,6 +39,24 @@ repository/version to use, and which platforms/reviewers to enable. It routes
 to `sw-setup`, verifies the manifest/checksums, preserves existing config, and
 creates the `services/`, `knowledge/`, `_context/`, and `.worktree/` skeleton.
 See [the package lifecycle guide](docs/package-lifecycle.md).
+
+#### Requirement changes during a workflow
+
+Use the change propagator when a requirement changes after design has started:
+
+```bash
+python change.py plan \
+  --project-root . \
+  --requirement-id REQ-001 \
+  --kind partial \
+  --current-phase service_design \
+  --change "Add authorization checks"
+```
+
+`small` edits only the current step, `partial` regenerates the current and
+downstream phases from the earliest affected phase, and `large` creates a new
+requirement from ideation. Apply a reviewed packet with
+`change.py apply --approve`; see [the change propagation guide](skills/sw-change-propagator/references/change-propagation.md).
 
 #### Claude Code
 
@@ -194,7 +212,7 @@ sw-controller (Orchestrator: Intent Gate + Phase Transition + Delegation)
 
 ```
 multiagents/
-├── skills/                  # Agent skill definitions (32 skills)
+├── skills/                  # Agent skill definitions (44 skills)
 │   ├── sw-controller/       # Top-level orchestrator
 │   ├── sw-tdd-agent/        # TDD cycle execution
 │   ├── sw-worktree-controller/ # Single-task coordinator
@@ -250,7 +268,7 @@ multiagents/
 
 黑灯工厂是一套**人机协同的软件生成系统**——协调多个专业化 AI Agent 组成流水线，将人类决策与 AI 执行能力结合，实现从需求到交付的端到端自动化。遵循**验收驱动开发**和 TDD 铁律（无失败测试不写代码）。
 
-**32 个技能**覆盖完整 E2E 流水线（v2）：需求 → 设计 → 拆分 → 执行 → 合并 → 测试 → 交付。
+**44 个技能**覆盖完整 E2E 流水线（v2），并包含发行打包与需求变更传播：需求 → 设计 → 拆分 → 执行 → 合并 → 测试 → 交付。
 
 ### 支持的平台
 
@@ -261,6 +279,16 @@ multiagents/
 | **OpenCode** | 已支持 | [安装](#opencode-1) |
 
 ### 安装
+
+#### 一键打包与初始化
+
+```bash
+python package.py build --version 2.0.0 --output dist
+python package.py init --target /path/to/project --platform all
+```
+
+也可以通过本地目录或远程 Git 仓库发布、下载和安装。Agent 会先询问目标目录、
+来源版本、平台和配置，再执行初始化。详见 [打包生命周期文档](docs/package-lifecycle.md)。
 
 #### Claude Code
 
@@ -416,7 +444,7 @@ sw-controller（总控：Intent Gate + Phase Transition + 委派纪律 — 只�
 
 ```
 multiagents/
-├── skills/                  # Agent 技能定义（32 个技能）
+├── skills/                  # Agent 技能定义（44 个技能）
 │   ├── sw-controller/       # 总控
 │   ├── sw-tdd-agent/        # TDD 执行
 │   ├── sw-worktree-controller/ # 单任务协调

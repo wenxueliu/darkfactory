@@ -4,7 +4,7 @@
 
 ---
 
-## Agent 架构 (v2, 38 skills)
+## Agent 架构 (v2, 44 skills)
 
 ```
 sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
@@ -57,6 +57,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   │
   └── [基础设施层 — Infrastructure]
         sw-setup (模块安装配置)
+        sw-change-propagator (需求变更传播 — revision + 下游阶段重生成)
         sw-knowledge-agent (REVIVED: 知识库管理)
         sw-systematic-debugging (系统化调试)
         sw-verification-before-completion (完成前验证)
@@ -83,6 +84,33 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 | **merge (合并)** | `merge-management.md` | conflict-free merge | sw-controller |
 | **test (测试)** | `integration-test-plan.md`, `browser-test-plan.md` | all IT PASS + all browser E2E PASS | sw-controller |
 | **delivery (交付)** | `delivery-checklist.md`, `release-notes-template.md` | `delivery-acceptance-gate.md` | sw-delivery-manager |
+
+## 需求变更传播
+
+需求变更不是普通的“继续执行”。控制器先委托
+`sw-change-propagator` 判断变更规模：
+
+```text
+small   → 当前步骤直接调整
+partial → 最早受影响阶段 → 后续阶段全部生成新 revision
+large   → 新建需求 → ideation 重新开始
+```
+
+局部变更先写入 `knowledge/changes/{requirement_id}/{change_id}/`，其中包含
+`change-propagation.yaml` 和每个受影响阶段的 `phase-deltas/*.md`。审批应用后，
+tracker 为旧阶段记录 `previous_status`、`superseded_by`、`change_packet` 和目标
+`revision`；控制器在目标 revision 和门禁完成前不得继续向后推进。
+
+## 发行与安装
+
+`package.py` 是独立的发行入口：
+
+```text
+build → publish(local/remote Git) → download → install(project/user) → init
+```
+
+包内包含清单、SHA-256 校验、skills、hooks、平台插件和 Agent 初始化入口。
+详细命令见 [package-lifecycle.md](package-lifecycle.md)。
 
 知识库在所有阶段持续维护：ADR 在 `knowledge/_enterprise/decisions/`、模式在 `knowledge/_enterprise/patterns/`、经验教训在 `knowledge/_enterprise/lessons/`。
 
@@ -168,7 +196,8 @@ multiagents/
 │   ├── sw-receiving-review/ # Review feedback processing (NEW — Superpowers)
 │   ├── sw-deployer/         # Deployment execution (NEW)
 │   ├── sw-grill-docs/       # Documentation consistency griller (NEW)
-│   ├── sw-setup/            # Module installation
+│   ├── sw-setup/            # Module installation + package lifecycle
+│   ├── sw-change-propagator/ # Requirement change propagation
 │   ├── sw-knowledge-agent/  # Knowledge base management
 │   ├── sw-value-judgment/   # Requirements value assessment
 │   ├── sw-systematic-debugging/ # Systematic debugging

@@ -11,6 +11,29 @@ Enable Harness skills, lifecycle hooks, and multi-agent orchestration in Codex.
 
 ## Installation
 
+### Package-based installation
+
+For a versioned, verified install, use the package lifecycle CLI:
+
+```bash
+python /path/to/harness/services/multiagents/package.py install \
+  --source /srv/harness-packages \
+  --target /path/to/project \
+  --scope project \
+  --platform codex
+```
+
+To initialize the workspace and install in one step:
+
+```bash
+python /path/to/harness/services/multiagents/package.py init \
+  --target /path/to/project \
+  --platform codex
+```
+
+The package route verifies the manifest/checksums and records the installed
+version in `.harness/installation.json`. See [package lifecycle](package-lifecycle.md).
+
 ### Option 0: One-click install (recommended)
 
 If you already have the Harness repo cloned:

@@ -21,6 +21,24 @@ Black灯 Factory (HW) is a **human-AI collaborative software generation system**
 
 ---
 
+## One-Click Onboarding (Recommended)
+
+Let the Agent confirm the target directory, package source/version, platform,
+and project settings, then run:
+
+```bash
+python /path/to/harness/services/multiagents/package.py init \
+  --target /path/to/project \
+  --platform all \
+  --business-domain general
+```
+
+For a versioned install, publish a package to a local directory or remote Git
+repository, then use that repository as `--package`. See
+[package-lifecycle.md](package-lifecycle.md).
+
+---
+
 ## Scenario A: Add to Existing Project
 
 ### Step 1: Know Your Project
@@ -258,6 +276,30 @@ sw-controller skips config checks and runs a minimal path with defaults:
 Expect 5-10 minutes end to end.
 
 ---
+
+## Requirement Changes During a Workflow
+
+Classify the change before editing downstream work:
+
+- `small`: edit only the current step;
+- `partial`: regenerate the current and downstream phases from the earliest affected phase;
+- `large`: create a new requirement and restart at ideation.
+
+Generate a reviewable packet first:
+
+```bash
+python /path/to/harness/services/multiagents/change.py plan \
+  --project-root . \
+  --requirement-id REQ-001 \
+  --kind partial \
+  --current-phase service_design \
+  --change "Add authorization checks"
+```
+
+After approval, apply it with `change.py apply --approve`. The packet versions
+each affected phase, records content deltas, and prevents the controller from
+consuming superseded artifacts. See
+[change-propagation.md](../skills/sw-change-propagator/references/change-propagation.md).
 
 ## After Your First Run
 
