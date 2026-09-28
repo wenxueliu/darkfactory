@@ -40,6 +40,27 @@ to `sw-setup`, verifies the manifest/checksums, preserves existing config, and
 creates the `services/`, `knowledge/`, `_context/`, and `.worktree/` skeleton.
 See [the package lifecycle guide](docs/package-lifecycle.md).
 
+#### Start through an Agent
+
+If the Harness skills are already available in your Agent, open a session in
+the target project and send this message:
+
+```text
+Please use sw-setup to initialize this project. Ask me for the target directory, package source and version, enabled platforms, business domain, reviewers, and whether to install only core skills. Show me the write plan before applying it. After initialization, verify the installation record and tell me how to place source repositories under services/.
+```
+
+`sw-controller` can route the request to `sw-setup`. The Agent verifies the
+package manifest and checksums, preserves existing configuration, and runs the
+same `package.py init` flow documented above. If the Agent has not been
+installed yet, run the interactive bootstrap once from this repository:
+
+```bash
+python scripts/interactive-init.py
+```
+
+The script asks the same setup questions in a terminal and is useful for the
+first bootstrap or for environments without an interactive Agent session.
+
 #### Requirement changes during a workflow
 
 Use the change propagator when a requirement changes after design has started:
@@ -233,7 +254,8 @@ multiagents/
 ├── docs/                    # Documentation
 ├── hooks/                   # Session-start bootstrap
 ├── package.py               # Build/publish/download/install/init CLI
-├── scripts/                 # Knowledge base management tools
+├── scripts/                 # Interactive bootstrap and utility scripts
+│   └── interactive-init.py  # Terminal Q&A initialization
 ├── .claude-plugin/          # Claude Code plugin manifest
 ├── .codex-plugin/           # Codex plugin manifest
 └── .opencode/               # OpenCode plugin + config
@@ -289,6 +311,30 @@ python package.py init --target /path/to/project --platform all
 
 也可以通过本地目录或远程 Git 仓库发布、下载和安装。Agent 会先询问目标目录、
 来源版本、平台和配置，再执行初始化。详见 [打包生命周期文档](docs/package-lifecycle.md)。
+
+#### 通过 Agent 快速开始（推荐）
+
+如果当前 Agent 已经安装了 Harness 技能，请在目标项目目录打开会话并发送：
+
+```text
+请使用 sw-setup 初始化当前项目。先询问我目标目录、安装包来源和版本、启用的平台、业务域、审核器以及是否只安装核心 skills；确认写入计划后执行初始化。初始化完成后检查安装清单，并告诉我下一步如何把源码仓放入 services/。
+```
+
+也可以让总控 Agent 路由：
+
+```text
+/sw-controller 请先完成 Harness 环境初始化，再开始处理我的需求。
+```
+
+Agent 会确认参数，校验清单和校验和，保留已有配置，并调用与
+`package.py init` 相同的初始化流程。如果 Agent 尚未安装，先在本仓库执行
+问答式引导脚本：
+
+```bash
+python scripts/interactive-init.py
+```
+
+脚本会逐项询问目标目录、包来源、平台和项目配置，确认后创建工作区并安装技能。
 
 #### Claude Code
 
@@ -463,7 +509,8 @@ multiagents/
 │   └── config.user.yaml     # 用户配置
 ├── docs/                    # 文档
 ├── hooks/                   # 会话启动引导
-├── scripts/                 # 知识库管理工具
+├── scripts/                 # 问答式初始化和辅助脚本
+│   └── interactive-init.py  # 终端问答初始化
 ├── .claude-plugin/          # Claude Code 插件清单
 ├── .codex-plugin/           # Codex 插件清单
 └── .opencode/               # OpenCode 插件 + 配置

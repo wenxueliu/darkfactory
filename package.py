@@ -36,6 +36,7 @@ PACKAGE_DIRS = (
     "agents",
     "hooks",
     "docs",
+    "scripts",
     "document_contracts",
     ".claude-plugin",
     ".codex-plugin",
@@ -730,6 +731,7 @@ def _build_parser() -> argparse.ArgumentParser:
     initialize = subparsers.add_parser("init", help="initialize a workspace after an Agent interview")
     initialize.add_argument("--target", type=Path, default=Path("."))
     initialize.add_argument("--package", dest="source")
+    initialize.add_argument("--version", help="package version when --package points to a repository")
     initialize.add_argument("--no-install", action="store_true")
     initialize.add_argument("--platform", default="all")
     initialize.add_argument("--minimal", action="store_true")
@@ -790,6 +792,7 @@ def main(argv: list[str] | None = None) -> int:
                         _platforms(args.platform),
                         minimal=args.minimal,
                         force=True,
+                        version=args.version,
                     )
                     if args.source
                     else _install_from_root(

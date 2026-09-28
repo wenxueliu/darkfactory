@@ -28,6 +28,7 @@ def test_build_package_contains_manifest_and_payload(tmp_path: Path) -> None:
     assert "harness-package.json" in names
     assert "package.py" in names
     assert "change.py" in names
+    assert "scripts/interactive-init.py" in names
     assert "skills/sw-setup/SKILL.md" in names
     assert ".claude/settings.local.json" not in names
 

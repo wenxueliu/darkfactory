@@ -35,6 +35,9 @@ python package.py init \
   --platform all \
   --business-domain general \
   --enabled-reviewers security,logic,performance
+
+# 6. 终端问答初始化（适合首次接入）
+python scripts/interactive-init.py
 ```
 
 远程 Git 仓库：
@@ -46,6 +49,12 @@ python package.py publish \
 
 python package.py install \
   --source https://git.example.com/team/harness-packages.git \
+  --target /path/to/project \
+  --platform codex
+
+python package.py init \
+  --package https://git.example.com/team/harness-packages.git \
+  --version 2.0.0 \
   --target /path/to/project \
   --platform codex
 ```
@@ -65,7 +74,7 @@ python package.py install \
 
 ## Agent 对话初始化
 
-在 Agent 中直接说：
+在已安装 Harness 技能的 Agent 中直接说：
 
 > 帮我把 Harness 安装到 `/path/to/project`，使用本地仓库最新版，启用 Codex，
 > 业务域为 internal-tools，审核只保留 logic。
@@ -83,6 +92,10 @@ _context/config.user.yaml
 
 不会覆盖已有配置。`services/` 仍需要用户放入一个或多个独立 Git 源码仓；
 目录为空时初始化完成，但开发流程会在服务发现前阻塞并给出下一步提示。
+
+如果当前 Agent 尚未安装，可以执行 `python scripts/interactive-init.py`，通过终端
+问答完成相同的参数收集和初始化。脚本最终仍调用 `package.py init`，因此两条路径
+使用同一套幂等、保留已有配置的实现。
 
 ## 仓库结构
 
