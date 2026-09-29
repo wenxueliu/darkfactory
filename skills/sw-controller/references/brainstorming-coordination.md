@@ -133,7 +133,7 @@
 
 | 上游 | 下游 | 集成方式 |
 |------|------|---------|
-| 需求澄清 (requirement-clarification.md) | 头脑风暴 | 澄清完成的 `requirements/{id}.md` 作为头脑风暴的输入 |
+| 需求澄清 (requirement-clarification.md) | 头脑风暴 | 澄清完成的 `requirements/{id}/requirement.md` 作为头脑风暴的输入 |
 | 头脑风暴 | 设计协调 (design-coordination.md) | 头脑风暴输出的技术方向 + 假设/风险列表，作为设计阶段的种子 |
 | 头脑风暴 | 价值评估 (value-assessment.md) | 头脑风暴中确定的评估维度，可复用到 ROI 评估 |
 

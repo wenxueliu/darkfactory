@@ -18,7 +18,7 @@
 
 - `evidence` 和 `requirement_document` 是只读输入；缺失时记录 `NOT_FOUND`，不创建文件。
 - `artifact_targets` 是写入目标；只有评估达到对应结果并通过用户/阶段门禁后才写入。
-- 需求级评估和 ROI 必须默认写入 `knowledge/requirements/`，与需求文档共享 ID 前缀。
+- 需求级评估和 ROI 必须默认写入 `knowledge/requirements/{requirement_id}/`，与需求文档共享同一需求目录。
 - `priority_ranking` 面向多个需求，默认写入 `knowledge/value-assessment/`，不与单个需求混淆。
 - `tracker` 是共享状态；写入时必须保留其他需求条目和派生状态规则。
 
@@ -26,9 +26,9 @@
 
 ```yaml
 artifact_targets:
-  requirement_document: knowledge/requirements/{requirement_id}.md
-  value_assessment: knowledge/requirements/{requirement_id}-value-assessment.md
-  roi: knowledge/requirements/{requirement_id}-roi.md
+  requirement_document: knowledge/requirements/{requirement_id}/requirement.md
+  value_assessment: knowledge/requirements/{requirement_id}/value-assessment.md
+  roi: knowledge/requirements/{requirement_id}/roi.md
   priority_ranking: knowledge/value-assessment/priority-ranking-{date}.md
   tracker: knowledge/requirements-tracker.yaml
 ```

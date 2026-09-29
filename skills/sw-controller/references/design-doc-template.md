@@ -19,7 +19,7 @@
 
 ## 使用说明
 
-此模板在需求门禁 PASS 后使用。基于 `requirements/{requirement_id}.md` 创建。
+此模板在需求门禁 PASS 后使用。基于 `requirements/{requirement_id}/requirement.md` 创建。
 
 ### 仓库边界与章节归属
 
@@ -534,6 +534,6 @@ JSON 文件格式规范见 `references/api-test-postman-schema.md`。
 
 ## 13. 下游引用
 
-- 需求规格: `requirements/{requirement_id}.md`
+- 需求规格: `requirements/{requirement_id}/requirement.md`
 - 任务拆分: `knowledge/tasks.yaml`
 - 知识库: `knowledge/decisions/`

@@ -92,4 +92,4 @@ Before submitting assessment:
 
 ## Output
 
-Write to `{project-root}/knowledge/requirements/{requirement_id}-value-assessment.md`
+Write to `{project-root}/knowledge/requirements/{requirement_id}/value-assessment.md`

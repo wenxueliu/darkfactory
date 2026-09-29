@@ -23,7 +23,7 @@
 2. **Stage 1 跨服务设计:** `knowledge/designs/{id}/feature-design.md` — 其中的「服务影响分析」表列出了本次需求实际涉及的服务（从 service-registry 中筛选，不可臆想）
 3. **Stage 2 Per-service 设计:** `knowledge/designs/{id}/services/{svc}/design.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
 4. **Stage 3 E2E 测试设计:** `knowledge/designs/{id}/e2e/design.md` — 用于最后一个 wave 的 E2E 任务
-5. **需求规格:** `requirements/{id}.md` — 验收条件来源
+5. **需求规格:** `requirements/{id}/requirement.md` — 验收条件来源
 6. **ADR:** `knowledge/decisions/ADR-*.md` — 架构约束
 
 **受影响服务必须从设计文档获取，禁止臆想:**
@@ -300,7 +300,7 @@ tasks:
 
     acceptance_criteria:
       - ac_id: "AC-{N}"
-        source: "requirements/{id}.md"
+        source: "requirements/{id}/requirement.md"
         description: "{具体、可测量的完成标准}"
 
     test_bindings:

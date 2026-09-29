@@ -79,6 +79,7 @@ def test_initialize_workspace_is_idempotent_and_writes_agent_config(tmp_path: Pa
     assert first["created"]
     assert second["created"] == []
     assert (target / "services").is_dir()
+    assert (target / "knowledge" / "requirements").is_dir()
     assert (target / "knowledge" / "index.md").is_file()
     config = (target / "_context" / "config.yaml").read_text()
     assert 'business_domain: "internal-tools"' in config

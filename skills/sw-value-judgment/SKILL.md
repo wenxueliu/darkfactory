@@ -105,11 +105,12 @@ The product strategist. Focuses on what creates real value vs what just feels pr
 
 **Contract version:** `2.0.0`。
 
-需求级产物与需求文档保持同一目录和 ID 前缀，以保证需求上下文高内聚：
+需求级产物与需求文档放入同一个需求目录，以保证需求上下文高内聚：
 
-- 需求规格：`knowledge/requirements/{requirement_id}.md`
-- 价值评估：`knowledge/requirements/{requirement_id}-value-assessment.md`
-- ROI 评估：`knowledge/requirements/{requirement_id}-roi.md`
+- 需求目录：`knowledge/requirements/{requirement_id}/`
+- 需求规格：`knowledge/requirements/{requirement_id}/requirement.md`
+- 价值评估：`knowledge/requirements/{requirement_id}/value-assessment.md`
+- ROI 评估：`knowledge/requirements/{requirement_id}/roi.md`
 - 跨需求优先级汇总：`knowledge/value-assessment/priority-ranking-{date}.md`
 
 ```yaml
@@ -135,8 +136,8 @@ external_capabilities:
     impact: "..."
     fallback: "..."
 artifacts:
-  requirement: "knowledge/requirements/{requirement_id}.md"
-  assessment: "knowledge/requirements/{requirement_id}-value-assessment.md"
+  requirement: "knowledge/requirements/{requirement_id}/requirement.md"
+  assessment: "knowledge/requirements/{requirement_id}/value-assessment.md"
   roi: null
   priority_ranking: null
   tracker: "knowledge/requirements-tracker.yaml"
@@ -145,14 +146,14 @@ next_action: "..."
 ```
 
 Write the assessment to `paths.artifact_targets.value_assessment` (default:
-`knowledge/requirements/{requirement_id}-value-assessment.md`). Write ROI to the
-requirement-scoped sibling target. Write priority ranking to the aggregate
+`knowledge/requirements/{requirement_id}/value-assessment.md`). Write ROI to the
+requirement directory's `roi.md`. Write priority ranking to the aggregate
 `knowledge/value-assessment/` target.
 
 After writing the assessment, update `knowledge/requirements-tracker.yaml`:
 - Read the tracker file and locate the requirement entry by `id` matching `{requirement_id}`
 - Update `phases.value_assessment.status` to `done`
-- Add artifact path `knowledge/requirements/{requirement_id}-value-assessment.md`
+- Add artifact path `knowledge/requirements/{requirement_id}/value-assessment.md`
 - Set `phases.value_assessment.completed_at` to today's date (`YYYY-MM-DD`)
 - Update `updated_at` to today
 - Re-derive overall `status` per the derivation rules in the tracker header
@@ -185,6 +186,6 @@ Before marking a requirement as "值得做":
 | Five dimensions | Impact、Effort、Risk、Dependencies、Strategic Fit 均有 1–5 分和证据 | `dimensions` + assessment artifact | Yes |
 | Quantitative reasoning | ROI 模式有成本、收益、期限、盈亏平衡和假设 | ROI artifact | Yes in `roi` mode |
 | Recommendation | 推荐动作、分数、等级与机会成本一致 | `recommendation` + `trade_offs` | Yes |
-| Requirement cohesion | 需求级评估/ROI 与需求文档同目录同 ID 前缀；汇总排序单独存放 | `artifacts` + file paths | Yes |
+| Requirement cohesion | 需求级规格、评估、ROI 和门禁报告位于同一 `knowledge/requirements/{id}/`；汇总排序单独存放 | `artifacts` + file paths | Yes |
 | Tracker traceability | 评估完成后 tracker 阶段、artifact、日期和 overall status 同步 | Tracker diff | Yes |
 | Missing evidence | 无法支持评分时返回 `NEEDS_USER_INPUT`，不编造数字 | `result` + `assumptions` | Yes |

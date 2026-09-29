@@ -69,12 +69,12 @@ requirements:
   #     ideation:
   #       status: done
   #       artifacts:
-  #         - knowledge/requirements/REQ-20260411-001.md
+  #         - knowledge/requirements/REQ-20260411-001/requirement.md
   #       completed_at: '2026-04-11'
   #     value_assessment:
   #       status: done
   #       artifacts:
-  #         - knowledge/requirements/REQ-20260411-001-value-assessment.md
+  #         - knowledge/requirements/REQ-20260411-001/value-assessment.md
   #       completed_at: '2026-04-11'
   #     design:
   #       status: done

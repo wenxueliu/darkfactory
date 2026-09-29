@@ -635,6 +635,7 @@ def initialize_workspace(
         "knowledge/contracts",
         "knowledge/domains",
         "knowledge/services",
+        "knowledge/requirements",
         "knowledge/sw-controller",
         "knowledge/reviews",
         "_context",

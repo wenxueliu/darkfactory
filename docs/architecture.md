@@ -77,7 +77,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 | Phase | Templates | Gate Check | Tracker 更新者 |
 |-------|-----------|------------|---------------|
 | **ideation (需求)** | `requirements/{variant}` definition package, value assessment | resolved `gate.yaml` + `validator.yaml` | sw-requirements-clarifier |
-| **value_assessment (价值)** | `requirements/{id}-value-assessment.md`, `requirements/{id}-roi.md` | value scoring | sw-value-judgment |
+| **value_assessment (价值)** | `requirements/{id}/value-assessment.md`, `requirements/{id}/roi.md` | value scoring | sw-value-judgment |
 | **design (设计)** | `feature-design/default`, `service-design/{type}`, `e2e/default` definition packages, ADR | resolved definition gates + validators | sw-feature-designer |
 | **decomposition (拆分)** | `task-decomposition.md` → `tasks.yaml` | dependency check | sw-task-decomposer |
 | **execution (执行)** | TDD cycles + lint check + parallel review | P0/P1/P2 gate | sw-plan-executor |
@@ -239,6 +239,7 @@ knowledge/                        # Project knowledge + cross-agent workflow sta
 ├── contracts/                    # Cross-repository contracts
 ├── domains/                      # Domain-scoped knowledge
 ├── services/{service-id}/        # Repository-scoped generated knowledge
+├── requirements/{requirement-id}/ # Requirement bundle: spec, value, ROI, gate
 ├── requirements-tracker.yaml     # Requirement lifecycle tracking (phase status, progress, artifacts)
 ├── tasks.yaml                    # Task definitions and status
 ├── service-registry.yaml         # Generated index of services/

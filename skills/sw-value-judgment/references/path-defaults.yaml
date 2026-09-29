@@ -20,8 +20,8 @@ paths:
       decisions: knowledge/decisions
 
   artifact_targets:
-    requirement_document: knowledge/requirements/{requirement_id}.md
-    value_assessment: knowledge/requirements/{requirement_id}-value-assessment.md
-    roi: knowledge/requirements/{requirement_id}-roi.md
+    requirement_document: knowledge/requirements/{requirement_id}/requirement.md
+    value_assessment: knowledge/requirements/{requirement_id}/value-assessment.md
+    roi: knowledge/requirements/{requirement_id}/roi.md
     priority_ranking: knowledge/value-assessment/priority-ranking-{date}.md
     tracker: knowledge/requirements-tracker.yaml

@@ -29,9 +29,9 @@ paths:
   # 写入目标：本 Skill 产出或更新的文件，以及模板下游引用所需的位置。
   # tasks/reviews 本 Skill 不写入，只作为模板引用目标提供给下游 Skill。
   artifact_targets:
-    requirement_document: knowledge/requirements/{requirement_id}.md
-    gate_report: knowledge/requirements/{requirement_id}-gate.md
-    value_assessment: knowledge/requirements/{requirement_id}-value-assessment.md
+    requirement_document: knowledge/requirements/{requirement_id}/requirement.md
+    gate_report: knowledge/requirements/{requirement_id}/gate.md
+    value_assessment: knowledge/requirements/{requirement_id}/value-assessment.md
     tracker: knowledge/requirements-tracker.yaml
     knowledge_root: knowledge
     tasks: knowledge/tasks.yaml

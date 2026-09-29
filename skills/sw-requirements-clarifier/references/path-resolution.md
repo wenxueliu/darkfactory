@@ -34,9 +34,9 @@ paths:
       contracts: knowledge/contracts
       decisions: knowledge/decisions
   artifact_targets:
-    requirement_document: knowledge/requirements/{requirement_id}.md
-    gate_report: knowledge/requirements/{requirement_id}-gate.md
-    value_assessment: knowledge/requirements/{requirement_id}-value-assessment.md
+    requirement_document: knowledge/requirements/{requirement_id}/requirement.md
+    gate_report: knowledge/requirements/{requirement_id}/gate.md
+    value_assessment: knowledge/requirements/{requirement_id}/value-assessment.md
     tracker: knowledge/requirements-tracker.yaml
     knowledge_root: knowledge
     tasks: knowledge/tasks.yaml

@@ -107,7 +107,7 @@ sw:
 python3 -m document_contracts validate \
   --document-type requirements \
   --variant fintech \
-  --document knowledge/requirements/REQ-001.md \
+  --document knowledge/requirements/REQ-001/requirement.md \
   --root project=./knowledge/templates \
   --root skill=./skills/sw-requirements-clarifier/references/document-definitions
 ```

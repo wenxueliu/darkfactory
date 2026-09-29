@@ -201,11 +201,13 @@ def test_value_artifacts_are_requirement_cohesive() -> None:
 
     value_targets = value_defaults["paths"]["artifact_targets"]
     clarifier_targets = clarifier_defaults["paths"]["artifact_targets"]
-    assert value_targets["requirement_document"] == "knowledge/requirements/{requirement_id}.md"
-    assert value_targets["value_assessment"] == (
-        "knowledge/requirements/{requirement_id}-value-assessment.md"
+    assert value_targets["requirement_document"] == (
+        "knowledge/requirements/{requirement_id}/requirement.md"
     )
-    assert value_targets["roi"] == "knowledge/requirements/{requirement_id}-roi.md"
+    assert value_targets["value_assessment"] == (
+        "knowledge/requirements/{requirement_id}/value-assessment.md"
+    )
+    assert value_targets["roi"] == "knowledge/requirements/{requirement_id}/roi.md"
     assert clarifier_targets["value_assessment"] == value_targets["value_assessment"]
     assert value_targets["priority_ranking"].startswith(
         "knowledge/value-assessment/"

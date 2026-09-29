@@ -120,6 +120,7 @@ unverified archive.
 │   ├── {patterns,decisions,lessons,contracts}/
 │   ├── domains/
 │   ├── services/
+│   ├── requirements/{requirement-id}/
 │   └── sw-controller/{global-state.yaml,worktree-registry.yaml}
 ├── _context/{config.yaml,config.user.yaml}
 └── .worktree/

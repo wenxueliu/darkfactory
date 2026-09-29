@@ -25,7 +25,7 @@
 | 领域级知识 | `kb-search.py "{上下文关键词}" --scope domain --trusted-only --max-results 5 --json` | 本业务领域有什么特定知识？ |
 | 服务级知识 | `kb-search.py "{上下文关键词}" --scope service --trusted-only --max-results 5 --json` | 具体受影响服务有什么既有知识？ |
 | API 契约 | `kb-search.py "{上下文关键词}" --type api --scope enterprise --trusted-only --max-results 5 --json` | 有哪些 API 契约不能破坏？ |
-| 需求规格 | `requirements/{id}.md` (直接读取) | 需求的具体约束是什么？ |
+| 需求规格 | `requirements/{id}/requirement.md` (直接读取) | 需求的具体约束是什么？ |
 | 头脑风暴输出 | `knowledge/designs/{id}/brainstorm.md` (直接读取) | 推荐方向是什么？关键假设有哪些？ |
 
 > `{上下文关键词}` 替换为具体的技术关键词。如: "用户认证"、"订单状态机"、"支付回调"。

@@ -18,7 +18,7 @@
 | 可复用模式 | `knowledge/patterns/` | 有没有已解决过类似问题的模式？ |
 | 经验教训 | `knowledge/lessons/` | 过去类似场景踩过什么坑？ |
 | 服务注册表 | `service-registry.yaml` | 哪些服务存在？它们的 API 和依赖是什么？ |
-| 需求规格 | `requirements/{id}.md` | 需求的具体约束和 AC 是什么？ |
+| 需求规格 | `requirements/{id}/requirement.md` | 需求的具体约束和 AC 是什么？ |
 | 头脑风暴输出 | `knowledge/designs/{id}/brainstorm.md` | 推荐的技术方向是什么？ |
 
 **查询后行动:**

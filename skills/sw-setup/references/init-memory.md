@@ -18,6 +18,7 @@ The shared memory structure is created with proper permissions and initial conte
 {project-root}/knowledge/contracts/
 {project-root}/knowledge/domains/
 {project-root}/knowledge/services/
+{project-root}/knowledge/requirements/
 {project-root}/knowledge/reviews/
 {project-root}/knowledge/value-assessment/
 {project-root}/knowledge/sw-controller/
