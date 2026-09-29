@@ -129,7 +129,6 @@ python /path/to/harness/services/multiagents/install.py --claude --codex
 
 ```bash
 echo ".worktree/" >> .gitignore
-echo "_context-output/" >> .gitignore
 ```
 
 ### 第五步：试运行

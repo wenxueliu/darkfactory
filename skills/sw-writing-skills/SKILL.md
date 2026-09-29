@@ -1,6 +1,9 @@
 ---
 name: sw-writing-skills
 description: "元技能：编写Agent技能. Use when creating new skills, editing existing skills, or verifying skills work before deployment. TDD applied to process documentation — no skill without a failing test first. [trigger: 编写技能, 创建技能, 写skill, writing skills, create skill, new agent, skill authoring]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # 黑灯工厂 技能编写 (sw-writing-skills)
@@ -330,3 +333,27 @@ If you follow TDD for code, follow it for skills. It's the same discipline appli
 - Harness skill template — the structure all Harness skills follow
 - `AGENTS.md` Platform Feature Matrix — cross-platform compatibility rules
 - `_context/config.yaml` — configuration-driven skill behavior
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `skill_request` | Yes | 要创建、修改或验证的 Skill 目标。 |
+| `skill_path` | Yes | Skill 目录及 `SKILL.md` 路径。 |
+| `scenarios` | No | 真实触发场景、反例和基线行为。 |
+| `project_root` | No | 仓库根目录。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。Skill 可独立通过本地测试、quick_validate 和人工/子代理场景验证；不依赖其他 Skill 的自报结果。
+
+## Output Contract
+
+返回 `SKILL_READY`、`NEEDS_REVISION` 或 `BLOCKED`，包含 red baseline、修改文件、green 验证、契约字段、触发边界、引用资源和剩余风险。新/修改 Skill 必须通过 `quick_validate.py`。
+
+## Acceptance Criteria
+
+- 先有能失败的行为测试/压力场景，再修改 Skill。
+- Frontmatter 具备 name、description、metadata.version、external_dependencies。
+- 正文具备输入、输出、验收标准和明确的依赖降级策略。
+- 引用资源可发现、无跨 Skill 私有路径，且验证结果来自新鲜命令输出。

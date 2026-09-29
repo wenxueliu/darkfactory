@@ -1,6 +1,9 @@
 ---
 name: sw-media-interpreter
 description: "媒体文件解读Agent. Interprets PDFs, images, diagrams that require analysis beyond raw text. Use for extracting information from documents, describing visual content. [trigger: PDF解读, 图片分析, diagram interpretation, media analysis, 图表解读]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # 黑灯工厂 媒体文件解读 (sw-media-interpreter)
@@ -147,3 +150,25 @@ Response:
 ```
 未找到安全配置要求：文档中未包含安全配置相关章节。
 ```
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `file_path` | Yes | 可读取的 PDF、图片、图表或其他媒体文件绝对路径。 |
+| `goal` | Yes | 要提取、解释或验证的具体目标。 |
+| `language` | No | 输出语言；默认匹配请求语言。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。媒体读取能力由宿主环境提供；文件不可读或格式不支持时直接返回原因，不调用其他 Skill。
+
+## Output Contract
+
+只返回目标相关的解释结果或明确的 `NOT_FOUND`/`UNREADABLE`，不写文件、不转发原始文件、不添加无关前后缀。复杂图表必须区分观察事实、推断和不确定性。
+
+## Acceptance Criteria
+
+- 所有结论都来自指定媒体，未找到内容必须说明原因。
+- 表格、关系图和数值趋势尽量完整保留结构，不把猜测写成事实。
+- 遵守单文件只读边界，不产生共享状态或隐式副作用。

@@ -1,6 +1,9 @@
 ---
 name: sw-reviewer-logic
 description: "黑灯工厂逻辑审核Agent. Use when reviewing code for correctness, edge cases, error handling, or logical bugs. [trigger: 逻辑审核, 正确性审查, 边界检查]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # 黑灯工厂 逻辑审核者 (sw-reviewer-logic)
@@ -62,3 +65,27 @@ Write review to `{project-root}/knowledge/reviews/{task_id}-logic.md`
 | Capability | Route |
 | ---------- | ----- |
 | LogicReview | Load `references/logic-review.md` |
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `task_id` | Yes | 当前任务或 worktree 标识。 |
+| `changed_files` | Yes | 待审查代码和测试文件。 |
+| `requirement_path` | No | 需求与验收标准来源。 |
+| `project_root` | No | 项目根目录。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。Skill 直接读取代码、测试和需求证据，缺少需求时降低范围并报告 `NEEDS_CONTEXT`。
+
+## Output Contract
+
+写入 `knowledge/reviews/{task_id}-logic.md`，返回 `PASS`、`CONCERNS` 或 `BLOCKED`；每个问题必须包含严重级别、代码位置、复现/推理证据、影响和修复建议。
+
+## Acceptance Criteria
+
+- 覆盖正常路径、边界条件、异常处理、状态转换和回归风险。
+- P0/P1/P2 问题必须阻断，P3 只记录建议。
+- 结论与实际代码/测试证据一致，不用命名或风格偏好制造问题。
+- 报告可被 worktree/controller 读取并独立判断门禁。

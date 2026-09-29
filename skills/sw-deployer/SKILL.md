@@ -1,6 +1,19 @@
 ---
 name: sw-deployer
 description: "环境部署器 — 测试/生产环境统一部署入口，支持 direct/docker/k8s"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: docker
+      version: "*"
+      type: TOOL
+      required: false
+      purpose: optional runtime for docker deployment mode
+    - name: kubectl
+      version: "*"
+      type: TOOL
+      required: false
+      purpose: optional runtime for Kubernetes deployment mode
 ---
 
 # sw-deployer — 环境部署器
@@ -162,3 +175,27 @@ sw-task-decomposer → sw-plan-executor → sw-tdd-agent (build)
   → sw-deployer (deploy to production) # <-- 部署到生产环境
   → sw-delivery-manager (release)
 ```
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `target` | Yes | `test` 或 `production`。 |
+| `method` | No | `direct`、`docker`、`k8s` 或项目本地注册的部署器。 |
+| `package` | Yes | JSON 或 `PackageInfo`，包含路径、名称、版本和环境参数。 |
+| `action` | Yes | `deploy`、`verify` 或 `rollback`。 |
+
+## External Dependency Metadata
+
+`docker`、`kubectl` 仅在选择对应 method 时需要。工具缺失时返回 `BLOCKED` 和安装/切换提示；`direct` 模式仍可独立执行，不得静默切换生产部署方式。
+
+## Output Contract
+
+返回机器可读 JSON：`status: SUCCESS|FAILED|BLOCKED`、target、method、version、logs、health_checks、rollback_ready 和 next_action。部署、验证、回滚都必须明确目标和实际执行结果。
+
+## Acceptance Criteria
+
+- 部署前验证包信息、目标环境和部署器选择。
+- 成功只在部署命令退出 0 且健康检查通过后报告。
+- 失败包含可操作错误和保留现场的日志；生产回滚必须显式触发，不自动猜测。
+- 未安装的 method-specific 工具只能阻断该 method，不影响其他独立部署器。

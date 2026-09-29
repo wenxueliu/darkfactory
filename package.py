@@ -57,7 +57,6 @@ EXCLUDED_PARTS = {
     ".pytest_cache",
     ".omc",
     ".remember",
-    "_context-output",
     "__pycache__",
     "reference",
 }
@@ -689,7 +688,7 @@ def initialize_workspace(
         created.append(worktree.relative_to(target).as_posix())
     gitignore = target / ".gitignore"
     existing = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
-    additions = [".worktree/", "_context-output/"]
+    additions = [".worktree/"]
     missing = [line for line in additions if line not in existing.splitlines()]
     if missing:
         separator = "" if not existing or existing.endswith("\n") else "\n"

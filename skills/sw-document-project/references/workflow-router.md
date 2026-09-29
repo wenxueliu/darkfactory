@@ -7,7 +7,7 @@ This document determines the workflow mode and delegates to the appropriate sub-
 Load config from `{project-root}/_context/config.yaml` and resolve:
 - `communication_language` — language for all communication
 - `document_output_language` — language for output documents
-- `project_knowledge` — output location for generated docs (default: `_context-output/project-docs/`)
+- `project_knowledge` — output location for generated docs (default: `knowledge/project-docs/`)
 
 You MUST communicate in `{communication_language}` and write all documents in `{document_output_language}`.
 

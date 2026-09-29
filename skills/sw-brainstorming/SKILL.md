@@ -1,6 +1,19 @@
 ---
 name: sw-brainstorming
 description: "头脑风暴设计Agent. Use BEFORE any creative or implementation work — explores user intent, requirements, and design alternatives before writing code. HARD-GATE: no implementation until design is approved. [trigger: 头脑风暴, brainstorming, 设计讨论, 新功能讨论, 方案设计, idea exploration, 需求探索, feature brainstorming]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-grill-docs
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional terminology, ADR, and scenario consistency review
+    - name: sw-strategic-planner
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional handoff for approved designs that need an executable plan
 ---
 
 # 黑灯工厂 头脑风暴 (sw-brainstorming)
@@ -36,7 +49,7 @@ Every project goes through this process. "Simple" projects are where unexamined 
 
 ## On Activation
 
-1. Read the current project context: `_context/config.yaml`, recent design docs in `_context-output/designs/`, and project knowledge in `knowledge/`
+1. Read the current project context: `_context/config.yaml`, recent design docs in `knowledge/designs/`, and project knowledge in `knowledge/`
 2. Run `sw-controller`'s Intent Gate (Phase 0) to classify the request
 3. If implementation intent with no clear design: proceed with brainstorming
 4. Create a todo list for the brainstorming checklist
@@ -50,7 +63,7 @@ Every project goes through this process. "Simple" projects are where unexamined 
 3. **Ask clarifying questions** — One at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — With trade-offs and your recommendation
 5. **Present design sections** — Incrementally, get approval after each
-6. **Write design doc** — Save to `{project-root}/_context-output/designs/YYYY-MM-DD-<topic>-design.md`
+6. **Write design doc** — Save to `{project-root}/knowledge/designs/YYYY-MM-DD-<topic>/brainstorm.md`
 7. **Design self-review** — Check for placeholders, contradictions, ambiguity, scope
 8. **Grill design against docs** — Activate `sw-grill-docs` to verify terminology consistency with the resolved context files and ADR compliance. Apply context/ADR updates only after the user confirms the proposed decision（用户确认后再写入）。
 9. **User reviews design** — Present the design doc (with grill results) for human approval
@@ -76,7 +89,7 @@ Before asking questions, understand the current state:
 - Read `_context/config.yaml` for business domain and project settings
 - Check `knowledge/design-decisions.md` for existing ADRs
 - Check `knowledge/` for relevant patterns and lessons
-- Check `_context-output/designs/` for related design documents
+- Check `knowledge/designs/` for related design documents
 - Check recent git history for active areas of development
 
 ### Phase 2: Assess Scope
@@ -121,7 +134,7 @@ Once you understand what needs to be built, present the design incrementally:
 
 ### Phase 6: Write Design Doc
 
-Write the validated design to `{project-root}/_context-output/designs/YYYY-MM-DD-<topic>-design.md`.
+Write the validated design to `{project-root}/knowledge/designs/YYYY-MM-DD-<topic>/brainstorm.md`.
 
 Document structure:
 - Overview and goals
@@ -159,7 +172,7 @@ This ensures the design speaks the same language as the project and respects all
 
 Present the design document for human approval:
 
-> "Design written to `_context-output/designs/YYYY-MM-DD-<topic>-design.md`. Please review and let me know if you want any changes before we create the implementation plan."
+> "Design written to `knowledge/designs/YYYY-MM-DD-<topic>/brainstorm.md`. Please review and let me know if you want any changes before we create the implementation plan."
 
 Wait for user response. If changes requested, make them and re-present. Only proceed once approved.
 
@@ -225,3 +238,27 @@ This skill is invoked by `sw-controller`'s Intent Gate (Phase 0) when:
 Every project — regardless of size — goes through design first. The HARD-GATE prevents "just start coding" behavior that leads to wasted work, missed requirements, and unexamined assumptions.
 
 The terminal state is `sw-strategic-planner`. Design approved → plan created → code written.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `request` | Yes | 用户的想法、问题或待设计变更。 |
+| `project_root` | No | 项目根目录；默认当前工作区。 |
+| `requirement_id` | No | 已存在需求 ID；提供后读取其需求包和 tracker。 |
+| `paths` | No | 设计上下文、输出目录和证据路径的语义覆盖。 |
+
+## External Dependency Metadata
+
+`sw-grill-docs` 和 `sw-strategic-planner` 都是可选依赖。不可用时分别使用本地术语/ADR清单和对话内计划交接，并在报告中记录 `SKIPPED`；设计审批仍必须由用户完成。
+
+## Output Contract
+
+返回 `NEEDS_USER_INPUT`、`DESIGN_DRAFTED`、`DESIGN_APPROVED` 或 `BLOCKED`。批准后写入一个设计文档，至少包含目标、范围、备选方案、推荐方案、数据流、失败处理、测试策略、开放问题和依赖；输出同时给出 `design_path`、`grill_result` 和 `next_action`。
+
+## Acceptance Criteria
+
+- 未经用户明确批准不进入实现或执行阶段。
+- 至少比较两个可行方案并记录取舍，不把偏好伪装成事实。
+- 设计文档无 TBD/TODO 等未处理占位符，且通过自洽检查。
+- 质询能力不可用时有明确降级记录，不阻断独立头脑风暴。

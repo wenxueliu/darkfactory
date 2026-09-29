@@ -155,7 +155,7 @@ using the visual-evidence policy; route ambiguous differences for human review.
 
 ### Step 4: Analyze and report
 
-Classify failures and write `knowledge/browser-e2e-results.yaml` with counts,
+Classify failures and write `knowledge/requirements/{requirement_id}/browser-e2e-results.yaml` with counts,
 per-case status, session identity, screenshots, network evidence, diagnostics,
 and visual review status. Update only the browser E2E sub-status in the tracker.
 

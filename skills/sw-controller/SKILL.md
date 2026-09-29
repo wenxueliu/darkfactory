@@ -389,3 +389,27 @@ When delegating tasks, always verify results before accepting them:
 - Were MUST DO / MUST NOT DO rules respected? (re-read the delegation prompt)
 
 NEVER trust subagent self-reports. Always verify with your own tools.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `request` | Yes | 用户目标或当前阶段继续执行的指令。 |
+| `project_root` | No | Harness 工作区根目录；默认当前工作区。 |
+| `requirement_id` | No | 已登记需求 ID；未提供时在需求澄清阶段生成。 |
+| `phase` | No | 期望恢复的流程阶段；必须与 tracker 状态一致。 |
+
+## External Dependency Metadata
+
+Frontmatter 中的依赖均按 `USED`、`SKIPPED`、`NOT_REQUESTED` 记录。可选专门 Skill 不可用时，Controller 只能执行本地证据检查、标记能力缺口并在需要其产物时返回 `BLOCKED`；不得伪造下游交付件或跳过硬门禁。
+
+## Output Contract
+
+返回 `ROUTED`、`NEEDS_USER_INPUT`、`BLOCKED` 或 `DONE`，并包含当前 phase、意图分类、委派记录、输入/输出交付件、门禁结果、tracker 更新和 `next_action`。Controller 只协调和验证，不直接代替专门 Agent 编写阶段产物。
+
+## Acceptance Criteria
+
+- 每次激活都执行 Intent Gate，并报告有效的 project root、requirement ID 和 phase。
+- 阶段转换只接受 tracker、交付件和新鲜验证证据，不接受下游自报完成。
+- 每个委派都声明输入交付件、预期输出、验收标准和缺依赖时的降级/阻断策略。
+- 任一 P0/P1/P2、缺失硬交付件或未解决变更请求都会阻止推进。

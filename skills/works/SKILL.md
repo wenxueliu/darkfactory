@@ -1,6 +1,14 @@
 ---
 name: works
 description: 按可定制的多步骤流程持续执行开发、测试、审查或修复任务。用户要求使用 /works、从 requirement.md 自动完成 Java 存量项目开发、选择不同流程、为步骤配置 do/check 提示、处理人工反馈、动态选择修复入口或恢复长期任务时使用。
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: impl-validator
+      version: "2.0.0"
+      type: SKILL
+      required: false
+      purpose: independent contract and implementation review gate; local checklist fallback when unavailable
 ---
 
 # Works
@@ -111,3 +119,27 @@ python <skill-dir>/scripts/works.py --project <project-root> check -- <program> 
 ## 流程语义
 
 每个步骤必须有唯一 `id` 和非空 `do/check`；可选 `purpose`、`route_when` 为模型提供路由语义。`next` 声明直接后继，`forward_policy` 支持 `next_only`、`declared` 和低风险流程专用的 `any_defined`；`declared` 通过 `forward_targets` 授权更远前跳。已访问步骤始终可以重新打开，未访问步骤不能仅凭 JSON 顺序成为恢复目标。只有声明 `complete: true` 的当前步骤可选择 `__complete__`。旧 workflow 的 `on_success/on_failure` 仍可加载以便迁移，但新 workflow 应使用动态路由字段。
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `project_root` | Yes | 包含 requirement、workflow 和状态目录的项目根目录。 |
+| `workflow` | No | 流程定义 JSON；默认 development workflow。 |
+| `command` | Yes | `start`、`resume`、`check`、`feedback` 或 `status`。 |
+| `requirement_path` | No | 默认 `knowledge/requirements/{requirement_id}/requirement.md` 或显式 requirement.md。 |
+
+## External Dependency Metadata
+
+`impl-validator` 是可选独立审查能力。不可用时工作流可继续执行，但 review gate 必须标记 `SKIPPED` 并在需要审查结果的步骤返回 `NEEDS_CONTEXT`，不得冒充通过。
+
+## Output Contract
+
+每个步骤产生可解析的 JSON 状态、do/check 结果、证据、失败原因和动态 next route；终态为 `COMPLETE`、`BLOCKED`、`NEEDS_FEEDBACK` 或 `NEEDS_CONTEXT`。状态、日志和审查产物必须位于项目共享 knowledge/流程目录，不写 Skill 安装目录。
+
+## Acceptance Criteria
+
+- workflow 每步有唯一 id、非空 do/check、合法 forward policy 和可验证 next route。
+- 恢复时依据状态和已访问步骤，不依赖 JSON 顺序猜测目标。
+- 每个 check 都读取新鲜输出；失败可重试但不会无限循环。
+- `COMPLETE` 只在当前步骤声明 complete 且所有强制 gate 通过后产生。

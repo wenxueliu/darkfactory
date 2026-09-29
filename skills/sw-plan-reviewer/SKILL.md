@@ -1,6 +1,9 @@
 ---
 name: sw-plan-reviewer
 description: "计划审查Agent. Practical work plan reviewer -- blocker-finder, not perfectionist. Verifies plan references exist and tasks are executable. Use with plan file path. [trigger: plan review, executability check, 计划审查, 可执行性检查]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # 黑灯工厂 计划审查者 (sw-plan-reviewer)
@@ -107,3 +110,26 @@ Blocking Issues (max 3):
 ## Blocked Tools
 
 本 Agent **不能**写入、编辑或委派。只能读取和搜索（读取文件、验证引用、检查文件存在性）。审查结果仅以文本输出——不写入任何文件到项目中。
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `plan_path` | Yes | 待审查的唯一计划文件绝对或项目相对路径。 |
+| `project_root` | No | 计划所属项目根目录。 |
+| `requirement_id` | No | 用于核对需求、设计和任务交付件链路。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。审查直接读取计划及其声明的文件/引用；找不到引用时报告阻塞，不调用其他 Skill 代替核查。
+
+## Output Contract
+
+返回 `OKAY`、`REJECT` 或 `NEEDS_CONTEXT`。`REJECT` 最多列出三个真正阻塞问题，每项包含 plan location、证据、影响和修复要求；不得写文件。
+
+## Acceptance Criteria
+
+- 四个审查范围均有结果：可执行性、引用真实性、任务完整性、验证可执行性。
+- 计划中的每个任务都能定位目标、依赖、验收标准和可执行 QA 场景。
+- 不把风格偏好或未来建议升级为阻塞问题。
+- 输出状态与阻塞问题数量一致，引用不存在时不能返回 OKAY。

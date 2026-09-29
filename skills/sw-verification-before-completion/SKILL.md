@@ -1,6 +1,14 @@
 ---
 name: sw-verification-before-completion
 description: "完成前验证。Use when about to claim work is complete, fixed, or passing — before committing, creating PRs, or marking tasks DONE. Requires running verification commands and confirming output before making any success claims. Evidence before assertions, always. [trigger: 验证, verification, 完成, complete, done, fixed, passing, 提交, commit, PR]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-lint-checker
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional language-specific lint evidence
 ---
 
 # 完成前验证 (sw-verification-before-completion)
@@ -206,3 +214,27 @@ When invoked for verification:
 6. Only then proceed with the claim/action
 
 Never skip step 3. Never assume step 4's result before seeing it.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `claim` | Yes | 即将对外声明的完成、修复、通过或可提交结论。 |
+| `scope` | Yes | 变更文件、任务、需求和阶段边界。 |
+| `commands` | No | 用户/项目指定的验证命令；否则按 claim 推导。 |
+| `project_root` | No | 验证根目录。 |
+
+## External Dependency Metadata
+
+`sw-lint-checker` 是可选依赖。不可用时直接执行适用的本地 lint 命令并标记覆盖范围；任何无法验证的声明都不能返回 PASS。
+
+## Output Contract
+
+返回 `VERIFIED`、`NOT_VERIFIED` 或 `BLOCKED`，包含 claim、实际命令、完整退出码、关键输出摘要、证据时间、未覆盖风险和允许的下一步。不得把旧日志或 Agent 自报当作证据。
+
+## Acceptance Criteria
+
+- 验证命令在当前状态新鲜执行，且覆盖声明的完整范围。
+- 退出码、失败数和关键输出均被读取并与 claim 对照。
+- 失败、工具缺失或范围不足时明确返回非 PASS。
+- 只有 `VERIFIED` 才允许 Controller、提交或交付流程继续。

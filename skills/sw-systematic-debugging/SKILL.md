@@ -1,6 +1,19 @@
 ---
 name: sw-systematic-debugging
 description: "系统化调试技能。Use when encountering any bug, test failure, unexpected behavior, or performance issue — before proposing any fixes. 4-phase root cause investigation with iron law: no fixes without root cause first. [trigger: 调试, debugging, 报错, error, bug, test failure, 排查, 根因分析, root cause]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-tdd-agent
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional failing-test creation before implementation of a confirmed fix
+    - name: sw-strategic-advisor
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional escalation after repeated failed hypotheses
 ---
 
 # 系统化调试 (sw-systematic-debugging)
@@ -390,3 +403,27 @@ When invoked for debugging:
 5. Update status as you progress: "Phase 1A: Building feedback loop" → "Phase 1B: Investigating root cause" → "Phase 2: Pattern analysis" → etc.
 6. Report findings with evidence at each phase completion
 7. At Phase 5, always ask "what would have prevented this bug?" and capture architectural insights
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `symptom` | Yes | 错误、失败测试、异常行为或性能问题。 |
+| `project_root` | No | 项目根目录。 |
+| `evidence_paths` | No | 日志、测试命令、变更范围和相关配置。 |
+| `fix_authority` | No | 是否允许在根因确认后进入实现阶段；默认只诊断。 |
+
+## External Dependency Metadata
+
+`sw-tdd-agent` 和 `sw-strategic-advisor` 是可选依赖。不可用时本地执行失败测试设计和假设升级；根因未确认时无论依赖是否存在都不得修复。
+
+## Output Contract
+
+返回 `ROOT_CAUSE_FOUND`、`NEEDS_EVIDENCE`、`FIX_VERIFIED` 或 `BLOCKED`，包含反馈回路、观察事实、假设及验证、根因、修复前失败测试、修复后结果和知识沉淀建议。
+
+## Acceptance Criteria
+
+- Phase 1 先建立可重复反馈回路，再分析根因。
+- 每个假设都有支持/反驳证据，排除症状性猜测。
+- 只有在用户授权且失败测试已建立后才进入修复；修复后重新运行完整验证。
+- 无法确认根因时返回 `NEEDS_EVIDENCE`，不提供伪确定性修复。

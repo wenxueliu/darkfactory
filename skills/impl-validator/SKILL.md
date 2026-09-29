@@ -1,6 +1,9 @@
 ---
 name: impl-validator
 description: "实现校验器。Independent read-only reviewer that validates a contract or implementation against its stated requirement. Loaded by the works skill as a fresh read-only subagent for its contract-review and implementation-review gates; writes the review JSON verdict, never a markdown report. [trigger: 校验, 审查, 验证, validate, review, check implementation, 实现校验, contract review, implementation review]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # 实现校验器 (impl-validator)
@@ -87,3 +90,26 @@ description: "实现校验器。Independent read-only reviewer that validates a 
 - 风格偏好、命名习惯（除非违反约定）。
 - 性能/效率（works 场景不涉及）。
 - 目标本身是否合理——只对照 requirement 检查契约/实现，不评价 requirement。
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `mode` | Yes | `contract-review` 或 `implementation-review`。 |
+| `review_input` | Yes | works 提供的 JSON 输入，包含 requirement、变更范围和待审查产物。 |
+| `output_path` | Yes | 必须写入的 review JSON 路径；不得改写其他状态文件。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。审查只依赖调用方提供的输入和本地文件，不依赖其他 Skill；缺少必要输入时返回 `NEEDS_CONTEXT`。
+
+## Output Contract
+
+只写一个机器可读 review JSON，`verdict` 为 `PASS`、`FAIL` 或 `NEEDS_CONTEXT`，并包含每个验收标准的证据、发现、严重级别和下一步；不生成 Markdown 报告。
+
+## Acceptance Criteria
+
+- 输入模式和输出路径已验证，缺失输入不被猜测填充。
+- 每个 requirement 验收标准都有 PASS/FAIL/NOT_VERIFIABLE 结果和文件/行号证据。
+- `FAIL` 至少包含一个可复现的 P0/P1/P2 问题；纯建议不得阻断。
+- 输出 JSON 可被 works CLI 解析，且没有写入声明之外的文件。

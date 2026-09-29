@@ -8,7 +8,7 @@ paths:
   evidence:
     plan_root: knowledge/plans
     tasks: knowledge/tasks.yaml
-    dependencies: _context-output/{requirement_id}/dependencies.json
+    dependencies: knowledge/requirements/{requirement_id}/dependencies.json
     worktree_registry: knowledge/sw-controller/worktree-registry.yaml
     tracker: knowledge/requirements-tracker.yaml
     design_decisions: knowledge/design-decisions.md

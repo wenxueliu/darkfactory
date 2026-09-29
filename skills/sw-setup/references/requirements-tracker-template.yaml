@@ -86,7 +86,7 @@ requirements:
   #       artifacts:
   #         - knowledge/tasks.yaml
   #         - knowledge/sw-controller/worktree-registry.yaml
-  #         - _context-output/REQ-20260411-001/dependencies.json
+  #         - knowledge/requirements/REQ-20260411-001/dependencies.json
   #       completed_at: '2026-04-11'
   #     execution:
   #       status: done
@@ -106,13 +106,13 @@ requirements:
   #     test:
   #       status: done
   #       artifacts:
-  #         - _context-output/REQ-20260411-001/test-results.md
+  #         - knowledge/requirements/REQ-20260411-001/test-results.md
   #       completed_at: '2026-04-11'
   #     delivery:
   #       status: done
   #       artifacts:
-  #         - _context-output/REQ-20260411-001/delivery-checklist.md
-  #         - _context-output/REQ-20260411-001/release-notes.md
+  #         - knowledge/requirements/REQ-20260411-001/delivery-checklist.md
+  #         - knowledge/requirements/REQ-20260411-001/release-notes.md
   #       completed_at: '2026-04-11'
 
 # TODO: 实际需求条目由 sw-requirements-clarifier 在完成需求澄清后添加

@@ -1,6 +1,19 @@
 ---
 name: sw-receiving-review
 description: "代码审查反馈处理Agent. Use when receiving code review feedback before implementing suggestions — requires technical verification, not performative agreement or blind implementation. Especially when feedback seems unclear or technically questionable. [trigger: 接收审查, 代码审查反馈, 审查意见, review feedback, code review response, 处理review, receiving review]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-tdd-agent
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional delegated implementation after feedback is technically accepted
+    - name: sw-strategic-advisor
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional escalation for disputed architecture or risk judgments
 ---
 
 # 黑灯工厂 审查反馈处理 (sw-receiving-review)
@@ -216,3 +229,26 @@ State the correction factually and move on.
 Verify. Question. Then implement.
 
 No performative agreement. Technical rigor always.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `feedback` | Yes | 人类、内部 Reviewer 或外部 Reviewer 的原始意见。 |
+| `changed_scope` | Yes | 当前分支/任务涉及的文件、需求和阶段。 |
+| `project_root` | No | 项目根目录。 |
+
+## External Dependency Metadata
+
+`sw-tdd-agent` 和 `sw-strategic-advisor` 都是可选依赖。不可用时执行本地验证和最小实现；争议性架构判断没有足够证据时返回 `NEEDS_CONTEXT`，不盲改。
+
+## Output Contract
+
+返回 `IMPLEMENTED`、`PUSH_BACK`、`NEEDS_CLARIFICATION` 或 `BLOCKED`，包含每条反馈的事实核验、结论、改动/不改动理由、验证证据和下一步。实现类改动必须附测试结果。
+
+## Acceptance Criteria
+
+- 每条反馈都被分类为事实错误、有效缺陷、建议、误解或需要澄清。
+- 不使用表演性同意；拒绝建议必须给出代码/规范证据。
+- 接受的反馈按 TDD 和最小变更原则实施并验证。
+- 需求范围变化被升级为 change request，不直接混入局部修复。

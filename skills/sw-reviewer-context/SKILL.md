@@ -1,6 +1,9 @@
 ---
 name: sw-reviewer-context
 description: "黑灯工厂上下文挖掘审核Agent. Use when mining context from git history, GitHub issues/PRs, communication channels, and codebase cross-references to find missed requirements or background knowledge. [trigger: 上下文挖掘, 背景搜索, context mining, 遗漏需求发现]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # 黑灯工厂 上下文挖掘者 (sw-reviewer-context)
@@ -58,3 +61,27 @@ Write review to `{project-root}/knowledge/reviews/{task_id}-context.md`
 | Capability | Route |
 | ---------- | ----- |
 | ContextMining | Load `references/context-mining.md` |
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `task_id` | Yes | 当前任务或 worktree 标识。 |
+| `changed_files` | Yes | 待审查的变更文件列表。 |
+| `requirement_path` | No | 需求/验收标准来源。 |
+| `project_root` | No | 项目根目录。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。可访问的 git、代码、文档和知识库路径由调用方提供；不可访问的来源必须标记为 `NOT_AVAILABLE`。
+
+## Output Contract
+
+写入 `knowledge/reviews/{task_id}-context.md`，并返回 `PASS`、`CONCERNS` 或 `BLOCKED`，包含遗漏上下文、证据路径、影响、建议动作和覆盖缺口。
+
+## Acceptance Criteria
+
+- 检查需求、历史决策、Issue/PR（如可用）、相关服务和知识库交叉证据。
+- 每个发现都有来源和对当前实现/验收的影响。
+- 没有证据的推测标记为 `NOTE`，不得升级为阻断问题。
+- 输出路径和任务 ID 一致，不覆盖其他 Reviewer 结果。

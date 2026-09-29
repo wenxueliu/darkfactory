@@ -16,10 +16,10 @@ paths:
     tracker: knowledge/requirements-tracker.yaml
 
   artifact_targets:
-    test_root: _context-output/test-artifacts/e2e/{requirement_id}
-    session_log: _context-output/test-artifacts/e2e/{requirement_id}/browser-e2e-session.json
-    output_dir: _context-output/test-artifacts/e2e/{requirement_id}/output
-    network_log: _context-output/test-artifacts/e2e/{requirement_id}/network.json
-    visual_evidence_dir: _context-output/test-artifacts/e2e/{requirement_id}/visual
-    result_file: knowledge/browser-e2e-results.yaml
+    test_root: knowledge/requirements/{requirement_id}/test-artifacts/e2e
+    session_log: knowledge/requirements/{requirement_id}/test-artifacts/e2e/browser-e2e-session.json
+    output_dir: knowledge/requirements/{requirement_id}/test-artifacts/e2e/output
+    network_log: knowledge/requirements/{requirement_id}/test-artifacts/e2e/network.json
+    visual_evidence_dir: knowledge/requirements/{requirement_id}/test-artifacts/e2e/visual
+    result_file: knowledge/requirements/{requirement_id}/browser-e2e-results.yaml
     tracker: knowledge/requirements-tracker.yaml

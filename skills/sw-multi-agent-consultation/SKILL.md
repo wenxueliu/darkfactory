@@ -1,6 +1,14 @@
 ---
 name: sw-multi-agent-consultation
 description: "Orchestrates a peer-PK debate among three or more AI agents via kimi-webbridge, with proposal, mutual critique, convergence, and a capped round-trip budget. Use for multi-agent reviews, third-party perspectives, convergence discussions, or requests such as ask ChatGPT and DeepSeek, compare 3 AIs, 三方评审, 多 AI 协作, multi-agent debate, or peer PK."
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: kimi-webbridge
+      version: "*"
+      type: MCP
+      required: false
+      purpose: optional browser-backed access to peer AI platforms
 ---
 
 # Multi-Agent Consultation: Peer-PK Debate
@@ -27,6 +35,30 @@ Use when **single-model bias is a real risk** AND you have 10-30 minutes:
 ## The Peer-PK Design
 
 ```
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `topic` | Yes | 需要多方观点的决策、方案或争议。 |
+| `platforms` | No | 至少三个 peer 平台；默认配置由运行环境提供。 |
+| `budget` | No | 最大 round-trip 数；默认 30，必须有上限。 |
+| `state_path` | No | 可恢复的 JSON 状态文件路径。 |
+
+## External Dependency Metadata
+
+`kimi-webbridge` 是可选 MCP 依赖。不可用时返回 `BLOCKED`/`NEEDS_USER_INPUT`，不得把单模型意见伪装成 peer 共识；状态文件仍可用于保存已完成的讨论。
+
+## Output Contract
+
+写入原子 JSON debate state，并返回 `CONSENSUS`、`DISPUTE`、`BUDGET_EXHAUSTED` 或 `BLOCKED`，包含各平台提案、批评、证据、未解决争议、共识理由、round-trip 计数和最终建议。
+
+## Acceptance Criteria
+
+- 至少三个独立 peer 完成 proposal 或明确记录不可用原因。
+- 每轮消耗计数准确，达到预算后停止调用并基于已有证据收敛。
+- 结论区分共识、少数意见和未解决争议，不把投票当作事实证明。
+- 状态写入具备原子性，可从中断处恢复且不重复扣减预算。
                   ┌────────── Claude (agent) ──────────┐
                   │  reads state, decides next ask     │
                   │  marks consensus/disputes          │

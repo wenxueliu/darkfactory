@@ -1,6 +1,24 @@
 ---
 name: sw-multi-search
 description: "多源搜索编排器. Multi-source search orchestrator that fans out user queries in parallel to sw-codebase-explorer (internal code), sw-external-researcher (docs/OSS), and sw-media-interpreter (PDF/image/diagram), then aggregates and ranks results. Use when a question needs cross-source evidence or the source of truth is unknown. [trigger: 多源搜索, multi-source, cross-reference, 跨源检索, 搜索全部, search all, comprehensive search]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-codebase-explorer
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: internal code and repository evidence
+    - name: sw-external-researcher
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: external documentation and OSS evidence
+    - name: sw-media-interpreter
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: PDF, image, and diagram evidence when media is present
 ---
 
 # 多源搜索编排 (sw-multi-search)
@@ -181,3 +199,27 @@ When invoked:
 6. Return structured answer with sources + gaps + confidence (Step 5)
 
 Always start with "Decomposing query into source classes: ..." and end with the structured answer block.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `query` | Yes | 用户问题或需要交叉验证的事实。 |
+| `source_classes` | No | `code`、`docs`、`media`；默认按问题类型选择。 |
+| `project_root` | No | 内部代码搜索根目录。 |
+| `max_subqueries` | No | 1–3 个分类子查询。 |
+
+## External Dependency Metadata
+
+三个搜索 Skill 都是可选依赖。任一不可用时跳过对应 source class、标记证据缺口并聚合剩余来源；没有任何来源可用时返回 `BLOCKED`，不直接搜索冒充委派。
+
+## Output Contract
+
+返回结构化答案，包含原问题、子查询、各来源结果、去重/排序理由、sources、gaps、confidence 和 next_steps。该 Skill 只编排和聚合，不写业务文件。
+
+## Acceptance Criteria
+
+- 子查询按来源分类且互相独立，能在单次并行 dispatch 中执行。
+- 结果按证据强度去重排序，保留可验证的引用或绝对路径。
+- 失败来源和未覆盖范围显式记录；低置信度不得输出确定性结论。
+- 输出可被 Controller 或用户直接消费，不包含原始未整理的搜索洪流。

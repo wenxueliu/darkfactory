@@ -1,6 +1,9 @@
 ---
 name: tdd
 description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # Test-Driven Development
@@ -36,3 +39,26 @@ When the shape of that interface is itself in question — how deep the module i
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
 - **Refactoring is not part of the loop.** It belongs to the review stage (see the `code-review` skill), not the red → green implementation cycle.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `requirement_or_bug` | Yes | 需求、缺陷或待验证行为。 |
+| `seams` | Yes | 用户确认的测试 seam 和边界。 |
+| `project_root` | No | 项目根目录。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。该 Skill 只描述 TDD 方法，可独立应用到 pytest、Jest、JUnit、Go test 等测试栈。
+
+## Output Contract
+
+返回或写入测试变更摘要，包含已确认 seam、RED 测试、最小实现、GREEN 结果、REFACTOR 后结果和未覆盖风险。测试规范本身不替用户修改生产代码。
+
+## Acceptance Criteria
+
+- seam 在写测试前已明确，测试期望来自独立规范/示例而非实现复算。
+- 每个切片遵循 RED → GREEN → REFACTOR，不预先批量编写未来测试。
+- 测试覆盖关键行为、错误路径和回归边界。
+- 失败测试和通过测试输出均可复现，未验证的行为标记为缺口。

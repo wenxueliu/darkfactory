@@ -1,6 +1,9 @@
 ---
 name: sw-external-researcher
 description: "外部文档/代码研究Agent. External documentation and open-source code research with GitHub permalink evidence. Use for finding official docs, library internals, best practices, or OSS usage examples. [trigger: 外部搜索, 文档查询, external search, library docs, how to use, GitHub search, 开源研究]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # 黑灯工厂 外部研究员 (sw-external-researcher)
@@ -175,3 +178,27 @@ For TYPE D (Comprehensive) research, consider structuring the output with:
 - **Findings** (detailed sections per sub-topic)
 - **Sources** (complete list of all referenced URLs)
 - **Recommendations** (if the question involves choosing between options)
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `query` | Yes | 要研究的外部文档、库、OSS 项目或最佳实践问题。 |
+| `request_type` | No | `A` 文档、`B` OSS、`C` 研究、`D` 综合；默认按问题推断。 |
+| `domains` | No | 优先搜索的官方域名或仓库。 |
+| `project_context` | No | 本地版本、约束和需要对照的代码事实。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。外部搜索能力由宿主环境提供；搜索不可用时返回 `BLOCKED` 或明确的 `NO_EVIDENCE`，不编造引用。需要把结果写入知识库时由调用方另行委派 `sw-knowledge-agent`。
+
+## Output Contract
+
+返回 `RESEARCH_COMPLETE`、`NO_EVIDENCE` 或 `BLOCKED`，包含直接答案、证据摘要、每条结论的可访问 permalink、版本/日期、额外上下文、不确定性和建议。该 Skill 只读，不写项目文件。
+
+## Acceptance Criteria
+
+- 关键事实优先使用官方文档、源码或可定位的原始证据。
+- 每个外部结论都有来源链接和适用版本/日期，推断与事实分开。
+- 研究类型、搜索范围、未覆盖来源和失败尝试均被记录。
+- 不把搜索摘要、二手观点或无版本信息当作确定性 API 事实。

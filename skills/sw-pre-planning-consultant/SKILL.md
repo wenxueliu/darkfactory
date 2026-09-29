@@ -1,6 +1,19 @@
 ---
 name: sw-pre-planning-consultant
 description: "预规划分析Agent. Pre-planning consultant that classifies intent, detects ambiguities, identifies AI-slop risks before plan generation. Called automatically by sw-strategic-planner before planning. [trigger: pre-planning, intent analysis, scope clarification, AI slop prevention, 预规划, 需求分析]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-codebase-explorer
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: evidence-backed repository fact checking
+    - name: sw-external-researcher
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional external reference and best-practice research
 ---
 
 # 黑灯工厂 预规划顾问 (sw-pre-planning-consultant)
@@ -198,3 +211,26 @@ Your response has **FAILED** if:
 - For Build from Scratch: questions asked that the codebase could have answered
 - Ambiguity detected but not addressed (no question raised, no interpretation stated)
 - Directives are vague ("consider testing" instead of "MUST run `pytest tests/` and verify 100% pass")
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `request` | Yes | 原始用户请求，未经 planner 改写。 |
+| `project_root` | No | 项目根目录；默认当前工作区。 |
+| `context` | No | 已知约束、需求 ID 或研究证据。 |
+
+## External Dependency Metadata
+
+`sw-codebase-explorer` 和 `sw-external-researcher` 都是可选依赖。不可用时使用本地已提供证据并标记研究缺口；绝不把缺少研究当成已验证事实。
+
+## Output Contract
+
+返回 `Pre-Planning Report`：intent type/confidence、scope in/out、ambiguities、AI-slop risks、≤5 个 frontier questions、可执行 QA 标准、evidence gaps 和给 planner 的 directives。不写文件、不做实现。
+
+## Acceptance Criteria
+
+- 第一阶段完成意图分类后才提出问题或建议。
+- 问题针对真正阻塞的决策，代码库可回答的问题不得转嫁给用户。
+- 明确识别范围膨胀、过度抽象、验证表演和文档膨胀风险。
+- 每条 directive 都可被 planner 转换为任务、证据或门禁，不能停留在泛泛建议。

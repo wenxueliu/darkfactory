@@ -1,6 +1,9 @@
 ---
 name: using-harness
 description: "Use when starting any conversation in the Harness project — establishes the multi-agent skill system, agent hierarchy, and requires Skill tool invocation before ANY response including clarifying questions. [trigger: bootstrap, initialization, 黑灯工厂, harness workflow]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 <SUBAGENT-STOP>
@@ -148,3 +151,26 @@ Read `_context/config.yaml` and `_context/config.user.yaml` at session start. Ke
 - `business_domain` — drives template selection and gate strictness
 - `min_iteration_before_human` — when to escalate
 - `communication_language` — what language to use for human communication
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `user_request` | Yes | 当前 Harness 项目请求或启动意图。 |
+| `project_root` | No | Harness 工作区根目录；默认当前工作区。 |
+| `config_paths` | No | `_context/config.yaml`、`config.user.yaml` 等配置路径。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。该 Skill 只建立路由和规则上下文；具体阶段能力由调用方按需发现，缺失时必须遵循各 Skill 的降级协议。
+
+## Output Contract
+
+返回 `BOOTSTRAPPED`、`ROUTED` 或 `BLOCKED`，包含已加载配置、适用 Skill、阶段边界、必须遵守的门禁和下一步。它不代替被路由 Skill 执行任务。
+
+## Acceptance Criteria
+
+- 首次响应前完成配置和 Skill 路由判断，且不绕过 Intent Gate。
+- 明确人类审批点、TDD 铁律、证据门禁和共享 knowledge 边界。
+- 不把缺失 Skill、缺失配置或未通过门禁静默解释为可继续。
+- 输出能让用户或 Controller 直接选择下一步。

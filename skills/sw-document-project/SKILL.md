@@ -1,6 +1,9 @@
 ---
 name: sw-document-project
 description: "项目文档生成Agent — 扫描现有项目生成完整AI可读文档。Supports 3 scan levels (quick/deep/exhaustive) and 2 modes (full scan, deep dive). Generates index, architecture, source tree, API contracts, data models, and deployment guides. Based on BMAD document-project. [trigger: 项目文档生成, document project, generate project docs, brownfield documentation, 代码库文档, codebase documentation]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # 项目文档生成 (sw-document-project)
@@ -40,7 +43,7 @@ The project documentation specialist — systematic, thorough, and disciplined. 
 Load available config from `{project-root}/_context/config.yaml` and `{project-root}/_context/config.user.yaml`. If specific config keys are missing, use defaults:
 
 - `sw.document_project.scan_level` — default: `deep` (quick | deep | exhaustive)
-- `sw.document_project.output_dir` — default: `_context-output/project-docs/`
+- `sw.document_project.output_dir` — default: `knowledge/project-docs/`
 - `sw.document_project.default_mode` — default: `full_scan` (full_scan | deep_dive)
 - `communication_language` — default: `Chinese`
 - `document_output_language` — default: `Chinese`
@@ -90,7 +93,7 @@ The unified resolver applies project `knowledge/templates`, configured user cont
 
 ## Output
 
-Generated documentation is written to `{output_dir}` (from config, default: `{project-root}/_context-output/project-docs/`):
+Generated documentation is written to `{output_dir}` (from config, default: `{project-root}/knowledge/project-docs/`):
 
 ```
 {output_dir}/
@@ -112,3 +115,28 @@ Generated documentation is written to `{output_dir}` (from config, default: `{pr
 ---
 
 _Generated using sw-document-project workflow. Based on BMAD Method document-project._
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `project_root` | Yes | 待扫描的 brownfield 项目根目录。 |
+| `mode` | No | `full_scan` 或 `deep_dive`。 |
+| `scan_level` | No | `quick`、`deep` 或 `exhaustive`。 |
+| `target` | No | deep dive 模式下的模块、服务或主题。 |
+| `output_dir` | No | 文档输出目录，默认 `knowledge/project-docs/`。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。项目扫描、模板解析和文档校验使用本 Skill 自带资源；缺少可选项目模板时回退到内置定义并标记来源。
+
+## Output Contract
+
+写入 `knowledge/project-docs/`（或显式配置的 output_dir），返回 `DOCUMENTED`、`PARTIAL` 或 `BLOCKED`，并列出扫描级别、产物清单、未覆盖区域和验证结果。deep dive 产物不得覆盖 full scan 的索引。
+
+## Acceptance Criteria
+
+- 按选定 scan level 执行并报告实际扫描范围，不把未扫描目录写成已覆盖。
+- index、overview、source tree 及适用的架构/API/数据/部署文档均可追溯到源码证据。
+- 每个产物写入后完成结构检查，失败时保留失败原因并返回 `PARTIAL`/`BLOCKED`。
+- 输出目录位于共享 `knowledge/`，不会把项目知识隐藏在 `_context/` 配置目录。

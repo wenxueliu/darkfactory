@@ -29,7 +29,9 @@ The platform follows **acceptance-driven development** with a strict TDD iron la
 
 ## Agent Architecture
 
-The system has 38 skills in v2 (37 sw-* specialists + 1 `using-harness` bootstrap):
+The system currently has 44 skill directories in v2: 39 `sw-*` specialists, the
+`using-harness` bootstrap, and 4 auxiliary workflow skills (`impl-validator`,
+`planning-with-files`, `tdd`, and `works`):
 
 ```
 sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
@@ -217,7 +219,7 @@ Hook state files in `hooks/hook-state/*.json` are automatically cleaned on `PreC
 
 ```
 multiagents/
-├── skills/                  # 32 skill directories
+├── skills/                  # 44 skill directories
 ├── agents/                  # Standalone agent prompt templates
 ├── docs/                    # Documentation
 ├── knowledge/               # 项目知识 + 工作流状态

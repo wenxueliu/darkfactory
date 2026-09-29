@@ -37,6 +37,12 @@ hooks:
           command: "SH=\"\"; for c in \"${PWF_SCRIPT_DIR}/inject-plan.sh\" \"${CLAUDE_SKILL_DIR}/scripts/inject-plan.sh\" \"$HOME/.config/opencode/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.opencode/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/skills/planning-with-files/scripts/inject-plan.sh\" \"$HOME/.claude/plugins/marketplaces/planning-with-files/scripts/inject-plan.sh\"; do [ -f \"$c\" ] && { SH=\"$c\"; break; }; done; [ -n \"$SH\" ] && sh \"$SH\" --context=precompact; exit 0"
 metadata:
   version: "3.10.1"
+  external_dependencies:
+    - name: python3
+      version: ">=3.9"
+      type: TOOL
+      required: false
+      purpose: optional session recovery and hook execution; shell/PowerShell fallback remains available
 
 ---
 
@@ -233,3 +239,26 @@ Helper scripts for automation:
 | Start executing immediately | Create plan file FIRST |
 | Repeat failed actions | Track attempts, mutate approach |
 | Create files in skill directory | Create files in your project |
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `request` | Yes | 需要持续执行的多步骤任务或研究目标。 |
+| `project_root` | No | 计划文件写入的项目根目录，默认当前工作区。 |
+| `plan_dir` | No | 计划文件目录；默认项目根目录的 `.planning/` 或兼容的根目录文件。 |
+
+## External Dependency Metadata
+
+`python3` 是可选工具，仅用于会话恢复和 hook；不可用时使用 shell/PowerShell fallback。计划本身不依赖其他 Skill。
+
+## Output Contract
+
+维护 `task_plan.md`、`findings.md`、`progress.md` 三类持久文件，并返回 `status: ACTIVE|BLOCKED|COMPLETE`、当前阶段、已验证证据、错误记录和下一步。计划文件必须位于项目工作区，不得写入 Skill 安装目录。
+
+## Acceptance Criteria
+
+- 第一个持久化动作创建或恢复计划文件。
+- 每次工具动作后同步 progress，错误和重试次数可追溯。
+- 计划包含目标、步骤、依赖、验收标准和当前状态。
+- `COMPLETE` 只有在所有步骤的 check 通过后返回；依赖不可用时返回 `BLOCKED` 并给出替代路径。

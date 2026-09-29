@@ -1,6 +1,19 @@
 ---
 name: sw-lint-checker
 description: "跨语言规范检查Agent. Detects changed-file languages, runs the correct linter/formatter per language via lint_runner.py, auto-fixes where possible, and re-checks until clean. Use after TDD coding completes and before code review. [trigger: lint, 规范检查, style check, 代码规范, format check, standards]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: lint_runner.py
+      version: "1.0.0"
+      type: TOOL
+      required: true
+      purpose: language detection, checker dispatch, JSON evidence, and auto-fix
+    - name: sw-tdd-agent
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: fallback implementation support for non-auto-fixable findings
 ---
 
 # 跨语言规范检查 (sw-lint-checker)
@@ -222,3 +235,27 @@ UT Cycle → API Test Cycle → sw-lint-checker → Code Review → Quality Gate
 ```
 
 The worktree controller reads the LINT_PASS/LINT_BLOCKED output and advances or blocks accordingly.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `files` | No | 待检查文件；未提供时从当前 git diff 发现。 |
+| `project_root` | No | 工作区根目录。 |
+| `auto_fix` | No | 默认启用脚本支持的安全自动修复。 |
+| `language_tools` | No | 项目配置的工具覆盖，不改变脚本输出 schema。 |
+
+## External Dependency Metadata
+
+`lint_runner.py` 是必需本地工具；`sw-tdd-agent` 仅为非自动修复问题的可选处理能力。缺少某语言工具时必须在 JSON 中标记 `tool_missing`，不能伪造 PASS。
+
+## Output Contract
+
+返回并报告 `status: PASS|BLOCKED` 的 lint JSON，包含检测语言、工具、退出码、错误、严重级别、自动修复数和下一步。只有新鲜完整运行返回 PASS 才能发出 `LINT_PASS`。
+
+## Acceptance Criteria
+
+- 使用统一 runner，不绕过语言检测直接宣称通过。
+- 自动修复后重新运行并记录前后结果。
+- 非自动修复问题按 P0/P1/P2/P3 分类；三轮仍未清零时返回 `LINT_BLOCKED`。
+- 工具缺失、空文件集和不支持语言都显式报告，不默认为 PASS。

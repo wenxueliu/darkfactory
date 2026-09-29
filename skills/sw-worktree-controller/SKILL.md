@@ -1,6 +1,24 @@
 ---
 name: sw-worktree-controller
 description: "黑灯工厂Worktree协调Agent. Use when coordinating a single task's TDD execution, code review, or quality gates within an isolated worktree. [trigger: worktree执行, 任务开发, 单任务协调]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-tdd-agent
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: delegated two-layer TDD implementation; local gate reports missing capability
+    - name: sw-lint-checker
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: cross-language standards gate
+    - name: sw-knowledge-agent
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional knowledge capture after task completion
 ---
 
 # 黑灯工厂 Worktree 控制器 (sw-worktree-controller)
@@ -89,3 +107,27 @@ Report to Top Controller via worktree-registry.yaml:
 | `BLOCKED` | Stuck, need help |
 
 Include iteration count and specific issues in the report.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `task_id` | Yes | tasks.yaml 中的任务标识。 |
+| `worktree_path` | Yes | 隔离工作树路径。 |
+| `task_spec` | Yes | 目标文件、依赖、验收标准和 QA 场景。 |
+| `project_root` | No | 主工作区根目录。 |
+
+## External Dependency Metadata
+
+声明的 TDD、lint、knowledge 依赖均为可选。缺失时使用本地执行/审查清单并在状态报告中标记 `SKIPPED`；缺少生产代码执行能力或关键证据时返回 `BLOCKED`。
+
+## Output Contract
+
+返回 `DONE`、`DONE_WITH_CONCERNS`、`NEEDS_CONTEXT` 或 `BLOCKED`，并更新任务状态、worktree registry、审查结果和知识捕获路径。报告必须包含每轮 TDD、测试、lint、review、门禁和下一步。
+
+## Acceptance Criteria
+
+- 任务只在正确 worktree 中执行，且不会修改主工作区的产品代码。
+- UT、API、lint、四路 review 和知识捕获均有适用证据或明确降级状态。
+- P0/P1/P2 或未解决依赖阻断 DONE；P3 进入 concerns。
+- 状态报告与 registry、产物路径和实际 git diff 一致。

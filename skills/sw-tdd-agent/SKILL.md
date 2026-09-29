@@ -1,6 +1,34 @@
 ---
 name: sw-tdd-agent
 description: "黑灯工厂TDD执行Agent. Use when executing TDD cycles, writing unit tests, or implementing test-driven API development. [trigger: TDD, 单元测试, 测试先行, RED-GREEN-REFACTOR]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-reviewer-logic
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: post-TDD logic review with local checklist fallback
+    - name: sw-reviewer-security
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: post-TDD security review with local checklist fallback
+    - name: sw-reviewer-performance
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: post-TDD performance review with local checklist fallback
+    - name: sw-reviewer-context
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: post-TDD context review with local checklist fallback
+    - name: sw-lint-checker
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: cross-language lint gate before review
 ---
 
 # 黑灯工厂 TDD 执行者 (sw-tdd-agent)
@@ -244,3 +272,27 @@ Report completion with evidence:
 - Any assumptions made or decisions taken
 
 Never claim completion without fresh verification evidence. Re-run tests immediately before reporting DONE — do not rely on tests that passed 5 minutes ago.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `task` | Yes | 已通过需求/设计门禁的实现任务。 |
+| `worktree` | Yes | 隔离工作树路径及任务标识。 |
+| `acceptance_criteria` | Yes | 可执行验收标准和目标测试层。 |
+| `context_paths` | No | 需求、设计、契约、知识和现有失败证据。 |
+
+## External Dependency Metadata
+
+Reviewer 和 lint Skill 均为可选依赖。不可用时在本地执行对应审查清单并将 `SKIPPED` 及影响写入报告；不能把缺失审查报告伪装成 PASS。
+
+## Output Contract
+
+返回 `DONE`、`DONE_WITH_CONCERNS`、`NEEDS_CONTEXT` 或 `BLOCKED`，包含变更文件、RED/GREEN/REFACTOR 证据、UT/API 结果、lint 结果、四路审查状态、知识捕获和下一步。任务状态文件按 worktree-controller 协议更新。
+
+## Acceptance Criteria
+
+- 每个生产代码变更前都有真实失败测试，且 RED 证据先于实现。
+- UT 和 API 两层均完成适用的 RED/GREEN/REFACTOR，并重新运行最终验证。
+- lint 和四路 Reviewer 缺失时有降级记录；P0/P1/P2 未解决不得 DONE。
+- 输出可被 worktree-controller 独立验证，禁止仅凭自报完成。

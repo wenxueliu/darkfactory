@@ -532,7 +532,7 @@ worktrees:
 }
 ```
 
-**写入位置:** `{project-root}/_context-output/{requirement_id}/dependencies.json`
+**写入位置:** `{project-root}/knowledge/requirements/{requirement_id}/dependencies.json`
 
 ## 过渡门禁
 

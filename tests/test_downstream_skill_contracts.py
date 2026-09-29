@@ -212,3 +212,50 @@ def test_value_artifacts_are_requirement_cohesive() -> None:
     assert value_targets["priority_ranking"].startswith(
         "knowledge/value-assessment/"
     )
+
+
+def test_every_skill_declares_the_common_contract() -> None:
+    skill_files = sorted((ROOT / "skills").glob("*/SKILL.md"))
+    assert len(skill_files) == 44
+
+    for skill_file in skill_files:
+        content = skill_file.read_text(encoding="utf-8")
+        frontmatter = _frontmatter(content)
+        metadata = frontmatter.get("metadata")
+
+        assert frontmatter["name"] == skill_file.parent.name
+        assert isinstance(metadata, dict)
+        assert isinstance(metadata.get("version"), str)
+        assert metadata["version"]
+        assert isinstance(metadata.get("external_dependencies"), list)
+        for dependency in metadata["external_dependencies"]:
+            assert {
+                "name",
+                "version",
+                "type",
+                "required",
+                "purpose",
+            } <= dependency.keys()
+            assert dependency["type"] in {"TOOL", "SKILL", "MCP", "LIBRARY"}
+            assert isinstance(dependency["required"], bool)
+
+        assert "## Input Contract" in content
+        assert "## Output Contract" in content
+        assert "## Acceptance Criteria" in content
+
+
+def test_workflow_artifacts_stay_under_knowledge() -> None:
+    scanned = [ROOT / "package.py"]
+    scanned.extend((ROOT / "docs").rglob("*.md"))
+    scanned.extend((ROOT / "skills").rglob("*.md"))
+    scanned.extend((ROOT / "skills").rglob("*.yaml"))
+
+    offenders = []
+    for path in scanned:
+        if "__pycache__" in path.parts:
+            continue
+        content = path.read_text(encoding="utf-8")
+        if "_context-output" in content:
+            offenders.append(path.relative_to(ROOT).as_posix())
+
+    assert offenders == []

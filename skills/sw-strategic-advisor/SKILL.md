@@ -1,6 +1,9 @@
 ---
 name: sw-strategic-advisor
 description: "战略技术顾问Agent. Read-only deep reasoning consultant for complex architecture, security, and performance decisions. Use after 3+ failed fix attempts, for unfamiliar patterns, or when multi-system tradeoffs need analysis. [trigger: 架构咨询, deep reasoning, strategic advice, architecture decision, security analysis, 技术决策]"
+metadata:
+  version: "2.0.0"
+  external_dependencies: []
 ---
 
 # 黑灯工厂 战略技术顾问 (sw-strategic-advisor)
@@ -110,3 +113,26 @@ Direct text response to the calling agent. No files written. Response follows th
 - **Deep architecture**: All 3 tiers (Essential + Expanded + Edge cases)
 
 Hard cap: ~400 lines for deep architecture. Most answers well under 100 lines.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `question` | Yes | 需要深度技术判断的架构、调试、安全、性能或取舍问题。 |
+| `evidence_paths` | No | 调用方已知的代码、配置、ADR、测试或日志证据。 |
+| `constraints` | No | 预算、兼容性、时间、团队和不可变约束。 |
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 为空。该 Skill 只读、无状态；证据不足时返回不确定性和需要验证的事实，不调用其他 Skill 代替推理。
+
+## Output Contract
+
+返回一份自洽的建议，包含 bottom line、证据、选项与取舍、推荐行动、风险、验证计划和 confidence。不得写代码、修改文件或把建议伪装成已批准决策。
+
+## Acceptance Criteria
+
+- 明确区分观察事实、推理、假设和建议。
+- 至少比较当前方案与一个可行替代方案，并说明取舍。
+- 建议能被调用方转为任务、ADR 或验证命令。
+- 对缺失证据、未知风险和不应继续的条件诚实报告。

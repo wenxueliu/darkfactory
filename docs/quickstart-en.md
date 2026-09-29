@@ -105,7 +105,6 @@ Optional but recommended:
 
 ```bash
 echo ".worktree/" >> .gitignore
-echo "_context-output/" >> .gitignore
 ```
 
 ### Step 5: Take It for a Spin

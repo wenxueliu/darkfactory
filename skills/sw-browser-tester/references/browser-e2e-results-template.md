@@ -2,7 +2,7 @@
 
 ## What This Is
 
-结构化输出格式，写入 `knowledge/browser-e2e-results.yaml`。结果描述一次
+结构化输出格式，写入 `knowledge/requirements/{requirement_id}/browser-e2e-results.yaml`。结果描述一次
 Kimi WebBridge 真实浏览器会话及其截图、snapshot、网络和视觉审查证据。
 
 ## Results YAML Schema
@@ -94,10 +94,10 @@ diagnostics:
   webbridge_errors: []
 
 artifacts:
-  session_log: "_context-output/test-artifacts/e2e/{req_id}/browser-e2e-session.json"
-  screenshots_dir: "_context-output/test-artifacts/e2e/{req_id}/output/"
-  network_log: "_context-output/test-artifacts/e2e/{req_id}/network.json"
-  visual_evidence_dir: "_context-output/test-artifacts/e2e/{req_id}/visual/"
+  session_log: "knowledge/requirements/{req_id}/test-artifacts/e2e/browser-e2e-session.json"
+  screenshots_dir: "knowledge/requirements/{req_id}/test-artifacts/e2e/output/"
+  network_log: "knowledge/requirements/{req_id}/test-artifacts/e2e/network.json"
+  visual_evidence_dir: "knowledge/requirements/{req_id}/test-artifacts/e2e/visual/"
 
 gates:
   design_gate_pass: true
@@ -121,7 +121,7 @@ phases:
   test:
     browser_e2e_status: "pass | fail | partial | blocked"
     browser_e2e_pass_rate: 100.0
-    browser_e2e_results: "knowledge/browser-e2e-results.yaml"
+    browser_e2e_results: "knowledge/requirements/{req_id}/browser-e2e-results.yaml"
 ```
 
 `sw-controller` owns the global `phases.test.status` transition.

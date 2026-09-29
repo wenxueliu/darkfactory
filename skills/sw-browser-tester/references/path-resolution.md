@@ -15,4 +15,5 @@
 - `test_root` 下的会话日志、报告、截图、网络和视觉证据是运行产物；失败
   证据不得被覆盖或省略。
 - `result_file` 只记录浏览器子状态和证据，不直接关闭全局 test phase。
+- 所有浏览器运行产物按 `requirement_id` 写入 `knowledge/requirements/{requirement_id}/`，不得散落在全局 knowledge 根目录。
 - auth、cookie、token 等敏感值不得写入任何报告或日志。

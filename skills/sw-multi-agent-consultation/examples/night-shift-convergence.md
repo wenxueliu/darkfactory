@@ -102,7 +102,7 @@
 ## Files produced
 
 ```
-_context-output/
+knowledge/consultations/
 ├── PLAN-20260619-001/
 │   ├── night-shift-mvp-plan.md             (v1, ChatGPT)
 │   └── raw-answers/q1-q7_answer.txt         (ChatGPT 7 rounds)
