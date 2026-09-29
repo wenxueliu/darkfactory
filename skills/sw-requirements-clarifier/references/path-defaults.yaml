@@ -31,7 +31,7 @@ paths:
   artifact_targets:
     requirement_document: knowledge/requirements/{requirement_id}.md
     gate_report: knowledge/requirements/{requirement_id}-gate.md
-    value_assessment: knowledge/value-assessment/{requirement_id}.md
+    value_assessment: knowledge/requirements/{requirement_id}-value-assessment.md
     tracker: knowledge/requirements-tracker.yaml
     knowledge_root: knowledge
     tasks: knowledge/tasks.yaml

@@ -67,6 +67,30 @@ SKILLS = {
         ),
         "required_refs": ("path-defaults.yaml", "path-resolution.md"),
     },
+    "sw-grill-docs": {
+        "required_sections": (
+            "## Input Contract",
+            "## External Dependency Metadata",
+            "## Output Contract",
+            "## Acceptance Criteria",
+        ),
+        "required_refs": ("path-defaults.yaml", "path-resolution.md"),
+    },
+    "sw-value-judgment": {
+        "required_sections": (
+            "## Input Contract",
+            "## External Dependency Metadata",
+            "## Output Contract",
+            "## Acceptance Criteria",
+        ),
+        "required_refs": (
+            "path-defaults.yaml",
+            "path-resolution.md",
+            "value-assessment.md",
+            "roi-evaluation.md",
+            "priority-ranking.md",
+        ),
+    },
 }
 
 
@@ -155,5 +179,34 @@ def test_path_defaults_are_valid_yaml_and_have_artifact_targets() -> None:
         )
         paths = defaults["paths"]
         assert paths["config_file"]
-        assert paths["evidence"]
-        assert paths["artifact_targets"]
+        if "evidence" in paths:
+            assert paths["evidence"]
+        else:
+            assert paths.get("context_files") or paths.get("context_maps")
+        assert paths.get("artifact_targets") or paths.get("write_targets")
+
+
+def test_value_artifacts_are_requirement_cohesive() -> None:
+    value_defaults = yaml.safe_load(
+        (ROOT / "skills/sw-value-judgment/references/path-defaults.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    clarifier_defaults = yaml.safe_load(
+        (
+            ROOT
+            / "skills/sw-requirements-clarifier/references/path-defaults.yaml"
+        ).read_text(encoding="utf-8")
+    )
+
+    value_targets = value_defaults["paths"]["artifact_targets"]
+    clarifier_targets = clarifier_defaults["paths"]["artifact_targets"]
+    assert value_targets["requirement_document"] == "knowledge/requirements/{requirement_id}.md"
+    assert value_targets["value_assessment"] == (
+        "knowledge/requirements/{requirement_id}-value-assessment.md"
+    )
+    assert value_targets["roi"] == "knowledge/requirements/{requirement_id}-roi.md"
+    assert clarifier_targets["value_assessment"] == value_targets["value_assessment"]
+    assert value_targets["priority_ranking"].startswith(
+        "knowledge/value-assessment/"
+    )

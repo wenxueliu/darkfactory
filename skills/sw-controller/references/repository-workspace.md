@@ -25,7 +25,10 @@
 │   └── another-repository/           # 可选的更多仓库
 ├── knowledge/                        # 项目知识 + 流程状态（可读、可积累）
 │   ├── index.md
-│   ├── _enterprise/
+│   ├── decisions/
+│   ├── patterns/
+│   ├── lessons/
+│   ├── contracts/
 │   ├── domains/
 │   ├── services/{service-id}/
 │   └── service-registry.yaml         # 机器可读的发现结果
@@ -51,7 +54,7 @@
 |------|----------|----------|
 | 源码仓库 | `services/{service-id}/` | 用户放入；各仓库独立 Git 历史 |
 | 服务元数据 | `knowledge/service-registry.yaml` | 服务发现自动生成 |
-| 企业级项目知识 | `knowledge/_enterprise/` | `sw-knowledge-agent` 与人工共同维护 |
+| 企业级项目知识 | `knowledge/` | `sw-knowledge-agent` 与人工共同维护 |
 | 领域级项目知识 | `knowledge/domains/` | 按领域维护 |
 | 服务级项目知识 | `knowledge/services/{service-id}/` | 服务发现与人工共同维护 |
 | 流程状态 | `knowledge/` | 各流程 Skill 按契约写入 |
@@ -76,7 +79,7 @@ Stage 1 产出全局特性设计，Stage 2 按受影响仓库产出服务详细�
 - 默认一个仓库至少对应一个纵向任务；仓库内部只有在能独立验证时才继续拆分。
 - 每个仓库使用自己的 Git worktree：`.worktree/{service-id}/{task-id}/`。
 - 任务间依赖分为 `CODE`、`CONTRACT`、`API_READY`、`EVENT`、`DATA_MIGRATION` 等事实类型；不因仓库数量改变命名。
-- 代码仓库之间的契约统一放在 `knowledge/_enterprise/contracts/`，或放在提供方仓库的既有契约路径，并在设计文档中明确归属。
+- 代码仓库之间的契约统一放在 `knowledge/contracts/`，或放在提供方仓库的既有契约路径，并在设计文档中明确归属。
 
 示例：
 
@@ -111,6 +114,6 @@ service_groups:
 
 - 不在 `_context/config.yaml` 中增加按仓库数量切换的架构模式分支。
 - 不把源码放进 `knowledge/` 或 `_context/`。
-- 不把项目知识混入 `knowledge/` 下的流程状态文件（`requirements-tracker.yaml`、`tasks.yaml` 等）；长期知识写入 `knowledge/_enterprise/`、`knowledge/domains/` 或 `knowledge/services/`。
+- 不把项目知识混入 `knowledge/` 下的流程状态文件（`requirements-tracker.yaml`、`tasks.yaml` 等）；长期知识写入 `knowledge/`、`knowledge/domains/` 或 `knowledge/services/`。
 - 不因为只有一个仓库就跳过服务发现、服务路径、需求影响分析和最小门禁。
 - 不因为有多个仓库就假设一定存在跨仓库调用；是否存在依赖必须由代码、设计和契约证据证明。

@@ -117,7 +117,7 @@ unverified archive.
 ├── knowledge/
 │   ├── index.md
 │   ├── requirements-tracker.yaml
-│   ├── _enterprise/{patterns,decisions,lessons,contracts}/
+│   ├── {patterns,decisions,lessons,contracts}/
 │   ├── domains/
 │   ├── services/
 │   └── sw-controller/{global-state.yaml,worktree-registry.yaml}

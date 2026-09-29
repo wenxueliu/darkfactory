@@ -88,4 +88,4 @@ Before submitting:
 
 ## Output
 
-Write to `{project-root}/knowledge/value-assessment/{requirement_id}-roi.md`
+Write to `{project-root}/knowledge/requirements/{requirement_id}-roi.md`

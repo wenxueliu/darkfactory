@@ -48,13 +48,14 @@ def scan_entries(kb_dir):
     entries = []
     type_reverse_map = {v: k for k, v in TYPE_DIR_MAP.items()}
 
-    # Determine scope roots to scan: list of (scope_type, base_path)
+    # Determine scope roots to scan: list of (scope_type, base_path, type_hint)
     scope_roots = []
 
-    # 1. Enterprise scope: _enterprise/
-    ep = os.path.join(kb_dir, "_enterprise")
-    if os.path.isdir(ep):
-        scope_roots.append(("enterprise", ep))
+    # 1. Enterprise scope: flat type directories at the KB root
+    for type_name, dir_name in TYPE_DIR_MAP.items():
+        flat_path = os.path.join(kb_dir, dir_name)
+        if os.path.isdir(flat_path):
+            scope_roots.append(("enterprise", flat_path, type_name))
 
     # 2. Domain scope: domains/*/
     dp = os.path.join(kb_dir, "domains")
@@ -62,7 +63,7 @@ def scan_entries(kb_dir):
         for d in sorted(os.listdir(dp)):
             d_path = os.path.join(dp, d)
             if os.path.isdir(d_path) and not d.startswith("."):
-                scope_roots.append(("domain", d_path))
+                scope_roots.append(("domain", d_path, None))
 
     # 3. Service scope: services/*/
     sp = os.path.join(kb_dir, "services")
@@ -70,15 +71,9 @@ def scan_entries(kb_dir):
         for s in sorted(os.listdir(sp)):
             s_path = os.path.join(sp, s)
             if os.path.isdir(s_path) and not s.startswith("."):
-                scope_roots.append(("service", s_path))
+                scope_roots.append(("service", s_path, None))
 
-    # 4. Backward compat: flat type directories (e.g., patterns/, decisions/)
-    for dir_name in TYPE_DIR_MAP.values():
-        flat_path = os.path.join(kb_dir, dir_name)
-        if os.path.isdir(flat_path):
-            scope_roots.append(("legacy", flat_path))
-
-    for scope_type, base_dir in scope_roots:
+    for scope_type, base_dir, type_hint in scope_roots:
         for root, dirs, files in os.walk(base_dir):
             dirs[:] = [d for d in dirs if not d.startswith(".")]
             for fname in sorted(files):
@@ -98,13 +93,8 @@ def scan_entries(kb_dir):
                 title = extract_title(content)
 
                 # Determine entry type
-                if scope_type == "legacy":
-                    if fname.startswith("ADR-"):
-                        entry_type = "decision"
-                    else:
-                        rel_dir = os.path.relpath(root, kb_dir)
-                        first_dir = rel_dir.split(os.sep)[0] if rel_dir != "." else ""
-                        entry_type = type_reverse_map.get(first_dir, "unknown")
+                if type_hint:
+                    entry_type = type_hint
                 else:
                     rel_from_scope = os.path.relpath(root, base_dir)
                     if rel_from_scope == ".":
@@ -240,7 +230,10 @@ def rebuild_index(kb_dir, entries):
 
     # Scope navigation
     lines.append("## Scope Navigation\n\n")
-    has_enterprise = any(e.get("scope") == "enterprise" for e in entries)
+    has_enterprise = any(
+        os.path.isdir(os.path.join(kb_dir, dir_name))
+        for dir_name in TYPE_DIR_MAP.values()
+    ) or any(e.get("scope") == "enterprise" for e in entries)
     has_domain = any(e.get("scope") == "domain" for e in entries)
     has_service = any(e.get("scope") == "service" for e in entries)
 
@@ -256,10 +249,9 @@ def rebuild_index(kb_dir, entries):
     enterprise_entries = [e for e in entries if e.get("scope") == "enterprise"]
     domain_entries = [e for e in entries if e.get("scope") == "domain"]
     service_entries = [e for e in entries if e.get("scope") == "service"]
-    legacy_entries = [e for e in entries if e.get("scope") == "legacy"]
 
     # --- Enterprise Knowledge ---
-    if enterprise_entries:
+    if has_enterprise:
         lines.append("## Enterprise Knowledge\n\n")
         enterprise_patterns = [e for e in enterprise_entries if e["type"] == "pattern"]
         enterprise_decisions = [e for e in enterprise_entries if e["type"] == "decision"]
@@ -373,45 +365,6 @@ def rebuild_index(kb_dir, entries):
         lines.append("_No service knowledge generated yet._\n")
         lines.append("\n")
 
-    # --- Legacy entries (backward compat flat directories) ---
-    if legacy_entries:
-        lines.append("---\n\n")
-        lines.append("## Legacy (Flat Structure)\n\n")
-
-        legacy_patterns = [e for e in legacy_entries if e["type"] == "pattern"]
-        legacy_decisions = [e for e in legacy_entries if e["type"] == "decision"]
-        legacy_lessons = [e for e in legacy_entries if e["type"] == "lesson"]
-        legacy_apis = [e for e in legacy_entries if e["type"] == "api"]
-
-        legacy_patterns.sort(key=lambda e: e["title"].lower())
-        legacy_decisions.sort(key=lambda e: e["filename"], reverse=True)
-        legacy_lessons.sort(key=lambda e: e.get("created", "0000"), reverse=True)
-        legacy_apis.sort(key=lambda e: e["title"].lower())
-
-        if legacy_patterns:
-            lines.append("### Patterns\n\n")
-            for e in legacy_patterns:
-                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
-            lines.append("\n")
-
-        if legacy_decisions:
-            lines.append("### Architecture Decisions\n\n")
-            for e in legacy_decisions:
-                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
-            lines.append("\n")
-
-        if legacy_lessons:
-            lines.append("### Lessons Learned\n\n")
-            for e in legacy_lessons:
-                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
-            lines.append("\n")
-
-        if legacy_apis:
-            lines.append("### API Contracts\n\n")
-            for e in legacy_apis:
-                lines.append(f"- [{e['title']}]({e['relative_path']})\n")
-            lines.append("\n")
-
     # Update table
     lines.append("## 更新记录\n\n")
     lines.append("| 日期 | 更新内容 | 更新人 |\n")
@@ -489,7 +442,7 @@ def main():
             print(f"  {label}: {counts[t]}")
 
     print(f"\nScope breakdown:")
-    for s in ["enterprise", "domain", "service", "legacy"]:
+    for s in ["enterprise", "domain", "service"]:
         if s in scope_counts:
             print(f"  {s}: {scope_counts[s]}")
 
@@ -564,9 +517,9 @@ def main():
         # By scope
         scope_counts = {}
         for e in entries:
-            s = e.get("scope", "legacy")
+            s = e.get("scope", "unknown")
             scope_counts[s] = scope_counts.get(s, 0) + 1
-        for s in ["enterprise", "domain", "service", "legacy"]:
+        for s in ["enterprise", "domain", "service"]:
             if s in scope_counts:
                 print(f"  {s}: {scope_counts[s]}")
         # By type

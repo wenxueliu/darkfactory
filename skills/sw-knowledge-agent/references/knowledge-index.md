@@ -11,15 +11,15 @@ The knowledge base is organized, searchable, and entries are properly linked.
 
 ## Enterprise Knowledge (跨仓库共享)
 ### Patterns
-- [Pattern Name](_enterprise/patterns/{name}.md)
+- [Pattern Name](patterns/{name}.md)
 - ...
 
 ### Architecture Decisions
-- [ADR-{NNNN}: Decision Title](_enterprise/decisions/ADR-{NNNN}-{slug}.md)
+- [ADR-{NNNN}: Decision Title](decisions/ADR-{NNNN}-{slug}.md)
 - ...
 
 ### Lessons Learned
-- [Lesson Title](_enterprise/lessons/{id}.md)
+- [Lesson Title](lessons/{id}.md)
 - ...
 
 ## Service Knowledge (每服务专属)
@@ -34,7 +34,7 @@ The knowledge base is organized, searchable, and entries are properly linked.
 - ...
 
 ## Cross-Repository Contracts
-- [{service-id} OpenAPI](_enterprise/contracts/{service-id}-openapi.yaml)
+- [{service-id} OpenAPI](contracts/{service-id}-openapi.yaml)
 - ...
 
 ## Service Dependency Graph

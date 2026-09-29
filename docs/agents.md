@@ -113,11 +113,11 @@
 │   sw-controller 委托给专门 Agent:                                     │
 │   ├── sw-requirements-clarifier → progressive dialogue rounds       │
 │   │     └── requirements/{variant} definition → requirements/{id}.md│
-│   ├── sw-value-judgment → value-assessment/{id}.md                  │
+│   ├── sw-value-judgment → requirements/{id}-value-assessment.md     │
 │   └── sw-knowledge-agent → KB pre-query (ADR/patterns/lessons)      │
 │                                                                      │
 │   sw-controller: 执行解析后的 requirements gate/validator            │
-│   Output: requirements/{id}.md, value-assessment/{id}.md            │
+│   Output: requirements/{id}.md, requirements/{id}-value-assessment.md│
 └──────────────────┬───────────────────────────────────────────────────┘
                    │ ✅ Requirements gate PASS
                    ▼

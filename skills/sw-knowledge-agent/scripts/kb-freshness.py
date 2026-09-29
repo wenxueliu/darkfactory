@@ -199,9 +199,10 @@ def scan_entries(kb_dir):
     entries = []
 
     scope_roots = []
-    ep = os.path.join(kb_dir, "_enterprise")
-    if os.path.isdir(ep):
-        scope_roots.append(("enterprise", ep))
+    for dir_name in TYPE_DIR_MAP.values():
+        flat_path = os.path.join(kb_dir, dir_name)
+        if os.path.isdir(flat_path):
+            scope_roots.append(("enterprise", flat_path))
 
     dp = os.path.join(kb_dir, "domains")
     if os.path.isdir(dp):

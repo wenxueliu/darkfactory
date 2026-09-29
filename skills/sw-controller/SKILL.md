@@ -81,7 +81,7 @@ Before any action, verify intent:
 When Intent Gate classifies the request as a new feature, implementation, or open-ended change (Explicit/Open-ended), **delegate ideation work to specialized agents — never execute directly**:
 
 1. **Requirements Clarification** — Delegate to `sw-requirements-clarifier`. It runs the progressive clarification dialogue (Step 0.5 definition resolution → Step 1.0 requirement-level KB pre-check → Step 1.1 Listen First → Step 2 Ambiguity Scan → Step 3 Decision Tree & Frontier → Step 4 Incremental Spec Update → Step 4.5 optional Spec Grilling), stopping when the Substantiality Threshold is met. Writes `requirements/{id}.md`.
-2. **Value Assessment** — Delegate to `sw-value-judgment`. Scores 5 dimensions (Impact / Effort / Risk / Dependencies / Strategic Fit). If P3 (don't do), archive the requirement. Writes `value-assessment/{id}.md`.
+2. **Value Assessment** — Delegate to `sw-value-judgment`. Scores 5 dimensions (Impact / Effort / Risk / Dependencies / Strategic Fit). If P3 (don't do), archive the requirement. Writes `requirements/{id}-value-assessment.md` beside the requirement specification.
 3. **Requirements Gate** — Delegate to `sw-requirements-clarifier`, which resolves the requirements variant mapped from `sw.business_domain` (scenario mapping: `general` → `default`) through the layered document resolver, executes its selected `gate.yaml` and `validator.yaml` (machine layer), and applies its own G1–G4 judgment checklist. Only proceed to design when both layers PASS. Max 3 retries → escalate to human.
 4. **Phase Transition** — When all ideation gates PASS → proceed to design phase (3-Stage delegation). See Phase Transition Rules below for `ideation → design` criteria.
 

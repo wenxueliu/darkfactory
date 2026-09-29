@@ -24,7 +24,7 @@
 3. **Stage 2 Per-service 设计:** `knowledge/designs/{id}/services/{svc}/design.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
 4. **Stage 3 E2E 测试设计:** `knowledge/designs/{id}/e2e/design.md` — 用于最后一个 wave 的 E2E 任务
 5. **需求规格:** `requirements/{id}.md` — 验收条件来源
-6. **ADR:** `knowledge/_enterprise/decisions/ADR-*.md` — 架构约束
+6. **ADR:** `knowledge/decisions/ADR-*.md` — 架构约束
 
 **受影响服务必须从设计文档获取，禁止臆想:**
 

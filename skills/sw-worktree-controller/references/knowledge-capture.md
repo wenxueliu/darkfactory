@@ -195,7 +195,7 @@ Knowledge entries are scoped to one of three levels. Choose the right scope when
 
 | Scope | Directory | When to Use | Example |
 |-------|-----------|-------------|---------|
-| `enterprise` | `_enterprise/` | Affects multiple services or is architecture-wide | Global ADR, cross-service pattern, enterprise-wide lesson |
+| `enterprise` | `knowledge/` (typed subdirectories) | Affects multiple services or is architecture-wide | Global ADR, cross-service pattern, enterprise-wide lesson |
 | `domain` | `domains/{domain}/` | Affects a business domain (group of related services) | Payment domain pattern, user domain ADR |
 | `service` | `services/{id}/` | Specific to a single service | Service-specific optimization, service-internal pattern |
 

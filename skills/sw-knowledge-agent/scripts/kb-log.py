@@ -184,7 +184,7 @@ TYPE_DIR_MAP = {
 }
 
 SCOPE_DIR_PREFIX = {
-    "enterprise": "_enterprise",
+    "enterprise": "",
     "domain": "domains",
     "service": "services",
 }
@@ -203,6 +203,11 @@ def slugify(title):
     slug = re.sub(r'[\\/:*?"<>|]', "", slug)
     slug = re.sub(r'\s+', "-", slug)
     return slug
+
+
+def entry_relative_path(scope_dir, type_dir, filename):
+    """Build a normalized knowledge-relative path for an entry."""
+    return "/".join(part for part in (scope_dir, type_dir, filename) if part)
 
 
 def discover_kb_dir():
@@ -422,7 +427,7 @@ def update_entry_status(kb_dir, target_ref, new_status, superseded_by_ref=None, 
 
     # Case 1: target_ref is an ADR number
     if isinstance(target_ref, int):
-        decisions_dir = os.path.join(kb_dir, "_enterprise", "decisions")
+        decisions_dir = os.path.join(kb_dir, "decisions")
         for fname in os.listdir(decisions_dir) if os.path.isdir(decisions_dir) else []:
             if fname.startswith(f"ADR-{target_ref:04d}-") and fname.endswith(".md"):
                 target_path = os.path.join(decisions_dir, fname)
@@ -436,7 +441,7 @@ def update_entry_status(kb_dir, target_ref, new_status, superseded_by_ref=None, 
     elif kb_type:
         type_dir_name = TYPE_DIR_MAP.get(kb_type)
         if scope == "enterprise":
-            search_dirs = [os.path.join(kb_dir, "_enterprise", type_dir_name)]
+            search_dirs = [os.path.join(kb_dir, type_dir_name)]
         elif scope == "domain" and scope_value:
             search_dirs = [os.path.join(kb_dir, "domains", scope_value, type_dir_name)]
         elif scope == "service" and scope_value:
@@ -556,7 +561,7 @@ def update_index(kb_dir, kb_type, title, filename, author, adr_num=None, scope="
             "api": "## API Contracts",
         }
         section_heading = section_headings[kb_type]
-        link_dir = f"_enterprise/{type_dir_name}"
+        link_dir = type_dir_name
 
     if kb_type == "decision" and adr_num is not None:
         link_line = f"- [ADR-{adr_num:04d}: {title}]({link_dir}/ADR-{adr_num:04d}-{slugify(title)}.md)\n"
@@ -708,7 +713,7 @@ def check_duplicates(kb_dir, kb_type, new_content, threshold=0.4, scope="enterpr
         return False, []
 
     if scope == "enterprise":
-        search_path = os.path.join(kb_dir, "_enterprise", type_dir_name)
+        search_path = os.path.join(kb_dir, type_dir_name)
     elif scope == "domain":
         if not scope_value:
             return False, []
@@ -937,7 +942,7 @@ Examples:
 
     # Compute scope-aware paths
     if args.scope == "enterprise":
-        scope_dir = "_enterprise"
+        scope_dir = SCOPE_DIR_PREFIX[args.scope]
         scope_value = None
     elif args.scope == "domain":
         if not args.domain:
@@ -988,7 +993,7 @@ Examples:
             if blocked:
                 if args.auto_dedup:
                     trusted = compute_trusted(args.source, args.confidence)
-                    relative_path = f"{scope_dir}/{type_dir}/{filename}"
+                    relative_path = entry_relative_path(scope_dir, type_dir, filename)
                     entry_data = {
                         "type": kb_type, "title": title,
                         "filename": filename, "author": args.author,
@@ -1020,7 +1025,7 @@ Examples:
     # Dry run
     if args.dry_run:
         status_tag = f" (status={status})" if status else ""
-        print(f"[Dry Run] Would create: {scope_dir}/{type_dir}/{filename}{status_tag}")
+        print(f"[Dry Run] Would create: {entry_relative_path(scope_dir, type_dir, filename)}{status_tag}")
         if supersedes_ref:
             print(f"[Dry Run] Would supersede: {supersedes_ref} (backlink will be written)")
         if expires:
@@ -1057,7 +1062,7 @@ Examples:
 
     # Backward-link: update superseded entry's status
     if supersedes_ref is not None:
-        new_entry_ref = f"{scope_dir}/{type_dir}/{filename}"
+        new_entry_ref = entry_relative_path(scope_dir, type_dir, filename)
         if kb_type == "decision":
             backlink_ok, backlink_msg = update_entry_status(
                 kb_dir, supersedes_adr_num, "superseded",
@@ -1076,7 +1081,7 @@ Examples:
 
     # Transaction log
     trusted = compute_trusted(args.source, args.confidence)
-    relative_path = f"{scope_dir}/{type_dir}/{filename}"
+    relative_path = entry_relative_path(scope_dir, type_dir, filename)
     entry_data = {
         "type": kb_type,
         "title": title,

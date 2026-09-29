@@ -8,11 +8,11 @@ paths:
   context_maps:
     - CONTEXT-MAP.md
   decision_roots:
-    - knowledge/_enterprise/decisions
+    - knowledge/decisions
   source_roots:
     - services
   config_file: _context/config.yaml
   write_targets:
     context_file: CONTEXT.md
-    adr_root: knowledge/_enterprise/decisions
+    adr_root: knowledge/decisions
   report_root: null

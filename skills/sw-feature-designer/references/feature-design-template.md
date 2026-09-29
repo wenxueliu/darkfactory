@@ -170,12 +170,12 @@ P-1 → P-2 → P-3
 
 | 契约 ID | 提供方 | 消费方 | 协议 | 路径 | 契约文件 |
 |---------|--------|--------|------|------|---------|
-| CT-001 | `{provider_svc}` | `{consumer_svc}` | HTTP | `{method} {path}` | `knowledge/_enterprise/contracts/{provider_svc}-openapi.yaml` |
+| CT-001 | `{provider_svc}` | `{consumer_svc}` | HTTP | `{method} {path}` | `knowledge/contracts/{provider_svc}-openapi.yaml` |
 
 ### 6.2 契约定义 (每个契约)
 
 ```yaml
-# knowledge/_enterprise/contracts/{service_id}-openapi.yaml (片段)
+# knowledge/contracts/{service_id}-openapi.yaml (片段)
 paths:
   {path}:
     {method}:
@@ -229,4 +229,4 @@ paths:
 - 头脑风暴记录: `knowledge/designs/{requirement_id}/brainstorm.md` (如有)
 - Per-service 设计文档 (Stage 2 产出): `knowledge/designs/{requirement_id}/services/`
 - E2E 测试设计 (Stage 3 产出): `knowledge/designs/{requirement_id}/e2e/design.md` + `gate.md`
-- 知识库: `knowledge/_enterprise/decisions/`
+- 知识库: `knowledge/decisions/`

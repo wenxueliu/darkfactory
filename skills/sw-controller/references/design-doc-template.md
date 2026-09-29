@@ -536,4 +536,4 @@ JSON 文件格式规范见 `references/api-test-postman-schema.md`。
 
 - 需求规格: `requirements/{requirement_id}.md`
 - 任务拆分: `knowledge/tasks.yaml`
-- 知识库: `knowledge/_enterprise/decisions/`
+- 知识库: `knowledge/decisions/`

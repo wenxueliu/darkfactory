@@ -629,10 +629,10 @@ def initialize_workspace(
     created: list[str] = []
     directories = (
         "services",
-        "knowledge/_enterprise/patterns",
-        "knowledge/_enterprise/decisions",
-        "knowledge/_enterprise/lessons",
-        "knowledge/_enterprise/contracts",
+        "knowledge/patterns",
+        "knowledge/decisions",
+        "knowledge/lessons",
+        "knowledge/contracts",
         "knowledge/domains",
         "knowledge/services",
         "knowledge/sw-controller",

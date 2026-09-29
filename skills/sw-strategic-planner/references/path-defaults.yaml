@@ -17,7 +17,6 @@ paths:
     context_maps:
       - knowledge/CONTEXT-MAP.md
     decision_roots:
-      - knowledge/_enterprise/decisions
       - knowledge/decisions
     plan_dependencies:
       - knowledge/tasks.yaml

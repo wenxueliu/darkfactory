@@ -23,11 +23,10 @@
 knowledge/
 ├── index.md                    # 全局知识索引
 │
-├── _enterprise/                # 第一级：企业级 —— 跨所有代码仓
-│   ├── decisions/              #   架构决策记录 (ADR)
-│   ├── patterns/               #   跨仓库可复用模式
-│   ├── lessons/                #   全局经验教训
-│   └── contracts/              #   跨仓库 API 契约
+├── decisions/                  # 第一级：企业级架构决策记录 (ADR)
+├── patterns/                   # 第一级：跨仓库可复用模式
+├── lessons/                    # 第一级：全局经验教训
+├── contracts/                  # 第一级：跨仓库 API 契约
 │
 ├── domains/                    # 第二级：业务领域级 —— 按领域组织
 │   └── {domain}/               #   例：user-domain/、order-domain/
@@ -49,7 +48,7 @@ knowledge/
 
 | 层级 | 存放内容 | 查询时机 |
 |------|---------|---------|
-| `_enterprise/` | 影响多个代码仓的全局决策、跨仓库契约、通用的可复用模式 | 任何设计开始前必查 |
+| `knowledge/` 下的企业级类型目录 | 影响多个代码仓的全局决策、跨仓库契约、通用的可复用模式 | 任何设计开始前必查 |
 | `domains/{domain}/` | 特定业务领域的决策和模式（例：用户领域的认证策略） | 涉及该领域的服务设计时查询 |
 | `services/{service-id}/` | 单个服务的概要、API、Schema、服务内决策 | 修改该服务时查询 |
 
@@ -57,7 +56,7 @@ knowledge/
 
 设计阶段查询知识库时，按以下顺序：
 
-1. `_enterprise/` — 先看有没有全局约束或已有决策
+1. `knowledge/decisions/`、`knowledge/patterns/`、`knowledge/lessons/`、`knowledge/contracts/` — 先看有没有全局约束或已有决策
 2. `domains/{domain}/` — 再看领域级知识
 3. `services/{service-id}/` — 最后看服务级细节
 
@@ -74,7 +73,7 @@ KB 目录结构的建立分两阶段，各自在不同时机触发：
 在项目工作空间创建 `_context/` 配置的同时，创建空的 `knowledge/` 目录骨架：
 
 ```bash
-mkdir -p services knowledge/_enterprise/{patterns,decisions,lessons,contracts}
+mkdir -p services knowledge/{patterns,decisions,lessons,contracts}
 mkdir -p knowledge/{domains,services}
 mkdir -p knowledge/reviews
 mkdir -p knowledge/sw-controller
@@ -121,10 +120,10 @@ mkdir -p knowledge/sw-controller
 | `knowledge/services/{id}/api-endpoints.md` | 自动扫描 Controller/Route | 任务完成后增量更新 |
 | `knowledge/services/{id}/db-schema.md` | 自动扫描 Migration/Model | 任务完成后增量更新 |
 | `knowledge/service-registry.yaml` | 自动扫描 `services/` 下所有仓库 | 全量或增量更新 |
-| `knowledge/_enterprise/contracts/` | 设计阶段自动生成 + 人工审核 | sw-controller 写入，人审核确认 |
-| `knowledge/_enterprise/decisions/` (ADR) | 设计阶段 sw-controller 自动写入 | 自动写入，重大决策需人工确认 |
-| `knowledge/_enterprise/patterns/` | sw-knowledge-agent 自动沉淀 | 自动提取，可人工补充 |
-| `knowledge/_enterprise/lessons/` | 开发完成后自动沉淀 | 自动写入，包含成功和失败经验 |
+| `knowledge/contracts/` | 设计阶段自动生成 + 人工审核 | sw-controller 写入，人审核确认 |
+| `knowledge/decisions/` (ADR) | 设计阶段 sw-controller 自动写入 | 自动写入，重大决策需人工确认 |
+| `knowledge/patterns/` | sw-knowledge-agent 自动沉淀 | 自动提取，可人工补充 |
+| `knowledge/lessons/` | 开发完成后自动沉淀 | 自动写入，包含成功和失败经验 |
 | `knowledge/domains/{domain}/` | 涉及多个代码仓的领域知识 | 自动分类 + 人工调整领域归属 |
 | `knowledge/services/{id}/decisions/` | 服务级设计决策 | 自动写入，服务负责人可补充 |
 
@@ -254,7 +253,7 @@ ideation → design → decomposition → execution → merge → test → deliv
 | 阶段 | KB 操作 |
 |------|---------|
 | **ideation** | 查询 KB：有没有类似需求的经验和决策？ |
-| **design** | 查询 KB（_enterprise → domains → services）→ 写入 ADR 和契约 |
+| **design** | 查询 KB（企业级目录 → domains → services）→ 写入 ADR 和契约 |
 | **decomposition** | 无直接操作（依赖 task-decomposition 读取 tasks.yaml） |
 | **execution** | 每个任务完成后增量更新 API/Schema 信息 |
 | **merge** | 追加 lessons learned（成功和失败经验） |
@@ -281,7 +280,7 @@ ideation → design → decomposition → execution → merge → test → deliv
 
 ### Q: 多个代码仓有相似的 pattern 应该放哪里？
 
-如果 pattern 只在一个代码仓内使用 → `knowledge/services/{id}/patterns/`。如果被 2+ 个代码仓使用 → 提取到 `knowledge/_enterprise/patterns/`。
+如果 pattern 只在一个代码仓内使用 → `knowledge/services/{id}/patterns/`。如果被 2+ 个代码仓使用 → 提取到 `knowledge/patterns/`。
 
 ### Q: 什么时候应该清理 KB？
 

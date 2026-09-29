@@ -188,9 +188,9 @@ sw-controller will guide you through:
 ### Step 6: Harvest Knowledge
 
 After your first development cycle, check `knowledge/`:
-- `knowledge/_enterprise/patterns/` — reusable patterns discovered
-- `knowledge/_enterprise/decisions/ADR-0001-*.md` — architecture decision records
-- `knowledge/_enterprise/lessons/` — lessons learned
+- `knowledge/patterns/` — reusable patterns discovered
+- `knowledge/decisions/ADR-0001-*.md` — architecture decision records
+- `knowledge/lessons/` — lessons learned
 
 These get automatically referenced in future development cycles.
 
@@ -210,7 +210,7 @@ git init  # workspace holds _context, skills, services, and knowledge
 ### Step 2: Clone All Services
 
 ```bash
-mkdir -p services knowledge/_enterprise/{patterns,decisions,lessons,contracts}
+mkdir -p services knowledge/{patterns,decisions,lessons,contracts}
 mkdir -p knowledge/{domains,services}
 git clone git@github.com:org/user-service.git services/user-service
 git clone git@github.com:org/order-service.git services/order-service
@@ -349,7 +349,7 @@ Create `knowledge/templates/<document-type>/<variant>/` under the project root w
 | `knowledge/sw-controller/` | Orchestration state, worktree registry | sw-controller (auto) |
 | `.worktree/` | Isolated dev environments | Auto created/destroyed |
 | `skills/` | Agent skill definitions | Updated with HW releases |
-| `knowledge/_enterprise/contracts/` | Cross-repository API contracts | sw-controller + human review |
+| `knowledge/contracts/` | Cross-repository API contracts | sw-controller + human review |
 | `services/` | User-provided source repositories | User; agents modify scoped repositories |
 | `knowledge/` | Accumulated project knowledge | sw-knowledge-agent + human review |
 

@@ -131,9 +131,9 @@
         | 基础设施 | [postgres:users_db, redis:session, kafka:events] |
 
   3. 知识库交叉引用:
-     - 查询与该服务相关的 ADR (knowledge/_enterprise/decisions/ADR-*.md)
+     - 查询与该服务相关的 ADR (knowledge/decisions/ADR-*.md)
        例: ADR 可能约束 "user-service 不能直接访问 order-service 的数据库"
-     - 查询与该服务相关的 patterns (knowledge/_enterprise/patterns/)
+     - 查询与该服务相关的 patterns (knowledge/patterns/)
        例: 可能有 "所有写操作必须通过事务性 outbox 发事件" 的模式
 
   4. 基于调查结果，编写「服务影响分析」表:
@@ -267,7 +267,7 @@ Stage 2 消费:
    确认返回的 JSON 中 `total_results >= 1`，且至少有一条记录的标题匹配刚才创建的决策。
 
 5. **自动化保证:**
-   - ADR 编号自动递增（`kb-log.py` 自动扫描 knowledge/_enterprise/decisions/ 中已有 ADR 的最大编号）
+   - ADR 编号自动递增（`kb-log.py` 自动扫描 knowledge/decisions/ 中已有 ADR 的最大编号）
    - 索引自动更新（`kb-log.py` 自动在 `index.md` 的「## Architecture Decisions」section 中追加链接）
    - 事务日志自动记录（`kb-log.py` 追加一行到 `.kb-log.jsonl`，含 timestamp / type / title / author / adr_number）
    - 无需手动操作编号、文件命名、索引链接
@@ -413,8 +413,8 @@ Stage 2 消费:
 |------|------|---------|
 | 全局特性设计文档 | `knowledge/designs/{id}/feature-design.md` | 第 2 步完成 |
 | 仓库级设计文档 × N | `knowledge/designs/{id}/services/{service_id}/design.md` | 按受影响仓库并行完成 |
-| 必要的跨仓库契约 | `knowledge/_enterprise/contracts/{service_id}-openapi.yaml` | 设计阶段定义 |
-| ADR | `knowledge/_enterprise/decisions/ADR-{NNNN}-{slug}.md` | 第 3 步完成 |
+| 必要的跨仓库契约 | `knowledge/contracts/{service_id}-openapi.yaml` | 设计阶段定义 |
+| ADR | `knowledge/decisions/ADR-{NNNN}-{slug}.md` | 第 3 步完成 |
 | 仓库级安全/逻辑/性能审查 | `reviews/{id}-service-{service_id}-review-{type}.md` | 各仓库设计完成后 |
 | 冲突记录 | `reviews/{id}-conflicts.md` | 如有审查者冲突 |
 | 设计门禁结果 | `knowledge/designs/{id}/feature-design-gate.md` | 所有问题解决后 |
@@ -424,7 +424,7 @@ Stage 2 消费:
 设计阶段完成，可以进入任务拆分阶段的条件:
 
 - [ ] 各阶段设计文档满足对应定义包声明的稳定 section ID
-- [ ] 至少 1 个 ADR 写入 `knowledge/_enterprise/decisions/`
+- [ ] 至少 1 个 ADR 写入 `knowledge/decisions/`
 - [ ] 每个受影响仓库的安全/逻辑/性能审查完成，P0/P1/P2 全部解决
 - [ ] 可追溯性矩阵完成——每个 AC 有对应设计决策和预估任务
 - [ ] 必要的跨仓库契约和 E2E 设计已完成；不适用项明确标记 N/A

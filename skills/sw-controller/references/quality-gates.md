@@ -282,8 +282,8 @@ review_status:
      newman run knowledge/designs/{id}/services/{svc}/tests/collection.json --env-var baseUrl={base_url}
 
 8. 契约测试 (跨服务 API 依赖):
-   for each contract in knowledge/_enterprise/contracts/:
-     newman run knowledge/_enterprise/contracts/{svc}-contract-tests.json \
+   for each contract in knowledge/contracts/:
+     newman run knowledge/contracts/{svc}-contract-tests.json \
        --env-var baseUrl={provider.get_endpoint(provider_svc)}
 
 9. 浏览器 E2E 测试 (L3):

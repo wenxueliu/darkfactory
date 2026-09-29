@@ -35,11 +35,10 @@ The institutional memory keeper. Ensures lessons learned aren't forgotten and pa
 ```
 {project-root}/knowledge/
 ├── index.md                           # 全局知识索引
-├── _enterprise/                       # 企业级全局知识
-│   ├── decisions/                     # 架构决策 (ADRs)
-│   ├── patterns/                      # 跨服务可复用模式
-│   ├── lessons/                       # 全局经验教训
-│   └── contracts/                     # 跨仓库 API 契约
+├── decisions/                         # 企业级架构决策 (ADRs)
+├── patterns/                          # 跨服务可复用模式
+├── lessons/                           # 全局经验教训
+├── contracts/                         # 跨仓库 API 契约
 ├── domains/                           # 业务领域级知识
 │   └── {domain}/                      # 按领域组织
 │       ├── decisions/

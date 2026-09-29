@@ -1,0 +1,27 @@
+# Fallback semantic paths for standalone sw-value-judgment execution.
+# Call-time paths and project configuration take precedence over these values.
+version: 1
+
+paths:
+  config_file: _context/config.yaml
+  config_user_file: _context/config.user.yaml
+
+  evidence:
+    context_files:
+      - knowledge/CONTEXT.md
+    context_maps:
+      - knowledge/CONTEXT-MAP.md
+    decision_roots:
+      - knowledge/decisions
+    knowledge_roots:
+      patterns: knowledge/patterns
+      lessons: knowledge/lessons
+      contracts: knowledge/contracts
+      decisions: knowledge/decisions
+
+  artifact_targets:
+    requirement_document: knowledge/requirements/{requirement_id}.md
+    value_assessment: knowledge/requirements/{requirement_id}-value-assessment.md
+    roi: knowledge/requirements/{requirement_id}-roi.md
+    priority_ranking: knowledge/value-assessment/priority-ranking-{date}.md
+    tracker: knowledge/requirements-tracker.yaml

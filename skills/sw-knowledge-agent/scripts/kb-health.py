@@ -31,7 +31,7 @@ TYPE_DIR_MAP = {
     "lesson": "lessons",
     "api": "contracts",
 }
-SCOPE_NAMES = ["_enterprise", "domains", "services"]
+SCOPE_NAMES = ["enterprise", "domain", "service"]
 SKIP_FILES = {"index.md"}
 SKIP_PREFIXES = (".", "_")
 
@@ -51,8 +51,11 @@ def extract_title(content):
     return "Untitled"
 
 
-def extract_type(filepath, content, scope_type, base_dir):
+def extract_type(filepath, content, scope_type, base_dir, type_hint=None):
     """Detect entry type from file path and content."""
+    if type_hint:
+        return type_hint
+
     # Try metadata first
     m = re.search(r'\*\*Type:\*\*\s*(\w+)', content)
     if m:
@@ -201,13 +204,14 @@ def scan_kb(kb_dir):
     """Full KB scan, returns structured data."""
     entries = []
 
-    # scope roots: (scope_name, scope_label, base_path)
+    # scope roots: (scope_name, scope_label, base_path, type_hint)
     scope_roots = []
 
-    # Enterprise
-    ep = os.path.join(kb_dir, "_enterprise")
-    if os.path.isdir(ep):
-        scope_roots.append(("enterprise", "_enterprise", ep))
+    # Enterprise: flat type directories at the KB root
+    for type_name, dir_name in TYPE_DIR_MAP.items():
+        flat_path = os.path.join(kb_dir, dir_name)
+        if os.path.isdir(flat_path):
+            scope_roots.append(("enterprise", dir_name, flat_path, type_name))
 
     # Domains
     dp = os.path.join(kb_dir, "domains")
@@ -215,7 +219,7 @@ def scan_kb(kb_dir):
         for d in sorted(os.listdir(dp)):
             d_path = os.path.join(dp, d)
             if os.path.isdir(d_path) and not d.startswith("."):
-                scope_roots.append(("domain", f"domains/{d}", d_path))
+                scope_roots.append(("domain", f"domains/{d}", d_path, None))
 
     # Services
     sp = os.path.join(kb_dir, "services")
@@ -223,15 +227,9 @@ def scan_kb(kb_dir):
         for s in sorted(os.listdir(sp)):
             s_path = os.path.join(sp, s)
             if os.path.isdir(s_path) and not s.startswith("."):
-                scope_roots.append(("service", f"services/{s}", s_path))
+                scope_roots.append(("service", f"services/{s}", s_path, None))
 
-    # Also scan flat type directories for backward compatibility
-    for dir_name in TYPE_DIR_MAP.values():
-        flat_path = os.path.join(kb_dir, dir_name)
-        if os.path.isdir(flat_path):
-            scope_roots.append(("legacy", dir_name, flat_path))
-
-    for scope_type, scope_label, base_dir in scope_roots:
+    for scope_type, scope_label, base_dir, type_hint in scope_roots:
         for root, dirs, files in os.walk(base_dir):
             dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
             for fname in files:
@@ -249,7 +247,7 @@ def scan_kb(kb_dir):
 
                 rel_path = os.path.relpath(filepath, kb_dir)
                 title = extract_title(content)
-                entry_type = extract_type(filepath, content, scope_type, base_dir)
+                entry_type = extract_type(filepath, content, scope_type, base_dir, type_hint)
                 created_str = extract_created(content)
                 created_date = None
                 if created_str:
@@ -479,7 +477,6 @@ def generate_text_report(stats, entries, log, gaps):
     lines.append(f"  Enterprise scope:  {stats['by_scope'].get('enterprise', 0):>4d}")
     lines.append(f"  Domain scope:      {stats['by_scope'].get('domain', 0):>4d}")
     lines.append(f"  Service scope:     {stats['by_scope'].get('service', 0):>4d}")
-    lines.append(f"  Legacy scope:      {stats['by_scope'].get('legacy', 0):>4d}")
     lines.append(f"  Trusted entries:   {stats['trusted_count']:>4d}")
     lines.append(f"  Stale (decayed):   {stats['stale_count']:>4d}")
     lines.append(f"  Superseded:        {stats['superseded_count']:>4d}")
@@ -505,7 +502,7 @@ def generate_text_report(stats, entries, log, gaps):
     # --- Scope distribution ---
     lines.append("  Distribution by Scope")
     lines.append("  " + "-" * 56)
-    for s in ["enterprise", "domain", "service", "legacy"]:
+    for s in ["enterprise", "domain", "service"]:
         count = stats["by_scope"].get(s, 0)
         pct = count / stats["total"] * 100 if stats["total"] > 0 else 0
         bar = "#" * min(count, 40)
@@ -578,7 +575,7 @@ def generate_text_report(stats, entries, log, gaps):
     # --- Entry listing by scope ---
     lines.append("  Entries by Scope")
     lines.append("  " + "-" * 56)
-    for scope in ["enterprise", "domain", "service", "legacy"]:
+    for scope in ["enterprise", "domain", "service"]:
         scope_entries = [e for e in entries if e["scope"] == scope]
         if not scope_entries:
             continue
@@ -642,7 +639,7 @@ def generate_html_report(stats, entries, log, gaps):
     today = date.today()
 
     # Prepare entry grouping
-    entries_by_scope = {"enterprise": [], "domain": [], "service": [], "legacy": []}
+    entries_by_scope = {"enterprise": [], "domain": [], "service": []}
     for e in entries:
         s = e["scope"]
         if s in entries_by_scope:
@@ -667,7 +664,6 @@ def generate_html_report(stats, entries, log, gaps):
         "enterprise": "#3b82f6",
         "domain": "#8b5cf6",
         "service": "#06b6d4",
-        "legacy": "#6b7280",
     }
     conf_colors = {
         "1-3 (low)": "#ef4444",
@@ -689,7 +685,7 @@ def generate_html_report(stats, entries, log, gaps):
 
     # HTML parts
     scope_charts = ""
-    for s in ["enterprise", "domain", "service", "legacy"]:
+    for s in ["enterprise", "domain", "service"]:
         cnt = stats["by_scope"].get(s, 0)
         if cnt > 0:
             color = scope_colors.get(s, "#3b82f6")
@@ -775,7 +771,7 @@ def generate_html_report(stats, entries, log, gaps):
 
     # Entry listing by scope
     entries_html = ""
-    for scope in ["enterprise", "domain", "service", "legacy"]:
+    for scope in ["enterprise", "domain", "service"]:
         scope_entries = entries_by_scope.get(scope, [])
         if not scope_entries:
             continue
@@ -826,8 +822,6 @@ def generate_html_report(stats, entries, log, gaps):
             scope_label = "DOMAIN"
         elif scope == "service":
             scope_label = "SERVICE"
-        elif scope == "legacy":
-            scope_label = "LEGACY (flat)"
 
         entries_html += f"""\
         <div class="scope-section">

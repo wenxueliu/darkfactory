@@ -74,7 +74,7 @@ requirements:
   #     value_assessment:
   #       status: done
   #       artifacts:
-  #         - knowledge/value-assessment/REQ-20260411-001.md
+  #         - knowledge/requirements/REQ-20260411-001-value-assessment.md
   #       completed_at: '2026-04-11'
   #     design:
   #       status: done

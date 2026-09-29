@@ -331,7 +331,7 @@ def search(kb_dir, query, type_filters=None, max_results=20, min_score=1,
 
     # Determine search paths based on scope
     if scope == "enterprise":
-        search_roots = [os.path.join(kb_dir, "_enterprise")]
+        search_roots = [os.path.join(kb_dir, dir_name) for dir_name in TYPE_DIR_MAP.values()]
     elif scope == "domain":
         if domain:
             search_roots = [os.path.join(kb_dir, "domains", domain)]
@@ -343,7 +343,7 @@ def search(kb_dir, query, type_filters=None, max_results=20, min_score=1,
         else:
             search_roots = [os.path.join(kb_dir, "services")]
     else:  # "all" — search everything
-        search_roots = [os.path.join(kb_dir, "_enterprise")]
+        search_roots = [os.path.join(kb_dir, dir_name) for dir_name in TYPE_DIR_MAP.values()]
         domains_dir = os.path.join(kb_dir, "domains")
         if os.path.isdir(domains_dir):
             for d in sorted(os.listdir(domains_dir)):
@@ -356,20 +356,16 @@ def search(kb_dir, query, type_filters=None, max_results=20, min_score=1,
                 s_path = os.path.join(services_dir, s)
                 if os.path.isdir(s_path) and not s.startswith("."):
                     search_roots.append(s_path)
-        # Also search flat type directories for backward compatibility
-        for dir_name in TYPE_DIR_MAP.values():
-            flat_path = os.path.join(kb_dir, dir_name)
-            if os.path.isdir(flat_path) and flat_path not in search_roots:
-                search_roots.append(flat_path)
 
     def infer_scope(filepath):
         """Infer scope from file path."""
         rel = os.path.relpath(filepath, kb_dir)
-        if rel.startswith("_enterprise"):
+        first_dir = rel.split(os.sep, 1)[0]
+        if first_dir in TYPE_DIR_MAP.values():
             return "enterprise"
-        elif rel.startswith("domains"):
+        elif first_dir == "domains":
             return "domain"
-        elif rel.startswith("services"):
+        elif first_dir == "services":
             return "service"
         return "enterprise"
 

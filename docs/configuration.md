@@ -36,7 +36,7 @@
 | 目录 | 约定 |
 |------|------|
 | `services/{repository-name}/` | 用户放入的独立源码仓库；每个直接子目录都是一个服务单元，一个仓库也按同一流程处理 |
-| `knowledge/` | 项目知识与工作流状态：`_enterprise/`、`domains/`、`services/{service-id}/`，以及需求、任务、审查和注册表等状态文件 |
+| `knowledge/` | 项目知识与工作流状态：企业级 `decisions/`、`patterns/`、`lessons/`、`contracts/`，以及 `domains/`、`services/{service-id}/` 和需求、任务、审查、注册表等状态文件 |
 | `_context/` | 项目配置（`config.yaml`、`config.user.yaml`），不存放业务源码、项目知识或流程状态 |
 | `knowledge/service-registry.yaml` | 从 `services/` 自动生成的服务注册表 |
 

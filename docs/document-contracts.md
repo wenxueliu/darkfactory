@@ -10,7 +10,7 @@ Skill 内置：skills/<owner-skill>/references/document-definitions/
 
 优先级从高到低。每个资源单独回退：项目或用户层可以只覆盖模板、门禁或验证器，未声明的资源继续继承下一层。一个完整的解析结果必须有可用模板；门禁和验证器可以缺省，因此覆盖层可以只声明需要替换的资源。
 
-文档定义与文档产物分离：定义包只负责模板、门禁和验证器；正式需求/设计文档等文档产物写入 `knowledge/` 下对应的工作流目录，定义包放在 `knowledge/templates/`（项目级），长期可复用的 ADR、契约、模式和经验沉淀在 `knowledge/_enterprise/`。不要把源码仓库放进 `knowledge/` 或 `_context/`，源码统一位于 `services/`。
+文档定义与文档产物分离：定义包只负责模板、门禁和验证器；正式需求/设计文档等文档产物写入 `knowledge/` 下对应的工作流目录，定义包放在 `knowledge/templates/`（项目级），长期可复用的 ADR、契约、模式和经验沉淀在 `knowledge/`。不要把源码仓库放进 `knowledge/` 或 `_context/`，源码统一位于 `services/`。
 
 ## 定义包目录
 

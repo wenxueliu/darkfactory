@@ -12,11 +12,10 @@ The shared memory structure is created with proper permissions and initial conte
 # Create the project workspace roots. The user places source repositories in services/ after initialization.
 {project-root}/services/
 {project-root}/knowledge/
-{project-root}/knowledge/_enterprise/
-{project-root}/knowledge/_enterprise/patterns/
-{project-root}/knowledge/_enterprise/decisions/
-{project-root}/knowledge/_enterprise/lessons/
-{project-root}/knowledge/_enterprise/contracts/
+{project-root}/knowledge/patterns/
+{project-root}/knowledge/decisions/
+{project-root}/knowledge/lessons/
+{project-root}/knowledge/contracts/
 {project-root}/knowledge/domains/
 {project-root}/knowledge/services/
 {project-root}/knowledge/reviews/

@@ -19,7 +19,6 @@ paths:
     service_registry: knowledge/service-registry.yaml
     service_roots: services
     decision_roots:
-      - knowledge/_enterprise/decisions
       - knowledge/decisions
 
   artifact_targets:

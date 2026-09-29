@@ -77,7 +77,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 | Phase | Templates | Gate Check | Tracker 更新者 |
 |-------|-----------|------------|---------------|
 | **ideation (需求)** | `requirements/{variant}` definition package, value assessment | resolved `gate.yaml` + `validator.yaml` | sw-requirements-clarifier |
-| **value_assessment (价值)** | `value-assessment.md`, `roi-evaluation.md` | value scoring | sw-value-judgment |
+| **value_assessment (价值)** | `requirements/{id}-value-assessment.md`, `requirements/{id}-roi.md` | value scoring | sw-value-judgment |
 | **design (设计)** | `feature-design/default`, `service-design/{type}`, `e2e/default` definition packages, ADR | resolved definition gates + validators | sw-feature-designer |
 | **decomposition (拆分)** | `task-decomposition.md` → `tasks.yaml` | dependency check | sw-task-decomposer |
 | **execution (执行)** | TDD cycles + lint check + parallel review | P0/P1/P2 gate | sw-plan-executor |
@@ -112,7 +112,7 @@ build → publish(local/remote Git) → download → install(project/user) → i
 包内包含清单、SHA-256 校验、skills、hooks、平台插件和 Agent 初始化入口。
 详细命令见 [package-lifecycle.md](package-lifecycle.md)。
 
-知识库在所有阶段持续维护：ADR 在 `knowledge/_enterprise/decisions/`、模式在 `knowledge/_enterprise/patterns/`、经验教训在 `knowledge/_enterprise/lessons/`。
+知识库在所有阶段持续维护：ADR 在 `knowledge/decisions/`、模式在 `knowledge/patterns/`、经验教训在 `knowledge/lessons/`。
 
 ## 工作区边界
 
@@ -124,7 +124,10 @@ build → publish(local/remote Git) → download → install(project/user) → i
 │   ├── {repository-name}/            # 每个直接子目录都是一个 Git 仓库/服务单元
 │   └── ...
 ├── knowledge/                        # 工作区级、可读、可积累的知识与工作流状态
-│   ├── _enterprise/                  # ADR、跨仓库契约、通用模式和经验
+│   ├── decisions/                    # 企业级 ADR
+│   ├── patterns/                     # 跨仓库通用模式
+│   ├── lessons/                      # 企业级经验教训
+│   ├── contracts/                    # 跨仓库契约
 │   ├── domains/                      # 领域知识
 │   ├── services/{service-id}/        # 服务发现生成的概览、API、Schema
 │   ├── requirements-tracker.yaml     # 需求全生命周期状态
@@ -230,7 +233,10 @@ multiagents/
 ```
 services/                         # User-provided source repositories
 knowledge/                        # Project knowledge + cross-agent workflow state
-├── _enterprise/                  # ADRs, patterns, lessons, cross-repository contracts
+├── decisions/                    # Enterprise ADRs
+├── patterns/                     # Cross-repository patterns
+├── lessons/                      # Enterprise lessons
+├── contracts/                    # Cross-repository contracts
 ├── domains/                      # Domain-scoped knowledge
 ├── services/{service-id}/        # Repository-scoped generated knowledge
 ├── requirements-tracker.yaml     # Requirement lifecycle tracking (phase status, progress, artifacts)
@@ -238,7 +244,7 @@ knowledge/                        # Project knowledge + cross-agent workflow sta
 ├── service-registry.yaml         # Generated index of services/
 ├── human-interventions.md        # Human intervention history
 ├── reviews/                      # Code review outputs
-├── value-assessment/             # Requirements value assessments
+├── value-assessment/             # Cross-requirement value summaries (for example priority rankings)
 └── sw-controller/                # Controller-private state
     ├── global-state.yaml         # Current phase, progress, blockers
     └── worktree-registry.yaml    # Worktree status and task assignments

@@ -148,7 +148,7 @@ All services that need user data use these endpoints.
 Authentication API, Authorization API
 """)
     assert proc.returncode == 0
-    api_dir = tmp_kb / "api-contracts"
+    api_dir = tmp_kb / "contracts"
     entry = api_dir / "User-Service-OpenAPI.md"
     assert entry.exists()
 

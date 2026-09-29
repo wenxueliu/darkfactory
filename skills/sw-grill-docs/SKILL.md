@@ -1,6 +1,14 @@
 ---
 name: sw-grill-docs
 description: "Use when a design, plan, or requirements document must be checked against project terminology, architecture decisions, concrete scenarios, or existing code. 用于文档对照、术语审查、ADR 合规和设计一致性检查。 [trigger: 文档对照, grill docs, 文档质询, 术语审查, 文档一致性检查, design doc review, context consistency]"
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-knowledge-agent
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: optional historical patterns, lessons, and decision evidence when explicitly requested
 ---
 
 # 黑灯工厂 文档对照质询 (sw-grill-docs)
@@ -10,6 +18,8 @@ description: "Use when a design, plan, or requirements document must be checked 
 对设计文档、工作计划或需求规格进行文档对照质询——以解析后的上下文文件和架构决策记录（ADR）为基准，挑战有证据的不一致、发现隐含假设、用具体场景进行压力测试，并在用户确认后提出或执行文档更新。
 
 **Your Mission:** 确保每个设计、计划和需求规格都与项目的领域语言和架构决策保持一致。只有能引用目标文档与上下文/ADR/代码证据的问题才进入报告；实现开始前消除真实歧义，避免把术语缺失或偏好差异误报成冲突。
+
+**Contract version:** `2.0.0` (declared in frontmatter metadata).
 
 ## Identity
 
@@ -42,7 +52,33 @@ description: "Use when a design, plan, or requirements document must be checked 
 - **不是完美主义者** — 寻找真正的矛盾和不一致，而非风格或偏好问题
 - **不评判方案优劣** — 设计选择本身不是审查范围（除非与已有 ADR 矛盾）
 
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `target_document` | Yes | 要质询的设计、计划或需求文档路径。 |
+| `project_root` | No | 项目根目录；默认当前工作区。 |
+| `depth` | No | `Quick`、`Standard` 或 `Deep`；未提供时按文档规模和影响范围推断。 |
+| `evidence_paths` | No | 本次运行额外提供的上下文、ADR 或源码证据路径。 |
+| `paths` | No | 语义路径（semantic paths）覆盖；按 `references/path-resolution.md` 合并。 |
+| `write_approval` | No | 是否允许使用显式 `write_targets` 更新上下文或创建 ADR；默认只读。 |
+
+调用方至少提供 `target_document`；不能从调用方名称推断目标。缺少目标时返回
+`NEEDS_USER_INPUT`，不得开始无目标扫描。
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 是本 Skill 的机器可读依赖声明。每项必须包含
+`name`、`version`、`type` 和 `required`。`sw-knowledge-agent` 只用于调用方明确要求
+历史知识证据时的补充查询，不是质询成立的前置条件；不可用时记录 `SKIPPED` 并继续使用
+已解析的上下文、ADR 和源码证据。所有依赖状态都必须在输出的
+`external_capabilities` 中记录为 `USED`、`SKIPPED` 或 `NOT_REQUESTED`。
+
 ## On Activation
+
+1. 检查 `metadata.external_dependencies`。如果请求了知识库补充证据，则调用
+   `sw-knowledge-agent`；未请求时记录 `NOT_REQUESTED`。
+2. 解析语义路径并读取上下文。
 
 ### Step 0: 解析语义路径并读取上下文
 
@@ -221,9 +257,45 @@ Skill 内置 path-defaults.yaml
 
 如果任何一个条件不成立，跳过 ADR。按 ADR-FORMAT.md 格式创建。
 
-## Output
+## Output Contract
 
 质询结果直接输出到对话中：
+
+**Contract version:** `2.0.0`。
+
+```yaml
+result: PASS | CONCERNS | CONFLICT | NEEDS_USER_INPUT | BLOCKED
+target_document: "..."
+depth: Quick | Standard | Deep
+checks:
+  glossary: {pass: 0, challenge: 0, new: 0, note: 0}
+  adr: {pass: 0, challenge: 0, offer: 0}
+  scenarios: {pass: 0, gap: 0}
+  code: {status: EXECUTED | NOT_REQUESTED | NOT_AVAILABLE, pass: 0, conflict: 0}
+findings: []
+external_capabilities:
+  - capability: sw-knowledge-agent
+    status: USED | SKIPPED | NOT_REQUESTED
+    reason: "..."
+    impact: "..."
+    fallback: "..."
+resolved_paths:
+  context_files: []
+  context_maps: []
+  decision_roots: []
+  source_roots: []
+  config_file: "..."
+write_targets:
+  context_file: "..."
+  adr_root: "..."
+writes: []
+next_action: "..."
+```
+
+其中 `findings` 中的每个 `CHALLENGE`、`CONFLICT` 或 `GAP` 都必须包含来源、目标文档位置和影响。
+`writes` 只能列出经用户确认且实际执行的写入；没有显式确认时必须为空。
+
+报告正文使用以下可读格式：
 
 ```
 ## Grill Docs Report: {target-document}
@@ -266,6 +338,19 @@ Skill 内置 path-defaults.yaml
 | **PASS** | 零 CONFLICT，零 GAP，术语全部一致，且报告声明范围内的证据检查均已执行 |
 | **CONCERNS** | 有 CHALLENGE 需要用户澄清，或核心证据缺失导致部分检查未执行（等待用户回应或补充路径） |
 | **CONFLICT** | 发现与已解析上下文或 ADR 的直接矛盾，必须在继续前解决 |
+
+## Acceptance Criteria
+
+| Dimension | Acceptance criterion | Evidence | Blocking |
+|---|---|---|---:|
+| Input and paths | 目标文档、质询深度和有效语义路径均被报告 | `target_document` + `resolved_paths` | Yes |
+| Dependency metadata | 声明的外部能力都有版本、类型、必选性和运行状态 | Frontmatter + `external_capabilities` | Yes |
+| Glossary consistency | 术语偏差均有上下文来源和目标位置 | Glossary Audit | Yes for contradiction |
+| ADR compliance | ADR 冲突与新 ADR 建议均有证据和影响 | ADR Compliance | Yes for conflict |
+| Scenario coverage | Standard/Deep 模式覆盖正常、边界和冲突场景 | Scenario Stress-Test | Yes for GAP |
+| Code evidence | 仅在有代码声称且源码根可用时执行交叉验证 | Code Cross-Reference | Yes for conflict |
+| Write safety | 未经确认不写入上下文或 ADR，写入与 `write_targets` 一致 | `writes` + diff | Yes |
+| Result correctness | `PASS` 不含未解决冲突或 GAP；缺输入返回 `NEEDS_USER_INPUT` | `result` + findings | Yes |
 
 ## 独立运行与组合运行
 

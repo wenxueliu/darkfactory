@@ -222,9 +222,9 @@ sw-controller 会引导你完成：
 ### 第六步：沉淀知识
 
 第一次开发完成后，检查 `knowledge/`：
-- `knowledge/_enterprise/patterns/` — 本次发现的可复用模式
-- `knowledge/_enterprise/decisions/ADR-0001-*.md` — 架构决策记录
-- `knowledge/_enterprise/lessons/` — 经验教训
+- `knowledge/patterns/` — 本次发现的可复用模式
+- `knowledge/decisions/ADR-0001-*.md` — 架构决策记录
+- `knowledge/lessons/` — 经验教训
 
 这些沉淀会在后续开发中被自动引用。
 
@@ -259,7 +259,7 @@ git clone git@github.com:org/web-frontend.git services/web-frontend
 创建 `knowledge/` 目录结构——这是**手动一次性**操作，建立空的目录骨架：
 
 ```bash
-mkdir -p services knowledge/_enterprise/{patterns,decisions,lessons,contracts}
+mkdir -p services knowledge/{patterns,decisions,lessons,contracts}
 mkdir -p knowledge/{domains,services}
 mkdir -p knowledge/reviews
 mkdir -p knowledge/sw-controller
@@ -434,14 +434,14 @@ python /path/to/harness/services/multiagents/change.py apply \
 | `_context/config.yaml` | 项目配置 | 你（人工） |
 | `knowledge/` | 需求、设计、任务、审查 | sw-controller（自动） |
 | `services/` | 一个或多个独立源码仓库 | 用户放入，Agent 只读/修改受影响仓库 |
-| `knowledge/_enterprise/` | 全局 ADR、契约、跨仓库模式 | sw-controller + 人工审核 |
+| `knowledge/{decisions,patterns,lessons,contracts}/` | 全局 ADR、契约、跨仓库模式和经验 | sw-controller + 人工审核 |
 | `knowledge/domains/` | 业务领域级知识 | sw-controller（自动分类） |
 | `knowledge/services/` | 每个代码仓的 API、Schema、概览 | sw-knowledge-agent（自动生成） |
 | `knowledge/sw-controller/` | 编排状态、worktree 注册表 | sw-controller（自动） |
 | `.worktree/` | 隔离开发环境 | 自动创建/销毁 |
 | `skills/` | Agent 技能定义（Claude Code） | 随黑灯工厂更新 |
 | `agents/` | Agent 独立 prompt 模板（Codex/OpenCode） | 随黑灯工厂更新 |
-| `knowledge/_enterprise/contracts/` | 跨仓库 API 契约 | sw-controller + 人工审核 |
+| `knowledge/contracts/` | 跨仓库 API 契约 | sw-controller + 人工审核 |
 | `knowledge/service-registry.yaml` | 服务注册表（技术栈/依赖图） | sw-knowledge-agent（自动生成） |
 
 ---
