@@ -73,7 +73,7 @@
 | Agent | Role | Trigger |
 |-------|------|---------|
 | `sw-strategic-advisor` | Read-only strategic advisor — pragmatic minimalism, deep reasoning for complex decisions. Based on Oracle. | architecture advice, deep reasoning, 架构咨询 |
-| `sw-codebase-explorer` | Internal codebase search specialist — intent analysis + structured results. Based on Explore. | code search, find in code, 代码搜索 |
+| `sw-codebase-explorer` | CodeGraph-backed internal codebase search specialist — intent analysis, symbol/call-graph/impact queries, and structured evidence. Requires an indexed CodeGraph project. | code search, call graph, impact analysis, 代码搜索 |
 | `sw-external-researcher` | External documentation/OSS researcher — evidence with citations. Based on Librarian. | external search, library docs, 外部搜索 |
 | `sw-multi-search` | Multi-source search orchestrator — fans out to codebase-explorer/external-researcher/media-interpreter in parallel, then aggregates and ranks. Use when source of truth is unknown. (NEW) | multi-source, comprehensive search, cross-reference, 多源搜索, 跨源检索 |
 | `sw-media-interpreter` | Media file interpreter — PDFs, images, diagrams. Based on Multimodal Looker. | PDF解读, image analysis, 图表解读 |
@@ -284,10 +284,22 @@ large   → 新需求，从 ideation 开始
 
 | Agent | 调用时机 |
 |-------|---------|
-| `sw-codebase-explorer` | 需要搜索代码库时（设计前、实现时、调试时） |
+| `sw-codebase-explorer` | 需要搜索代码库时（设计前、实现时、调试时）；先检查 CodeGraph 索引，索引不可用则返回 `BLOCKED` |
 | `sw-external-researcher` | 需要查外部文档/OSS 时，与 codebase-explorer 并行 |
 | `sw-strategic-advisor` | 复杂架构决策、3+ 次连续失败后的深度推理 |
 | `sw-media-interpreter` | 需要解读 PDF/图片/图表时 |
+
+### CodeGraph 代码证据约定
+
+`sw-codebase-explorer` 使用 `codegraph` 作为当前代码结构、符号、调用关系和影响
+分析的唯一搜索后端。调用前必须执行 `codegraph status --json {project_root}`；
+项目没有可读索引时，explorer 返回 `BLOCKED`，不会静默退回 grep、LSP 或其他本地
+搜索。索引维护由 setup 或项目维护者负责。
+
+explorer 的结果必须携带 CodeGraph 状态、实际查询、节点/边证据、绝对路径以及索引
+覆盖或结果截断缺口，供 feature/service designer、strategic planner、task
+decomposer 和 E2E designer 消费。历史演化问题可以额外使用 git，但必须单独标记为
+git 证据。
 
 ---
 

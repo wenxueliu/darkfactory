@@ -12,6 +12,11 @@
 
 **44 skills** covering the full E2E pipeline (v2), including package lifecycle and requirement-change propagation, following acceptance-driven development with a strict TDD iron law (no failing test, no production code).
 
+Repository exploration is CodeGraph-backed: `sw-codebase-explorer` requires a readable
+CodeGraph index before querying symbols, files, call relationships, or change impact.
+Missing or unreadable indexes produce `BLOCKED`; the skill does not silently fall back to
+grep/LSP search.
+
 ### Supported Platforms
 
 | Platform | Status | Guide |

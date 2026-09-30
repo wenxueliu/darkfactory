@@ -17,7 +17,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   │     sw-strategic-planner (NEW: 执行计划 — 消费已通过设计→计划生成)
   │       ├── sw-pre-planning-consultant (NEW: 预规划分析 — 意图分类+AI slop防护)
   │       ├── sw-plan-reviewer (NEW: 计划审查 — 阻断器发现者)
-  │       ├── sw-codebase-explorer (NEW: 内部代码搜索)
+  │       ├── sw-codebase-explorer (NEW: CodeGraph代码搜索与调用/影响分析)
   │       └── sw-external-researcher (NEW: 外部文档/OSS研究)
   │
   ├── [设计层 — Design]
@@ -50,7 +50,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   │
   ├── [咨询层 — Consultation, 水平调用]
   │     sw-strategic-advisor (NEW: 战略技术顾问 — 只读深度推理)
-  │     sw-codebase-explorer (NEW: 内部代码搜索)
+  │     sw-codebase-explorer (NEW: CodeGraph代码搜索与调用/影响分析)
   │     sw-external-researcher (NEW: 外部研究+证据引用)
   │     sw-multi-search (NEW: 多源搜索编排 — fan-out + 聚合 + 排序)
   │     sw-media-interpreter (NEW: PDF/图片/图表解读)
@@ -182,7 +182,7 @@ multiagents/
 │   ├── sw-pre-planning-consultant/ # Pre-planning analyst (NEW — Metis)
 │   ├── sw-plan-reviewer/    # Plan executability reviewer (NEW — Momus)
 │   ├── sw-plan-executor/    # Plan execution orchestrator (NEW — Atlas)
-│   ├── sw-codebase-explorer/ # Internal code search (NEW — Explore)
+│   ├── sw-codebase-explorer/ # CodeGraph-backed code search (NEW — Explore)
 │   ├── sw-external-researcher/ # External docs/OSS research (NEW — Librarian)
 │   ├── sw-strategic-advisor/ # Strategic technical advisor (NEW — Oracle)
 │   ├── sw-multi-search/     # Multi-source search orchestrator (NEW)
