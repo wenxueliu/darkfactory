@@ -1,6 +1,14 @@
 ---
-name: prd
+name: sw-prd
 description: 产品经理专用的 PRD(产品需求文档)生成、优化与扩展工具。用于从自然语言描述创建结构化 PRD、对现有 PRD 进行澄清式审阅以补全模糊点、或向已有 PRD 追加新功能。当用户提到"写 PRD""生成产品需求文档""需求文档""优化/澄清 PRD""review PRD""给 PRD 加功能""PRD 新增需求"时使用此技能。
+metadata:
+  version: "2.0.0"
+  external_dependencies:
+    - name: sw-knowledge-agent
+      version: "*"
+      type: SKILL
+      required: false
+      purpose: requirement-level knowledge-base pre-check
 ---
 
 # PRD Skill - 产品需求文档生成、优化与扩展
@@ -84,15 +92,72 @@ description: 产品经理专用的 PRD(产品需求文档)生成、优化与扩�
 
 ---
 
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `request` | Yes | 用户提供的功能/产品自然语言描述、已有 PRD 文件路径,或文件路径 + 新功能描述 |
+| `mode` | No | `generate`(默认)/ `clarify` / `extend`;由模式判定规则自动推断,用户可显式指定 |
+| `project_root` | No | 项目根目录;默认为当前工作目录 |
+| `output_path` | No | PRD 输出文件路径;默认按输出位置规则自动解析 |
+| `language` | No | 输出语言;默认中文 |
+
+缺失的可选字段使用项目配置或安全默认值。调用方不应传入内部提示词、私有状态或对其他 Skill 目录的依赖。
+
+## External Dependency Metadata
+
+`metadata.external_dependencies` 是本 Skill 的机器可读外部依赖声明。每条包含:
+
+| Field | Required | Meaning |
+|---|---:|---|
+| `name` | Yes | 依赖名称;`SKILL` 类型使用 Skill 名称 |
+| `version` | Yes | 版本约束;`"*"` 表示不锁版本 |
+| `type` | Yes | `TOOL` / `SKILL` / `MCP` / `LIBRARY` |
+| `required` | Yes | `true` 表示不可用时阻断;`false` 表示可选,降级为 `SKIPPED` |
+| `purpose` | No | 依赖提供的能力 |
+
+激活前检查每条依赖的可用性。可选依赖不可用时记录 `SKIPPED` 并继续执行;必需依赖不可用时返回 `BLOCKED` 并给出可操作原因。
+
+## Output Contract
+
+每次执行完成后向用户返回:
+
+| Output | Always | Description |
+|---|---:|---|
+| `prd_file_path` | Yes | PRD 文件的绝对或相对路径 |
+| `mode` | Yes | 实际执行的模式:`generate` / `clarify` / `extend` |
+| `result` | Yes | `SUCCESS` / `NEEDS_USER_INPUT` / `BLOCKED` |
+| `summary` | Yes | 本次操作的一句话摘要(生成的故事数、澄清数、新增章节数等) |
+| `unresolved_clarifications` | No | 遗留的 `[NEEDS CLARIFICATION]` 标记清单(如有) |
+| `next_action` | No | 建议用户下一步操作(如运行澄清模式) |
+
+## Acceptance Criteria
+
+| Dimension | Acceptance criterion | Evidence | Blocking |
+|---|---|---|---:|
+| 模式判定 | 正确判定 `generate` / `clarify` / `extend`,模糊时确认而非猜错 | 模式判定结果 | Yes |
+| 输入溯源 | 输入历史章节包含所有模式的原始用户输入,逐字保留,不可删改 | 输入历史章节 | Yes |
+| 输出路径 | PRD 文件写入 `knowledge/prds/` 或用户显式指定的路径,不覆盖已有文件 | `prd_file_path` | Yes |
+| 用户故事 | 每个故事有优先级、独立测试描述和验收场景,格式一致 | PRD 用户故事章节 | Yes |
+| 功能需求 | 每条 `FR-NNN` 可测试、无歧义、编号连续 | PRD 功能需求章节 | Yes |
+| 成功标准 | 每条 `SC-NNN` 可衡量、技术无关、以业务视角描述 | PRD 成功标准章节 | Yes |
+| 澄清标记 | `[NEEDS CLARIFICATION]` 标记 ≤ 3 个(generate)或 ≤ 2 个(extend) | PRD 正文 | Yes |
+| 扩展一致性 | 扩展模式下既有 FR/SC/故事/术语的编号和顺序不变 | PRD diff | Yes |
+| 外部依赖 | 可选依赖不可用时记录 `SKIPPED` 并继续;必需依赖不可用时返回 `BLOCKED` | 执行日志或报告 | No |
+| 语言与风格 | PRD 内容用中文(除非用户要求),不含实现细节(技术栈/框架/API) | PRD 正文 | Yes |
+
+---
+
 ## 模式一: 生成 PRD (Generate)
 
 ### 输入
 用户通过 `$ARGUMENTS` 提供的功能/产品描述。关注 **What** 和 **Why**,不要陷入 **How**(技术栈、API、代码结构)。
 
 ### 输出位置
-默认写入当前工作目录下的 `./prds/<short-name>.md`:
+默认写入 `{project_root}/knowledge/prds/<short-name>.md`:
 
-- 如果当前目录已经叫 `prd`、`prds`、`docs/prd` 或类似,直接写到 `./<short-name>.md`
+- 如果项目根目录下没有 `knowledge/prds/` 目录,先 `mkdir -p` 创建
+- 如果用户显式指定了 `output_path`,以用户指定为准
 - `short-name` 从描述中提炼 2-4 个词,用连字符连接,例如 `user-auth`、`photo-albums`、`fix-payment-timeout`
 - 如果目标文件已存在,追加时间戳后缀避免覆盖(`<short-name>-YYYYMMDD.md`)
 - 写文件前用 Bash `mkdir -p` 确保目录存在
