@@ -124,8 +124,9 @@ Fallbacks:
 - `sw-knowledge-agent` unavailable: read resolved service knowledge, contracts,
   ADRs, patterns, and lessons locally; mark the pre-query as `SKIPPED` or
   `NOT_REQUESTED`, never as `PASS`.
-- `sw-codebase-explorer` unavailable: inspect the resolved repository with
-  available file/code tools and label the evidence as local inspection.
+- `sw-codebase-explorer` unavailable: record the capability as `SKIPPED` and
+  the repository evidence as incomplete. Do not silently replace its
+  CodeGraph evidence with ad-hoc local search.
 - `sw-grill-docs` unavailable: run the internal V1–V4 checklist and resolved
   machine gate/validator; record the missing review as `SKIPPED`.
 
@@ -286,7 +287,7 @@ api_test_artifacts:
 | Machine gate and validator | Resolved `gate.yaml` and `validator.yaml` |
 | Semantic gate checklist | `references/service-design-validator.md` (V1–V4) |
 | Service knowledge pre-query | Optional `sw-knowledge-agent`; unavailable = `SKIPPED` with local fallback |
-| Repository investigation | Optional `sw-codebase-explorer`; unavailable = local inspection |
+| Repository investigation | Optional `sw-codebase-explorer` with CodeGraph; unavailable = `SKIPPED` and evidence gap |
 | Design consistency review | Optional `sw-grill-docs`; unavailable = `SKIPPED` with internal checks |
 | Architecture decision record | `references/adr-template.md`; create only with explicit confirmation and target |
 

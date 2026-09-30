@@ -222,7 +222,9 @@ Your response has **FAILED** if:
 
 ## External Dependency Metadata
 
-`sw-codebase-explorer` 和 `sw-external-researcher` 都是可选依赖。不可用时使用本地已提供证据并标记研究缺口；绝不把缺少研究当成已验证事实。
+`sw-codebase-explorer` 和 `sw-external-researcher` 都是可选依赖。不可用时记录
+`SKIPPED` 和研究缺口；不得把本地 ad-hoc 搜索冒充 CodeGraph 证据，也绝不把缺少研究
+当成已验证事实。
 
 ## Output Contract
 

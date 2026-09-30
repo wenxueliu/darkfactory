@@ -353,7 +353,7 @@ design → planning/decomposition:
   ✅ Design gate PASS
   ✅ Knowledge base updated with design decisions
   ✅ Complex/multi-step work: `sw-strategic-planner` consumes the passed design bundle and produces an execution plan; it does not design
-  ✅ Simple work: `sw-task-decomposer` may consume the passed design directly when a separate strategic plan is unnecessary
+  ✅ Simple work: `sw-task-decomposer` consumes the passed design directly and generates a minimal execution plan
   ❌ FAIL → re-design, max 3 iterations → escalate to human
 
 decomposition → execution:

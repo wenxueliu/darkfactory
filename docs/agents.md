@@ -173,11 +173,11 @@
 │ Phase 3: decomposition (任务拆分)          │                            │
 │                                          │ (规划层计划先经任务规范化)    │
 │   sw-task-decomposer:                    ▼                            │
-│   ├── 6-step process: 服务识别→DAG→Wave→tasks.yaml+dependencies.json  │
+│   ├── 6-step process: 服务识别→DAG→Wave→最小执行计划+tasks.yaml+dependencies.json │
 │   └── 能力校验: 语言匹配+路径存在+能力覆盖                              │
 │                                                                        │
 │   sw-controller: 检查 dependency check (无循环依赖 + 每任务有 AC)       │
-│   Output: tasks.yaml                                                   │
+│   Output: minimal plan + tasks.yaml + dependencies.json                │
 └──────────────────────┬─────────────────────────────────────────────────┘
                        │ ✅ Dependency check PASS (or plan review OK)
                        ▼

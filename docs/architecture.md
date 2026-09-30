@@ -80,7 +80,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 | **value_assessment (价值)** | `requirements/{id}/value-assessment.md`, `requirements/{id}/roi.md` | value scoring | sw-value-judgment |
 | **design (设计)** | 按服务拓扑选择 `service-design/{type}`，跨服务追加 `feature-design/default` 与 `e2e/default`，以及 ADR | applicable definition gates + validators | sw-controller topology router |
 | **planning (执行计划)** | `knowledge/plans/{plan}.md` + approved design references | design gate PASS + plan gate/review | sw-strategic-planner |
-| **decomposition (拆分)** | `task-decomposition.md` → `tasks.yaml` | dependency check | sw-task-decomposer |
+| **decomposition (拆分)** | `task-decomposition.md` → minimal/existing execution plan + `tasks.yaml` | plan/task graph/dependency check | sw-task-decomposer |
 | **execution (执行)** | TDD cycles + lint check + parallel review | P0/P1/P2 gate | sw-plan-executor |
 | **merge (合并)** | `merge-management.md` | conflict-free merge | sw-controller |
 | **test (测试)** | `requirements/{id}/integration-test-plan.md`, `requirements/{id}/test-results.yaml`, `requirements/{id}/browser-e2e-results.yaml` | all IT PASS + all browser E2E PASS | sw-controller |

@@ -186,6 +186,20 @@ Task-{id}: {名称}
 
 ### 第 3 步: 分配测试用例 (Assign Test Cases)
 
+### 第 3.5 步: 生成执行计划索引 (Generate Execution Plan Index)
+
+任务图完成后必须保证 `sw-plan-executor` 有可解析的 `plan_path`：
+
+- 调用方提供已通过门禁的战略计划时，只校验该计划与 `tasks.yaml`、
+  `dependencies.json` 的 requirement ID、任务 ID、依赖、wave 和服务路径一致，
+  不覆盖战略计划。
+- 没有战略计划时，读取 `references/minimal-execution-plan.md`，生成一份最小
+  执行计划。计划只索引已确认的任务图和设计制品，不新增设计决策。
+- 计划中的每个顶层 TODO 必须对应一个 `tasks.yaml` 任务；计划路径必须写入
+  分解报告、tracker 和后续交接信息。
+- 最小计划通过九章节、无占位符和任务图一致性检查后，才可将
+  `validation.plan_gate` 和 `validation.plan_consistency` 标记为 `PASS`。
+
 每个任务绑定来自 per-service 设计文档 Section 10 的测试用例。由于采用纵向拆分，每个任务自带对应切片内的 UT 和 API 测试:
 
 | 任务 | 绑定的 UT 用例 | 绑定的 API 用例 | 验证顺序 |

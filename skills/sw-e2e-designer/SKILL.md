@@ -115,9 +115,9 @@ Fallbacks:
 
 - `sw-knowledge-agent` unavailable: read resolved contracts, patterns, lessons,
   ADRs, and test-data knowledge locally; mark the pre-query accordingly.
-- `sw-codebase-explorer` unavailable: inspect resolved service designs,
-  registries, repositories, routes, selectors, and environment configuration
-  with available local tools.
+- `sw-codebase-explorer` unavailable: record the capability as `SKIPPED` and
+  mark repository/UI evidence as incomplete. Do not silently replace its
+  CodeGraph evidence with ad-hoc local search.
 - `sw-grill-docs` unavailable: apply internal V1–V5 checks and resolved machine
   gate/validator; record the missing review as `SKIPPED`.
 
@@ -234,7 +234,7 @@ artifacts:
 | Semantic gate checklist | `references/e2e-design-validator.md` (V1–V5) |
 | Machine gate and validator | Resolved `gate.yaml` and `validator.yaml` |
 | Cross-service knowledge | Optional `sw-knowledge-agent`; unavailable = `SKIPPED` with local fallback |
-| Repository and UI evidence | Optional `sw-codebase-explorer`; unavailable = local inspection |
+| Repository and UI evidence | Optional `sw-codebase-explorer` with CodeGraph; unavailable = `SKIPPED` and evidence gap |
 | Design consistency review | Optional `sw-grill-docs`; unavailable = `SKIPPED` with internal checks |
 
 ## Output Contract

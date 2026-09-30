@@ -67,7 +67,7 @@ contract_version: "1.0"
 
 ### Research Findings
 
-**Codebase Analysis** (via sw-codebase-explorer):
+**Codebase Analysis** (via sw-codebase-explorer / CodeGraph):
 - [Finding 1]: [含义 — 这对计划意味着什么]
 - [Finding 2]: [建议 — 在此基础上该怎么做]
 

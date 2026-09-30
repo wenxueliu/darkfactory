@@ -27,6 +27,17 @@
 [针对实际需求的直接回答，附带必要的解释]
 </answer>
 
+<evidence>
+status: READY
+queries: [实际执行的 CodeGraph 查询]
+nodes: [相关节点]
+edges: [相关关系]
+</evidence>
+
+<gaps>
+[索引覆盖、结果截断或未支持的查询维度]
+</gaps>
+
 <next_steps>
 [调用者接下来应该做什么]
 [如果无需后续操作则写: "Ready to proceed - no follow-up needed"]
@@ -251,21 +262,21 @@ See the files above.
 </files>
 
 <answer>
-在代码库中未找到 [搜索目标]。搜索覆盖了：
-- LSP 符号搜索：[搜索范围]
-- grep 文本搜索：[搜索的 pattern]
-- glob 文件搜索：[搜索的 pattern]
-- ast_grep 结构搜索：[搜索的 pattern]
+CodeGraph 未找到 [搜索目标]，或当前索引无法证明该结论。搜索覆盖了：
+- CodeGraph status/query：[搜索范围]
+- CodeGraph files：[文件/模块范围]
+- CodeGraph callers/callees/impact/affected：[关系或影响范围]
 
 可能的原因：
 1. 功能尚未实现
 2. 使用了不同的命名约定
-3. 代码位于独立仓库中
+3. 目标文件未被当前 CodeGraph 索引覆盖
+4. CodeGraph 无法解析该语言或关系
 </answer>
 
 <next_steps>
-- 建议确认搜索关键词是否正确
-- 提供更多线索（如相关的类名、文件名片段、提交信息）后重新搜索
+- 先检查 `codegraph status --json {project_root}` 和 `codegraph files --json --path {project_root}`
+- 提供更多线索（如相关的符号名、文件范围或提交信息）后重新搜索
 </next_steps>
 </results>
 ```

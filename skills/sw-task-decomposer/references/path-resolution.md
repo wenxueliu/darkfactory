@@ -16,8 +16,10 @@
   `NOT_FOUND`，不得自动伪造。
 - `manifest`、feature 和 E2E 路径只在 `cross_service` 下要求；
   `single_service` 使用 requirements gate 和唯一服务设计/gate。
-- `artifact_targets` 是本 Skill 的写入目标；三个任务产物和 tracker
+- `artifact_targets` 是本 Skill 的写入目标；执行计划、三个任务产物和 tracker
   必须使用同一个 `requirement_id`。
+- `artifact_targets.plan` 仅在调用方未提供已通过门禁的 `plan_path` 时生成；
+  生成的最小计划必须满足执行器的九个章节和任务图一致性要求。
 - 任务拆分可以更新 decomposition tracker，但不得更新全局
   `phases.design`，也不得修改任何设计文档。
 - 服务根目录下的代码仓只用于 capability verification；本 Skill 不写入

@@ -122,8 +122,9 @@ Fallbacks:
 - `sw-knowledge-agent` unavailable: read the resolved knowledge roots and
   supplied evidence locally; mark the pre-query artifact as skipped or not
   requested, never as `PASS`.
-- `sw-codebase-explorer` unavailable: inspect the resolved service registry and
-  repositories with the available file/code tools; record reduced evidence.
+- `sw-codebase-explorer` unavailable: record the capability as `SKIPPED` and
+  the service-capability evidence as incomplete. Do not silently replace its
+  CodeGraph evidence with ad-hoc local search.
 - `sw-grill-docs` unavailable: run the internal V1–V3 checklist and the
   resolved machine gate/validator; record the missing review as `SKIPPED`.
 
@@ -182,9 +183,10 @@ verify, where applicable:
 - owned data/models and migrations;
 - outbound service calls, consumers, and infrastructure dependencies.
 
-Use `sw-codebase-explorer` when available, otherwise use local repository
-inspection. Do not infer a service's capability from its name alone. If registry
-metadata and source disagree, report the discrepancy and use source evidence.
+Use `sw-codebase-explorer` as the CodeGraph-backed source for repository
+topology and service capability evidence. Do not infer a service's capability
+from its name alone. If registry metadata and CodeGraph evidence disagree,
+report the discrepancy and preserve both claims with their sources.
 
 ### Step 3: Progressively fill the design
 
@@ -253,7 +255,7 @@ If no context or ADR evidence is available, record `NOT_REQUESTED` or
 | Machine gate and validator | Resolved `gate.yaml` and `validator.yaml` |
 | Semantic gate checklist | `references/feature-design-validator.md` (V1–V3) |
 | Implementation-level KB pre-query | Optional `sw-knowledge-agent`; unavailable = `SKIPPED` with local fallback |
-| Service capability investigation | Optional `sw-codebase-explorer`; unavailable = local repository inspection |
+| Service capability investigation | Optional `sw-codebase-explorer` with CodeGraph; unavailable = `SKIPPED` and evidence gap |
 | Design consistency review | Optional `sw-grill-docs`; unavailable = `SKIPPED` with internal checks |
 | Architecture decision record | `references/adr-template.md`; create only when a decision meets the ADR criteria |
 

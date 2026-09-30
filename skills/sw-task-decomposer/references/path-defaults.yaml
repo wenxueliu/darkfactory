@@ -26,6 +26,8 @@ paths:
       - knowledge/decisions
 
   artifact_targets:
+    plan_root: knowledge/plans
+    plan: knowledge/plans/{plan_name}.md
     tasks: knowledge/tasks.yaml
     worktree_registry: knowledge/sw-controller/worktree-registry.yaml
     dependencies: knowledge/requirements/{requirement_id}/dependencies.json

@@ -1,195 +1,125 @@
-# search-patterns.md — 工具选择决策树与搜索策略
+# search-patterns.md — CodeGraph 查询选择与搜索策略
 
 ## 何时加载
 
-每次被调用时加载本文档，用于确定针对当前搜索任务的最佳工具组合。
+每次被调用时加载，用于确定针对当前搜索任务的最佳 CodeGraph 查询组合。
 
----
+## 1. 决策流程
 
-## 1. 工具选择决策树
-
-收到搜索请求后，按以下决策树选择工具：
-
-```
+```text
 收到搜索请求
   │
-  ├─ 搜索目标明确吗？
-  │   ├─ YES → 直接选择对应工具类别（见下方映射表）
-  │   └─ NO  → 启动 3+ 工具并行覆盖，交叉验证
+  ├─ 执行 codegraph status --json {project_root}
+  │   ├─ 不可用/未建索引 → BLOCKED，不执行 fallback
+  │   └─ READY → 继续选择查询
   │
-  ├─ 是否需要理解代码结构？
-  │   ├─ YES → LSP tools + ast_grep_search 并行
-  │   └─ NO  → grep 或 glob 即可
+  ├─ 目标明确吗？
+  │   ├─ YES → 选择对应 CodeGraph 查询
+  │   └─ NO  → files + query + 关系查询并行覆盖
   │
   └─ 是否需要历史上下文？
-      ├─ YES → 加入 git log / git blame
-      └─ NO  → 跳过 git 工具
+      ├─ YES → CodeGraph 查询 + git log/blame
+      └─ NO  → 只执行 CodeGraph 查询
 ```
 
----
+状态检查通过后，首轮默认并行执行至少三种相互独立的 CodeGraph 查询；查询本身只有
+一个可验证来源时，必须在 `evidence` 中解释例外。
 
-## 2. 工具类别详解
+## 2. 查询类型
 
-### 2.1 LSP Tools — 语义搜索
+### 2.1 `query` — 符号搜索
 
-**适用场景：** 代码理解、定义跳转、引用追踪、符号查询
+适用于代码理解、符号定位、定义和名称匹配：
 
-| 工具 | 用途 | 示例问题 |
-|------|------|----------|
-| `lsp_goto_definition` | 跳转到定义 | "这个函数在哪里定义的？" |
-| `lsp_find_references` | 查找所有引用 | "谁调用了这个函数？" |
-| `lsp_symbols` | 列出文件/项目符号 | "这个文件里有哪些函数和类？" |
-| `lsp_diagnostics` | 查看诊断信息 | "这个文件有编译错误吗？" |
-
-**最佳实践：**
-- 先获取符号列表了解文件结构，再针对具体符号查引用
-- 对关键符号同时查 `goto_definition` 和 `find_references`，并行执行
-- 当不确定符号名称时，先用 grep 模糊匹配，再用 LSP 精确追踪
-
-**局限：** 需要 LSP server 已启动并正确配置语言。对于无 LSP 的语言（如 Bash、Markdown），回退到 grep + ast_grep_search。
-
-### 2.2 ast_grep_search — 结构搜索
-
-**适用场景：** 基于 AST 的代码结构模式匹配
-
-| 用途 | 示例 Pattern |
-|------|-------------|
-| 查找特定结构的函数 | `function $_($$$) { $$$ }` |
-| 查找 try/catch 块 | `try { $$$ } catch($$$) { $$$ }` |
-| 查找类继承 | `class $_ extends $_ { $$$ }` |
-| 查找特定导入 | `import { $$$ } from '$$$'` |
-| 查找装饰器/注解 | `@$_($$$)` |
-
-**最佳实践：**
-- 与 grep 并行使用 — ast_grep 找结构，grep 找文本
-- 先用宽泛 pattern 搜索，再逐步精确
-- 对于跨文件引用，结合 LSP `find_references` 交叉验证
-
-**局限：** 依赖语言 parser 可用性。部分语言支持有限时回退到 grep。
-
-### 2.3 grep — 文本搜索
-
-**适用场景：** 字符串匹配、注释搜索、日志消息、配置值、文本模式
-
-| 用途 | 示例 |
-|------|------|
-| 搜索函数/变量名 | `grep "functionName"` |
-| 搜索 TODO/FIXME | `grep "TODO\|FIXME"` |
-| 搜索错误消息字符串 | `grep "connection refused"` |
-| 搜索配置键 | `grep "api_key"` |
-| 搜索导入语句 | `grep "import.*from"` |
-| 搜索注释中的说明 | `grep "//.*deprecated"` |
-
-**最佳实践：**
-- 使用 `output_mode: "files_with_matches"` 快速定位文件
-- 使用 `output_mode: "content"` 查看具体匹配行及上下文（`-C 3`）
-- 大型代码库使用 `head_limit` 限制结果数，避免上下文过载
-- 区分大小写敏感/不敏感 (`-i`) 以控制精度
-
-**局限：** 无法理解代码语义。文本匹配可能产生噪音（同名变量在不同上下文中）。始终结合其他工具交叉验证。
-
-### 2.4 glob — 文件模式搜索
-
-**适用场景：** 按文件名/扩展名/路径模式查找文件
-
-| 用途 | 示例 Pattern |
-|------|-------------|
-| 查找测试文件 | `**/*.test.ts` |
-| 查找配置文件 | `**/config.*`, `**/.env*` |
-| 查找特定名称文件 | `**/auth*`, `**/*middleware*` |
-| 查找目录结构 | `src/**/`, `**/components/` |
-| 查找文档文件 | `**/*.md`, `**/README*` |
-
-**最佳实践：**
-- 在不确定文件位置时作为第一轮搜索工具
-- 结果已按修改时间排序 — 最近修改的文件通常更相关
-- 与 grep 结合：先用 glob 找到候选文件，再用 grep 在这些文件中搜索
-
-### 2.5 git — 历史与演化搜索
-
-**适用场景：** 追溯代码变更历史、作者信息、演化过程
-
-| 用途 | 命令示例 |
-|------|----------|
-| 查看文件修改历史 | `git log --oneline -- <file>` |
-| 查看谁最后改了某行 | `git blame <file>` |
-| 查看某次提交的变更 | `git show <commit>` |
-| 搜索提交信息 | `git log --grep="pattern"` |
-| 查看最近的变更 | `git log --oneline -20` |
-| 对比两个版本的差异 | `git diff <old> <new> -- <file>` |
-
-**最佳实践：**
-- 当需要理解"为什么这样写"时使用 git — 提交信息常包含设计意图
-- `git blame` 可以精确定位代码的作者和引入时间
-- 与其他工具并行：git 查历史，grep/LSP 查现状
-
----
-
-## 3. 并行化策略
-
-### 3.1 第一轮：广度优先（强制 3+ 并行）
-
-每次搜索的第一轮必须同时启动至少 3 个工具。默认组合：
-
-```
-第一轮并行包（根据请求类型选择组合）：
-
-[类型 A: "在哪里定义/实现"]
-  ├── lsp_goto_definition (精确跳转)
-  ├── grep (模糊匹配 + 注释引用)
-  └── glob (找到可能包含该符号的文件)
-
-[类型 B: "哪些文件包含/使用"]
-  ├── lsp_find_references (精确引用)
-  ├── grep (文本匹配，含字符串和注释)
-  └── ast_grep_search (结构模式匹配)
-
-[类型 C: "查找某个模式的代码"]
-  ├── ast_grep_search (结构模式)
-  ├── grep (文本模式)
-  └── glob (相关文件筛选)
-
-[类型 D: "理解代码库结构"]
-  ├── lsp_symbols (符号列表)
-  ├── glob (目录结构探索)
-  └── grep (关键模式快速定位)
+```text
+codegraph query --json --path {project_root} --limit {n} {search}
+codegraph query --json --path {project_root} --kind function {search}
 ```
 
-### 3.2 第二轮：深度验证（依赖第一轮结果）
+关键符号应与 `callers`、`callees` 或 `impact` 配对。名称不确定时扩大 search 和
+limit，不使用其他搜索后端替代。
 
-第一轮结果返回后，根据发现的线索进行深度追踪：
+### 2.2 `files` — 文件结构搜索
 
-- 对发现的每个关键文件，查 `lsp_symbols` 了解内部结构
-- 对关键符号，查 `lsp_find_references` 了解使用方式
-- 对可疑区域，用 `git blame` 查变更历史
-- 对复杂结构，用 `ast_grep_search` 查同类模式
+适用于文件树、模块边界、文件语言和索引统计：
 
-### 3.3 禁止的串行模式
+```text
+codegraph files --json --path {project_root} --format flat
+codegraph files --json --path {project_root} --filter {scope}
+codegraph files --json --path {project_root} --pattern '**/*test*'
+```
 
-以下模式属于失败：
+文件树不等于源码内容；需要符号关系时必须继续执行图查询。
 
-- 等 grep 结果再决定用不用 glob — 它们不互相依赖
-- 找到第一个匹配就停止 — 必须找全
-- 只用一种工具就下结论 — 必须交叉验证
+### 2.3 `callers` / `callees` / `impact` — 关系搜索
 
----
+适用于跨文件调用关系和变更影响：
+
+| 用途 | 命令 |
+|---|---|
+| 查找调用者 | `codegraph callers --json --path {root} {symbol}` |
+| 查找被调用者 | `codegraph callees --json --path {root} {symbol}` |
+| 分析符号影响 | `codegraph impact --json --path {root} --depth {n} {symbol}` |
+| 分析变更测试 | `codegraph affected --json --path {root} {files...}` |
+
+关系查询必须和定义查询配对，避免把同名符号误判为同一节点。影响分析使用足够的
+`--depth`，不能将默认深度当成完整影响面；达到 `--limit` 或深度边界时记录 gap。
+
+### 2.4 git — 历史搜索
+
+只有调用者明确询问提交历史、作者或演化过程时才使用 git：
+
+```text
+git log --oneline -- {absolute_path}
+git blame {absolute_path}
+git log --grep='{pattern}'
+```
+
+当前代码结构、依赖和调用关系仍必须来自 CodeGraph；历史结论在 evidence 中标记
+`source: git`。
+
+## 3. 并行策略
+
+### 3.1 “在哪里定义/实现”
+
+```text
+query       # 符号匹配
+files       # 候选目录和文件
+callers/callees  # 关系交叉验证
+```
+
+### 3.2 “哪些文件包含/使用”
+
+```text
+query       # 候选符号
+callers/callees  # 调用关系
+files       # 完整文件范围
+```
+
+### 3.3 “理解代码库结构或影响面”
+
+```text
+files       # 文件结构
+query       # 符号统计
+impact/affected  # 下游依赖与测试边界
+```
+
+独立查询必须并行执行；只有后一查询确实依赖前一查询返回的具体符号时才允许串行。
 
 ## 4. 停止条件
 
-### 4.1 可以停止的情况
+可以停止：
 
-- 找到了所有相关文件，且通过至少两种不同工具交叉验证
-- 确认了某个文件/符号确实不存在（通过 3+ 工具确认）
-- 搜索结果足以让调用者立即行动，无需追问
+- 关键发现通过至少两种 CodeGraph 查询交叉验证；
+- 已找到所有相关节点、边和文件，且没有 limit/depth 截断；
+- 结果足以让调用者行动，无需追问。
 
-### 4.2 必须继续的情况
+必须继续：
 
-- 只用了 1 种工具 — 继续用第二、第三种工具交叉验证
-- 找到了 1 个匹配就停了 — 继续搜索是否有更多相关位置
-- 结果路径是相对路径 — 补充绝对路径
-- 只回答了字面问题 — 补充对实际需求的分析和回答
+- 只执行了一种查询且请求需要关系或覆盖验证；
+- 结果达到 limit/depth 上限；
+- 路径不是绝对路径；
+- 只回答了字面问题，尚未解释调用链或影响。
 
-### 4.3 搜索轮次上限
-
-- 最多 3 轮搜索（每轮包含多个并行调用）
-- 第 3 轮后仍未找到满意结果 → 如实报告，说明搜索了什么、排除了什么、建议调用者提供更多线索
+最多执行 3 轮搜索。第三轮后仍不完整时如实报告 CodeGraph 状态、查询范围、索引覆盖
+和剩余 gap，不得用本地搜索结果填充缺失证据。

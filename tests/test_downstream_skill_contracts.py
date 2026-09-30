@@ -7,14 +7,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 SKILLS = {
     "sw-task-decomposer": {
-        "version": "2.1.0",
+        "version": "2.2.0",
         "required_sections": (
             "## Input Contract",
             "## External Dependency Metadata",
             "## Output Contract",
             "## Acceptance Criteria",
         ),
-        "required_refs": ("path-defaults.yaml", "path-resolution.md"),
+        "required_refs": (
+            "path-defaults.yaml",
+            "path-resolution.md",
+            "minimal-execution-plan.md",
+        ),
     },
     "sw-plan-executor": {
         "required_sections": (
@@ -134,6 +138,8 @@ def test_task_and_execution_handoff_contracts_are_explicit() -> None:
     assert "manifest status is `complete`" in task
     assert "`single_service`" in task
     assert "does not invent an E2E task" in task
+    assert "minimal execution plan" in task
+    assert "plan_path" in task
     assert "`sw-plan-executor`" in task
     assert "never writes product code" in executor
     assert "Final Verification Wave" in executor
