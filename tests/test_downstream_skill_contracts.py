@@ -170,6 +170,25 @@ def test_browser_contract_has_no_playwright_dependency_or_artifact() -> None:
     assert "test_script" not in artifacts
 
 
+def test_integration_results_are_requirement_cohesive() -> None:
+    defaults = yaml.safe_load(
+        (
+            ROOT
+            / "skills/sw-integration-tester/references/path-defaults.yaml"
+        ).read_text(encoding="utf-8")
+    )
+    target = defaults["paths"]["artifact_targets"]["test_results"]
+    assert target == "knowledge/requirements/{requirement_id}/test-results.yaml"
+    assert defaults["paths"]["evidence"]["integration_plan"] == (
+        "knowledge/requirements/{requirement_id}/integration-test-plan.md"
+    )
+    runner = (
+        ROOT / "skills/sw-integration-tester/scripts/newman_runner.py"
+    ).read_text(encoding="utf-8")
+    assert '"requirements"' in runner
+    assert '"results_yaml"' in runner
+
+
 def test_path_defaults_are_valid_yaml_and_have_artifact_targets() -> None:
     for name in SKILLS:
         defaults = yaml.safe_load(
@@ -238,6 +257,9 @@ def test_every_skill_declares_the_common_contract() -> None:
             } <= dependency.keys()
             assert dependency["type"] in {"TOOL", "SKILL", "MCP", "LIBRARY"}
             assert isinstance(dependency["required"], bool)
+
+        if metadata["external_dependencies"]:
+            assert "## External Dependency Metadata" in content
 
         assert "## Input Contract" in content
         assert "## Output Contract" in content

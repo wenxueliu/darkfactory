@@ -121,6 +121,7 @@ unverified archive.
 │   ├── domains/
 │   ├── services/
 │   ├── requirements/{requirement-id}/
+│   ├── value-assessment/
 │   └── sw-controller/{global-state.yaml,worktree-registry.yaml}
 ├── _context/{config.yaml,config.user.yaml}
 └── .worktree/

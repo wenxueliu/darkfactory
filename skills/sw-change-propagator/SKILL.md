@@ -67,6 +67,21 @@ change alters the user outcome or can be released independently, choose
 Phase aliases such as `service_design`, `feature_design`, `coding`, and
 `integration_test` resolve to the canonical tracker phases.
 
+## External Dependency Metadata
+
+`change.py` and PyYAML are required for an auditable plan/apply operation. The
+two downstream Skills are optional capabilities and must be recorded as
+`USED`, `SKIPPED`, or `NOT_REQUESTED` with reason, impact, and fallback.
+
+Fallbacks:
+
+- missing `change.py` or PyYAML: return `BLOCKED`; do not mutate the tracker or
+  recreate a change packet by hand;
+- missing `sw-requirements-clarifier`: preserve the packet and return
+  `NEEDS_USER_INPUT` for manual re-clarification;
+- missing `sw-task-decomposer`: preserve the packet and provide the affected
+  design delta to the controller for manual task-DAG regeneration.
+
 ## Workflow
 
 1. Read the tracker and the current phase status.

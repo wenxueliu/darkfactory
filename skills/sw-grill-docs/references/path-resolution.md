@@ -4,12 +4,10 @@
 
 ## 来源优先级
 
-按以下顺序读取路径配置，后加载的配置只覆盖已声明的同名字段：
+按以下顺序读取路径配置，调用参数只覆盖本次运行的同名字段：
 
 1. Skill 内置的 `path-defaults.yaml`
-2. `{project-root}/_context/config.yaml` 中的 `sw.workspace.paths`
-3. `{project-root}/_context/workspace.yaml`
-4. 本次调用显式传入的路径参数
+2. 本次调用显式传入的路径参数
 
 每个字段独立合并；调用方没有覆盖的字段继续使用更低优先级的值。数组字段在高优先级出现时整体替换，不隐式拼接。相对路径统一相对于 `{project-root}` 解析，路径分隔符使用 `/`。
 

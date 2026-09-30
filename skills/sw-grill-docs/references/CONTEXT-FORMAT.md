@@ -34,7 +34,7 @@ _Avoid_: Client, buyer, account
 
 ## Single vs multi-context repos
 
-**Single context (most repos):** One `CONTEXT.md` at the repo root.
+**Single context (most workspaces):** One `knowledge/CONTEXT.md` under the shared knowledge root.
 
 **Multiple contexts:** A `CONTEXT-MAP.md` at the repo root lists the contexts, where they live, and how they relate to each other:
 
@@ -57,7 +57,7 @@ _Avoid_: Client, buyer, account
 The skill infers which structure applies:
 
 - If `CONTEXT-MAP.md` exists, read it to find contexts
-- If only a root `CONTEXT.md` exists, single context
+- If only `knowledge/CONTEXT.md` exists, single context
 - If neither exists, propose the configured `write_targets.context_file` when the first term needs to be resolved; create it only after the user confirms the proposed terminology. If no write target is configured, keep the proposal in the report.
 
 When multiple contexts exist, infer which one the current topic relates to. If unclear, ask.

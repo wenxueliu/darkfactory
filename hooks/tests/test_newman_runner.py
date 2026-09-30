@@ -52,7 +52,9 @@ def test_resolve_paths(tmp_path):
     assert str(paths["report"]).endswith(
         "knowledge/designs/REQ-001/services/user-service/tests/report.xml"
     )
-    assert str(paths["results_yaml"]).endswith("test-results.yaml")
+    assert str(paths["results_yaml"]).endswith(
+        "knowledge/requirements/REQ-001/test-results.yaml"
+    )
 
 
 def test_resolve_all_paths_reads_manifest(tmp_path):

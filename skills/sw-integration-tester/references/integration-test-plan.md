@@ -4,7 +4,7 @@
 
 此模板在 TDD 两层测试（UT + API）通过后，代码合并到主分支之前使用。确保各 worktree 产出的代码集成后不相互破坏。
 
-写入 `{project-root}/knowledge/tests/integration-plan-{requirement_id}.md`
+写入 `{project-root}/knowledge/requirements/{requirement_id}/integration-test-plan.md`
 
 ---
 
@@ -84,7 +84,8 @@ SKIP: {N}/{total} cases skipped
 通过标准（全部满足才视为 PASS）:
 - `newman run` exit code == 0
 - JUnit XML 解析的 `failures == 0` 且 `errors == 0`
-- `test-results.yaml` 的 `api_tests.{requirement_id}` 段已写入，含 `status: PASS`
+- `knowledge/requirements/{requirement_id}/test-results.yaml` 已写入，含
+  `api_tests` 中当前需求的 `status: PASS`
 
 退出码语义（脚本返回）:
 | 退出码 | 含义 | 路由 |

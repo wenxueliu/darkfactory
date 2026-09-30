@@ -57,7 +57,7 @@ Answer three questions before you start:
 Create the workspace directories under your project root, then add the two config files:
 
 ```bash
-mkdir -p _context services knowledge/sw-controller
+mkdir -p _context services knowledge/{patterns,decisions,lessons,contracts,domains,services,requirements,value-assessment,reviews,sw-controller}
 ```
 
 **`_context/config.yaml`** (adjust based on your answers above):
@@ -135,7 +135,7 @@ mkdir my-project && cd my-project
 git init
 
 # Create workspace roots; source repositories go under services/
-mkdir -p services knowledge/sw-controller
+mkdir -p services knowledge/{patterns,decisions,lessons,contracts,domains,services,requirements,value-assessment,reviews,sw-controller}
 mkdir -p skills
 ```
 
@@ -209,7 +209,7 @@ git init  # workspace holds _context, skills, services, and knowledge
 ### Step 2: Clone All Services
 
 ```bash
-mkdir -p services knowledge/{patterns,decisions,lessons,contracts}
+mkdir -p services knowledge/{patterns,decisions,lessons,contracts,requirements,value-assessment}
 mkdir -p knowledge/{domains,services}
 git clone git@github.com:org/user-service.git services/user-service
 git clone git@github.com:org/order-service.git services/order-service

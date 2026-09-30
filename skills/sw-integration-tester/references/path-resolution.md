@@ -12,7 +12,8 @@
 ## 路径边界
 
 - `manifest`、设计测试产物、集成计划和环境配置是只读输入。
-- `test_results`、JUnit 报告和允许的 runner 产物是写入目标；不得写入生产
+- `test_results`、JUnit 报告和允许的 runner 产物是写入目标；`test_results`
+  必须落在 `knowledge/requirements/{requirement_id}/`，不得写入生产
   环境或修改 API collection 以掩盖失败。
 - runner 必须从 manifest 发现所有 Stage 2 服务；不能用固定服务名列表替代。
 - tracker 只写 integration 子状态和证据，不直接关闭全局 test phase。

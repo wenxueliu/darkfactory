@@ -68,7 +68,7 @@ python /path/to/harness/services/multiagents/package.py init \
 在你的项目根目录下创建工作区目录，随后新增两个配置文件：
 
 ```bash
-mkdir -p _context services knowledge/sw-controller
+mkdir -p _context services knowledge/{patterns,decisions,lessons,contracts,domains,services,requirements,value-assessment,reviews,sw-controller}
 ```
 
 **`_context/config.yaml`**（根据上面的回答调整）：
@@ -159,7 +159,7 @@ mkdir my-project && cd my-project
 git init
 
 # 创建基础目录；业务源码仓库放到 services/ 下
-mkdir -p services knowledge/sw-controller
+mkdir -p services knowledge/{patterns,decisions,lessons,contracts,domains,services,requirements,value-assessment,reviews,sw-controller}
 mkdir -p skills
 ```
 
@@ -258,7 +258,7 @@ git clone git@github.com:org/web-frontend.git services/web-frontend
 创建 `knowledge/` 目录结构——这是**手动一次性**操作，建立空的目录骨架：
 
 ```bash
-mkdir -p services knowledge/{patterns,decisions,lessons,contracts}
+mkdir -p services knowledge/{patterns,decisions,lessons,contracts,requirements,value-assessment}
 mkdir -p knowledge/{domains,services}
 mkdir -p knowledge/reviews
 mkdir -p knowledge/sw-controller

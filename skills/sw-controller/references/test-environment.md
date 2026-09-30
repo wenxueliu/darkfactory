@@ -25,7 +25,7 @@ pytest tests/integration/ --environment=test
 **Monitor and report:**
 - Track pass/fail counts
 - Identify failure root causes
-- Log results to `{project-root}/knowledge/test-results.yaml`
+- Log results to `{project-root}/knowledge/requirements/{requirement_id}/test-results.yaml`
 
 **On failure:**
 1. Diagnose the failure

@@ -2,21 +2,20 @@
 
 语义路径把 Skill 需要的“资源角色”和项目实际目录解耦。Skill 只依赖语义名称，不在流程正文中写死 `services/`、`docs/adr/` 等物理路径。
 
-## 配置位置与优先级
+## 默认值与覆盖
 
-项目可以在工作区根目录的 `_context/workspace.yaml` 中维护路径映射：
+默认安装不创建额外的工作区路径配置。所有共享知识和流程产物默认位于
+`{project-root}/knowledge/`，配置文件仅位于 `_context/`。Skill 使用自身的
+`path-defaults.yaml`；调用方如有必要，可通过输入参数显式覆盖语义路径：
 
 ```text
 调用参数
   ↓
-{project-root}/_context/workspace.yaml
-  ↓
-{project-root}/_context/config.yaml → sw.workspace.paths
-  ↓
 Skill 自身的 path-defaults.yaml
 ```
 
-项目级 `workspace.yaml` 是工作区结构契约，建议纳入项目版本控制；Skill 内置默认值只用于独立运行时兜底，不应覆盖项目配置。
+不需要创建 `_context/workspace.yaml`，也不需要在 `_context/config.yaml` 中添加
+`sw.workspace.paths`。只有明确传入 `paths` 时，当前调用才使用临时覆盖值。
 
 ## 语义路径结构
 
@@ -25,16 +24,16 @@ version: 1
 
 paths:
   context_files:
-    - CONTEXT.md
+    - knowledge/CONTEXT.md
   context_maps:
-    - CONTEXT-MAP.md
+    - knowledge/CONTEXT-MAP.md
   decision_roots:
     - knowledge/decisions
   source_roots:
     - services
   config_file: _context/config.yaml
   write_targets:
-    context_file: CONTEXT.md
+    context_file: knowledge/CONTEXT.md
     adr_root: knowledge/decisions
   report_root: null
 ```

@@ -58,7 +58,7 @@
 
 | Agent | Role | Trigger |
 |-------|------|---------|
-| `sw-integration-tester` | Integration tester — env health check → smoke test → integration test execution → result analysis → test-results.yaml. Connects to real backends. (NEW) | 集成测试, integration test, 测试执行 |
+| `sw-integration-tester` | Integration tester — env health check → smoke test → integration test execution → result analysis → `knowledge/requirements/{id}/test-results.yaml`. Connects to real backends. (NEW) | 集成测试, integration test, 测试执行 |
 | `sw-browser-tester` | Browser E2E tester — executes approved E2E cases through Kimi WebBridge real browser sessions → screenshots/snapshots/network diagnostics/visual evidence → browser-e2e-results.yaml. (NEW) | 浏览器测试, 浏览器E2E, browser test, Kimi WebBridge, 前端自动化测试 |
 
 ## 交付层 (Delivery Layer, 2 NEW)
@@ -91,7 +91,7 @@
 | `sw-document-project` | Project documentation generator — brownfield scanning at 3 levels (quick/deep/exhaustive). Based on BMAD document-project. (NEW) | 项目文档生成, document project, brownfield documentation |
 | `sw-lint-checker` | Cross-language standards checker — auto-detects languages from changed files, runs correct linters/formatters per language, auto-fixes where possible, delegates complex fixes, re-checks until clean. Ensures code meets style and standards before review. (NEW) | lint, 规范检查, style check, 代码规范, format check, standards |
 | `sw-writing-skills` | Meta-skill for skill authoring — TDD applied to process documentation. Based on Superpowers writing-skills. (NEW) | writing skills, 编写技能, create skill, skill authoring |
-| `sw-grill-docs` | Documentation consistency griller — grills design/plan against CONTEXT.md and ADRs, sharpens terminology, stress-tests with scenarios, updates docs inline. Used in both design and planning phases. (NEW) | 文档对照, grill docs, 文档质询, 术语审查, context consistency |
+| `sw-grill-docs` | Documentation consistency griller — grills design/plan against `knowledge/CONTEXT.md` and ADRs, sharpens terminology, stress-tests with scenarios, updates docs inline. Used in both design and planning phases. (NEW) | 文档对照, grill docs, 文档质询, 术语审查, context consistency |
 | `using-harness` | Bootstrap skill — injected at session start | bootstrap, 初始化 |
 
 ---
@@ -136,7 +136,7 @@
 │                                                                      │
 │   Consultation: sw-strategic-advisor (只读深度推理)                  │
 │                                                                      │
-│   sw-grill-docs → grill design against CONTEXT.md + ADRs            │
+│   sw-grill-docs → grill design against knowledge/CONTEXT.md + ADRs  │
 │                                                                      │
 │   sw-controller: 聚合各设计定义包的 gate/validator 结果              │
 │   Output: designs/*.md, ADR documents (adr-template.md)             │
@@ -158,7 +158,7 @@
 │                 │  │     ├── sw-plan-reviewer                         │
 │                 │  │     │   (可执行性审查 + 阻断器发现)               │
 │                 │  │     ├── sw-grill-docs                             │
-│                 │  │     │   (文档一致性质询 — CONTEXT.md + ADRs)      │
+│                 │  │     │   (文档一致性质询 — knowledge/CONTEXT.md)   │
 │                 │  │     └── sw-codebase-explorer +                   │
 │                 │  │         sw-external-researcher (并行研究)         │
 │                 │  │                                                 │
@@ -216,7 +216,7 @@
 │                                                                      │
 │   sw-integration-tester (L2 API/集成测试):                            │
 │   ├── 集成环境健康检查 (test-environment.md)                          │
-│   ├── 集成测试执行 (integration-test-plan.md)                         │
+│   ├── 集成测试执行 (requirements/{id}/integration-test-plan.md)       │
 │   └── API 测试 (api-test-postman-schema.md)                          │
 │                                                                      │
 │   sw-browser-tester (L3 浏览器 E2E 测试):                             │
@@ -225,7 +225,8 @@
 │   └── 控制台错误 + 网络故障 + 性能指标采集                            │
 │                                                                      │
 │   Gate: all integration tests PASS + all browser E2E tests PASS      │
-│   Output: test-results.yaml + browser-e2e-results.yaml               │
+│   Output: requirements/{id}/test-results.yaml                        │
+│           + requirements/{id}/browser-e2e-results.yaml               │
 └──────────────────┬───────────────────────────────────────────────────┘
                    │ ✅ All IT PASS
                    ▼
@@ -256,7 +257,7 @@
 | **decomposition** (简单需求) | sw-task-decomposer | — | task-decomposition.md, parallel-execution.md | dependency check |
 | **execution** | sw-plan-executor | sw-worktree-controller, sw-tdd-agent, sw-reviewer-logic, sw-reviewer-security, sw-reviewer-performance, sw-reviewer-context, sw-receiving-review, sw-lint-checker, sw-verification-before-completion, sw-systematic-debugging | worktree-management.md, quality-gates.md | P0/P1/P2 gate |
 | **merge** | sw-finishing-branch | — | merge-management.md | conflict-free |
-| **test** | sw-integration-tester | sw-browser-tester | test-environment.md, integration-test-plan.md, api-test-postman-schema.md, webbridge-test-template.md, webbridge-evidence-strategy.md, webbridge-visual-evidence.md | all IT PASS + all browser E2E PASS |
+| **test** | sw-integration-tester | sw-browser-tester | `requirements/{id}/integration-test-plan.md`, `test-environment.md`, `api-test-postman-schema.md`, webbridge-test-template.md, webbridge-evidence-strategy.md, webbridge-visual-evidence.md | all IT PASS + all browser E2E PASS |
 | **delivery** | sw-delivery-manager | sw-knowledge-agent | delivery-checklist.md, release-notes-template.md | delivery-acceptance-gate.md |
 
 > 详细阶段转换规则（含每阶段的具体检查项和失败处理）见 `skills/sw-controller/SKILL.md` → Phase Transition Rules。

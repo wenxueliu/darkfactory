@@ -103,10 +103,11 @@ requirements:
   #       status: done
   #       artifacts: []
   #       completed_at: '2026-04-11'
-  #     test:
-  #       status: done
-  #       artifacts:
-  #         - knowledge/requirements/REQ-20260411-001/test-results.md
+      #     test:
+      #       status: done
+      #       artifacts:
+      #         - knowledge/requirements/REQ-20260411-001/integration-test-plan.md
+      #         - knowledge/requirements/REQ-20260411-001/test-results.yaml
   #       completed_at: '2026-04-11'
   #     delivery:
   #       status: done

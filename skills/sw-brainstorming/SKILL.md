@@ -75,7 +75,7 @@ Every project goes through this process. "Simple" projects are where unexamined 
 Explore Context → Assess Scope → Clarifying Questions (one at a time)
   → Propose Approaches (2-3 with trade-offs) → Present Design (incremental)
   → User Approves? (no → revise) (yes → Write Design Doc)
-  → Design Self-Review → Grill Design Against Docs (sw-grill-docs: CONTEXT.md + ADRs)
+  → Design Self-Review → Grill Design Against Docs (sw-grill-docs: knowledge/CONTEXT.md + ADRs)
   → User Reviews Spec? (changes → revise) (approved → sw-strategic-planner)
 ```
 

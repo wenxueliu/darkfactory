@@ -122,7 +122,7 @@ python scripts/newman_runner.py --requirement-id {requirement_id}
 
 The runner must execute every selected service, export JUnit XML, parse total,
 passed, failed, errored, skipped, and failure diagnostics, and replace the
-prior idempotent `api_tests.{requirement_id}` result block.
+prior idempotent result block for this requirement.
 
 ### Step 3: Analyze failures
 
@@ -133,7 +133,7 @@ back to the design owner. Rerun only after the cause or test input changes.
 
 ### Step 4: Write results and report
 
-Write `knowledge/test-results.yaml` with integration and API sections, counts,
+Write `knowledge/requirements/{requirement_id}/test-results.yaml` with integration and API sections, counts,
 diagnostics, evidence paths, environment identity, and gate status. Update
 only the matching integration-test sub-status in the tracker; do not mark the
 global test phase complete unless the controller owns that transition.

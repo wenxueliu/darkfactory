@@ -39,9 +39,13 @@ def test_sw_grill_docs_discovers_all_supported_decision_sources() -> None:
     assert "path-defaults.yaml" in resolution
     assert "write_targets" in resolution
     assert "workflow_root" in resolution
+    assert "workspace.yaml" not in resolution
+    assert "sw.workspace.paths" not in resolution
+    assert "knowledge/CONTEXT.md" in defaults
     workspace_paths = WORKSPACE_PATHS.read_text(encoding="utf-8")
     assert "decision_roots" in workspace_paths
     assert "write_targets" in workspace_paths
+    assert "默认安装不创建额外的工作区路径配置" in workspace_paths
 
 
 def test_sw_grill_docs_is_composable_without_named_caller_dependencies() -> None:

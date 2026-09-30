@@ -70,7 +70,7 @@ def detect_project_root(start) -> Path:
 
 
 def resolve_paths(requirement_id: str, project_root: Path, service_id: str) -> dict:
-    """Resolve one service's canonical test paths from the bundle layout."""
+    """Resolve one service's canonical test paths from the requirement bundle."""
     tests_dir = (
         project_root
         / DEFAULT_SHARED_DIR
@@ -86,7 +86,13 @@ def resolve_paths(requirement_id: str, project_root: Path, service_id: str) -> d
         "data": tests_dir / "data.json",
         "report": tests_dir / "report.xml",
         "service_id": service_id,
-        "results_yaml": project_root / DEFAULT_SHARED_DIR / RESULTS_FILENAME,
+        "results_yaml": (
+            project_root
+            / DEFAULT_SHARED_DIR
+            / "requirements"
+            / requirement_id
+            / RESULTS_FILENAME
+        ),
     }
 
 
@@ -257,10 +263,10 @@ def parse_junit_xml(report_path: Path) -> dict:
 # --- Result persistence ---
 
 def append_to_test_results_yaml(paths: dict, requirement_id: str, summary: dict) -> tuple[bool, str]:
-    """Write api_tests section into knowledge/test-results.yaml.
+    """Write the requirement's api_tests section into its result bundle.
 
-    Uses a simple append-with-replace approach: if api_tests.{requirement_id} exists, replace;
-    else append a new section. Idempotent.
+    Uses a simple append-with-replace approach: if this requirement already has
+    an api_tests block, replace it; otherwise append a new block. Idempotent.
     """
     results_path = paths["results_yaml"]
     results_path.parent.mkdir(parents=True, exist_ok=True)
@@ -409,7 +415,7 @@ def main() -> int:
         out_exit = 4
     summary["newman_exit_code"] = 0 if out_exit == 0 else 4
 
-    # --- Persist to test-results.yaml ---
+    # --- Persist to the requirement's test-results.yaml ---
     ok, err = append_to_test_results_yaml(paths, args.requirement_id, summary)
     if not ok:
         # Persistence failure is a warning, not a hard fail

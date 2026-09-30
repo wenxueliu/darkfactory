@@ -64,7 +64,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
         sw-finishing-branch (NEW: 分支收尾 — 4-option终端状态)
         sw-document-project (NEW: 项目文档生成 — brownfield scanning + 3-level scan)
         sw-writing-skills (NEW: 元技能 — TDD应用于文档编写)
-        sw-grill-docs (NEW: 文档对照质询 — 设计/计划 vs CONTEXT.md + ADRs)
+        sw-grill-docs (NEW: 文档对照质询 — 设计/计划 vs knowledge/CONTEXT.md + ADRs)
         using-harness (bootstrap技能)
 ```
 
@@ -82,7 +82,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 | **decomposition (拆分)** | `task-decomposition.md` → `tasks.yaml` | dependency check | sw-task-decomposer |
 | **execution (执行)** | TDD cycles + lint check + parallel review | P0/P1/P2 gate | sw-plan-executor |
 | **merge (合并)** | `merge-management.md` | conflict-free merge | sw-controller |
-| **test (测试)** | `integration-test-plan.md`, `browser-test-plan.md` | all IT PASS + all browser E2E PASS | sw-controller |
+| **test (测试)** | `requirements/{id}/integration-test-plan.md`, `requirements/{id}/test-results.yaml`, `requirements/{id}/browser-e2e-results.yaml` | all IT PASS + all browser E2E PASS | sw-controller |
 | **delivery (交付)** | `delivery-checklist.md`, `release-notes-template.md` | `delivery-acceptance-gate.md` | sw-delivery-manager |
 
 ## 需求变更传播

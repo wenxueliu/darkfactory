@@ -87,12 +87,12 @@ metadata:
 ```text
 调用参数
   ↓
-{project-root}/_context/workspace.yaml
-  ↓
-{project-root}/_context/config.yaml → sw.workspace.paths
-  ↓
 Skill 内置 path-defaults.yaml
 ```
+
+默认共享知识路径是 `{project-root}/knowledge/`。默认安装不创建
+`_context/workspace.yaml`，也不要求 `_context/config.yaml` 包含
+`sw.workspace.paths`；只有调用方显式传入 `paths` 时才覆盖内置默认值。
 
 只消费以下语义路径：
 
