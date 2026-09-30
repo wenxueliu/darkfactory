@@ -74,9 +74,19 @@
    - Stage 2 完成后: 查询特定服务的 API 契约（如有），验证新增 API 不与已有契约冲突
    - 设计审查前: 再次查询验证所有新增设计决策与已有知识一致
 
-### 第 2 步: 3 阶段设计委托 (3-Stage Design Delegation)
+### 第 2 步: 按服务拓扑路由设计 (Topology-Based Design Routing)
 
-设计阶段的核心工作由 3 个专用 Agent 依次执行。总控负责串联和验证，不直接编写设计文档。
+设计阶段不按需求复杂度分流，而按受影响服务数量分流。总控负责判断拓扑、
+串联和验证，不直接编写设计文档：
+
+1. **单服务**：直接委托 `sw-service-designer`，传入
+   `design_scope: single_service`。它消费需求规格，完成该服务的完整详细设计；
+   不强制创建 `feature-design.md` 或 E2E 设计。
+2. **跨服务**：依次执行 Stage 1 → Stage 2 → Stage 3。`sw-feature-designer`
+   只负责系统级跨服务设计；`sw-service-designer` 只负责每个服务的详细设计；
+   `sw-e2e-designer` 负责跨服务用户旅程和集成测试设计。
+3. 适用设计门禁全部通过后，才进入执行计划。`sw-strategic-planner` 只消费
+   这些已通过门禁的设计，不能替代任何设计阶段。
 
 #### Stage 1: 特性设计 (sw-feature-designer)
 
@@ -84,6 +94,9 @@
 **输入:** 需求规格文档 + 知识库 (ADRs, patterns, lessons) + 从 `services/` 生成的服务注册表
 **输出:** `knowledge/designs/{id}/feature-design.md` — 跨服务特性设计文档
 **验证:** 解析 `feature-design/default` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
+
+**边界:** 仅当代码级能力调查证明至少两个服务受影响时执行。若只有一个
+服务，返回 `ROUTE_TO_SERVICE_DESIGNER`，不生成冗余的 Stage 1 产物。
 
 ##### Stage 1 前置: 服务能力调查 (Service Capability Investigation) ← 必须执行
 
@@ -164,7 +177,13 @@
 #### Stage 2: 服务详细设计 (sw-service-designer)
 
 **委托:** Delegate to `sw-service-designer` — 对每个受影响服务并行启动
-**输入:** Stage 1 输出 (服务影响分析 + 服务能力摘要 + 服务交互 + 跨服务契约) + 服务注册表 + 服务代码仓库 (`services/{id}/`)
+**输入:**
+
+- 单服务：需求规格 + 需求门禁 + 服务注册表 + 服务代码仓库，传入
+  `design_scope: single_service`；
+- 跨服务：Stage 1 输出 (服务影响分析 + 服务能力摘要 + 服务交互 + 跨服务契约) +
+  服务注册表 + 服务代码仓库，传入 `design_scope: cross_service_detail`。
+
 **输出:** `knowledge/designs/{id}/services/{service_id}/design.md` × N + `knowledge/designs/{id}/services/{service_id}/tests/collection.json` × N
 **验证:** 对每个服务解析 `service-design/{service_type}` 定义包并执行其 `validator.yaml` 与 `gate.yaml`
 **内容 (后端):** S1 技术决策 → S2 架构设计 → S3 API/接口 → S4 状态管理 → S5 错误处理 → S6 安全 → S7 UT 设计 → S8 API 测试设计
@@ -186,28 +205,41 @@
 
 #### 阶段协调
 
-1. 进入设计阶段时，总控将 tracker 的 `phases.design` 置为 `in_progress`；Stage 1 完成后，总控收集服务影响列表 + 各服务的**能力摘要**（代码调查产物）→ 启动 Stage 2 (并行)
-2. 所有 Stage 2 完成 → 总控收集所有 per-service 设计路径 → 启动 Stage 3
-3. Stage 3 完成 → 进入 ADR 创建和多模型验证；总设计门禁和知识沉淀全部通过后，总控将 `phases.design` 置为 `done`，写入 `completed_at` 和 manifest 路径
-4. 任一步骤失败 → 回到对应步骤修订，最多 3 轮
+1. 进入设计阶段时，总控将 tracker 的 `phases.design` 置为 `in_progress`；先
+   根据服务注册表和需求范围确定拓扑。
+2. 单服务直接启动 `sw-service-designer(single_service)`；通过后进入总设计
+   门禁，不启动 Stage 1/3。
+3. 跨服务在 Stage 1 完成后收集服务影响列表 + 各服务的**能力摘要**（代码调查
+   产物）→ 启动 Stage 2 (并行)；所有 Stage 2 完成后启动 Stage 3。
+4. 所有适用阶段完成 → 进入 ADR 创建和多模型验证；总设计门禁和知识沉淀全部
+   通过后，总控将 `phases.design` 置为 `done`，写入 `completed_at` 和 manifest 路径。
+5. 任一步骤失败 → 回到对应步骤修订，最多 3 轮。
 
-**Stage 1 → Stage 2 → 任务拆分的产物传递链:**
+**设计 → 执行计划/任务拆分的产物传递链:**
 
 ```
-Stage 1 产出:
+单服务设计产出:
+  ├── 需求 AC → 服务职责、接口/数据、状态、安全和测试设计
+  └── 服务设计 gate + UT/API 测试制品
+
+跨服务 Stage 1 产出:
   ├── 服务影响分析表 (哪些服务、改什么)
   ├── 服务能力摘要 × N (代码调查产物: 路径、语言、API、数据、依赖)
   └── 跨服务契约 (OpenAPI)
 
-Stage 2 消费:
+跨服务 Stage 2 消费:
   ├── 对每个受影响服务，基于其能力摘要加载正确的模板 (backend/frontend/bff/data-pipeline)
   └── 基于服务代码路径 ({service_path}) 定位代码仓库
 
+战略执行计划消费:
+  ├── 单服务：服务设计 + gate + 测试制品
+  └── 跨服务：Stage 1/2/3 全部设计 + gates + 契约
+
 任务拆分消费:
-  ├── 从 Stage 1 服务影响分析 → 确定 N 个受影响服务
-  ├── 从 Stage 1 服务能力摘要 → 能力校验 (语言匹配 + 路径存在 + API/数据覆盖)
+  ├── 从适用设计产物 → 确定受影响服务和实现边界
+  ├── 从跨服务 Stage 1 服务能力摘要 → 能力校验 (语言匹配 + 路径存在 + API/数据覆盖)
   ├── 从 service-registry.yaml → 填充 service_path + repo_url + language
-  └── 从 Stage 2 → 加载 per-service 设计文档
+  └── 从服务设计 → 加载 per-service 设计文档和测试验收
 ```
 
 ### 第 3 步: ADR 创建 (Architecture Decision Records)

@@ -15,7 +15,9 @@ Skill 的物理目录。字段按以下优先级合并：
 - `definition_roots` 只用于解析 `service-design/{service_type}` 的模板、门禁和验证器。
 - `evidence` 是只读输入；缺失文件或目录记录 `NOT_FOUND`，不自动创建。
 - `artifact_targets` 是本 Skill 的写入目标；API 测试 JSON、环境文件、服务设计和门禁报告必须使用解析后的目标。
-- `bundle_manifest` 是 Stage 1 产物的共享索引；只有本服务通过 Gate 后才更新本服务条目。
+- `requirement_document` 和 `requirements_gate_report` 是
+  `single_service` 的只读上游证据。
+- `bundle_manifest` 是 `cross_service_detail` 的 Stage 1 产物共享索引；只有本服务通过 Gate 后才更新本服务条目。`single_service` 不要求该索引，也不创建它。
 - `tracker` 只读；全局 `phases.design` 由 `sw-controller` 在所有服务和 E2E 阶段完成后更新。
 - 外部 Skill 的内部路径不属于本 Skill 的 `paths`，外部能力不可用时按降级协议继续。
 

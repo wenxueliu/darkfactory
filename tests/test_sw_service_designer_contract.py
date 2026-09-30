@@ -17,7 +17,7 @@ def test_service_designer_declares_version_and_contract_sections() -> None:
     content = SKILL.read_text(encoding="utf-8")
     frontmatter = _frontmatter(content)
 
-    assert frontmatter["metadata"]["version"] == "2.0.0"
+    assert frontmatter["metadata"]["version"] == "2.1.0"
     dependencies = frontmatter["metadata"]["external_dependencies"]
     assert {dependency["name"] for dependency in dependencies} == {
         "sw-knowledge-agent",
@@ -56,6 +56,8 @@ def test_paths_cover_upstream_bundle_and_service_artifacts() -> None:
     assert "| `paths` | No |" in skill
     assert defaults["paths"]["evidence"]["bundle_manifest"]
     assert defaults["paths"]["evidence"]["feature_design"]
+    assert defaults["paths"]["evidence"]["requirement_document"]
+    assert defaults["paths"]["evidence"]["requirements_gate_report"]
     artifacts = defaults["paths"]["artifact_targets"]
     assert artifacts["design_dir"].endswith("/services/{service_id}")
     assert artifacts["design_document"].endswith("/services/{service_id}/design.md")
@@ -95,6 +97,10 @@ def test_service_designer_preserves_stage_and_service_boundaries() -> None:
     content = SKILL.read_text(encoding="utf-8")
 
     assert "exactly one `service_id`" in content
+    assert "`single_service`" in content
+    assert "`cross_service_detail`" in content
+    assert "a feature-design manifest" in content
+    assert "ROUTE_TO_FEATURE_DESIGNER" in content
     assert "do not redesign another service" in content
-    assert "Do not modify source repositories" in content
-    assert "Do not start E2E design or implementation from this Skill." in content
+    assert "Do not modify source" in content
+    assert "Do not start\nE2E design or implementation from this Skill." in content

@@ -1,8 +1,8 @@
 ---
 name: sw-task-decomposer
-description: "黑灯工厂任务拆分 Agent。Use when converting a passed multi-stage design bundle into executable tasks, dependency graphs, parallel waves, and worktree metadata. [trigger: 任务拆分, task decomposition, 任务分解, DAG, tasks.yaml]"
+description: "黑灯工厂任务拆分 Agent。Use when converting a passed single-service or cross-service design into executable tasks, dependency graphs, parallel waves, and worktree metadata. [trigger: 任务拆分, task decomposition, 任务分解, DAG, tasks.yaml]"
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   external_dependencies:
     - name: sw-knowledge-agent
       version: "*"
@@ -25,16 +25,16 @@ metadata:
 
 ## Overview
 
-This Skill owns the **decomposition phase** after the complete design bundle
-has passed. It translates the Stage 1 feature design, every Stage 2 service
-design, and the Stage 3 E2E design into self-contained implementation tasks,
-dependency edges, parallel waves, and worktree initialization metadata.
+This Skill owns the **decomposition phase** after the applicable design route
+has passed. It translates a standalone service design, or the cross-service
+Stage 1/2/3 design bundle, into self-contained implementation tasks, dependency
+edges, parallel waves, and worktree initialization metadata.
 
 **Mission:** produce a conflict-free, maximally parallel task plan with
 explicit acceptance criteria and test bindings. This Skill does not design the
 feature, implement code, or execute tasks.
 
-**Contract version:** `2.0.0` (frontmatter metadata).
+**Contract version:** `2.1.0` (frontmatter metadata).
 
 ## Identity and Principles
 
@@ -60,6 +60,7 @@ Relative paths resolve against `project_root`.
 | Input | Required | Description |
 |---|---:|---|
 | `requirement_id` | Yes | Existing `REQ-YYYYMMDD-NNN`; binds all design inputs and outputs. |
+| `design_scope` | Yes | `single_service` or `cross_service`; determines which design gates are required. |
 | `project_root` | No | Workspace root; defaults to the current workspace. |
 | `paths` | No | Semantic path overrides; defaults and merge rules are in `references/path-defaults.yaml` and `references/path-resolution.md`. |
 | `evidence_paths` | No | Additional design, registry, ADR, contract, or repository evidence. |
@@ -68,15 +69,15 @@ Relative paths resolve against `project_root`.
 | `communication_language` | No | Report language; defaults to project configuration or Chinese. |
 | `mode` | No | `interactive` asks about blocking allocation decisions; `draft` writes a non-passing draft. |
 
-Required upstream evidence:
+Required upstream evidence depends on `design_scope`:
 
-- the bundle manifest and Stage 1 feature design exist;
-- the manifest status is `complete` and its `requirement_id` matches;
-- the Stage 1 gate, every Stage 2 service gate, and the Stage 3 E2E gate are
-  `PASS`;
-- every affected service has a service design and an accessible repository or
-  an explicit user-provided repository path;
-- the requirements acceptance criteria and relevant ADRs can be resolved.
+- `single_service`: the requirements gate is `PASS`, exactly one service design
+  and service gate are `PASS`, and the service repository is accessible;
+- `cross_service`: the bundle manifest and Stage 1 feature design exist, the
+  manifest status is `complete`, Stage 1, every Stage 2 service, and Stage 3
+  E2E gates are `PASS`, and every affected service repository is accessible;
+- both routes: the requirements acceptance criteria and relevant ADRs can be
+  resolved.
 
 Missing or contradictory prerequisites return `BLOCKED` or
 `NEEDS_USER_INPUT`; they must not be silently replaced by guessed tasks.
@@ -115,11 +116,13 @@ Fallbacks:
 3. Load `references/task-decomposition.md` and
    `references/parallel-execution.md` only after the input contract passes.
 
-### Step 1: Validate the design bundle
+### Step 1: Validate the selected design route
 
-Cross-check the manifest, feature design, all service designs, E2E design,
-gate reports, requirement ACs, and ADRs. Stop on service-ID, contract,
-requirement-ID, or gate-status contradictions.
+For `single_service`, cross-check the requirement, standalone service design,
+service gate, requirement ACs, and ADRs. For `cross_service`, cross-check the
+manifest, feature design, all service designs, E2E design, gate reports,
+requirement ACs, and ADRs. Stop on service-ID, contract, requirement-ID, or
+gate-status contradictions.
 
 ### Step 2: Identify services and work units
 
@@ -138,9 +141,10 @@ to increase parallelism.
 
 ### Step 4: Bind tests and construct waves
 
-Bind service-design UT/API cases to implementation tasks, reserve the E2E task
-for the final wave, topologically sort the graph, and cap each wave at the
-resolved concurrency limit. Every task must have concrete ACs and a QA path.
+Bind service-design UT/API cases to implementation tasks. Reserve an E2E task
+for the final wave only for `cross_service`; single-service decomposition must
+not invent one. Topologically sort the graph, cap each wave at the resolved
+concurrency limit, and give every task concrete ACs and a QA path.
 
 ### Step 5: Write and validate artifacts
 
@@ -174,7 +178,7 @@ report and hand the task plan to `sw-plan-executor`.
 Return a `Task Decomposition Report` and write artifacts only when the state
 allows it.
 
-**Contract version:** `2.0.0`.
+**Contract version:** `2.1.0`.
 
 ```yaml
 result: NEEDS_USER_INPUT | READY_FOR_GATE | GATE_PASSED | GATE_FAILED | BLOCKED
@@ -187,7 +191,8 @@ resolved_paths:
   evidence: {}
   artifact_targets: {}
 source:
-  manifest_status: complete
+  design_scope: single_service | cross_service
+  manifest_status: complete | NOT_REQUIRED_SINGLE_SERVICE
   affected_services: []
   design_gate: PASS
 summary:
@@ -235,15 +240,15 @@ Status semantics:
 
 | Dimension | Acceptance criterion | Evidence | Blocking |
 |---|---|---|---:|
-| Input and paths | Requirement ID, effective paths, bundle status, and concurrency limit are reported | `resolved_paths` + source summary | Yes |
+| Input and paths | Requirement ID, design scope, effective paths, design status, and concurrency limit are reported | `resolved_paths` + source summary | Yes |
 | Dependency metadata | Each declared dependency has `name`, `version`, `type`, `required`, and a recorded runtime status | Frontmatter + `external_capabilities` | Yes |
-| Upstream gate | Stage 1, all Stage 2 services, and Stage 3 E2E gates are passing | Gate reports + manifest | Yes |
+| Upstream gate | `single_service` has a passing service design gate; `cross_service` has passing Stage 1, all Stage 2 service, and Stage 3 E2E gates | Gate reports + optional manifest | Yes |
 | Service coverage | Every affected service is represented or explicitly excluded with reason | Service/task mapping | Yes |
 | Capability verification | Every task has path, language/framework, and capability evidence | `capability_verified` | Yes |
 | Task quality | Tasks are vertical slices with concrete ACs and self-contained UT/API tests | `tasks.yaml` | Yes |
 | Dependency graph | Typed edges are valid, cycles are resolved or blocked, and contract-only edges are explicit | `dependencies.json` | Yes |
 | Parallel waves | Topological ordering is valid and every wave respects the concurrency limit | Wave validation | Yes |
-| E2E boundary | E2E orchestration is in the final wave and depends on required implementation tasks | E2E task entry | Yes |
+| E2E boundary | `cross_service` puts E2E orchestration in the final wave with required dependencies; `single_service` does not invent an E2E task | E2E task entry or explicit N/A | Yes |
 | Artifact integrity | Tasks, worktree registry, dependencies export, and tracker reference the same requirement | Artifact paths + IDs | Yes |
 | Status correctness | No draft or unresolved allocation is reported as `GATE_PASSED` | `result` + questions | Yes |
 

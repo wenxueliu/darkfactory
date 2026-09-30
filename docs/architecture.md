@@ -14,7 +14,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   │     sw-value-judgment (REVIVED: 需求价值评估)
   │
   ├── [规划层 — Planning]
-  │     sw-strategic-planner (NEW: 战略规划 — 访谈→计划生成)
+  │     sw-strategic-planner (NEW: 执行计划 — 消费已通过设计→计划生成)
   │       ├── sw-pre-planning-consultant (NEW: 预规划分析 — 意图分类+AI slop防护)
   │       ├── sw-plan-reviewer (NEW: 计划审查 — 阻断器发现者)
   │       ├── sw-codebase-explorer (NEW: 内部代码搜索)
@@ -22,9 +22,9 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   │
   ├── [设计层 — Design]
   │     sw-brainstorming (NEW: 头脑风暴 — HARD-GATE: 设计批准前禁止实现)
-  │     sw-feature-designer (Stage 1: 跨服务特性设计)
-  │     ├── sw-service-designer × N (Stage 2: 单服务详细设计, 并行)
-  │     └── sw-e2e-designer (Stage 3: E2E测试设计)
+  │     sw-feature-designer (仅跨服务 Stage 1: 系统特性设计)
+  │     ├── sw-service-designer (单服务直达，或跨服务 Stage 2, 并行)
+  │     └── sw-e2e-designer (跨服务 Stage 3: E2E测试设计)
   │
   ├── [拆分层 — Decomposition]
   │     sw-task-decomposer (NEW: 任务拆分 — DAG+Wave+tasks.yaml+dependencies.json)
@@ -78,7 +78,8 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
 |-------|-----------|------------|---------------|
 | **ideation (需求)** | `requirements/{variant}` definition package, value assessment | resolved `gate.yaml` + `validator.yaml` | sw-requirements-clarifier |
 | **value_assessment (价值)** | `requirements/{id}/value-assessment.md`, `requirements/{id}/roi.md` | value scoring | sw-value-judgment |
-| **design (设计)** | `feature-design/default`, `service-design/{type}`, `e2e/default` definition packages, ADR | resolved definition gates + validators | sw-feature-designer |
+| **design (设计)** | 按服务拓扑选择 `service-design/{type}`，跨服务追加 `feature-design/default` 与 `e2e/default`，以及 ADR | applicable definition gates + validators | sw-controller topology router |
+| **planning (执行计划)** | `knowledge/plans/{plan}.md` + approved design references | design gate PASS + plan gate/review | sw-strategic-planner |
 | **decomposition (拆分)** | `task-decomposition.md` → `tasks.yaml` | dependency check | sw-task-decomposer |
 | **execution (执行)** | TDD cycles + lint check + parallel review | P0/P1/P2 gate | sw-plan-executor |
 | **merge (合并)** | `merge-management.md` | conflict-free merge | sw-controller |
@@ -177,7 +178,7 @@ Worktree controller 向总控报告以下状态：
 multiagents/
 ├── skills/                  # Agent skill definitions (BMAD module output)
 │   ├── sw-controller/       # Top-level orchestrator (ENHANCED)
-│   ├── sw-strategic-planner/ # Strategic planner (NEW — Prometheus)
+│   ├── sw-strategic-planner/ # Execution planner after design gates (NEW — Prometheus)
 │   ├── sw-pre-planning-consultant/ # Pre-planning analyst (NEW — Metis)
 │   ├── sw-plan-reviewer/    # Plan executability reviewer (NEW — Momus)
 │   ├── sw-plan-executor/    # Plan execution orchestrator (NEW — Atlas)

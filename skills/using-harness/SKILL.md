@@ -137,7 +137,7 @@ The knowledge base (`knowledge/`) accumulates institutional knowledge and also h
 
 Harness is a human-AI collaborative system. Key checkpoints where humans must be involved:
 - Value judgment on requirements (P0/P1/P2/P3 prioritization)
-- Design approval (after sw-feature-designer and sw-service-designer)
+- Design approval (after the applicable route: sw-service-designer for one service; sw-feature-designer → sw-service-designer → sw-e2e-designer for cross-service work)
 - Iteration limit reached (escalate, don't loop)
 - P0/P1 review issues (human must decide on risk acceptance)
 - Merge/delivery decisions (human owns the final approval)

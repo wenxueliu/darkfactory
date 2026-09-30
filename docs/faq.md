@@ -10,7 +10,7 @@
 |------|-----------|---------|
 | ideation | `sw-requirements-clarifier` | 创建条目，设 `ideation.status = done` |
 | value_assessment | `sw-value-judgment` | 设 `value_assessment.status = done` |
-| design | `sw-feature-designer` | 设 `design.status = done` |
+| design | `sw-controller`（按拓扑聚合 `sw-service-designer`，跨服务再含 feature/E2E） | 设 `design.status = done` |
 | decomposition | `sw-task-decomposer` | 设 `decomposition.status = done`，初始化 `execution.progress` |
 | execution | `sw-plan-executor` | 开始→`in_progress`，每 wave 更新 progress，完成→`done` |
 | merge | `sw-controller` / `sw-finishing-branch` | `merge.status = done` |
@@ -58,13 +58,15 @@ value_assessment 在 YAML 里是一个 phase，但在管道执行逻辑中只是
 
 ## Q3: 设计阶段是否有验证器？
 
-有。设计阶段采用 **3-Stage 分层设计 + 每层自有验证器 + 最终统一门禁**：
+有。设计阶段先按受影响服务数量路由：单服务由
+`sw-service-designer` 完成；跨服务采用 **3-Stage 分层设计 + 每层自有验证器 + 最终统一门禁**：
 
 ### 验证器结构
 
 | 阶段 | 验证器 | 检查维 | 产出 |
 |------|--------|--------|------|
-| Stage 1 | `feature-design/default` definition | 模板结构 + resolved gate/validator | knowledge/designs/{id}/feature-design.md |
+| 单服务 | `service-design/{type}` definition | 模板结构 + resolved gate/validator | knowledge/designs/{id}/services/{svc}/design.md |
+| Stage 1（跨服务） | `feature-design/default` definition | 模板结构 + resolved gate/validator | knowledge/designs/{id}/feature-design.md |
 | Stage 2 | `service-design/{type}` definition × N | 模板结构 + resolved gate/validator | knowledge/designs/{id}/services/{svc}/design.md |
 | Stage 3 | `e2e/default` definition | 模板结构 + resolved gate/validator | knowledge/designs/{id}/e2e/design.md + gate.md |
 | 最终 | 各设计定义包的 gate/validator | 完整性 / 可实施性 / 安全就绪 / 知识沉淀 | — |

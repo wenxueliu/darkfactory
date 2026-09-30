@@ -25,6 +25,7 @@ JWT 认证的决策是：我们选择了 access token + refresh token 方案...
 
 ```markdown
 ## Suggested Skills
+- sw-task-decomposer — 将执行计划规范化为 tasks.yaml、DAG 和 waves
 - sw-plan-executor — 执行计划中的任务波浪
 - sw-tdd-agent — 执行 TDD 红绿重构循环
 - sw-codebase-explorer — 搜索现有模式和实现
@@ -115,9 +116,9 @@ JWT 认证的决策是：我们选择了 access token + refresh token 方案...
 - **Critical Path**: {N} tasks ({N} sequential dependencies)
 
 ### Suggested Skills for Next Agent
-- [Skill 1 — purpose]
-- [Skill 2 — purpose]
-- [Skill 3 — purpose]
+- sw-task-decomposer — 将计划任务转换为可执行 DAG、依赖和并行 waves
+- sw-plan-executor — 按 waves 委派并验证实现任务
+- sw-tdd-agent — 在具体 worktree 中执行 TDD 实现
 
 ### Files
 - **Plan**: knowledge/plans/{plan-name}.md

@@ -1,8 +1,8 @@
 ---
 name: sw-feature-designer
-description: "黑灯工厂 Stage 1 特性设计 Agent。Use when turning a passed requirements specification into a cross-service feature design with user journeys, service impact, interaction contracts, and deployment strategy. [trigger: 特性设计, 跨服务设计, 用户旅程设计, 特性设计文档, feature design]"
+description: "黑灯工厂跨服务特性设计 Agent。Use only when a passed requirements specification affects multiple services and needs system-level user journeys, service impact, interaction contracts, and deployment strategy. [trigger: 特性设计, 跨服务设计, 用户旅程设计, 特性设计文档, feature design]"
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   external_dependencies:
     - name: sw-knowledge-agent
       version: "*"
@@ -25,22 +25,27 @@ metadata:
 
 ## Overview
 
-This Skill owns **Stage 1 of the design phase**. It transforms a requirements
-specification that has passed the requirements gate into a cross-service
-feature design: the system-level view consumed by `sw-service-designer` and
-`sw-e2e-designer`.
+This Skill owns **Stage 1 of the cross-service design phase**. It transforms a
+requirements specification that has passed the requirements gate into a
+system-level feature design when two or more services are affected. A bounded
+single-service requirement routes directly to `sw-service-designer` and does
+not create a redundant Stage 1 bundle.
 
 **Mission:** produce an evidence-backed design that explains the user journey,
 affected services, service interactions, cross-service contracts, and release
 strategy. Do not design the internal implementation of an individual service;
 that belongs to Stage 2.
 
-**Contract version:** `2.0.0` (frontmatter metadata).
+**Contract version:** `2.1.0` (frontmatter metadata).
 
 ## Identity and Principles
 
 You are the systems-level designer and coordinator, not the per-service
 implementer.
+
+- **Cross-service scope only:** this Skill requires at least two affected
+  services. If the requirement is bounded to one service, return
+  `ROUTE_TO_SERVICE_DESIGNER` and do not publish a feature-design bundle.
 
 - **Requirements first:** every design decision traces to the upstream
   requirements document, its acceptance criteria, or explicit evidence.
@@ -86,6 +91,10 @@ Required upstream evidence:
 - its `requirement_id` matches the input;
 - its requirements gate is `PASS` (or the caller supplies an equivalent,
   traceable gate report).
+
+This Skill is eligible only when the requirement may affect at least two
+services. The controller or capability investigation must route an explicitly
+single-service scope to `sw-service-designer` with `design_scope: single_service`.
 
 If these conditions are not met, return `BLOCKED` or `NEEDS_USER_INPUT` with an
 actionable reason; do not invent a requirement or bypass the upstream gate.
@@ -191,8 +200,10 @@ Use the resolved template and the coordination guide:
 
 Every user-journey step must identify its related requirement AC and involved
 service. Every affected service must have an evidence-backed impact type and
-risk level. Pure backend or single-service features may mark UI or
-cross-service sections `N/A`, but must give a reason.
+risk level. A pure backend feature is valid here only when it still affects
+multiple services; UI or cross-service sections may be `N/A` only with a reason.
+If capability investigation proves that only one service is affected, stop and
+return `ROUTE_TO_SERVICE_DESIGNER`.
 
 ### Step 4: Optional design consistency review
 
@@ -251,10 +262,10 @@ If no context or ADR evidence is available, record `NOT_REQUESTED` or
 Return a `Feature Design Report` and write artifacts when the corresponding
 state permits it.
 
-**Contract version:** `2.0.0`.
+**Contract version:** `2.1.0`.
 
 ```yaml
-result: NEEDS_USER_INPUT | READY_FOR_GATE | GATE_PASSED | GATE_FAILED | BLOCKED
+result: NEEDS_USER_INPUT | READY_FOR_GATE | GATE_PASSED | GATE_FAILED | BLOCKED | ROUTE_TO_SERVICE_DESIGNER
 design_id: DESIGN-YYYYMMDD-NNN
 requirement_id: REQ-YYYYMMDD-NNN
 definition:
@@ -312,12 +323,15 @@ Status semantics:
 - `GATE_PASSED`: machine and semantic validation passed; Stage 2 may start.
 - `GATE_FAILED`: validation ran and produced actionable failures.
 - `BLOCKED`: required upstream input or an invalid internal definition prevents execution.
+- `ROUTE_TO_SERVICE_DESIGNER`: capability evidence shows that exactly one
+  service is affected; the service designer should handle the complete design.
 
 ## Acceptance Criteria
 
 | Dimension | Acceptance criterion | Evidence | Blocking |
 |---|---|---|---:|
 | Input and paths | `requirement_id`, effective `project_root`, `variant`, and resolved paths are reported | Input section + `resolved_paths` | Yes |
+| Topology boundary | At least two affected services are proven; a one-service scope is routed to `sw-service-designer` without publishing a feature bundle | `service_impact` + route result | Yes |
 | Dependency metadata | Every external dependency declares `name`, `version`, `type`, `required`; unavailable optional dependencies are recorded as `SKIPPED` | Frontmatter + `external_capabilities` | Yes |
 | Upstream traceability | Requirements document exists, IDs match, and requirements gate status is known and passing before design proceeds | Requirement path + gate report | Yes |
 | Definition integrity | Template, gate, and validator resolve with matching `document_type`, `contract`, and version | `definition.resources` | Yes |
@@ -352,5 +366,6 @@ After `GATE_PASSED`, report:
 - gate, validator, semantic V1–V3, and external capability statuses.
 
 Then hand the resolved design document to `sw-service-designer` for parallel
-per-service design and to `sw-e2e-designer` for Stage 3 inputs. Do not begin
-service implementation from this Skill.
+per-service detail and to `sw-e2e-designer` for Stage 3 inputs. Do not begin
+service implementation from this Skill. For a one-service scope, use the
+`ROUTE_TO_SERVICE_DESIGNER` result instead of this handoff.

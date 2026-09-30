@@ -5,9 +5,9 @@
 
 ## 核心理念
 
-任务拆分是把 **per-service 设计文档** 翻译成**可并行执行的自包含工作单元**。拆分质量直接决定并行效率——拆太粗，一个 worktree 做太久；拆太细，通信开销吃掉并行收益。目标: **每个任务 1-3 小时的 AI 自主执行 + 无循环依赖 + 最大化并行度**。
+任务拆分是把 **适用的服务设计文档** 翻译成**可并行执行的自包含工作单元**。拆分质量直接决定并行效率——拆太粗，一个 worktree 做太久；拆太细，通信开销吃掉并行收益。目标: **每个任务 1-3 小时的 AI 自主执行 + 无循环依赖 + 最大化并行度**。
 
-**纵向拆分原则:** 每个任务是一个独立的纵向切片——自包含实现代码 + UT + API 测试。不允许把测试横切为独立任务（如 "API 测试任务"、"E2E 测试任务"），UT 和 API 测试必须在同一个 worktree 内随代码一起完成。E2E 测试跨服务编排，作为最后一个 wave 的独立任务。
+**纵向拆分原则:** 每个任务是一个独立的纵向切片——自包含实现代码 + UT + API 测试。不允许把测试横切为独立任务（如 "API 测试任务"、"E2E 测试任务"），UT 和 API 测试必须在同一个 worktree 内随代码一起完成。只有 `cross_service` 才把 E2E 测试跨服务编排为最后一个 wave 的独立任务。
 
 **拆分是可选的:** 一个代码仓可以只对应一个任务。拆分是优化手段，不是强制要求。只有当仓库内的功能点可以独立验证时才拆分。
 
@@ -17,14 +17,18 @@
 
 ### 第 1 步: 确定受影响服务列表 + 提取工作单元 (Identify Services & Extract Work Units)
 
-**输入 (按加载顺序):**
+**输入 (按加载顺序，先按 `design_scope` 取分支):**
 
 1. **服务注册表:** `knowledge/service-registry.yaml` — 所有已注册服务的权威列表（auto-generated, 由 sw-knowledge-agent 维护）
-2. **Stage 1 跨服务设计:** `knowledge/designs/{id}/feature-design.md` — 其中的「服务影响分析」表列出了本次需求实际涉及的服务（从 service-registry 中筛选，不可臆想）
-3. **Stage 2 Per-service 设计:** `knowledge/designs/{id}/services/{svc}/design.md` × N — 仅加载服务影响分析表中列出的服务，每个服务一份
-4. **Stage 3 E2E 测试设计:** `knowledge/designs/{id}/e2e/design.md` — 用于最后一个 wave 的 E2E 任务
-5. **需求规格:** `requirements/{id}/requirement.md` — 验收条件来源
-6. **ADR:** `knowledge/decisions/ADR-*.md` — 架构约束
+2. **单服务设计:** `knowledge/designs/{id}/services/{svc}/design.md` + service gate — `single_service` 的唯一设计上游
+3. **Stage 1 跨服务设计:** `knowledge/designs/{id}/feature-design.md` — 仅 `cross_service` 加载
+4. **Stage 2 Per-service 设计:** `knowledge/designs/{id}/services/{svc}/design.md` × N — 仅加载跨服务影响分析列出的服务
+5. **Stage 3 E2E 测试设计:** `knowledge/designs/{id}/e2e/design.md` — 仅 `cross_service` 用于最后一个 wave 的 E2E 任务
+6. **需求规格:** `requirements/{id}/requirement.md` — 验收条件来源
+7. **ADR:** `knowledge/decisions/ADR-*.md` — 架构约束
+
+`single_service` 不要求 Stage 1 feature design、bundle manifest 或 Stage 3
+E2E；`cross_service` 必须具备完整 Stage 1/2/3 设计链。
 
 **受影响服务必须从设计文档获取，禁止臆想:**
 
@@ -33,7 +37,8 @@
 
   ┌─ 第 1 优先: service-registry.yaml 存在?
   │     ├─ YES → 读取所有已注册服务（权威事实源）
-  │     │        读取 knowledge/designs/{id}/feature-design.md 的「服务影响分析」表
+  │     │        cross_service 读取 feature-design.md 的「服务影响分析」表
+  │     │        single_service 读取唯一 service-design.md 的 service_id
   │     │        交叉验证: 影响分析表中的服务必须在 registry 中存在
   │     │        验证通过 → 跳转到「加载 per-service 设计文档」
   │     │        验证失败 → 阻塞，升级人工
@@ -55,8 +60,9 @@
   │     如果发现了 ≥ 1 个服务 → 展示给用户确认，确认后继续
   │     如果 services/ 目录为空或不存在 → 进入第 3 优先
   │
-  ├─ 第 3 优先: 从 Stage 1 设计文档直接提取
-  │     读取 knowledge/designs/{id}/feature-design.md 的「服务影响分析」表
+  ├─ 第 3 优先: 从适用设计文档直接提取
+  │     cross_service 读取 feature-design.md 的「服务影响分析」表；
+  │     single_service 读取 standalone service-design.md
   │     如果表中有服务列表 → 直接使用（跳过 service-registry 验证，因为 registry 不存在）
   │     警告用户: "service-registry.yaml 不存在，已从设计文档直接提取服务列表。建议运行 sw-knowledge-agent service-discovery 生成注册表。"
   │     如果设计文档也没有服务影响分析表 → 进入第 4 优先
@@ -78,7 +84,7 @@
 
 **为什么不能臆想服务:**
 - 服务列表的唯一权威来源是 `service-registry.yaml`（由 sw-knowledge-agent 从代码自动发现）
-- 本次需求涉及哪些服务的唯一权威来源是 Stage 1 设计文档的「服务影响分析」表
+- 跨服务需求的服务列表唯一权威来源是 Stage 1 设计文档的「服务影响分析」表；单服务需求的唯一来源是 service-design 的 `service_id`
 - 如果跳过这步直接猜测 "可能涉及 user-service 和 order-service"，会遗漏实际受影响的服务或引入不存在的服务
 - 新服务必须先通过 sw-knowledge-agent 的 service-discovery 注册到 service-registry.yaml，才能在任务拆分中被引用
 
@@ -94,7 +100,7 @@
   1. 语言/框架匹配:
      - 任务的实现语言 = 服务的 language 字段（如 java-springboot）
      - 不能把 TypeScript React 前端任务分配给 Java Spring Boot 后端服务
-     - 来源: service-registry.yaml → language，Stage 1 代码调查 → 语言/框架验证
+     - 来源: service-registry.yaml → language；跨服务补充 Stage 1 代码调查，单服务使用 service-design 证据
 
   2. 服务路径存在:
      - service_path 指向的目录必须存在（如 services/user-service/）
@@ -105,7 +111,7 @@
      - 任务涉及的 API 端点 → 在服务的 provides_apis 范围内（或设计文档明确新增）
      - 任务涉及的数据操作 → 在服务的 owns_data 范围内（或设计文档明确新增）
      - 任务涉及的外部调用 → 在服务的 consumes_apis 范围内（或设计文档明确新增）
-     - 来源: Stage 1 代码调查 → 服务能力摘要
+     - 来源: 跨服务 Stage 1 代码调查或单服务设计中的服务能力证据
 
   4. 不匹配处理:
      - 如果任务需要的 API/数据不在服务的能力范围内 → 检查设计文档是否规划了新增

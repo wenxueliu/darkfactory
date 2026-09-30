@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 SKILLS = {
     "sw-task-decomposer": {
+        "version": "2.1.0",
         "required_sections": (
             "## Input Contract",
             "## External Dependency Metadata",
@@ -59,6 +60,7 @@ SKILLS = {
         ),
     },
     "sw-strategic-planner": {
+        "version": "2.1.0",
         "required_sections": (
             "## Input Contract",
             "## External Dependency Metadata",
@@ -130,6 +132,8 @@ def test_task_and_execution_handoff_contracts_are_explicit() -> None:
     executor = (ROOT / "skills/sw-plan-executor/SKILL.md").read_text(encoding="utf-8")
 
     assert "manifest status is `complete`" in task
+    assert "`single_service`" in task
+    assert "does not invent an E2E task" in task
     assert "`sw-plan-executor`" in task
     assert "never writes product code" in executor
     assert "Final Verification Wave" in executor
@@ -153,6 +157,9 @@ def test_terminal_and_test_skills_keep_stage_boundaries() -> None:
     assert "sw-pre-planning-consultant" in planner
     assert "exactly one executable plan" in planner
     assert "The interview state is runtime context" in planner
+    assert "approved requirement and design bundle" in planner
+    assert "does not introduce new feature/service design decisions" in planner
+    assert "sw-task-decomposer" in planner
 
 
 def test_browser_contract_has_no_playwright_dependency_or_artifact() -> None:

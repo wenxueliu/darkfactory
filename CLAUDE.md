@@ -40,18 +40,17 @@ sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协�
   │     sw-requirements-clarifier (NEW: 需求澄清 — 渐进澄清对话(frontier)→规格文档)
   │     sw-value-judgment (REVIVED: 需求价值评估)
   │
-  ├── [规划层 — Planning]
-  │     sw-strategic-planner (NEW: 战略规划 — 访谈→计划生成)
+  ├── [规划层 — Planning, after design gates]
+  │     sw-strategic-planner (NEW: 执行计划 — 消费已通过设计→计划生成)
   │       ├── sw-pre-planning-consultant (NEW: 预规划分析 — 意图分类+AI slop防护)
   │       ├── sw-plan-reviewer (NEW: 计划审查 — 阻断器发现者)
   │       ├── sw-codebase-explorer (NEW: 内部代码搜索)
   │       └── sw-external-researcher (NEW: 外部文档/OSS研究)
   │
-  ├── [设计层 — Design]
+  ├── [设计层 — Design, route by service topology]
   │     sw-brainstorming (NEW: 头脑风暴 — HARD-GATE: 设计批准前禁止实现)
-  │     sw-feature-designer (Stage 1: 跨服务特性设计)
-  │     ├── sw-service-designer × N (Stage 2: 单服务详细设计, 并行)
-  │     └── sw-e2e-designer (Stage 3: E2E测试设计)
+  │     one service → sw-service-designer
+  │     multiple services → sw-feature-designer → sw-service-designer × N → sw-e2e-designer
   │
   ├── [拆分层 — Decomposition]
   │     sw-task-decomposer (NEW: 任务拆分 — DAG+Wave+tasks.yaml+dependencies.json)
@@ -101,7 +100,7 @@ sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协�
 ### Development Flow (Phase Transitions)
 
 ```
-ideation → design → decomposition → execution → merge → test → delivery
+ideation → topology-routed design → optional execution planning → decomposition → execution → merge → test → delivery
 ```
 
 Each phase transition requires explicit acceptance criteria verification. No phase advances without passing its gates. Human judgment is the ultimate backstop — escalate when iteration limits are reached; never proceed with unresolved P0/P1/P2 issues.
@@ -124,7 +123,7 @@ Every activation begins with intent verification: classify the request type, che
 "Do NOT Ask — Just Do." The TDD agent exhausts the exploration hierarchy (direct tools → codebase search → external research → context inference) before asking any question. When blocked, it tries different approaches rather than stopping.
 
 ### Structured Planning (Prometheus → sw-strategic-planner)
-Planning follows interview → research → plan generation → review. Drafts serve as working memory between turns. Plans include explicit QA scenarios that are agent-executable (no "user manually tests" criteria).
+Planning starts only after the applicable service/feature design gates pass. It follows execution-constraint interview → research → plan generation → review. Drafts serve as working memory between turns. Plans include explicit QA scenarios that are agent-executable (no "user manually tests" criteria).
 
 ### Parallel Orchestration (Atlas → sw-plan-executor)
 Plan execution fans out tasks in parallel waves by default, with 4-phase verification per task. The executor delegates all code work and verifies everything independently — never trusting subagent self-reports.

@@ -2,7 +2,7 @@
 
 ## 触发时机
 
-Per-service 设计文档 (`knowledge/designs/{requirement_id}/services/{service_id}/design.md`) 完成后，进入 Stage 3 之前。
+Per-service 设计文档 (`knowledge/designs/{requirement_id}/services/{service_id}/design.md`) 完成后；跨服务时在进入 Stage 3 之前执行，单服务时直接作为设计阶段门禁执行。
 
 ## 验证清单
 
@@ -40,11 +40,11 @@ Per-service 设计文档 (`knowledge/designs/{requirement_id}/services/{service_
 ## 输出
 
 门禁报告写入 `paths.artifact_targets.gate_report`。服务设计文档和测试
-产物必须使用解析后的 `paths.artifact_targets`，通过后才更新 Stage 1
-bundle manifest。
+产物必须使用解析后的 `paths.artifact_targets`。`cross_service_detail` 通过后
+才更新 Stage 1 bundle manifest；`single_service` 不创建或更新该 manifest。
 
 ```
-PASS: → 该服务设计完成，等待其他服务设计完成后进入 Stage 3
+PASS: → 该服务设计完成；跨服务时等待其他服务设计完成后进入 Stage 3，单服务时可进入执行计划
 FAIL: → 标记缺失项，回到服务设计修订。最大重试 3 轮。
        3 轮后仍未 PASS → 升级到人工决策。
 ```

@@ -19,11 +19,15 @@
 
 ### 第 2 步: 上下文加载
 
-1. 读取 `paths.evidence.bundle_manifest` 和 `paths.evidence.feature_design`（Stage 1 输出）
-2. 从 Section 2 "服务影响分析" 提取该服务的变更内容
-3. 从 Section 5 "服务交互设计" 提取该服务参与的调用序列
-4. 从 Section 6 "跨服务契约" 提取该服务提供/消费的契约
-5. 读取 `paths.evidence.service_knowledge_root` 下的现有知识
+根据 `design_scope` 选择唯一上游：
+
+- `single_service`: 读取 `paths.evidence.requirement_document` 和
+  `paths.evidence.requirements_gate_report`，从需求 AC 和服务边界提取变更内容；
+- `cross_service_detail`: 读取 `paths.evidence.bundle_manifest` 和
+  `paths.evidence.feature_design`，从 Section 2 "服务影响分析"、Section 5
+  "服务交互设计" 和 Section 6 "跨服务契约" 提取该服务内容。
+
+两种模式都读取 `paths.evidence.service_knowledge_root` 下的现有知识。
 
 ### 第 3 步: 架构与接口设计
 
@@ -64,7 +68,9 @@
 - `paths.artifact_targets.api_collection`
 - `paths.artifact_targets.api_environment`
 - 可选的 `paths.artifact_targets.api_data` 和 `paths.artifact_targets.api_report`
-- 成功时更新 `paths.artifact_targets.bundle_manifest` 中的当前服务条目
+- `cross_service_detail` 成功时更新 `paths.artifact_targets.bundle_manifest`
+  中的当前服务条目；`single_service` 只发布解析后的服务设计产物，不创建
+  feature bundle manifest
 
 **过渡条件:**
 - S1-S8 所有章节完整
@@ -78,7 +84,8 @@
 ## 并行执行
 
 多个服务的设计可并行执行:
-- sw-controller 从特性设计 Section 2 提取所有受影响服务
-- 对每个服务启动 sw-service-designer 实例
+- 跨服务时，sw-controller 从特性设计 Section 2 提取所有受影响服务
+- 单服务时，sw-controller 直接启动 `sw-service-designer(single_service)`
+- 跨服务时，对每个服务启动 `sw-service-designer(cross_service_detail)` 实例
 - 各实例独立执行，互不阻塞
-- 总控等待全部完成后再进入 Stage 3 (E2E 设计)
+- 只有跨服务时总控等待全部完成后再进入 Stage 3 (E2E 设计)

@@ -17,7 +17,7 @@ def test_feature_designer_declares_version_and_contract_sections() -> None:
     content = SKILL.read_text(encoding="utf-8")
     frontmatter = _frontmatter(content)
 
-    assert frontmatter["metadata"]["version"] == "2.0.0"
+    assert frontmatter["metadata"]["version"] == "2.1.0"
     dependencies = frontmatter["metadata"]["external_dependencies"]
     assert {dependency["name"] for dependency in dependencies} == {
         "sw-knowledge-agent",
@@ -94,5 +94,8 @@ def test_feature_designer_preserves_stage_boundaries() -> None:
     content = SKILL.read_text(encoding="utf-8")
 
     assert "Do not design the internal implementation of an individual service" in content
+    assert "Cross-service scope only" in content
+    assert "ROUTE_TO_SERVICE_DESIGNER" in content
+    assert "requires at least two affected" in content
     assert "Then hand the resolved design document to `sw-service-designer`" in content
     assert "Do not begin\nservice implementation from this Skill." in content

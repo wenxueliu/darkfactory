@@ -13,6 +13,9 @@
 ## 路径边界
 
 - `evidence` 只读，研究结论必须保留来源路径。
+- `design_root` 及其下的 feature/service/E2E 设计与 gate 文件只读；它们是
+  计划的上游事实，不是本 Skill 的输出。缺失或未通过的设计证据必须返回
+  `BLOCKED` 并路由回对应设计 Agent。
 - `artifact_targets.plan` 是唯一最终交付物；`draft` 是临时 Markdown 工作记忆。
 - 计划生成并交接后删除 draft；不创建 `planning-state.yaml` 或其他 YAML 状态。
 - 不写入 `tasks.yaml`、requirements tracker、源代码、测试、配置或分支。

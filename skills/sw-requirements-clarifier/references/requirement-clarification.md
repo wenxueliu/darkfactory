@@ -336,7 +336,7 @@ C) {自定义 — 用自己的话描述}
 | 维度 | 需求层 (Step 1.0，本 Skill) | 实现层 (设计阶段) |
 |------|------------|-----------|
 | 触发时机 | 澄清开始时（提问用户之前） | 澄清完成后、开始设计之前 |
-| 触发者 | sw-requirements-clarifier | sw-feature-designer（或 sw-strategic-planner） |
+| 触发者 | sw-requirements-clarifier | sw-feature-designer 或 sw-service-designer（由服务拓扑决定） |
 | 查询目标 | 需求-需求关系（重复、冲突、参考） | 需求-实现关系（模式、契约、决策） |
 | 主要消费者 | 澄清对话的优先级与问题设计 | 设计的方案选择与一致性 |
 | 核心问题 | "我们做过类似的吗？和它什么关系？" | "用什么模式实现？参考什么契约？" |

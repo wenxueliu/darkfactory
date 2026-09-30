@@ -1,8 +1,8 @@
 ---
 name: sw-service-designer
-description: "黑灯工厂 Stage 2 单服务设计 Agent。Use when turning a passed cross-service feature design into an implementable per-service design with architecture, API/data contracts, state, security, UT, and API test specifications. [trigger: 服务设计, 详细设计, API设计, 测试用例设计, service design, per-service design]"
+description: "黑灯工厂单服务设计 Agent。Use for any one-service design: directly from a passed requirement, or as Stage 2 detail after a cross-service feature design. Produces architecture, API/data, state, security, UT, and API test specifications. [trigger: 服务设计, 单服务设计, 详细设计, API设计, 测试用例设计, service design, per-service design]"
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   external_dependencies:
     - name: sw-knowledge-agent
       version: "*"
@@ -25,23 +25,29 @@ metadata:
 
 ## Overview
 
-This Skill owns **Stage 2 of the design phase**. It consumes the passed Stage 1
-feature design for one affected service and produces the implementation-level
-design that a TDD Agent can execute without returning for missing contracts.
+This Skill owns the **single-service design boundary**. It supports two explicit
+routes: `single_service` consumes a passed requirements specification directly;
+`cross_service_detail` consumes the passed Stage 1 feature design for one
+affected service. Both routes produce the implementation-level design that a
+TDD Agent can execute without returning for missing contracts.
 
 **Mission:** define this service's architecture, interfaces or data contracts,
 state, error handling, security, unit-test cases, and API/integration-test
 cases. Cross-service boundaries belong to `sw-feature-designer`; implementation
 code belongs to later execution Agents.
 
-**Contract version:** `2.0.0` (frontmatter metadata).
+**Contract version:** `2.1.0` (frontmatter metadata).
 
 ## Identity and Principles
 
-You are the service-level architect for exactly one `service_id`.
+You are the service-level architect for exactly one `service_id`. The
+`design_scope` tells you whether this is a direct single-service design or a
+Stage 2 refinement of a cross-service design.
 
-- **Feature design first:** derive responsibility, dependencies, and AC coverage
-  from the resolved Stage 1 feature design; do not invent a new system scope.
+- **Correct upstream route:** in `single_service`, derive scope and AC coverage
+  from the requirements bundle; in `cross_service_detail`, derive them from
+  the resolved Stage 1 feature design. Never require or invent a system-level
+  feature design for a one-service request.
 - **Evidence before design:** verify registry claims against the service source,
   build files, routes/controllers, models/migrations, clients, and tests.
 - **Type-appropriate design:** backend, frontend, BFF, and data-pipeline services
@@ -70,27 +76,30 @@ overrides rather than another Skill's private directory or internal prompt.
 
 | Input | Required | Description |
 |---|---:|---|
-| `requirement_id` | Yes | Existing `REQ-YYYYMMDD-NNN`; identifies the feature-design bundle. |
-| `service_id` | Yes | One service listed in Stage 1 `service_impact`; output is bound to this ID. |
+| `requirement_id` | Yes | Existing `REQ-YYYYMMDD-NNN`; identifies the requirement bundle and, for cross-service detail, its feature-design bundle. |
+| `service_id` | Yes | Exactly one affected service; output is bound to this ID. |
+| `design_scope` | Yes | `single_service` for direct one-service design, or `cross_service_detail` for Stage 2 refinement after `sw-feature-designer`. |
 | `project_root` | No | Project root; defaults to the current workspace. |
 | `service_type` | No | Explicit `backend`, `frontend`, `bff`, or `data-pipeline`; otherwise detect from registry/source. |
-| `request` | No | Short service-specific design focus; the feature design remains authoritative. |
+| `request` | No | Short service-specific design focus; the resolved requirement or feature design remains authoritative. |
 | `evidence_paths` | No | Additional feature design, context, ADR, contract, registry, repository, or service-knowledge paths. |
 | `paths` | No | Semantic path overrides. Defaults and merge rules are in `references/path-defaults.yaml` and `references/path-resolution.md`. |
 | `communication_language` | No | Output language; defaults to project configuration or Chinese. |
 | `mode` | No | `interactive` (default) asks about blocking decisions; `draft` records unresolved items and cannot end as `GATE_PASSED`. |
 
-Required upstream evidence:
+Required upstream evidence depends on `design_scope`:
 
-- the Stage 1 bundle manifest and feature design exist at resolved paths;
-- the manifest points to the matching `requirement_id`;
-- the feature design gate is `PASS`;
-- `service_id` appears in the feature design's service-impact analysis;
-- the service registry entry or source repository can be located.
+- `single_service`: the requirements document and requirements gate are
+  present and `PASS`; the requirement names a bounded service scope; and the
+  service registry entry or source repository can be located.
+- `cross_service_detail`: the Stage 1 bundle manifest and feature design exist,
+  the manifest matches `requirement_id`, the feature design gate is `PASS`,
+  `service_id` appears in `service_impact`, and the service registry entry or
+  source repository can be located.
 
 If any prerequisite is missing or contradictory, return `BLOCKED` or
-`NEEDS_USER_INPUT` with an actionable reason. Do not design an unapproved
-service scope.
+`NEEDS_USER_INPUT` with an actionable reason. For a single-service request,
+`sw-feature-designer` is not an upstream prerequisite.
 
 ## External Dependency Metadata
 
@@ -122,7 +131,7 @@ Fallbacks:
 
 ## On Activation
 
-### Step 0: Resolve paths, service type, and definition package
+### Step 0: Resolve paths, design scope, service type, and definition package
 
 1. Load `references/path-defaults.yaml` and apply
    `references/path-resolution.md`.
@@ -135,25 +144,31 @@ Fallbacks:
    definition roots. Resolve template, gate, and validator independently:
    exact type first, then that layer's `default`. A manifest-declared but
    missing resource is a configuration error and must not silently fall back.
-4. Report the resolved type, definition resources, and all effective paths.
+4. Validate `design_scope` before reading upstream artifacts. Report the
+   resolved scope, type, definition resources, and all effective paths.
 
 The built-in contract is `sw.service-design` version `1.0`, with stable
 sections `technical_decisions`, `architecture_design`, `api_design`,
 `state_management`, `error_handling`, `security_design`, `unit_test_design`,
 and `api_test_design`.
 
-### Step 1: Consume and validate Stage 1
+### Step 1: Consume and validate the selected upstream design context
 
-Read the resolved bundle manifest and feature design. Extract:
+For `single_service`, read the requirements document and requirements gate.
+For `cross_service_detail`, read the resolved bundle manifest and feature
+design. Extract from the selected upstream context:
 
 - this service's responsibility, impact type, dependencies, and risk;
 - relevant requirement ACs and user-journey steps;
-- calls made or received, endpoint/event contracts, SLA, and degradation rules;
+- calls made or received, endpoint/event contracts, SLA, and degradation rules
+  when the route has them;
 - deployment ordering, feature flags, migration constraints, and open questions.
 
-Reject or escalate any mismatch between the service design and Stage 1. A
-service design may refine implementation details, but may not silently alter a
-cross-service provider, consumer, protocol, schema, or SLA.
+Reject or escalate any mismatch between the service design and its upstream
+context. A `cross_service_detail` design may refine implementation details, but
+may not silently alter a cross-service provider, consumer, protocol, schema, or
+SLA. A `single_service` design must not expand into a second service; if it
+discovers a second affected service, return `ROUTE_TO_FEATURE_DESIGNER`.
 
 ### Step 2: Investigate the service repository and knowledge
 
@@ -230,10 +245,13 @@ Standard review of the service design. Route the result as follows:
    successful pre-query result to resolved targets. Write `api_data` only when
    data-driven cases are declared, and `api_report` when Newman is executed.
 4. After `GATE_PASSED`, update the Stage 1 bundle `manifest.yaml` with this
-   service's relative design and test artifact paths, set its service entry to
-   `gate_passed`, and advance the bundle status to `stage2_in_progress`. Do not mark the global
-   tracker `phases.design` complete here; `sw-controller` aggregates all
-   services and Stage 3 before transitioning the phase.
+   service's relative design and test artifact paths only for
+   `cross_service_detail`; set that service entry to `gate_passed` and advance
+   the bundle status to `stage2_in_progress`. For `single_service`, publish the
+   service artifacts as a standalone design bundle and do not require or create
+   a feature-design manifest. In both routes, do not mark the global tracker
+   `phases.design` complete; `sw-controller` aggregates the applicable design
+   gates.
 5. Return the output contract. No unresolved decision may be represented as an
    approved design choice.
 
@@ -277,13 +295,14 @@ api_test_artifacts:
 Return a `Service Design Report` and write artifacts when the corresponding
 state permits it.
 
-**Contract version:** `2.0.0`.
+**Contract version:** `2.1.0`.
 
 ```yaml
-result: NEEDS_USER_INPUT | READY_FOR_GATE | GATE_PASSED | GATE_FAILED | BLOCKED
+result: NEEDS_USER_INPUT | READY_FOR_GATE | GATE_PASSED | GATE_FAILED | BLOCKED | ROUTE_TO_FEATURE_DESIGNER
 design_id: DESIGN-YYYYMMDD-NNN-service-id
 requirement_id: REQ-YYYYMMDD-NNN
 service_id: service-id
+design_scope: single_service | cross_service_detail
 service_type: backend | frontend | bff | data-pipeline
 definition:
   document_type: service-design
@@ -295,8 +314,9 @@ definition:
     gate: {scope, path|NOT_DECLARED}
     validator: {scope, path|NOT_DECLARED}
 upstream:
-  feature_design: "{resolved paths.evidence.feature_design}"
-  feature_gate: PASS | FAIL | NOT_FOUND
+  requirements_gate: PASS | FAIL | NOT_FOUND
+  feature_design: "{resolved paths.evidence.feature_design} | NOT_REQUIRED"
+  feature_gate: PASS | FAIL | NOT_FOUND | NOT_REQUIRED
   service_impact: "..."
   acceptance_criteria_covered: []
 design:
@@ -321,7 +341,7 @@ artifacts:
   api_data: "{resolved paths.artifact_targets.api_data|NOT_CREATED}"
   api_report: "{resolved paths.artifact_targets.api_report|NOT_CREATED}"
   pre_query: "{resolved paths.artifact_targets.pre_query|NOT_CREATED}"
-  bundle_manifest: "{resolved paths.artifact_targets.bundle_manifest}"
+  bundle_manifest: "{resolved paths.artifact_targets.bundle_manifest|NOT_CREATED_FOR_SINGLE_SERVICE}"
 resolved_paths:
   config_file: "..."
   definition_roots: {}
@@ -344,15 +364,18 @@ Status semantics:
 - `READY_FOR_GATE`: the service design and test artifacts are ready, but validation has not run.
 - `GATE_PASSED`: this service's machine and semantic checks passed; controller may continue Stage 2 aggregation.
 - `GATE_FAILED`: validation ran and produced actionable failures.
-- `BLOCKED`: upstream feature design, service identity, definition package, or required evidence is unavailable.
+- `BLOCKED`: the selected upstream design context, service identity, definition
+  package, or required evidence is unavailable.
+- `ROUTE_TO_FEATURE_DESIGNER`: a supposedly single-service request actually
+  affects multiple services and requires a system-level design first.
 
 ## Acceptance Criteria
 
 | Dimension | Acceptance criterion | Evidence | Blocking |
 |---|---|---|---:|
-| Input and paths | `requirement_id`, `service_id`, effective service type, project root, and resolved paths are reported | Input + `resolved_paths` | Yes |
+| Input and paths | `requirement_id`, `service_id`, `design_scope`, effective service type, project root, and resolved paths are reported | Input + `resolved_paths` | Yes |
 | Dependency metadata | Every external dependency declares `name`, `version`, `type`, `required`; unavailable optional dependencies are recorded as `SKIPPED` | Frontmatter + `external_capabilities` | Yes |
-| Upstream traceability | Feature manifest and design are present, gate is `PASS`, service is in `service_impact`, and AC mapping is explicit | `upstream` + traceability table | Yes |
+| Upstream traceability | `single_service` proves requirements-gate traceability; `cross_service_detail` proves feature manifest/design/gate, service impact, and AC mapping | `upstream` + traceability table | Yes |
 | Definition integrity | Type-specific template, gate, and validator resolve with matching `document_type`, `contract`, and version | `definition.resources` | Yes |
 | Service evidence | Registry and source evidence identify language/framework, boundaries, existing capabilities, data ownership, and dependencies | Investigation summary | Yes |
 | Technical design | S1–S2 define concrete decisions, alternatives, responsibilities, components, data flow, and implementation boundaries | `technical_decisions` + `architecture_design` | Yes |
@@ -361,20 +384,20 @@ Status semantics:
 | Security | S6 covers authentication, authorization, input validation, data protection, secrets, and audit/verification method | `security_design` | Yes |
 | UT/integration tests | Every public component/operation has happy and error/boundary cases, edge coverage, concrete data, and AC traceability | `unit_test_design` | Yes |
 | API test artifacts | Every endpoint or equivalent interface has normal, failure, and auth/data-integrity coverage; collection and environment are valid and case IDs match | JSON files + `api_test_design` | Yes |
-| Cross-service consistency | The design does not contradict Stage 1 provider/consumer, protocol, schema, SLA, dependency, or deployment decisions | Feature design + grill result | Yes for conflict |
+| Cross-service consistency | `cross_service_detail` does not contradict Stage 1 provider/consumer, protocol, schema, SLA, dependency, or deployment decisions; `single_service` does not silently expand scope | Selected upstream context + grill result | Yes for conflict |
 | Gate and validation | Resolved machine validator/gate and semantic V1–V4 checklist both run with actionable results | Validation + gate report | Yes when declared |
-| Artifact and manifest | Design, gate report, test artifacts, and optional pre-query use resolved targets; passed service is registered in the bundle manifest | `artifacts` + `manifest.yaml` | Yes |
+| Artifact and manifest | Design, gate report, test artifacts, and optional pre-query use resolved targets; cross-service detail updates the bundle manifest while single-service publishes standalone artifacts | `artifacts` + optional `manifest.yaml` | Yes |
 | Human approval and status | No unresolved decision is marked final and result uses the declared status values | `open_questions` + `result` | Yes |
 
 ## Memory and State Boundaries
 
 Read only from resolved evidence paths and caller-provided evidence. Write only
-to resolved artifact targets and the Stage 1 bundle manifest after this service
-passes its gate. Do not modify source repositories, another service's design,
-the global tracker phase, unconfigured context/ADR files, or Stage 1 contracts
-without explicit user confirmation.
+to resolved artifact targets and, for `cross_service_detail`, the Stage 1
+bundle manifest after this service passes its gate. Do not modify source
+repositories, another service's design, the global tracker phase, unconfigured
+context/ADR files, or Stage 1 contracts without explicit user confirmation.
 
-## Handoff to Stage 3
+## Handoff after Service Design
 
 After `GATE_PASSED`, report:
 
@@ -385,5 +408,7 @@ After `GATE_PASSED`, report:
 - AC coverage and cross-service contracts consumed;
 - open questions, risks, and external capability statuses.
 
-`sw-controller` waits for all affected services to pass before invoking
-`sw-e2e-designer`. Do not start E2E design or implementation from this Skill.
+For `single_service`, hand the passed service design to `sw-strategic-planner`
+for execution planning. For `cross_service_detail`, `sw-controller` waits for
+all affected services to pass before invoking `sw-e2e-designer`. Do not start
+E2E design or implementation from this Skill.

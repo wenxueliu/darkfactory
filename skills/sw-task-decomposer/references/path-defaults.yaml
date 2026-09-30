@@ -8,11 +8,15 @@ paths:
 
   evidence:
     tracker: knowledge/requirements-tracker.yaml
+    requirement_document: knowledge/requirements/{requirement_id}/requirement.md
+    requirements_gate: knowledge/requirements/{requirement_id}/gate.md
     manifest: knowledge/designs/{requirement_id}/manifest.yaml
     feature_design: knowledge/designs/{requirement_id}/feature-design.md
     feature_gate: knowledge/designs/{requirement_id}/feature-design-gate.md
     service_design_glob: knowledge/designs/{requirement_id}/services/*/design.md
     service_gate_glob: knowledge/designs/{requirement_id}/services/*/gate.md
+    standalone_service_design: knowledge/designs/{requirement_id}/services/*/design.md
+    standalone_service_gate: knowledge/designs/{requirement_id}/services/*/gate.md
     e2e_design: knowledge/designs/{requirement_id}/e2e/design.md
     e2e_gate: knowledge/designs/{requirement_id}/e2e/gate.md
     requirements_root: knowledge/requirements

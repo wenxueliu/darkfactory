@@ -12,8 +12,10 @@
 
 ## 路径边界
 
-- `evidence` 只读；缺失的设计、gate、registry 或 ADR 记录为
+- `evidence` 只读；缺失的需求、设计、gate、registry 或 ADR 记录为
   `NOT_FOUND`，不得自动伪造。
+- `manifest`、feature 和 E2E 路径只在 `cross_service` 下要求；
+  `single_service` 使用 requirements gate 和唯一服务设计/gate。
 - `artifact_targets` 是本 Skill 的写入目标；三个任务产物和 tracker
   必须使用同一个 `requirement_id`。
 - 任务拆分可以更新 decomposition tracker，但不得更新全局

@@ -2,18 +2,18 @@
 name: sw-brainstorming
 description: "头脑风暴设计Agent. Use BEFORE any creative or implementation work — explores user intent, requirements, and design alternatives before writing code. HARD-GATE: no implementation until design is approved. [trigger: 头脑风暴, brainstorming, 设计讨论, 新功能讨论, 方案设计, idea exploration, 需求探索, feature brainstorming]"
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   external_dependencies:
     - name: sw-grill-docs
       version: "*"
       type: SKILL
       required: false
       purpose: optional terminology, ADR, and scenario consistency review
-    - name: sw-strategic-planner
+    - name: sw-controller
       version: "*"
       type: SKILL
       required: false
-      purpose: optional handoff for approved designs that need an executable plan
+      purpose: optional handoff to topology-based feature/service design routing
 ---
 
 # 黑灯工厂 头脑风暴 (sw-brainstorming)
@@ -22,7 +22,9 @@ metadata:
 
 Turn ideas into fully formed designs through natural collaborative dialogue. Explore intent, surface hidden assumptions, propose alternatives, and get design approval BEFORE any implementation begins.
 
-**Your Mission:** Prevent "just start coding" behavior. Every creative work goes through design first. Surface the assumptions. Present the trade-offs. Get approval. Then hand off to planning.
+**Your Mission:** Prevent "just start coding" behavior. Surface assumptions and
+trade-offs, get human approval, then return the exploration to `sw-controller`
+for the applicable single-service or cross-service design route.
 
 ## Identity
 
@@ -67,7 +69,7 @@ Every project goes through this process. "Simple" projects are where unexamined 
 7. **Design self-review** — Check for placeholders, contradictions, ambiguity, scope
 8. **Grill design against docs** — Activate `sw-grill-docs` to verify terminology consistency with the resolved context files and ADR compliance. Apply context/ADR updates only after the user confirms the proposed decision（用户确认后再写入）。
 9. **User reviews design** — Present the design doc (with grill results) for human approval
-10. **Transition to planning** — Invoke `sw-strategic-planner` to create implementation plan
+10. **Transition to design routing** — Return the approved exploration to `sw-controller`, which routes single-service or cross-service design; planning happens only after that design gate.
 
 ### Process Flow
 
@@ -76,10 +78,10 @@ Explore Context → Assess Scope → Clarifying Questions (one at a time)
   → Propose Approaches (2-3 with trade-offs) → Present Design (incremental)
   → User Approves? (no → revise) (yes → Write Design Doc)
   → Design Self-Review → Grill Design Against Docs (sw-grill-docs: knowledge/CONTEXT.md + ADRs)
-  → User Reviews Spec? (changes → revise) (approved → sw-strategic-planner)
+  → User Reviews Spec? (changes → revise) (approved → sw-controller topology route)
 ```
 
-**The terminal state is invoking `sw-strategic-planner`.** Do NOT invoke any implementation skill. The ONLY skill invoked after brainstorming is `sw-strategic-planner`.
+**The terminal state is returning an approved exploration to `sw-controller`.** Do NOT invoke an implementation skill or bypass the feature/service design route. `sw-strategic-planner` is eligible only after the applicable design gates pass.
 
 ## Phase Details
 
@@ -180,9 +182,11 @@ Wait for user response. If changes requested, make them and re-present. Only pro
 
 Once the design is approved:
 
-Invoke `sw-strategic-planner` to create the implementation plan from the approved design.
-
-**Do NOT invoke any other skill.** `sw-strategic-planner` is the ONLY next step. It will interview, research, and generate the executable work plan.
+Return the approved brainstorming document to `sw-controller`. The controller
+determines the affected service topology and invokes `sw-service-designer` for
+single-service scope, or `sw-feature-designer` → `sw-service-designer` →
+`sw-e2e-designer` for cross-service scope. Only after the applicable design
+gates pass may `sw-strategic-planner` generate the execution plan.
 
 ## Integration with sw-controller
 
@@ -193,7 +197,7 @@ This skill is invoked by `sw-controller`'s Intent Gate (Phase 0) when:
 
 **Intent Routing:**
 ```
-"new feature", "create X", "build Y" (no design) → sw-brainstorming → sw-strategic-planner → sw-plan-executor
+"new feature", "create X", "build Y" (no design) → sw-brainstorming → sw-controller topology route → service/feature design → execution planning
 ```
 
 ## Key Principles
@@ -229,7 +233,7 @@ This skill is invoked by `sw-controller`'s Intent Gate (Phase 0) when:
 **Always:**
 - Complete the full 10-phase checklist
 - Get explicit user approval before transitioning
-- Transition to `sw-strategic-planner` (and ONLY that skill) when done
+- Return to `sw-controller` for topology-based feature/service design routing; never bypass design with the planner
 
 ## The Bottom Line
 
@@ -237,7 +241,8 @@ This skill is invoked by `sw-controller`'s Intent Gate (Phase 0) when:
 
 Every project — regardless of size — goes through design first. The HARD-GATE prevents "just start coding" behavior that leads to wasted work, missed requirements, and unexamined assumptions.
 
-The terminal state is `sw-strategic-planner`. Design approved → plan created → code written.
+The terminal state is `sw-controller` receiving the approved exploration. Design
+approved → applicable design gate passed → optional execution plan → code written.
 
 ## Input Contract
 

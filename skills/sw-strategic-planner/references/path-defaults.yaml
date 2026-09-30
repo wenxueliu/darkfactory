@@ -12,6 +12,14 @@ paths:
 
   evidence:
     requirements_root: knowledge/requirements
+    design_root: knowledge/designs/{requirement_id}
+    design_manifest: knowledge/designs/{requirement_id}/manifest.yaml
+    feature_design: knowledge/designs/{requirement_id}/feature-design.md
+    feature_gate: knowledge/designs/{requirement_id}/feature-design-gate.md
+    service_design_glob: knowledge/designs/{requirement_id}/services/*/service-design.md
+    service_gate_glob: knowledge/designs/{requirement_id}/services/*/service-design-gate.md
+    e2e_design: knowledge/designs/{requirement_id}/e2e-design.md
+    e2e_gate: knowledge/designs/{requirement_id}/e2e-design-gate.md
     context_files:
       - knowledge/CONTEXT.md
     context_maps:

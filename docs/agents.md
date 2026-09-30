@@ -22,7 +22,7 @@
 
 | Agent | Role | Trigger |
 |-------|------|---------|
-| `sw-strategic-planner` | Strategic planner — interviews, researches, generates executable work plans. Plans first, never implements. Based on Prometheus. | strategic planning, create work plan, 制定计划 |
+| `sw-strategic-planner` | Execution planner — consumes a passed requirement/design bundle, clarifies execution constraints, researches implementation risks, and generates an executable work plan. Never makes feature/service design decisions or implements. Based on Prometheus. | execution planning, create work plan, 制定执行计划 |
 | `sw-pre-planning-consultant` | Pre-planning analyst — classifies intent, detects ambiguities, identifies AI-slop risks. Based on Metis. | pre-planning, intent analysis, 预规划 |
 | `sw-plan-reviewer` | Plan reviewer — blocker-finder, not perfectionist. Verifies plan executability. Based on Momus. | plan review, executability check, 计划审查 |
 | `sw-plan-executor` | Plan execution orchestrator — delegates tasks in parallel waves with 4-phase verification. Never writes code. Based on Atlas. | plan execution, execute plan, 计划执行 |
@@ -32,9 +32,9 @@
 | Agent | Role | Trigger |
 |-------|------|---------|
 | `sw-brainstorming` | Pre-design exploration — Socratic questioning, alternative proposals, design document generation. HARD-GATE: no implementation without approved design. Based on Superpowers brainstorming. (NEW) | brainstorming, 头脑风暴, 设计讨论, idea exploration |
-| `sw-feature-designer` | Stage 1: Cross-service feature design | feature design, 特性设计 |
-| `sw-service-designer` | Stage 2: Per-service detailed design (parallel) | service design, 服务设计 |
-| `sw-e2e-designer` | Stage 3: E2E integration test design | E2E design, 端到端测试设计 |
+| `sw-feature-designer` | Cross-service system design only; routes one-service scope to `sw-service-designer` | cross-service feature design, 跨服务设计 |
+| `sw-service-designer` | Complete one-service design, either directly from requirements or as cross-service Stage 2 detail | service design, single-service design, 服务设计 |
+| `sw-e2e-designer` | Cross-service E2E integration test design | E2E design, 端到端测试设计 |
 
 ## 拆分层 (Decomposition Layer, 1 NEW)
 
@@ -98,10 +98,10 @@
 
 ## 需求端到端流程 (E2E Requirements Flow)
 
-一个需求从提出到交付，经过 7 个阶段；需求发生变化时，由
+一个需求从提出到交付，经过需求澄清、设计、可选执行计划、任务拆分、执行、合并、测试和交付等阶段；需求发生变化时，由
 `sw-change-propagator` 负责版本传播和下游重生成。
 
-> **两条路径：** 简单需求走 设计(3-stage) → 拆分 路径；复杂/多步骤需求在头脑风暴后进入 **规划层** (sw-strategic-planner)，由规划层替代设计+拆分，直接产出可执行计划。
+> **统一原则：** 先按受影响服务数量路由设计，再按执行复杂度决定是否需要战略执行计划。单服务直接进入 `sw-service-designer`；跨服务走 `sw-feature-designer` → `sw-service-designer` × N → `sw-e2e-designer`。设计门禁通过后，复杂/多步骤工作才进入 `sw-strategic-planner`；规划层不替代设计。
 
 ```
 用户需求
@@ -129,10 +129,12 @@
 │     sw-brainstorming → Socratic questioning + alternatives          │
 │     sw-codebase-explorer + sw-external-researcher (并行研究)         │
 │                                                                      │
-│   3-Stage delegation:                                                │
-│     Stage 1: sw-feature-designer → knowledge/designs/{id}/feature-design.md │
-│     Stage 2: sw-service-designer × N (并行) → per-service design    │
-│     Stage 3: sw-e2e-designer → knowledge/designs/{id}/e2e/design.md │
+│   Topology-based design routing:                                     │
+│     one service: sw-service-designer(single_service)                │
+│     multiple services:                                               │
+│       Stage 1 sw-feature-designer → feature-design.md               │
+│       Stage 2 sw-service-designer × N → per-service design           │
+│       Stage 3 sw-e2e-designer → e2e/design.md                       │
 │                                                                      │
 │   Consultation: sw-strategic-advisor (只读深度推理)                  │
 │                                                                      │
@@ -144,15 +146,15 @@
                    │ ✅ Design gate PASS
                    ▼
          ┌─────────────────┐
-         │ 简单 or 复杂需求？ │
+         │ 设计通过后，执行复杂度？ │
          └────────┬────────┘
                   │
        ┌──────────┴──────────┐
        ▼                     ▼
 ┌─────────────────┐  ┌─────────────────────────────────────────────────┐
-│ 简单: Phase 3    │  │ 复杂: 规划层 (Planning) → 替代设计拆分           │
+│ 简单: Phase 3    │  │ 复杂: 规划层 (Planning) → 执行计划               │
 │ decomposition   │  │                                                 │
-│ (走任务拆分 ↓)   │  │   sw-strategic-planner (访谈 → 研究 → 生成计划)  │
+│ (走任务拆分 ↓)   │  │   sw-strategic-planner (执行约束 → 研究 → 生成计划) │
 │                 │  │     ├── sw-pre-planning-consultant               │
 │                 │  │     │   (意图分类 + AI-slop 检测)                 │
 │                 │  │     ├── sw-plan-reviewer                         │
@@ -169,7 +171,7 @@
          ▼                                  │
 ┌──────────────────────────────────────────┼──────────────────────────────┐
 │ Phase 3: decomposition (任务拆分)          │                            │
-│                                          │ (来自规划层的计划已含拆分)    │
+│                                          │ (规划层计划先经任务规范化)    │
 │   sw-task-decomposer:                    ▼                            │
 │   ├── 6-step process: 服务识别→DAG→Wave→tasks.yaml+dependencies.json  │
 │   └── 能力校验: 语言匹配+路径存在+能力覆盖                              │
@@ -252,9 +254,9 @@
 | Phase | Owner | Active Agents | Key References | Gate |
 |-------|-------|---------------|----------------|------|
 | **ideation** | sw-requirements-clarifier | sw-value-judgment, sw-knowledge-agent | requirement-clarification.md, `requirements/{variant}` definition package | resolved gate/validator |
-| **design** | sw-feature-designer | sw-service-designer, sw-e2e-designer, sw-brainstorming, sw-grill-docs, sw-strategic-advisor, sw-codebase-explorer, sw-external-researcher | design-coordination.md, ADR | resolved definition gates/validators |
-| **planning** (复杂需求) | sw-strategic-planner | sw-pre-planning-consultant, sw-plan-reviewer, sw-grill-docs, sw-codebase-explorer, sw-external-researcher | interview→research→plan gen→review→grill docs | plan review PASS + grill docs PASS |
-| **decomposition** (简单需求) | sw-task-decomposer | — | task-decomposition.md, parallel-execution.md | dependency check |
+| **design** | sw-controller topology router | sw-feature-designer (cross-service), sw-service-designer (single/cross detail), sw-e2e-designer (cross-service), sw-brainstorming, sw-grill-docs, sw-strategic-advisor, sw-codebase-explorer, sw-external-researcher | design-coordination.md, ADR | applicable definition gates/validators |
+| **planning** (复杂/多步骤) | sw-strategic-planner | sw-pre-planning-consultant, sw-plan-reviewer, sw-grill-docs, sw-codebase-explorer, sw-external-researcher | approved design → execution constraints → research → plan gen → review → grill docs | design gate PASS + plan review PASS + grill docs PASS |
+| **decomposition** | sw-task-decomposer | — | task-decomposition.md, parallel-execution.md | dependency check |
 | **execution** | sw-plan-executor | sw-worktree-controller, sw-tdd-agent, sw-reviewer-logic, sw-reviewer-security, sw-reviewer-performance, sw-reviewer-context, sw-receiving-review, sw-lint-checker, sw-verification-before-completion, sw-systematic-debugging | worktree-management.md, quality-gates.md | P0/P1/P2 gate |
 | **merge** | sw-finishing-branch | — | merge-management.md | conflict-free |
 | **test** | sw-integration-tester | sw-browser-tester | `requirements/{id}/integration-test-plan.md`, `test-environment.md`, `api-test-postman-schema.md`, webbridge-test-template.md, webbridge-evidence-strategy.md, webbridge-visual-evidence.md | all IT PASS + all browser E2E PASS |

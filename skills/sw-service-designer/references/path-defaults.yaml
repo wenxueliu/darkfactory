@@ -12,6 +12,8 @@ paths:
     skill: skills/sw-service-designer/references/document-definitions
 
   evidence:
+    requirement_document: knowledge/requirements/{requirement_id}/requirement.md
+    requirements_gate_report: knowledge/requirements/{requirement_id}/gate.md
     bundle_manifest: knowledge/designs/{requirement_id}/manifest.yaml
     feature_design: knowledge/designs/{requirement_id}/feature-design.md
     feature_gate_report: knowledge/designs/{requirement_id}/feature-design-gate.md

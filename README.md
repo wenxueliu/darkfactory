@@ -193,16 +193,17 @@ sw-controller (Orchestrator: Intent Gate + Phase Transition + Delegation)
   ├── [需求层 Ideation]
   │     sw-requirements-clarifier / sw-value-judgment
   │
-  ├── [规划层 Planning]
-  │     sw-strategic-planner
+  ├── [规划层 Planning — after design gates]
+  │     sw-strategic-planner (execution plan only)
   │       ├── sw-pre-planning-consultant
   │       ├── sw-plan-reviewer
   │       ├── sw-codebase-explorer
   │       └── sw-external-researcher
   │
-  ├── [设计层 Design]
+  ├── [设计层 Design — route by service topology]
   │     sw-brainstorming
-  │     sw-feature-designer → sw-service-designer × N → sw-e2e-designer
+  │     one service → sw-service-designer
+  │     multiple services → sw-feature-designer → sw-service-designer × N → sw-e2e-designer
   │
   ├── [拆分层 Decomposition]
   │     sw-task-decomposer
@@ -450,16 +451,17 @@ sw-controller（总控：Intent Gate + Phase Transition + 委派纪律 — 只�
   ├── [需求层 Ideation]
   │     sw-requirements-clarifier / sw-value-judgment
   │
-  ├── [规划层 Planning]
-  │     sw-strategic-planner
+  ├── [规划层 Planning — after design gates]
+  │     sw-strategic-planner (execution plan only)
   │       ├── sw-pre-planning-consultant
   │       ├── sw-plan-reviewer
   │       ├── sw-codebase-explorer
   │       └── sw-external-researcher
   │
-  ├── [设计层 Design]
+  ├── [设计层 Design — route by service topology]
   │     sw-brainstorming
-  │     sw-feature-designer → sw-service-designer × N → sw-e2e-designer
+  │     one service → sw-service-designer
+  │     multiple services → sw-feature-designer → sw-service-designer × N → sw-e2e-designer
   │
   ├── [拆分层 Decomposition]
   │     sw-task-decomposer

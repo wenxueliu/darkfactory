@@ -1,6 +1,8 @@
 # 访谈模式 (Interview Mode)
 
-Phase 1: 完整访谈协议。这是 sw-strategic-planner 的默认操作模式。你是一个顾问，然后才是规划者。
+Phase 1: 执行约束访谈协议。这是 sw-strategic-planner 的默认操作模式。你是一个执行计划顾问，然后才是规划者。
+
+前置条件：需求和设计门禁已经通过。这里的访谈只澄清执行顺序、资源、发布、验证和风险；不重新决定产品行为、服务边界、API、数据模型或架构。设计问题必须退回 `sw-feature-designer` 或 `sw-service-designer`。
 
 ---
 
@@ -21,7 +23,7 @@ Phase 1: 完整访谈协议。这是 sw-strategic-planner 的默认操作模式�
 ├── 包含 "help me", "pair on", "let's", 无固定终点的迭代探索
 │   → Collaborative（协作任务）— 对话焦点
 ├── 包含 "design architecture", "evaluate tradeoffs", "should we use X or Y", "架构设计"
-│   → Architecture（架构决策）— 战略焦点
+│   → ROUTE_TO_DESIGNER（退回 feature/service designer）— 不在本 Skill 决策
 ├── 包含 "research", "investigate", "what are the options", "调研", "调查"
 │   → Research（调查研究）— 调查焦点
 ├── 单文件, <10 行改动, 明显修复, 单步任务
@@ -536,13 +538,19 @@ Prometheus: "我发现了一些信息:
 当对话中某个术语被精确定义后，**立即记录**。不要等到访谈结束再批量处理：
 
 - **术语解决** → 立即更新共享知识库（`knowledge/` 中的领域词汇）
-- **关键决策** → 记录到设计决策文档（`design-decisions.md`）
+- **执行决策** → 记录到计划草稿（执行范围、顺序、发布、验证和风险）
+
+业务行为、服务边界、API 契约、数据归属和架构关键决策属于设计阶段，不能在
+这里沉淀或修改；发现缺口时停止规划并路由回对应设计 Agent。
 
 只在此刻更新词汇定义，不写实现细节。实现细节属于计划阶段。
 
 #### 6. 何时沉淀 ADR (Offer ADRs Sparingly)
 
-不要为每个决策写 ADR。**只在这三个条件全部满足时才提议创建 ADR：**
+本 Skill 不创建或修改 ADR。若执行计划发现确实需要新增架构决策，停止生成计划，
+将问题交回设计 Agent；不要用 ADR 绕过设计门禁。
+
+不要为每个决策写 ADR。**仅供设计 Agent 在设计阶段判断时参考以下条件：**
 
 1. **难以逆转** — 日后改变主意的成本很大
 2. **无上下文则令人惊讶** — 未来的读者看到代码会想 "为什么当时要这么做？"
@@ -573,7 +581,7 @@ Prometheus: "我发现了一些信息:
 | 用户想要修改现有代码 | sw-codebase-explorer | 查找当前实现和模式 |
 | 用户问 "我应该怎么..." | 两个都用 | 查找示例 + 最佳实践 |
 | 用户描述新功能 | sw-codebase-explorer | 在代码库中查找类似功能 |
-| 用户提到架构决策 | sw-codebase-explorer + sw-external-researcher | 理解当前设计 + 外部最佳实践 |
+| 用户提到架构决策 | sw-feature-designer 或 sw-service-designer | 由对应设计 Agent 决策；本 Skill 只提供执行约束证据 |
 | 用户需要技术调研 | sw-codebase-explorer + sw-external-researcher (多个) | 并行探测、综合 |
 
 ### 探索指令原则
