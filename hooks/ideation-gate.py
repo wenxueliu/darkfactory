@@ -8,8 +8,9 @@ Purpose: Blocks ANY code-writing action before requirement clarification
 
 Check logic (strict):
   1. Read requirements-tracker.yaml via PyYAML → check ideation.status == done
-  2. Validate spec content: requirements/{id}.md exists with all mandatory
-     sections and each section is at least 50 characters
+  2. Validate spec content: requirements/{id}/requirement.md exists with all
+     mandatory sections and each section is at least 50 characters
+     (legacy flat layout requirements/{id}.md is still accepted)
   3. If tracker absent OR ideation not done OR spec validation fails → BLOCK
   4. If ideation done AND spec valid → ALLOW
 
@@ -133,6 +134,22 @@ def parse_yaml_ideation_status(tracker_path: str) -> tuple[bool, str | None, lis
     return False, first_id, []
 
 
+def resolve_spec_path(project_root: str, req_id: str) -> Path | None:
+    """Resolve the requirement document path.
+
+    Canonical layout: knowledge/requirements/{id}/requirement.md
+    Legacy layout:    knowledge/requirements/{id}.md
+    """
+    requirements_root = Path(project_root) / "knowledge" / "requirements"
+    canonical = requirements_root / req_id / "requirement.md"
+    if canonical.is_file():
+        return canonical
+    legacy = requirements_root / f"{req_id}.md"
+    if legacy.is_file():
+        return legacy
+    return None
+
+
 def validate_spec_content(project_root: str, req_id: str | None) -> list[str]:
     """Verify a requirement document through the layered document contract.
 
@@ -142,13 +159,19 @@ def validate_spec_content(project_root: str, req_id: str | None) -> list[str]:
     if not req_id:
         return errors  # No req_id to validate against; tracker-level check handles this
 
-    spec_path = os.path.join(
-        project_root, "knowledge", "requirements", f"{req_id}.md"
-    )
-    if not os.path.isfile(spec_path):
+    spec_path = resolve_spec_path(project_root, req_id)
+    if spec_path is None:
+        canonical = (
+            Path(project_root)
+            / "knowledge"
+            / "requirements"
+            / req_id
+            / "requirement.md"
+        )
         return [
-            f"Spec file not found at the canonical path: {spec_path}. "
-            "sw-requirements-clarifier must write requirements/{id}.md before marking ideation done."
+            f"Spec file not found at the canonical path: {canonical}. "
+            "sw-requirements-clarifier must write "
+            "requirements/{id}/requirement.md before marking ideation done."
         ]
 
     try:
@@ -364,7 +387,7 @@ def main() -> None:
         # Tracker says done but spec doesn't exist
         reason = (
             f"Ideation Gate DENIED: Tracker marks {req_id}.ideation as 'done' but "
-            f"requirements/{req_id}.md is missing. Either: "
+            f"knowledge/requirements/{req_id}/requirement.md is missing. Either: "
             f"(a) Restore the spec file from version control, or "
             f"(b) Reset ideation.status to in_progress and re-run sw-requirements-clarifier. "
             f"Details: {error_details}"

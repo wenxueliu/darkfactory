@@ -111,9 +111,9 @@ REQ-010:
 # --- validate_spec_content tests ---
 
 def _write_valid_spec(project_root, req_id="REQ-100"):
-    spec_dir = Path(project_root) / "knowledge" / "requirements"
+    spec_dir = Path(project_root) / "knowledge" / "requirements" / req_id
     spec_dir.mkdir(parents=True, exist_ok=True)
-    spec = spec_dir / f"{req_id}.md"
+    spec = spec_dir / "requirement.md"
     spec.write_text(f"""---
 document_type: requirements
 contract: sw.requirements
@@ -178,13 +178,40 @@ def test_validate_spec_missing_file():
     with tempfile.TemporaryDirectory() as tmp:
         errors = ideation_gate.validate_spec_content(tmp, "REQ-MISSING")
         assert any("Spec file not found" in e for e in errors)
+        assert any(
+            "REQ-MISSING/requirement.md" in e.replace("\\", "/") for e in errors
+        )
+
+
+def test_validate_spec_legacy_flat_fallback():
+    with tempfile.TemporaryDirectory() as tmp:
+        spec_dir = Path(tmp) / "knowledge" / "requirements"
+        spec_dir.mkdir(parents=True, exist_ok=True)
+        nested = _write_valid_spec(tmp, "REQ-LEGACY")
+        spec_dir.joinpath("REQ-LEGACY.md").write_text(
+            nested.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        nested.unlink()
+        errors = ideation_gate.validate_spec_content(tmp, "REQ-LEGACY")
+        assert errors == []
+
+
+def test_validate_spec_prefers_canonical_over_legacy():
+    with tempfile.TemporaryDirectory() as tmp:
+        spec_dir = Path(tmp) / "knowledge" / "requirements"
+        spec_dir.mkdir(parents=True, exist_ok=True)
+        (spec_dir / "REQ-BOTH.md").write_text("legacy stub", encoding="utf-8")
+        _write_valid_spec(tmp, "REQ-BOTH")
+        assert ideation_gate.resolve_spec_path(tmp, "REQ-BOTH") == (
+            spec_dir / "REQ-BOTH" / "requirement.md"
+        )
 
 
 def test_validate_spec_missing_sections():
     with tempfile.TemporaryDirectory() as tmp:
-        spec_dir = Path(tmp) / "knowledge" / "requirements"
+        spec_dir = Path(tmp) / "knowledge" / "requirements" / "REQ-X"
         spec_dir.mkdir(parents=True, exist_ok=True)
-        (spec_dir / "REQ-X.md").write_text("""---
+        (spec_dir / "requirement.md").write_text("""---
 document_type: requirements
 contract: sw.requirements
 contract_version: "1.0"
@@ -201,9 +228,9 @@ This is a long enough problem statement that passes the 50 char threshold.
 
 def test_validate_spec_too_short_section():
     with tempfile.TemporaryDirectory() as tmp:
-        spec_dir = Path(tmp) / "knowledge" / "requirements"
+        spec_dir = Path(tmp) / "knowledge" / "requirements" / "REQ-Y"
         spec_dir.mkdir(parents=True, exist_ok=True)
-        (spec_dir / "REQ-Y.md").write_text("""---
+        (spec_dir / "requirement.md").write_text("""---
 document_type: requirements
 contract: sw.requirements
 contract_version: "1.0"
