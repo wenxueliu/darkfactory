@@ -247,8 +247,17 @@ def test_value_artifacts_are_requirement_cohesive() -> None:
 
 
 def test_every_skill_declares_the_common_contract() -> None:
-    skill_files = sorted((ROOT / "skills").glob("*/SKILL.md"))
-    assert len(skill_files) == 44
+    skill_dirs = sorted(p for p in (ROOT / "skills").iterdir() if p.is_dir())
+    assert skill_dirs, "no skill directories found"
+
+    missing_skill_md = [
+        p.name for p in skill_dirs if not (p / "SKILL.md").is_file()
+    ]
+    assert missing_skill_md == [], (
+        f"skill directories missing SKILL.md: {missing_skill_md}"
+    )
+
+    skill_files = [p / "SKILL.md" for p in skill_dirs]
 
     for skill_file in skill_files:
         content = skill_file.read_text(encoding="utf-8")

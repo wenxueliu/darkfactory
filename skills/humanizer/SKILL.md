@@ -8,6 +8,7 @@ description: |
 license: MIT
 metadata:
   version: "3.1.0"
+  external_dependencies: []
 ---
 
 # Humanizer: remove AI writing patterns
@@ -395,3 +396,24 @@ Keep the details that carry the writer's voice unless they hurt the meaning:
 ## Source
 
 The patterns come from Wikipedia's ["Signs of AI writing"](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), maintained by WikiProject AI Cleanup, and from reviews of AI-generated text on Wikipedia and elsewhere.
+
+## Input Contract
+
+| Input | Required | Description |
+|---|---:|---|
+| `source_text` | Yes | The prose to rewrite, with enough surrounding context to judge deliberate choices. |
+| `audience_or_context` | No | Intended reader and situation; decides what background to keep or cut. |
+| `constraints` | No | Length, register, terminology, or passages that must pass through unchanged. |
+
+## Output Contract
+
+- Rewritten text as the primary deliverable.
+- Unresolved judgment calls stated explicitly rather than guessed.
+- Change notes only when requested, naming the patterns applied.
+
+## Acceptance Criteria
+
+- Meaning, facts, and the writer's stance survive unchanged; nothing is invented.
+- A watched pattern is fixed only where it is the default choice, not where it is deliberate, quoted, or a proper name.
+- Voice-bearing specifics, mixed feelings, and genuine asides are preserved.
+- Output contains no meta-commentary about the rewrite unless asked.
