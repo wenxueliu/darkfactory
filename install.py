@@ -22,6 +22,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 SOURCE_SKILLS = SCRIPT_DIR / "skills"
 SOURCE_AGENTS = SCRIPT_DIR / "agents"
 SOURCE_HOOKS = SCRIPT_DIR / "hooks"
+SOURCE_DOCUMENT_CONTRACTS = SCRIPT_DIR / "document_contracts"
 
 MINIMAL_SKILLS = {
     "sw-controller",
@@ -512,6 +513,31 @@ def copy_hook_scripts(dest_hooks: Path) -> int:
     return count
 
 
+def install_document_contracts(destination: Path, dry_run: bool) -> int:
+    """Copy the machine-layer document contract package.
+
+    Hooks add their grandparent directory to ``sys.path`` and skills invoke
+    ``python3 -m document_contracts`` from the workspace root, so the package
+    must exist in both places to stay importable after installation.
+    """
+    if not SOURCE_DOCUMENT_CONTRACTS.is_dir():
+        warn("document_contracts/ not found; skipping machine-layer install.")
+        return 0
+    if dry_run:
+        info(f"[machine layer] document_contracts/ -> {destination / 'document_contracts'}/")
+        return 0
+    target = destination / "document_contracts"
+    if target.exists():
+        shutil.rmtree(target)
+    shutil.copytree(
+        SOURCE_DOCUMENT_CONTRACTS,
+        target,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
+    )
+    info(f"[machine layer] document_contracts -> {target}")
+    return 1
+
+
 def install_claude_hooks(args: argparse.Namespace, dry_run: bool) -> None:
     """Install Claude Code hooks and merge settings.local.json."""
 
@@ -526,9 +552,11 @@ def install_claude_hooks(args: argparse.Namespace, dry_run: bool) -> None:
     if dry_run:
         info(f"[Claude Code] hooks/ -> {dest_hooks}/")
         info(f"[Claude Code] merge hook config -> {settings_file}")
+        install_document_contracts(dest_hooks.parent, dry_run)
         return
 
     count = copy_hook_scripts(dest_hooks)
+    install_document_contracts(dest_hooks.parent, dry_run)
     info(f"[Claude Code] Installed {count} Python hooks to {dest_hooks}")
 
     # Merge hook settings into settings.local.json
@@ -613,9 +641,15 @@ def install_codex_hooks(args: argparse.Namespace, dry_run: bool) -> None:
     if dry_run:
         info(f"[Codex] Python hooks -> {dest_hooks}/")
         info(f"[Codex] hook config -> {config_file}")
+        install_document_contracts(dest_hooks.parent, dry_run)
+        if not args.user and dest_hooks.parent != args.target:
+            install_document_contracts(args.target, dry_run)
         return
 
     count = copy_hook_scripts(dest_hooks)
+    install_document_contracts(dest_hooks.parent, dry_run)
+    if not args.user and dest_hooks.parent != args.target:
+        install_document_contracts(args.target, dry_run)
     config_file.parent.mkdir(parents=True, exist_ok=True)
     existing: dict = {}
     if config_file.exists():

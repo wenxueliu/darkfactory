@@ -490,6 +490,14 @@ def _install_opencode(source_root: Path, target: Path, dry_run: bool) -> None:
         return
     _copy_tree(source_opencode / "plugins", target / ".opencode" / "plugins")
     _copy_tree(source_root / "skills", target / "skills")
+    contracts = source_root / "document_contracts"
+    if contracts.is_dir():
+        shutil.copytree(
+            contracts,
+            target / "document_contracts",
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
+        )
     source_config = source_opencode / "opencode.json"
     target_config = target / ".opencode" / "opencode.json"
     if source_config.is_file() and not target_config.exists():

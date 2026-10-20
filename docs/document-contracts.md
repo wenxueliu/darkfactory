@@ -12,6 +12,15 @@ Skill 内置：skills/<owner-skill>/references/document-definitions/
 
 文档定义与文档产物分离：定义包只负责模板、门禁和验证器；正式需求/设计文档等文档产物写入 `knowledge/` 下对应的工作流目录，定义包放在 `knowledge/templates/`（项目级），长期可复用的 ADR、契约、模式和经验沉淀在 `knowledge/`。不要把源码仓库放进 `knowledge/` 或 `_context/`，源码统一位于 `services/`。
 
+## 安装位置
+
+机器层实现是仓库根目录的 `document_contracts/` 包。`package.py install` 与 `python package.py init` 会把它复制到两个位置：
+
+- 工作区根目录 `{project-root}/document_contracts/` — 供 `python3 -m document_contracts` 直接调用。
+- 各平台 hooks 目录的父目录（Claude：`{project-root}/`；Codex：`{project-root}/.codex/`）— 供 hook 通过 `sys.path` 回退导入。
+
+已初始化的旧工作区缺少该目录时，重新执行一次 `python package.py init --target <dir>` 即可补齐；安装过程不会覆盖用户文件。
+
 ## 定义包目录
 
 ```text

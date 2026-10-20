@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 import tarfile
 from pathlib import Path
@@ -28,6 +29,8 @@ def test_build_package_contains_manifest_and_payload(tmp_path: Path) -> None:
     assert "harness-package.json" in names
     assert "package.py" in names
     assert "change.py" in names
+    assert "document_contracts/__init__.py" in names
+    assert "document_contracts/__main__.py" in names
     assert "scripts/interactive-init.py" in names
     assert "skills/sw-setup/SKILL.md" in names
     assert ".claude/settings.local.json" not in names
@@ -56,6 +59,19 @@ def test_install_downloaded_package_to_project(tmp_path: Path) -> None:
 
     assert (target / ".agents" / "skills" / "sw-setup" / "SKILL.md").is_file()
     assert (target / ".codex" / "hooks.json").is_file()
+    # Machine layer must ship with hooks (import path) and with the workspace
+    # root (python -m document_contracts).
+    assert (target / ".codex" / "document_contracts" / "__init__.py").is_file()
+    assert (target / "document_contracts" / "__init__.py").is_file()
+    assert not (target / "document_contracts" / "__pycache__").exists()
+
+    result = subprocess.run(
+        [sys.executable, "-m", "document_contracts", "--help"],
+        cwd=target,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_initialize_workspace_is_idempotent_and_writes_agent_config(tmp_path: Path) -> None:
