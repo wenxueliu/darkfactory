@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tarfile
+import venv
+import zipfile
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +19,26 @@ assert SPEC is not None and SPEC.loader is not None
 package = importlib.util.module_from_spec(SPEC)
 sys.modules["harness_package"] = package
 SPEC.loader.exec_module(package)
+
+INSTALL_SPEC = importlib.util.spec_from_file_location(
+    "harness_install", ROOT / "install.py"
+)
+assert INSTALL_SPEC is not None and INSTALL_SPEC.loader is not None
+install_module = importlib.util.module_from_spec(INSTALL_SPEC)
+sys.modules["harness_install"] = install_module
+INSTALL_SPEC.loader.exec_module(install_module)
+
+
+def _venv_python(tmp_path: Path) -> Path:
+    env_dir = tmp_path / "venv"
+    try:
+        venv.EnvBuilder(with_pip=True, system_site_packages=True).create(env_dir)
+    except Exception as exc:  # pragma: no cover - environment dependent
+        pytest.skip(f"venv with pip is unavailable: {exc}")
+    python = env_dir / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    if not python.is_file():  # pragma: no cover - environment dependent
+        pytest.skip("venv did not create a python executable")
+    return python
 
 
 def test_build_package_contains_manifest_and_payload(tmp_path: Path) -> None:
@@ -33,6 +58,7 @@ def test_build_package_contains_manifest_and_payload(tmp_path: Path) -> None:
     assert "document_contracts/__main__.py" in names
     assert "scripts/interactive-init.py" in names
     assert "skills/sw-setup/SKILL.md" in names
+    assert "pyproject.toml" in names
     assert ".claude/settings.local.json" not in names
 
 
@@ -50,24 +76,42 @@ def test_local_publish_and_download_use_repository_index(tmp_path: Path) -> None
     assert downloaded.read_bytes() == artifact.read_bytes()
 
 
+def test_document_contracts_wheel_is_pure_python(tmp_path: Path) -> None:
+    wheel = install_module.build_document_contracts_wheel(tmp_path / "dist", ROOT)
+
+    assert wheel.name == "harness_document_contracts-1.0.0-py3-none-any.whl"
+    with zipfile.ZipFile(wheel) as archive:
+        names = set(archive.namelist())
+    assert "document_contracts/__init__.py" in names
+    assert "document_contracts/__main__.py" in names
+    assert "harness_document_contracts-1.0.0.dist-info/METADATA" in names
+    assert "harness_document_contracts-1.0.0.dist-info/RECORD" in names
+    assert not any("__pycache__" in name for name in names)
+
+
 def test_install_downloaded_package_to_project(tmp_path: Path) -> None:
     artifact = package.build_package(ROOT, tmp_path / "dist", version="1.2.4")
     target = tmp_path / "project"
     target.mkdir()
+    python = _venv_python(tmp_path)
 
-    package.install_package(artifact, target, platforms=("codex",), force=True)
+    package.install_package(
+        artifact,
+        target,
+        platforms=("codex",),
+        force=True,
+        python_executable=str(python),
+    )
 
     assert (target / ".agents" / "skills" / "sw-setup" / "SKILL.md").is_file()
     assert (target / ".codex" / "hooks.json").is_file()
-    # Machine layer must ship with hooks (import path) and with the workspace
-    # root (python -m document_contracts).
-    assert (target / ".codex" / "document_contracts" / "__init__.py").is_file()
-    assert (target / "document_contracts" / "__init__.py").is_file()
-    assert not (target / "document_contracts" / "__pycache__").exists()
+    # The machine layer is a pip package, never a folder in the workspace.
+    assert not (target / "document_contracts").exists()
+    assert not (target / ".codex" / "document_contracts").exists()
 
     result = subprocess.run(
-        [sys.executable, "-m", "document_contracts", "--help"],
-        cwd=target,
+        [str(python), "-m", "document_contracts", "--help"],
+        cwd=tmp_path,
         capture_output=True,
         text=True,
     )

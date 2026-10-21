@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "harness-document-contracts"
+version = "1.0.0"
+description = "Machine-layer document contract resolver and validator for Harness"
+requires-python = ">=3.10"
+dependencies = ["PyYAML>=6.0"]
+
+[tool.setuptools]
+packages = ["document_contracts"]

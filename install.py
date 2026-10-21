@@ -11,9 +11,14 @@ Installation targets:
 """
 
 import argparse
+import base64
+import hashlib
 import json
 import shutil
+import subprocess
 import sys
+import tempfile
+import zipfile
 from pathlib import Path
 
 # ---- constants ----------------------------------------------------------
@@ -23,6 +28,10 @@ SOURCE_SKILLS = SCRIPT_DIR / "skills"
 SOURCE_AGENTS = SCRIPT_DIR / "agents"
 SOURCE_HOOKS = SCRIPT_DIR / "hooks"
 SOURCE_DOCUMENT_CONTRACTS = SCRIPT_DIR / "document_contracts"
+DOCUMENT_CONTRACTS_DIST = "harness_document_contracts"
+DOCUMENT_CONTRACTS_NAME = "harness-document-contracts"
+DOCUMENT_CONTRACTS_VERSION = "1.0.0"
+DOCUMENT_CONTRACTS_RUNTIME_MODULES = {"yaml": "PyYAML>=6.0"}
 
 MINIMAL_SKILLS = {
     "sw-controller",
@@ -142,6 +151,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Skip confirmation prompt",
+    )
+    parser.add_argument(
+        "--break-system-packages",
+        action="store_true",
+        help="Allow pip to install the machine layer into an externally managed Python (PEP 668)",
     )
     return parser
 
@@ -513,29 +527,176 @@ def copy_hook_scripts(dest_hooks: Path) -> int:
     return count
 
 
-def install_document_contracts(destination: Path, dry_run: bool) -> int:
-    """Copy the machine-layer document contract package.
+class InstallError(RuntimeError):
+    """Raised when the machine-layer package cannot be installed."""
 
-    Hooks add their grandparent directory to ``sys.path`` and skills invoke
-    ``python3 -m document_contracts`` from the workspace root, so the package
-    must exist in both places to stay importable after installation.
+
+def _wheel_record_hash(data: bytes) -> str:
+    digest = hashlib.sha256(data).digest()
+    encoded = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    return f"sha256={encoded}"
+
+
+def build_document_contracts_wheel(
+    output_dir: Path, source_root: Path = SCRIPT_DIR
+) -> Path:
+    """Build a pure-Python wheel for ``document_contracts`` without setuptools.
+
+    Building the wheel directly keeps installation offline-capable and avoids
+    requiring a build backend (Python 3.12 virtualenvs ship pip but not
+    setuptools).
     """
-    if not SOURCE_DOCUMENT_CONTRACTS.is_dir():
-        warn("document_contracts/ not found; skipping machine-layer install.")
-        return 0
-    if dry_run:
-        info(f"[machine layer] document_contracts/ -> {destination / 'document_contracts'}/")
-        return 0
-    target = destination / "document_contracts"
-    if target.exists():
-        shutil.rmtree(target)
-    shutil.copytree(
-        SOURCE_DOCUMENT_CONTRACTS,
-        target,
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
+    package_dir = source_root / "document_contracts"
+    if not package_dir.is_dir():
+        raise InstallError(f"document_contracts/ not found under {source_root}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    wheel_name = (
+        f"{DOCUMENT_CONTRACTS_DIST}-{DOCUMENT_CONTRACTS_VERSION}-py3-none-any.whl"
     )
-    info(f"[machine layer] document_contracts -> {target}")
-    return 1
+    wheel_path = output_dir / wheel_name
+    dist_info = f"{DOCUMENT_CONTRACTS_DIST}-{DOCUMENT_CONTRACTS_VERSION}.dist-info"
+
+    entries: list[tuple[str, bytes]] = []
+    for path in sorted(package_dir.rglob("*")):
+        if path.is_dir() or path.suffix in {".pyc", ".pyo"}:
+            continue
+        if "__pycache__" in path.parts:
+            continue
+        relative = path.relative_to(source_root).as_posix()
+        entries.append((relative, path.read_bytes()))
+
+    metadata = (
+        "Metadata-Version: 2.1\n"
+        f"Name: {DOCUMENT_CONTRACTS_NAME}\n"
+        f"Version: {DOCUMENT_CONTRACTS_VERSION}\n"
+        "Summary: Machine-layer document contract resolver and validator for Harness\n"
+        "Requires-Python: >=3.10\n"
+        "Requires-Dist: PyYAML>=6.0\n"
+    )
+    wheel_metadata = (
+        "Wheel-Version: 1.0\n"
+        "Generator: harness-installer\n"
+        "Root-Is-Purelib: true\n"
+        "Tag: py3-none-any\n"
+    )
+    entries.append((f"{dist_info}/METADATA", metadata.encode("utf-8")))
+    entries.append((f"{dist_info}/WHEEL", wheel_metadata.encode("utf-8")))
+
+    record_lines = [
+        f"{name},{_wheel_record_hash(data)},{len(data)}" for name, data in entries
+    ]
+    record_lines.append(f"{dist_info}/RECORD,,")
+    entries.append(
+        (f"{dist_info}/RECORD", ("\n".join(record_lines) + "\n").encode("utf-8"))
+    )
+
+    with zipfile.ZipFile(wheel_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, data in entries:
+            archive.writestr(name, data)
+    return wheel_path
+
+
+def _module_available(python_executable: str, module: str) -> bool:
+    result = subprocess.run(
+        [python_executable, "-c", f"import {module}"],
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
+def _pip_install(
+    python_executable: str,
+    packages: list[str],
+    *,
+    break_system_packages: bool,
+    user: bool,
+    extra_args: tuple[str, ...] = (),
+) -> subprocess.CompletedProcess:
+    command = [
+        python_executable,
+        "-m",
+        "pip",
+        "install",
+        "--quiet",
+        "--no-input",
+        "--disable-pip-version-check",
+    ]
+    if user and python_executable == sys.executable and sys.prefix == sys.base_prefix:
+        command.append("--user")
+    if break_system_packages:
+        command.append("--break-system-packages")
+    command.extend(extra_args)
+    command.extend(packages)
+    return subprocess.run(command, capture_output=True, text=True)
+
+
+def _pip_failure_hint(result: subprocess.CompletedProcess) -> str:
+    stderr = (result.stderr or "").strip()
+    if "externally-managed-environment" in stderr:
+        return (
+            "This interpreter is externally managed (PEP 668). Create a virtualenv "
+            "and install from it, or re-run with --break-system-packages."
+        )
+    if "No module named pip" in stderr:
+        return "pip is not available for this interpreter; install pip or use a virtualenv."
+    return stderr.splitlines()[-1] if stderr else "pip returned a non-zero exit code."
+
+
+def install_machine_layer(
+    python_executable: str = sys.executable,
+    *,
+    source_root: Path = SCRIPT_DIR,
+    break_system_packages: bool = False,
+    user: bool = False,
+    dry_run: bool = False,
+) -> dict[str, str]:
+    """Install ``document_contracts`` into the Python environment and verify it."""
+    if dry_run:
+        info(f"[machine layer] pip install {DOCUMENT_CONTRACTS_NAME} -> {python_executable}")
+        return {"status": "DRY_RUN", "python": python_executable}
+
+    for module, requirement in DOCUMENT_CONTRACTS_RUNTIME_MODULES.items():
+        if _module_available(python_executable, module):
+            continue
+        info(f"[machine layer] installing runtime dependency {requirement}")
+        result = _pip_install(
+            python_executable,
+            [requirement],
+            break_system_packages=break_system_packages,
+            user=user,
+            extra_args=("--no-input",),
+        )
+        if result.returncode != 0:
+            raise InstallError(
+                f"Cannot install {requirement} for {python_executable}: "
+                f"{_pip_failure_hint(result)}"
+            )
+
+    with tempfile.TemporaryDirectory(prefix="harness-contracts-wheel-") as temporary:
+        wheel = build_document_contracts_wheel(Path(temporary), source_root)
+        result = _pip_install(
+            python_executable,
+            [str(wheel)],
+            break_system_packages=break_system_packages,
+            user=user,
+            extra_args=("--no-index", "--no-deps", "--force-reinstall"),
+        )
+    if result.returncode != 0:
+        raise InstallError(
+            f"Cannot install {DOCUMENT_CONTRACTS_NAME}: {_pip_failure_hint(result)}"
+        )
+
+    if not _module_available(python_executable, "document_contracts"):
+        raise InstallError(
+            f"{DOCUMENT_CONTRACTS_NAME} was installed but is not importable by "
+            f"{python_executable}. Hooks run with `python3`; install with the same "
+            "interpreter that `python3` resolves to."
+        )
+
+    info(f"[machine layer] {DOCUMENT_CONTRACTS_NAME} installed into {python_executable}")
+    return {"status": "READY", "python": python_executable, "version": DOCUMENT_CONTRACTS_VERSION}
 
 
 def install_claude_hooks(args: argparse.Namespace, dry_run: bool) -> None:
@@ -552,11 +713,9 @@ def install_claude_hooks(args: argparse.Namespace, dry_run: bool) -> None:
     if dry_run:
         info(f"[Claude Code] hooks/ -> {dest_hooks}/")
         info(f"[Claude Code] merge hook config -> {settings_file}")
-        install_document_contracts(dest_hooks.parent, dry_run)
         return
 
     count = copy_hook_scripts(dest_hooks)
-    install_document_contracts(dest_hooks.parent, dry_run)
     info(f"[Claude Code] Installed {count} Python hooks to {dest_hooks}")
 
     # Merge hook settings into settings.local.json
@@ -641,15 +800,9 @@ def install_codex_hooks(args: argparse.Namespace, dry_run: bool) -> None:
     if dry_run:
         info(f"[Codex] Python hooks -> {dest_hooks}/")
         info(f"[Codex] hook config -> {config_file}")
-        install_document_contracts(dest_hooks.parent, dry_run)
-        if not args.user and dest_hooks.parent != args.target:
-            install_document_contracts(args.target, dry_run)
         return
 
     count = copy_hook_scripts(dest_hooks)
-    install_document_contracts(dest_hooks.parent, dry_run)
-    if not args.user and dest_hooks.parent != args.target:
-        install_document_contracts(args.target, dry_run)
     config_file.parent.mkdir(parents=True, exist_ok=True)
     existing: dict = {}
     if config_file.exists():
@@ -723,6 +876,16 @@ def main(argv: list[str] | None = None) -> None:
     print()
     print("=== Installing Harness Multi-Agent Skills ===")
     print()
+
+    try:
+        install_machine_layer(
+            sys.executable,
+            break_system_packages=args.break_system_packages,
+            user=args.user,
+            dry_run=dry_run,
+        )
+    except InstallError as exc:
+        error(str(exc))
 
     install_skills(args, skill_list, platform_roots, dry_run)
     install_agent_templates(args, platform_roots, dry_run)

@@ -30,6 +30,17 @@ def test_interactive_init_reuses_package_init(monkeypatch, tmp_path: Path) -> No
     )
     monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
 
+    real_loader = interactive_init.package_cli._load_installer
+
+    def loader_without_machine_layer(source_root):
+        module = real_loader(source_root)
+        module.install_machine_layer = lambda *args, **kwargs: {"status": "SKIPPED"}
+        return module
+
+    monkeypatch.setattr(
+        interactive_init.package_cli, "_load_installer", loader_without_machine_layer
+    )
+
     target = tmp_path / "project"
     result = interactive_init.main(
         ["--target", str(target), "--platform", "codex", "--yes"]

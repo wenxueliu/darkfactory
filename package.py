@@ -49,6 +49,7 @@ PACKAGE_FILES = (
     "install.py",
     "install.sh",
     "package.py",
+    "pyproject.toml",
     "change.py",
 )
 EXCLUDED_PARTS = {
@@ -490,14 +491,6 @@ def _install_opencode(source_root: Path, target: Path, dry_run: bool) -> None:
         return
     _copy_tree(source_opencode / "plugins", target / ".opencode" / "plugins")
     _copy_tree(source_root / "skills", target / "skills")
-    contracts = source_root / "document_contracts"
-    if contracts.is_dir():
-        shutil.copytree(
-            contracts,
-            target / "document_contracts",
-            dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
-        )
     source_config = source_opencode / "opencode.json"
     target_config = target / ".opencode" / "opencode.json"
     if source_config.is_file() and not target_config.exists():
@@ -533,6 +526,8 @@ def _install_from_root(
     force: bool = False,
     dry_run: bool = False,
     manifest: dict[str, Any] | None = None,
+    python_executable: str | None = None,
+    break_system_packages: bool = False,
 ) -> dict[str, Any]:
     del force  # The package installer is already non-interactive at this layer.
     selected = _platforms(platforms)
@@ -542,10 +537,20 @@ def _install_from_root(
     if not dry_run:
         root.mkdir(parents=True, exist_ok=True)
 
-    installer = None
+    installer = _load_installer(source_root)
+    try:
+        installer.install_machine_layer(
+            python_executable or sys.executable,
+            source_root=source_root,
+            break_system_packages=break_system_packages,
+            user=scope == "user" and target is None,
+            dry_run=dry_run,
+        )
+    except installer.InstallError as exc:
+        raise PackageError(str(exc)) from exc
+
     native = set(selected) & {"claude", "codex"}
     if native:
-        installer = _load_installer(source_root)
         args = argparse.Namespace(
             user=scope == "user" and target is None,
             target=None if scope == "user" and target is None else root,
@@ -587,6 +592,8 @@ def install_package(
     force: bool = False,
     dry_run: bool = False,
     version: str | None = None,
+    python_executable: str | None = None,
+    break_system_packages: bool = False,
 ) -> dict[str, Any]:
     """Download, verify, extract, and install a Harness package."""
     with tempfile.TemporaryDirectory(prefix="harness-install-") as temporary:
@@ -604,6 +611,8 @@ def install_package(
                 force=force,
                 dry_run=dry_run,
                 manifest=manifest,
+                python_executable=python_executable,
+                break_system_packages=break_system_packages,
             )
         result["package"] = manifest["name"]
         result["source"] = str(source)
@@ -736,6 +745,11 @@ def _build_parser() -> argparse.ArgumentParser:
     install.add_argument("--minimal", action="store_true")
     install.add_argument("--force", action="store_true")
     install.add_argument("--dry-run", action="store_true")
+    install.add_argument(
+        "--break-system-packages",
+        action="store_true",
+        help="Allow pip to install the machine layer into an externally managed Python (PEP 668)",
+    )
 
     initialize = subparsers.add_parser("init", help="initialize a workspace after an Agent interview")
     initialize.add_argument("--target", type=Path, default=Path("."))
@@ -751,6 +765,11 @@ def _build_parser() -> argparse.ArgumentParser:
     initialize.add_argument("--min-iteration-before-human", type=int, default=3)
     initialize.add_argument("--enabled-reviewers", default="security,logic,performance")
     initialize.add_argument("--merge-strategy", default="merge")
+    initialize.add_argument(
+        "--break-system-packages",
+        action="store_true",
+        help="Allow pip to install the machine layer into an externally managed Python (PEP 668)",
+    )
 
     return parser
 
@@ -779,6 +798,7 @@ def main(argv: list[str] | None = None) -> int:
                 force=args.force,
                 dry_run=args.dry_run,
                 version=args.version,
+                break_system_packages=args.break_system_packages,
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
         elif args.command == "init":
@@ -802,6 +822,7 @@ def main(argv: list[str] | None = None) -> int:
                         minimal=args.minimal,
                         force=True,
                         version=args.version,
+                        break_system_packages=args.break_system_packages,
                     )
                     if args.source
                     else _install_from_root(
@@ -811,6 +832,7 @@ def main(argv: list[str] | None = None) -> int:
                         minimal=args.minimal,
                         force=True,
                         manifest={"name": PACKAGE_NAME, "version": DEFAULT_VERSION},
+                        break_system_packages=args.break_system_packages,
                     )
                 )
             print(json.dumps(result, ensure_ascii=False, indent=2))

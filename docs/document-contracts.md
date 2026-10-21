@@ -14,12 +14,20 @@ Skill 内置：skills/<owner-skill>/references/document-definitions/
 
 ## 安装位置
 
-机器层实现是仓库根目录的 `document_contracts/` 包。`package.py install` 与 `python package.py init` 会把它复制到两个位置：
+机器层 `document_contracts` 以 pip 包 `harness-document-contracts` 安装到执行安装命令的 Python 环境，不会写入工作区目录。安装完成后：
 
-- 工作区根目录 `{project-root}/document_contracts/` — 供 `python3 -m document_contracts` 直接调用。
-- 各平台 hooks 目录的父目录（Claude：`{project-root}/`；Codex：`{project-root}/.codex/`）— 供 hook 通过 `sys.path` 回退导入。
+- `python3 -m document_contracts resolve|validate ...` 直接可用。
+- hooks 用同一解释器 `import document_contracts`；hooks 命令使用 `python3`，因此安装时运行 `python3 package.py ...` 的那个解释器必须与之后 hooks 使用的 `python3` 一致。
+- 运行时依赖 `PyYAML>=6.0` 会在安装前检查，缺失时自动安装。
 
-已初始化的旧工作区缺少该目录时，重新执行一次 `python package.py init --target <dir>` 即可补齐；安装过程不会覆盖用户文件。
+系统 Python 受 PEP 668（externally managed）限制时，安装会失败并给出提示：使用虚拟环境，或显式传 `--break-system-packages`。
+
+```bash
+python3 package.py init --target <dir> --break-system-packages
+python3 -m pip uninstall harness-document-contracts   # 卸载
+```
+
+旧版本安装曾在工作区根目录留下 `document_contracts/` 文件夹；升级后可安全删除，不影响 pip 安装的版本。
 
 ## 定义包目录
 
