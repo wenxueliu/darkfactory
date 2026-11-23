@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adrkit"
+version = "0.1.1"
+description = "MADR 4.0 ADR lifecycle toolkit: init, generate, index, check"
+readme = { text = "See the sw-adr-engineering skill's SKILL.md.", content-type = "text/markdown" }
+requires-python = ">=3.10"
+license = { text = "MIT" }
+# Packages are checked and installed at execution time (`python -m adrkit deps`),
+# so a bare checkout can run index/check with the standard library alone.
+dependencies = []
+
+[project.optional-dependencies]
+llm = ["openai>=1.0"]
+yaml = ["pyyaml>=6.0"]
+drift = ["adr-drift==0.1.0"]
+all = ["openai>=1.0", "pyyaml>=6.0", "adr-drift==0.1.0"]
+
+[project.scripts]
+adr-init = "adrkit.init:main"
+adr-gen = "adrkit.gen:main"
+adr-index = "adrkit.index:main"
+adr-check = "adrkit.check:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+adrkit = ["templates/*.md"]

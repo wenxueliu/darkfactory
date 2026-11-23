@@ -78,7 +78,7 @@
 | `sw-multi-search` | Multi-source search orchestrator — fans out to codebase-explorer/external-researcher/media-interpreter in parallel, then aggregates and ranks. Use when source of truth is unknown. (NEW) | multi-source, comprehensive search, cross-reference, 多源搜索, 跨源检索 |
 | `sw-media-interpreter` | Media file interpreter — PDFs, images, diagrams. Based on Multimodal Looker. | PDF解读, image analysis, 图表解读 |
 
-## 基础设施层 (Infrastructure Layer, 11)
+## 基础设施层 (Infrastructure Layer, 12)
 
 | Agent | Role | Trigger |
 |-------|------|---------|
@@ -92,6 +92,7 @@
 | `sw-lint-checker` | Cross-language standards checker — auto-detects languages from changed files, runs correct linters/formatters per language, auto-fixes where possible, delegates complex fixes, re-checks until clean. Ensures code meets style and standards before review. (NEW) | lint, 规范检查, style check, 代码规范, format check, standards |
 | `sw-writing-skills` | Meta-skill for skill authoring — TDD applied to process documentation. Based on Superpowers writing-skills. (NEW) | writing skills, 编写技能, create skill, skill authoring |
 | `sw-grill-docs` | Documentation consistency griller — grills design/plan against `knowledge/CONTEXT.md` and ADRs, sharpens terminology, stress-tests with scenarios, updates docs inline. Used in both design and planning phases. (NEW) | 文档对照, grill docs, 文档质询, 术语审查, context consistency |
+| `sw-adr-engineering` | ADR lifecycle — MADR 4.0 template, generation from commits/text, deterministic index, R1/R2 structure checks, and adr-drift R3/R4 code-drift gates. | ADR, MADR, 架构决策记录, 决策记录, decision record |
 | `using-harness` | Bootstrap skill — injected at session start | bootstrap, 初始化 |
 
 ---
