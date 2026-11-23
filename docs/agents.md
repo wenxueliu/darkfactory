@@ -1,6 +1,6 @@
 # Agent 目录 (Agent Catalog)
 
-> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了当前 44 个 skill 目录中的 Agent、流程技能和辅助技能、角色及触发词。
+> **需要背景？** 先看 [concepts.md](concepts.md) 了解核心设计理念。本文列出了当前 47 个 skill 目录中的 Agent、流程技能和辅助技能、角色及触发词。
 
 ---
 
@@ -11,12 +11,13 @@
 | `sw-controller` | Top-level orchestrator — Intent Gate + Phase Transition + delegation discipline. Routes to specialists, never executes phase work directly. Enhanced with Sisyphus DNA. | 黑灯工厂, orchestration, coordination |
 | `sw-tdd-agent` | Autonomous TDD practitioner — RED→GREEN→REFACTOR with "Do NOT Ask" autonomy and TODO obsession. Enhanced with Hephaestus + Sisyphus-Junior DNA. | TDD, unit test, test-first |
 
-## 需求层 (Ideation Layer, 1 NEW + 1 REVIVED)
+## 需求层 (Ideation Layer, 3)
 
 | Agent | Role | Trigger |
 |-------|------|---------|
 | `sw-requirements-clarifier` | Requirements clarifier — progressive clarification dialogue (frontier rounds), variant-driven ambiguity scan, generates spec document. Stops when Substantiality Threshold met. (NEW) | 需求澄清, requirements clarification, clarify requirements |
 | `sw-value-judgment` | Requirements value assessor — 5-dimension scoring (Impact/Effort/Risk/Dependencies/Strategic Fit), ROI evaluation, priority ranking. (REVIVED: was collapsed into controller) | 需求价值, ROI评估, 优先级判断 |
+| `sw-prd` | PRD engineer — generates a structured PRD from a natural-language description, clarifies gaps in an existing PRD, or extends one with new features while keeping terminology, numbering, and priority consistent; raw input is preserved verbatim in an Input History section. | 写 PRD, 产品需求文档, 需求文档, review PRD, PRD 加功能 |
 
 ## 规划层 (Planning Layer, 4 NEW)
 
@@ -68,7 +69,7 @@
 | `sw-delivery-manager` | Delivery manager — checklist verification (delivery-checklist.md) → release notes generation (release-notes-template.md) → delivery acceptance gate. (NEW) | 交付管理, delivery, release notes, 交付检查 |
 | `sw-deployer` | Deployer — test/production environment deployment + health check + rollback. Receives deployment contract from `sw-delivery-manager`. (NEW) | 部署, deploy, deployment, rollback, rollout, 发布 |
 
-## 咨询层 (Consultation Layer, 5 NEW)
+## 咨询层 (Consultation Layer, 6)
 
 | Agent | Role | Trigger |
 |-------|------|---------|
@@ -77,8 +78,9 @@
 | `sw-external-researcher` | External documentation/OSS researcher — evidence with citations. Based on Librarian. | external search, library docs, 外部搜索 |
 | `sw-multi-search` | Multi-source search orchestrator — fans out to codebase-explorer/external-researcher/media-interpreter in parallel, then aggregates and ranks. Use when source of truth is unknown. (NEW) | multi-source, comprehensive search, cross-reference, 多源搜索, 跨源检索 |
 | `sw-media-interpreter` | Media file interpreter — PDFs, images, diagrams. Based on Multimodal Looker. | PDF解读, image analysis, 图表解读 |
+| `sw-multi-agent-consultation` | Multi-AI peer-PK debate orchestrator — 3+ agents propose, critique each other, and converge under a capped round-trip budget; runs through Kimi WebBridge. Use when single-model bias is a real risk. | 三方评审, 多 AI 协作, multi-agent debate, peer PK, compare AIs |
 
-## 基础设施层 (Infrastructure Layer, 12)
+## 基础设施层 (Infrastructure Layer, 11)
 
 | Agent | Role | Trigger |
 |-------|------|---------|
@@ -89,11 +91,24 @@
 | `sw-verification-before-completion` | Pre-completion verification gate | verification, 验证 |
 | `sw-finishing-branch` | Branch completion — 4-option terminal state (merge/PR/keep/discard). Based on Superpowers finishing-a-development-branch. (NEW) | finish branch, 分支收尾, merge, 合并 |
 | `sw-document-project` | Project documentation generator — brownfield scanning at 3 levels (quick/deep/exhaustive). Based on BMAD document-project. (NEW) | 项目文档生成, document project, brownfield documentation |
-| `sw-lint-checker` | Cross-language standards checker — auto-detects languages from changed files, runs correct linters/formatters per language, auto-fixes where possible, delegates complex fixes, re-checks until clean. Ensures code meets style and standards before review. (NEW) | lint, 规范检查, style check, 代码规范, format check, standards |
 | `sw-writing-skills` | Meta-skill for skill authoring — TDD applied to process documentation. Based on Superpowers writing-skills. (NEW) | writing skills, 编写技能, create skill, skill authoring |
 | `sw-grill-docs` | Documentation consistency griller — grills design/plan against `knowledge/CONTEXT.md` and ADRs, sharpens terminology, stress-tests with scenarios, updates docs inline. Used in both design and planning phases. (NEW) | 文档对照, grill docs, 文档质询, 术语审查, context consistency |
 | `sw-adr-engineering` | ADR lifecycle — MADR 4.0 template, generation from commits/text, deterministic index, R1/R2 structure checks, and adr-drift R3/R4 code-drift gates. | ADR, MADR, 架构决策记录, 决策记录, decision record |
 | `using-harness` | Bootstrap skill — injected at session start | bootstrap, 初始化 |
+
+---
+
+## 辅助技能 (Auxiliary Skills, 5)
+
+以下技能不承担 Agent 流水线角色，由用户直接调用，或作为其他技能的支撑组件：
+
+| Skill | Role | Trigger |
+|-------|------|---------|
+| `humanizer` | 去 AI 味改写 — 识别并移除 AI 写作痕迹（对比句式、套话、三段式、夸大措辞），不改变原意。 | 去 AI 味, humanize, 改写, AI writing |
+| `impl-validator` | 只读实现校验器 — 对照需求独立校验契约或实现，输出 JSON 结论，由 `works` 调用。 | 校验, 实现校验, validate, contract review |
+| `planning-with-files` | 基于文件的持久化计划 — `task_plan.md` / `findings.md` / `progress.md` 落盘，抗上下文丢失与 `/clear`。 | 计划, multi-step plan, 持久化规划 |
+| `tdd` | 独立 TDD 工作流 — red-green-refactor，适用于直接以测试驱动开发/修复的场景。 | TDD, test-first, red-green-refactor |
+| `works` | 可配置多步骤 `/works` 流水线 — do/check 提示、人工反馈接入、断点恢复。 | /works, 多步骤流程, 持续执行 |
 
 ---
 
@@ -289,6 +304,7 @@ large   → 新需求，从 ideation 开始
 | `sw-external-researcher` | 需要查外部文档/OSS 时，与 codebase-explorer 并行 |
 | `sw-strategic-advisor` | 复杂架构决策、3+ 次连续失败后的深度推理 |
 | `sw-media-interpreter` | 需要解读 PDF/图片/图表时 |
+| `sw-multi-agent-consultation` | 需要多 AI 同行评审、单一模型偏见风险高时（Kimi WebBridge + 10–30 分钟） |
 
 ### CodeGraph 代码证据约定
 

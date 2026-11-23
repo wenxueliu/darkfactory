@@ -10,7 +10,7 @@
 
 黑灯工厂 (Black-light Factory) is a **human-AI collaborative software generation system** — orchestrate multiple specialized AI Agents in a pipeline from requirements to delivery. It implements the **Harness Engineering** philosophy: humans own strategic decisions, AI Agents handle execution and review.
 
-**44 skills** covering the full E2E pipeline (v2), including package lifecycle and requirement-change propagation, following acceptance-driven development with a strict TDD iron law (no failing test, no production code).
+**47 skills** covering the full E2E pipeline (v2), including package lifecycle and requirement-change propagation, following acceptance-driven development with a strict TDD iron law (no failing test, no production code).
 
 Repository exploration is CodeGraph-backed: `sw-codebase-explorer` requires a readable
 CodeGraph index before querying symbols, files, call relationships, or change impact.
@@ -239,7 +239,7 @@ sw-controller (Orchestrator: Intent Gate + Phase Transition + Delegation)
 
 ```
 multiagents/
-├── skills/                  # Agent skill definitions (44 skills)
+├── skills/                  # Agent skill definitions (47 skills)
 │   ├── sw-controller/       # Top-level orchestrator
 │   ├── sw-tdd-agent/        # TDD cycle execution
 │   ├── sw-worktree-controller/ # Single-task coordinator
@@ -250,7 +250,7 @@ multiagents/
 │   ├── sw-plan-executor/    # Plan execution orchestrator (NEW)
 │   ├── sw-change-propagator/ # Requirement change propagation (NEW)
 │   ├── sw-brainstorming/    # Pre-design exploration (NEW)
-│   └── ...                  # 24 more specialized skills
+│   └── ...                  # 37 more skills
 ├── agents/                  # Standalone agent prompt templates
 ├── services/                # User-provided source repositories
 ├── knowledge/               # Project knowledge + workflow state
@@ -296,7 +296,7 @@ multiagents/
 
 黑灯工厂是一套**人机协同的软件生成系统**——协调多个专业化 AI Agent 组成流水线，将人类决策与 AI 执行能力结合，实现从需求到交付的端到端自动化。遵循**验收驱动开发**和 TDD 铁律（无失败测试不写代码）。
 
-**44 个技能**覆盖完整 E2E 流水线（v2），并包含发行打包与需求变更传播：需求 → 设计 → 拆分 → 执行 → 合并 → 测试 → 交付。
+**47 个技能**覆盖完整 E2E 流水线（v2），并包含发行打包与需求变更传播：需求 → 设计 → 拆分 → 执行 → 合并 → 测试 → 交付。
 
 ### 支持的平台
 
@@ -497,7 +497,7 @@ sw-controller（总控：Intent Gate + Phase Transition + 委派纪律 — 只�
 
 ```
 multiagents/
-├── skills/                  # Agent 技能定义（44 个技能）
+├── skills/                  # Agent 技能定义（47 个技能）
 │   ├── sw-controller/       # 总控
 │   ├── sw-tdd-agent/        # TDD 执行
 │   ├── sw-worktree-controller/ # 单任务协调
@@ -506,8 +506,9 @@ multiagents/
 │   ├── sw-reviewer-performance/ # 性能审查
 │   ├── sw-strategic-planner/ # 战略规划（NEW）
 │   ├── sw-plan-executor/    # 计划执行编排（NEW）
+│   ├── sw-change-propagator/ # 需求变更传播
 │   ├── sw-brainstorming/    # 头脑风暴（NEW）
-│   └── ...                  # 其余 18 个专项技能
+│   └── ...                  # 其余 37 个技能
 ├── agents/                  # 独立 Agent prompt 模板
 ├── services/                # 用户放入的源码仓库
 ├── knowledge/               # 项目知识 + 工作流状态

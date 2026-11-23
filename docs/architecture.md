@@ -4,7 +4,7 @@
 
 ---
 
-## Agent 架构 (v2, 44 skills)
+## Agent 架构 (v2, 47 skills)
 
 ```
 sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
@@ -12,6 +12,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   ├── [需求层 — Ideation]
   │     sw-requirements-clarifier (NEW: 需求澄清 — 渐进澄清对话(frontier)→规格文档)
   │     sw-value-judgment (REVIVED: 需求价值评估)
+  │     sw-prd (PRD 生成/澄清/扩展 — 产品需求文档)
   │
   ├── [规划层 — Planning]
   │     sw-strategic-planner (NEW: 执行计划 — 消费已通过设计→计划生成)
@@ -54,6 +55,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
   │     sw-external-researcher (NEW: 外部研究+证据引用)
   │     sw-multi-search (NEW: 多源搜索编排 — fan-out + 聚合 + 排序)
   │     sw-media-interpreter (NEW: PDF/图片/图表解读)
+  │     sw-multi-agent-consultation (多 AI 同行评审 — peer-PK 辩论 + 收敛)
   │
   └── [基础设施层 — Infrastructure]
         sw-setup (模块安装配置)
@@ -65,6 +67,7 @@ sw-controller (Intent Gate + Phase Transition + 委派纪律 — 只协调，不
         sw-document-project (NEW: 项目文档生成 — brownfield scanning + 3-level scan)
         sw-writing-skills (NEW: 元技能 — TDD应用于文档编写)
         sw-grill-docs (NEW: 文档对照质询 — 设计/计划 vs knowledge/CONTEXT.md + ADRs)
+        sw-adr-engineering (ADR 生命周期 — MADR 4.0 + 索引 + 漂移门禁)
         using-harness (bootstrap技能)
 ```
 
@@ -178,38 +181,52 @@ Worktree controller 向总控报告以下状态：
 multiagents/
 ├── skills/                  # Agent skill definitions (BMAD module output)
 │   ├── sw-controller/       # Top-level orchestrator (ENHANCED)
+│   ├── sw-tdd-agent/        # TDD cycle execution (ENHANCED)
+│   ├── sw-requirements-clarifier/ # Requirements clarification (NEW)
+│   ├── sw-value-judgment/   # Requirements value assessment
+│   ├── sw-prd/              # PRD generation/clarification/extension
 │   ├── sw-strategic-planner/ # Execution planner after design gates (NEW — Prometheus)
 │   ├── sw-pre-planning-consultant/ # Pre-planning analyst (NEW — Metis)
 │   ├── sw-plan-reviewer/    # Plan executability reviewer (NEW — Momus)
 │   ├── sw-plan-executor/    # Plan execution orchestrator (NEW — Atlas)
-│   ├── sw-codebase-explorer/ # CodeGraph-backed code search (NEW — Explore)
-│   ├── sw-external-researcher/ # External docs/OSS research (NEW — Librarian)
-│   ├── sw-strategic-advisor/ # Strategic technical advisor (NEW — Oracle)
-│   ├── sw-multi-search/     # Multi-source search orchestrator (NEW)
-│   ├── sw-media-interpreter/ # Media file interpreter (NEW — Multimodal Looker)
+│   ├── sw-brainstorming/    # Pre-design exploration (NEW — Superpowers)
 │   ├── sw-feature-designer/ # Cross-service feature design
 │   ├── sw-service-designer/ # Single-service detailed design
 │   ├── sw-e2e-designer/     # E2E integration test design
-│   ├── sw-brainstorming/    # Pre-design exploration (NEW — Superpowers)
+│   ├── sw-task-decomposer/  # Task decomposition — DAG + Wave + tasks.yaml (NEW)
 │   ├── sw-worktree-controller/ # Single-task execution coordinator
-│   ├── sw-tdd-agent/        # TDD cycle execution (ENHANCED)
 │   ├── sw-reviewer-logic/   # Logic and correctness review
 │   ├── sw-reviewer-security/ # Security vulnerability review
 │   ├── sw-reviewer-performance/ # Performance and scalability review
 │   ├── sw-reviewer-context/ # Context mining — missed requirements discovery
+│   ├── sw-lint-checker/     # Cross-language standards checker (NEW)
 │   ├── sw-receiving-review/ # Review feedback processing (NEW — Superpowers)
+│   ├── sw-integration-tester/ # L2 integration test execution (NEW)
+│   ├── sw-browser-tester/   # L3 browser E2E test execution (NEW)
+│   ├── sw-delivery-manager/ # Delivery checklist + release notes (NEW)
 │   ├── sw-deployer/         # Deployment execution (NEW)
-│   ├── sw-grill-docs/       # Documentation consistency griller (NEW)
+│   ├── sw-strategic-advisor/ # Strategic technical advisor (NEW — Oracle)
+│   ├── sw-codebase-explorer/ # CodeGraph-backed code search (NEW — Explore)
+│   ├── sw-external-researcher/ # External docs/OSS research (NEW — Librarian)
+│   ├── sw-multi-search/     # Multi-source search orchestrator (NEW)
+│   ├── sw-media-interpreter/ # Media file interpreter (NEW — Multimodal Looker)
+│   ├── sw-multi-agent-consultation/ # Multi-AI peer-PK debate orchestrator
 │   ├── sw-setup/            # Module installation + package lifecycle
 │   ├── sw-change-propagator/ # Requirement change propagation
 │   ├── sw-knowledge-agent/  # Knowledge base management
-│   ├── sw-value-judgment/   # Requirements value assessment
 │   ├── sw-systematic-debugging/ # Systematic debugging
 │   ├── sw-verification-before-completion/ # Pre-completion verification
 │   ├── sw-finishing-branch/ # Branch completion (NEW — Superpowers)
+│   ├── sw-document-project/ # Project documentation generator (NEW)
 │   ├── sw-writing-skills/   # Meta-skill (NEW — Superpowers)
-│   ├── sw-lint-checker/     # Cross-language standards checker (NEW)
-│   └── using-harness/       # Bootstrap skill
+│   ├── sw-grill-docs/       # Documentation consistency griller (NEW)
+│   ├── sw-adr-engineering/  # ADR lifecycle — MADR 4.0 + index + drift gates
+│   ├── using-harness/       # Bootstrap skill
+│   ├── humanizer/           # De-AI-flavor prose rewrite
+│   ├── impl-validator/      # Read-only implementation/contract validator
+│   ├── planning-with-files/ # File-based persistent planning
+│   ├── tdd/                 # Standalone TDD workflow
+│   └── works/               # Multi-step configurable /works pipeline
 ├── agents/                  # Standalone agent prompt templates
 ├── hooks/                   # Session-start bootstrap injection
 ├── knowledge/               # Project knowledge + workflow state (shared + sw-{agent}/)

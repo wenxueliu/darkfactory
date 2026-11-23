@@ -29,9 +29,9 @@ The platform follows **acceptance-driven development** with a strict TDD iron la
 
 ## Agent Architecture
 
-The system currently has 44 skill directories in v2: 39 `sw-*` specialists, the
-`using-harness` bootstrap, and 4 auxiliary workflow skills (`impl-validator`,
-`planning-with-files`, `tdd`, and `works`):
+The system currently has 47 skill directories in v2: 41 `sw-*` specialists, the
+`using-harness` bootstrap, `humanizer`, and 4 auxiliary workflow skills
+(`impl-validator`, `planning-with-files`, `tdd`, and `works`):
 
 ```
 sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协调，不执行)
@@ -39,6 +39,7 @@ sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协�
   ├── [需求层 — Ideation]
   │     sw-requirements-clarifier (NEW: 需求澄清 — 渐进澄清对话(frontier)→规格文档)
   │     sw-value-judgment (REVIVED: 需求价值评估)
+  │     sw-prd (PRD 生成/澄清/扩展 — 产品需求文档)
   │
   ├── [规划层 — Planning, after design gates]
   │     sw-strategic-planner (NEW: 执行计划 — 消费已通过设计→计划生成)
@@ -80,9 +81,11 @@ sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协�
   │     sw-external-researcher (NEW: 外部研究+证据引用)
   │     sw-multi-search (NEW: 多源搜索编排 — fan-out + 聚合 + 排序)
   │     sw-media-interpreter (NEW: PDF/图片/图表解读)
+  │     sw-multi-agent-consultation (多 AI 同行评审 — peer-PK 辩论 + 收敛)
   │
   └── [基础设施层 — Infrastructure]
         sw-setup (模块安装配置)
+        sw-change-propagator (需求变更传播 — revision + 下游阶段重生成)
         sw-knowledge-agent (REVIVED: 知识库管理 — 查询+更新+索引)
         sw-systematic-debugging (系统化调试)
         sw-verification-before-completion (完成前验证)
@@ -90,11 +93,12 @@ sw-controller (增强: Intent Gate + Phase Transition + 委派纪律 — 只协�
         sw-document-project (NEW: 项目文档生成 — brownfield scanning + 3-level scan)
         sw-writing-skills (NEW: 元技能 — TDD应用于文档编写)
         sw-grill-docs (NEW: 文档对照质询 — 设计/计划 vs CONTEXT.md + ADRs)
+        sw-adr-engineering (ADR 生命周期 — MADR 4.0 + 索引 + 漂移门禁)
         using-harness (bootstrap技能)
 ```
 
 <!-- Agent Roles and E2E Phase Coverage extracted to standalone docs -->
-> 全部 38 个 Agent 的角色、触发词和能力详见 [docs/agents.md](docs/agents.md)。
+> 全部 47 个技能的角色、触发词和能力详见 [docs/agents.md](docs/agents.md)。
 > E2E 阶段覆盖和门禁检查详见 [docs/architecture.md](docs/architecture.md)。
 
 ### Development Flow (Phase Transitions)
@@ -218,7 +222,7 @@ Hook state files in `hooks/hook-state/*.json` are automatically cleaned on `PreC
 
 ```
 multiagents/
-├── skills/                  # 44 skill directories
+├── skills/                  # 47 skill directories
 ├── agents/                  # Standalone agent prompt templates
 ├── docs/                    # Documentation
 ├── knowledge/               # 项目知识 + 工作流状态
