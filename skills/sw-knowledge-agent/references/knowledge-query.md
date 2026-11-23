@@ -29,27 +29,22 @@ Relevant knowledge is found and presented in context, helping make better decisi
 
 ### Query Process
 
-1. **Identify keywords** from current context
-2. **Search** using the tool:
+1. **Identify keywords** from current context.
+2. **Query the Obsidian knowledge base first**:
    ```bash
-   # Basic search
-   python scripts/kb-search.py "<query>" [--type pattern|decision|lesson|api] [--json] [--max-results 10]
-
-   # Freshness-aware search (recommended for critical decisions)
-   python scripts/kb-search.py "<query>" --exclude-expired --exclude-superseded
-
-   # Strict freshness: exclude all non-active entries
-   python scripts/kb-search.py "<query>" --exclude-expired --exclude-superseded --exclude-deprecated
+   python scripts/kb-query.py "<query>" --json --max-results 10
    ```
-   - Use `--json` for programmatic consumption
-   - Use `--type` to filter by knowledge type
-   - Use `--exclude-expired` / `--exclude-superseded` / `--exclude-deprecated` for freshness filtering
-   - The script handles relevance ranking automatically, with freshness penalties applied to non-current entries
-3. **Check freshness** of critical entries:
-   ```bash
-   python scripts/kb-freshness.py --check <relative-path>
-   ```
-4. **Return with context** — present top results with relevance explanation. Include freshness status when entries are not `active`.
+   The command delegates to `obsidian-wiki query <query> --json`. Its result is
+   the primary runtime retrieval source.
+3. **Fallback only inside the same Obsidian vault**. If `wiki-query` is
+   unavailable or returns no candidates, `kb-query.py` uses fixed-string grep
+   over compiled Markdown files in the configured vault. It never searches
+   CodeHistory, source repositories, or the legacy Harness `knowledge/` tree.
+4. **Inspect the retrieval mode**. `retrieval_mode=wiki-query` is the normal
+   path; `retrieval_mode=grep` and `degraded=true` means semantic retrieval was
+   unavailable or empty.
+5. **Return with context** — present paths, snippets, source, and the fallback
+   reason when degraded.
 
 ### Output Format
 
@@ -81,3 +76,10 @@ When a search result has non-active status:
 - **deprecated**: "This entry is deprecated and no longer recommended. Seek current alternatives."
 - **superseded**: "This entry has been superseded by {superseded_by}. Use the newer entry instead."
 - **expired**: "This entry has expired. Do not apply without re-validation."
+
+### Runtime Boundary
+
+`sw-knowledge-agent` is a read-only retrieval facade. CodeHistory knowledge is
+imported into the Obsidian vault separately, after human calibration; it is not
+queried at runtime. `kb-search.py` remains available for legacy maintenance and
+migration only, and is not part of the runtime query fallback.

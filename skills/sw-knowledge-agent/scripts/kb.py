@@ -13,7 +13,8 @@ Usage:
 
 Subcommands (each maps to a kb-*.py script):
     health        Run kb-health.py — generate KB health report
-    search        Run kb-search.py — full-text search across KB
+    query         Run kb-query.py — Obsidian wiki-query with vault-local grep fallback
+    search        Run kb-search.py — legacy full-text search across the Harness KB
     freshness     Run kb-freshness.py — detect/manage stale entries
     index         Run kb-index.py — rebuild, validate, detect orphans
     log           Run kb-log.py — create Pattern/Decision/Lesson/API entries
@@ -41,6 +42,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 SUBCOMMANDS = {
+    "query": "kb-query.py",
     "health": "kb-health.py",
     "search": "kb-search.py",
     "freshness": "kb-freshness.py",
