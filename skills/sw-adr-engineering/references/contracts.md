@@ -13,14 +13,24 @@ arbiter.
 | `adr_dir` | path | no | `docs/adr` | must exist for `index`/`check`; created by `init`/`generate` |
 | `source` | object | for `generate` | — | exactly one of `{kind: commit, ref}` \| `{kind: text, text}` \| `{kind: file, path}` \| `{kind: history, since?, until?, limit?}` |
 | `language` | enum | no | `zh` | `zh` \| `en`; MADR headings stay English |
-| `model` | string | no | `ADR_LLM_MODEL` or `gpt-4o-mini` | only used when calling an LLM |
 | `drift_config` | path | for `enforce` | `arch.yaml` | at repo root; cannot be renamed in adr-drift 0.1.0 |
+
+**Runtime configuration — not activation inputs.** These are read from the
+environment only when `adr-gen` calls an LLM. They are never stored in ADR
+content and are not needed for `--no-llm`, `index`, `check`, or `deps`.
+
+| Config | Default | Required when |
+| --- | --- | --- |
+| `ADR_LLM_API_KEY` / `OPENAI_API_KEY` | — | calling a hosted model; a dummy value works for an unauthenticated local proxy |
+| `ADR_LLM_BASE_URL` / `OPENAI_BASE_URL` | SDK default | DeepSeek / gateway / local vLLM or Ollama |
+| `ADR_LLM_MODEL` / `--model` | `gpt-4o-mini` | never; only to override the model |
 
 Preconditions:
 
-- `generate` with a commit source requires a resolvable git ref.
-- `generate` in LLM mode requires `ADR_LLM_API_KEY`/`OPENAI_API_KEY` unless
-  `--no-llm`.
+- `generate` with a commit/history source requires a resolvable git ref.
+- `generate` in LLM mode needs a reachable OpenAI-compatible endpoint; with no
+  key/base URL it fails closed with a manual-install/credential message.
+  `--no-llm` bypasses the LLM entirely.
 - `enforce` requires `adr-drift==0.1.0` and at least one rule in `arch.yaml` or
   an ADR `## Constraints`; no rules is a config error (exit 2), not a pass.
 - `ci` requires a committed `index.md` and `arch.yaml` (or a documented

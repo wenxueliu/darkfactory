@@ -260,9 +260,17 @@ JSON schema 与逐命令副作用见 [`references/contracts.md`](references/cont
 | `source` | object | for generate | — | exactly one of `{kind: commit, ref}`, `{kind: text, text}`, `{kind: file, path}`, `{kind: history, since?, until?, limit?}` |
 | `language` | enum | no | `zh` | generate (`zh` \| `en`) |
 | `git_encoding` | string | no | `ADR_GIT_ENCODING` or auto | force legacy commit encoding (e.g. `gbk`) |
-| `model` | string | no | `ADR_LLM_MODEL` / `gpt-4o-mini` | generate LLM mode |
-| `api_key` | secret | for generate LLM | — | `ADR_LLM_API_KEY` or `OPENAI_API_KEY` |
 | `drift_config` | path | for enforce | `arch.yaml` | enforce |
+
+**LLM runtime configuration is not a task input.** It is read from the
+environment only when `adr-gen` actually calls a model; `--no-llm`,
+`adr-index`, and `adr-check` need none of it:
+
+| Config | Default | Required when |
+| --- | --- | --- |
+| `ADR_LLM_API_KEY` / `OPENAI_API_KEY` | — | calling a hosted model; set a dummy value for an unauthenticated local proxy |
+| `ADR_LLM_BASE_URL` / `OPENAI_BASE_URL` | SDK default | DeepSeek, Azure-compatible gateway, local vLLM/Ollama |
+| `ADR_LLM_MODEL` / `--model` | `gpt-4o-mini` | never; only to override the model |
 
 Preconditions: a commit/history source needs a git repository with a resolvable
 ref; `--since`/`--until` must resolve; `enforce` needs `adr-drift==0.1.0` plus at
