@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adrkit"
-version = "0.1.1"
+version = "0.2.0"
 description = "MADR 4.0 ADR lifecycle toolkit: init, generate, index, check"
 readme = { text = "See the sw-adr-engineering skill's SKILL.md.", content-type = "text/markdown" }
 requires-python = ">=3.10"

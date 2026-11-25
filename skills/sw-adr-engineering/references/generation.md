@@ -1,6 +1,6 @@
 # adr-gen — signal filter, recency injection, prompt contract
 
-`adr-gen` has three input modes. All of them pass through the same pipeline:
+`adr-gen` has four input modes. All of them pass through the same pipeline:
 **signal filter → recency digest → LLM fill → validation → human gate →
 write + index**.
 
@@ -9,6 +9,7 @@ adr-gen --from-commit HEAD                 # commit; HEAD when the value is omit
 adr-gen --from-commit 4f2c1ab --dry-run
 adr-gen --from-text "网关从 Node 迁移到 Rust"
 adr-gen --from-file requirements/REQ-1024.md
+adr-gen --all-commits --dry-run            # preview a whole-history backfill
 adr-gen --from-text "..." --no-llm         # offline scaffold, deterministic
 ```
 
@@ -51,7 +52,8 @@ Before calling the model, `adr-gen` injects:
 
 - the **10 newest ADRs** as `ADR-NNNN [status, date] title`, so the model does
   not duplicate an existing decision and can cite a supersession;
-- the **8 most recent commits** (`git log -n8 --format=%h %s`) for commit mode;
+- the **8 most recent commits** (`git log -n8 --format=%h %s`) for single-commit
+  mode; omitted during `--all-commits` so a 2019 commit is not given 2026 context;
 - the repository's **top-level layout**, so paths in the ADR are plausible.
 
 The prompt explicitly instructs the model to add `- Supersedes ADR-NNNN` under
@@ -161,3 +163,69 @@ adr-check --dir docs/adr
 
 The order matters: run `adr-index` **after** the status edits, then commit the
 ADR and `index.md` together. CI rejects a stale index.
+
+## 8. Git output encoding (GBK / legacy repositories)
+
+Git stores commit messages as bytes. On a Windows-era repository they are often
+GBK without an `encoding` header, so a UTF-8-only decoder raises or mangles
+them. `adr-gen` decodes all git output (`show`, `log`, `rev-list`, `diff`) with:
+
+1. UTF-8 (the modern default);
+2. GB18030 (a superset of GBK/GB2312) when UTF-8 fails;
+3. `ADR_GIT_ENCODING` or `--git-encoding <codec>` when the repo uses Big5 or
+   another legacy codec;
+4. UTF-8 with replacement characters as a last resort (never a traceback).
+
+```bash
+adr-gen --from-commit HEAD --git-encoding gbk
+ADR_GIT_ENCODING=big5 adr-gen --all-commits --dry-run
+```
+
+If you see `�` in a generated title, pass the repository's real encoding
+explicitly. Git may already re-encode commits that declare
+`i18n.commitEncoding`/`encoding`, in which case no override is needed.
+
+## 9. Backfill from all commits (`--all-commits`)
+
+`--all-commits` walks the history reachable from `--until` (default `HEAD`),
+**oldest first**, and generates one ADR per commit that passes the signal
+filter. It is not a single "summarize the repo" ADR.
+
+```bash
+adr-gen --all-commits --dry-run                       # cost estimate, no writes
+adr-gen --all-commits --limit 20                      # at most 20 ADRs
+adr-gen --all-commits --since v1.0.0 --limit 50       # only after a tag
+adr-gen --all-commits --include-merges --limit 10
+adr-gen --all-commits --no-llm                        # offline scaffolds
+```
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--since REV` | — | exclude `REV` and its ancestors |
+| `--until REV` | `HEAD` | last commit to inspect |
+| `--include-merges` | false | include merge commits (usually empty changes) |
+| `--limit N` | 50 | max candidate ADRs; `0` = unlimited |
+| `--dry-run` | false | print candidates and scores; no files, no LLM |
+| `--no-llm` | false | deterministic scaffolds instead of model calls |
+| `--force` | false | bypass the per-commit signal filter (use sparingly) |
+
+**Idempotency:** every commit-generated ADR gets
+`source-commit: <full-sha>` in frontmatter. A later batch run reads all ADRs and
+reports a matching commit as `already recorded`, so reruns do not duplicate
+records. Single-commit `adr-gen --from-commit` uses the same mechanism.
+
+**Failure policy:** a commit that fails validation is recorded and the batch
+continues; three consecutive failures, a missing API key, or a missing
+`openai` aborts the run. Exit `1` when any commit failed, `0` otherwise.
+
+**Recommended sequence for a large repository:**
+
+```bash
+adr-gen --all-commits --dry-run                 # inspect candidates
+adr-gen --all-commits --limit 10                 # first chunk, review them
+adr-gen --all-commits --dry-run                 # see what remains
+adr-gen --all-commits --limit 10                 # next chunk
+```
+
+`--dry-run` never creates `docs/adr/`; the index is regenerated once after a
+non-dry batch that wrote at least one ADR, not once per commit.

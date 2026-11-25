@@ -16,6 +16,7 @@ still works offline.
 from __future__ import annotations
 
 import argparse
+import codecs
 import dataclasses
 import datetime as _dt
 import os
@@ -111,6 +112,7 @@ class Change:
     diff: str = ""
     commit: str = ""
     path: str = ""
+    from_history: bool = False
 
 
 @dataclasses.dataclass
@@ -123,19 +125,57 @@ class Signal:
 
 @dataclasses.dataclass
 class GenerationResult:
-    status: str  # "written" | "preview" | "skipped"
+    status: str  # "written" | "preview" | "skipped" | "already"
     signal: Signal
     path: Path | None = None
     markdown: str = ""
 
 
+@dataclasses.dataclass
+class BatchResult:
+    scanned: int = 0
+    already: int = 0
+    noise: int = 0
+    generated: list[Path] = dataclasses.field(default_factory=list)
+    failed: list[tuple[str, str]] = dataclasses.field(default_factory=list)
+    candidates: list[tuple[str, Signal]] = dataclasses.field(default_factory=list)
+    limit_hit: bool = False
+    aborted: bool = False
+
+
+def decode_git(data: bytes | None) -> str:
+    """Decode git output that may be UTF-8 or a legacy Chinese encoding.
+
+    Git does not re-encode commit messages unless the repository sets
+    ``i18n.logOutputEncoding``; a Windows-era GBK message therefore arrives as
+    raw GBK bytes.  Try UTF-8 first (the modern default), then GB18030 (a
+    superset of GBK/GB2312).  ``ADR_GIT_ENCODING`` forces a specific codec for
+    repositories that use Big5 or another legacy encoding.
+    """
+    if not data:
+        return ""
+    forced = os.environ.get("ADR_GIT_ENCODING")
+    candidates = [forced] if forced else ["utf-8", "gb18030"]
+    for encoding in candidates:
+        try:
+            return data.decode(encoding)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    result = subprocess.run(
         ["git", *args],
         cwd=str(repo),
-        text=True,
         capture_output=True,
         check=False,
+    )
+    return subprocess.CompletedProcess(
+        result.args,
+        result.returncode,
+        decode_git(result.stdout),
+        decode_git(result.stderr),
     )
 
 
@@ -167,31 +207,67 @@ def _parse_name_status(output: str) -> list[tuple[str, str]]:
     return files
 
 
+def git_commit_meta(repo: Path, commit: str) -> Change:
+    """Read message + changed paths in one git call (no diff yet)."""
+    result = _git(
+        repo,
+        "show",
+        "--no-color",
+        "--find-renames",
+        "--name-status",
+        "--format=%x00%H%x00%an%x00%ad%x00%B%x00",
+        commit,
+    )
+    if result.returncode != 0:
+        raise GenerationError(f"git ref not found: {commit}")
+    parts = result.stdout.split("\x00")
+    if len(parts) < 6:
+        raise GenerationError(f"cannot parse git metadata for {commit}")
+    return Change(
+        source="commit",
+        message=parts[4].strip(),
+        files=_parse_name_status(parts[5]),
+        commit=parts[1].strip() or commit,
+    )
+
+
+def git_commit_diff(repo: Path, commit: str) -> str:
+    diff = _git(
+        repo, "show", "--format=", "--unified=2", "--no-color", commit
+    ).stdout
+    if len(diff) > MAX_DIFF_CHARS:
+        diff = diff[:MAX_DIFF_CHARS] + "\n...[diff truncated]...\n"
+    return diff
+
+
 def git_change(repo: Path, ref: str) -> Change:
     resolved = _git(repo, "rev-parse", "--verify", f"{ref}^{{commit}}")
     if resolved.returncode != 0:
         raise GenerationError(f"git ref not found: {ref}")
     commit = resolved.stdout.strip()
 
-    message = _git(repo, "show", "-s", "--format=%B", commit).stdout.strip()
-    name_status = _git(
-        repo, "show", "--name-status", "--format=", "--find-renames", commit
-    ).stdout
-    files = _parse_name_status(name_status)
+    change = git_commit_meta(repo, commit)
+    change.diff = git_commit_diff(repo, commit)
+    return change
 
-    diff = _git(
-        repo, "show", "--format=", "--unified=2", "--no-color", commit
-    ).stdout
-    if len(diff) > MAX_DIFF_CHARS:
-        diff = diff[:MAX_DIFF_CHARS] + "\n...[diff truncated]...\n"
 
-    return Change(
-        source="commit",
-        message=message,
-        files=files,
-        diff=diff,
-        commit=commit,
-    )
+def git_history(
+    repo: Path,
+    since: str | None = None,
+    until: str | None = None,
+    include_merges: bool = False,
+) -> list[str]:
+    """Return commit SHAs oldest-first, excluding *since* and merges by default."""
+    revision = f"{since}..{until or 'HEAD'}" if since else (until or "HEAD")
+    args = ["rev-list", "--reverse"]
+    if not include_merges:
+        args.append("--no-merges")
+    args.append(revision)
+    result = _git(repo, *args)
+    if result.returncode != 0:
+        detail = result.stderr.strip() or revision
+        raise GenerationError(f"cannot list commits for {revision}: {detail}")
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
 def file_change(path: Path) -> Change:
@@ -496,12 +572,17 @@ def _split_slug(text: str) -> tuple[str, str]:
     return "", text
 
 
-def _patch_frontmatter(markdown: str) -> str:
-    """Force status=proposed and ensure a date; keep the model's prose."""
+def _patch_frontmatter(
+    markdown: str, source_commit: str | None = None
+) -> str:
+    """Force status=proposed, ensure a date, and record the source commit."""
     today = _dt.date.today().isoformat()
     match = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", markdown, re.DOTALL)
     if not match:
-        return f"---\nstatus: proposed\ndate: {today}\n---\n\n{markdown}"
+        source_line = f"source-commit: {source_commit}\n" if source_commit else ""
+        return (
+            f"---\nstatus: proposed\ndate: {today}\n{source_line}---\n\n{markdown}"
+        )
 
     frontmatter = match.group(1)
     if re.search(r"(?m)^status\s*:", frontmatter):
@@ -517,6 +598,19 @@ def _patch_frontmatter(markdown: str) -> str:
         )
     elif not re.search(r"(?m)^date\s*:", frontmatter):
         frontmatter = f"date: {today}\n" + frontmatter
+
+    if source_commit:
+        if re.search(r"(?m)^source-commit\s*:", frontmatter):
+            frontmatter = re.sub(
+                r"(?m)^source-commit\s*:.*$",
+                f"source-commit: {source_commit}",
+                frontmatter,
+                count=1,
+            )
+        else:
+            frontmatter = (
+                frontmatter.rstrip("\n") + f"\nsource-commit: {source_commit}"
+            )
 
     return "---\n" + frontmatter + "\n---\n" + markdown[match.end() :]
 
@@ -537,9 +631,15 @@ def validate_generated(markdown: str) -> list[str]:
     return errors
 
 
-def scaffold(title: str, change: Change, signal: Signal) -> str:
+def scaffold(
+    title: str,
+    change: Change,
+    signal: Signal,
+    source_commit: str | None = None,
+) -> str:
     today = _dt.date.today().isoformat()
     source = change.commit or change.path or change.source
+    source_line = f"source-commit: {source_commit}\n" if source_commit else ""
     drivers = [
         reason
         for reason in signal.reasons
@@ -552,7 +652,7 @@ date: {today}
 decision-makers:
 consulted:
 informed:
----
+{source_line}---
 
 # {title}
 
@@ -589,6 +689,21 @@ def _next_number(adrs: list[Adr]) -> int:
     return max(numbers, default=0) + 1
 
 
+def _find_recorded_adr(adrs: list[Adr], commit: str) -> Adr | None:
+    """Find an ADR that already records *commit* via ``source-commit``."""
+    if not commit:
+        return None
+    for adr in adrs:
+        for recorded in adr.source_commits:
+            if (
+                recorded == commit
+                or commit.startswith(recorded)
+                or recorded.startswith(commit)
+            ):
+                return adr
+    return None
+
+
 def generate(
     change: Change,
     adr_dir: Path,
@@ -610,14 +725,25 @@ def generate(
     adr_dir = Path(adr_dir)
     adrs = load_adrs(adr_dir)
 
+    if change.commit:
+        recorded = _find_recorded_adr(adrs, change.commit)
+        if recorded is not None:
+            return GenerationResult(
+                status="already", signal=signal, path=recorded.path
+            )
+
     title = derive_title(change)
     digest = adr_digest(adrs)
-    commits = recent_commits(repo) if change.source == "commit" else []
+    commits = (
+        recent_commits(repo)
+        if change.source == "commit" and not change.from_history
+        else []
+    )
     layout = repo_layout(repo)
 
     model_slug = ""
     if no_llm:
-        markdown = scaffold(title, change, signal)
+        markdown = scaffold(title, change, signal, change.commit or None)
     else:
         messages = build_messages(
             change, signal, digest, commits, layout, language
@@ -625,7 +751,7 @@ def generate(
         caller = llm_fn or call_llm
         raw = caller(messages, model)
         model_slug, markdown = _split_slug(strip_code_fences(raw))
-        markdown = _patch_frontmatter(markdown)
+        markdown = _patch_frontmatter(markdown, change.commit or None)
         errors = validate_generated(markdown)
         if errors:
             repair = messages + [
@@ -643,7 +769,7 @@ def generate(
             raw = caller(repair, model)
             repaired_slug, markdown = _split_slug(strip_code_fences(raw))
             model_slug = model_slug or repaired_slug
-            markdown = _patch_frontmatter(markdown)
+            markdown = _patch_frontmatter(markdown, change.commit or None)
             errors = validate_generated(markdown)
             if errors:
                 raise GenerationError(
@@ -686,10 +812,156 @@ def generate(
     )
 
 
+def generate_history(
+    adr_dir: Path,
+    repo: Path,
+    *,
+    since: str | None = None,
+    until: str | None = None,
+    include_merges: bool = False,
+    limit: int = 50,
+    dry_run: bool = False,
+    no_llm: bool = False,
+    force: bool = False,
+    model: str = DEFAULT_MODEL,
+    language: str = "zh",
+    update_index: bool = True,
+    llm_fn: Callable[[list[dict[str, str]], str], str] | None = None,
+) -> BatchResult:
+    """Scan history oldest-first and generate one ADR per significant commit.
+
+    ``source-commit`` in already-written ADRs makes repeated runs idempotent.
+    ``limit`` bounds the number of candidate commits (0 = unlimited); it is a
+    cost guard, not a filter.  Noise-only commits never reach the LLM.
+    """
+    commits = git_history(repo, since, until, include_merges)
+    adr_dir = Path(adr_dir)
+    adrs = load_adrs(adr_dir)
+    result = BatchResult()
+    consecutive_failures = 0
+
+    for commit in commits:
+        result.scanned += 1
+        recorded = _find_recorded_adr(adrs, commit)
+        if recorded is not None:
+            result.already += 1
+            continue
+
+        try:
+            change = git_commit_meta(repo, commit)
+        except GenerationError as exc:
+            result.failed.append((commit[:12], str(exc)))
+            consecutive_failures += 1
+            if consecutive_failures >= 3:
+                result.aborted = True
+                break
+            continue
+
+        change.from_history = True
+        signal = assess(change)
+        if not signal.worth and not force:
+            result.noise += 1
+            continue
+
+        if limit and (len(result.generated) + len(result.candidates)) >= limit:
+            result.limit_hit = True
+            break
+
+        if dry_run:
+            result.candidates.append((commit, signal))
+            continue
+
+        if not no_llm:
+            try:
+                change.diff = git_commit_diff(repo, commit)
+            except GenerationError as exc:
+                result.failed.append((commit[:12], str(exc)))
+                consecutive_failures += 1
+                continue
+
+        try:
+            outcome = generate(
+                change,
+                adr_dir,
+                repo,
+                model=model,
+                language=language,
+                no_llm=no_llm,
+                force=force,
+                update_index=False,
+                llm_fn=llm_fn,
+            )
+        except GenerationError as exc:
+            result.failed.append((commit[:12], str(exc)))
+            consecutive_failures += 1
+            message = str(exc)
+            if (
+                "no LLM API key" in message
+                or "openai is not installed" in message
+                or consecutive_failures >= 3
+            ):
+                result.aborted = True
+                break
+            continue
+
+        consecutive_failures = 0
+        if outcome.status == "written":
+            assert outcome.path is not None
+            result.generated.append(outcome.path)
+            adrs = load_adrs(adr_dir)
+        elif outcome.status == "already":
+            result.already += 1
+        elif outcome.status == "skipped":
+            result.noise += 1
+
+    if not dry_run and update_index and result.generated:
+        from .index import regenerate
+
+        try:
+            regenerate(adr_dir, quiet=True)
+        except OSError as exc:
+            raise GenerationError(f"cannot update index in {adr_dir}: {exc}") from exc
+
+    return result
+
+
+def _print_batch(result: BatchResult, dry_run: bool, limit: int) -> None:
+    print(
+        f"adr-gen: scanned {result.scanned} commit(s): "
+        f"{result.already} already recorded, {result.noise} noise, "
+        f"{len(result.candidates) if dry_run else len(result.generated)} "
+        f"{'candidate(s)' if dry_run else 'generated'}"
+    )
+    if dry_run:
+        for commit, signal in result.candidates:
+            reasons = "; ".join(signal.reasons)
+            print(f"  - {commit[:12]} [score {signal.score}] {reasons}")
+        if result.candidates:
+            print(
+                f"adr-gen: dry run: {len(result.candidates)} ADR(s) would be "
+                f"generated (limit {limit or 'unlimited'})"
+            )
+    else:
+        for path in result.generated:
+            print(f"adr-gen: wrote {path} (status: proposed)")
+    for commit, message in result.failed:
+        print(f"adr-gen: failed {commit}: {message}", file=sys.stderr)
+    if result.limit_hit:
+        print(
+            f"adr-gen: limit {limit} reached; re-run to continue "
+            "(recorded commits are skipped) or pass a larger --limit"
+        )
+    if result.aborted:
+        print(
+            "adr-gen: aborted after a fatal failure or 3 consecutive failures",
+            file=sys.stderr,
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="adr-gen",
-        description="Generate a MADR 4.0 ADR from a commit, text, or file.",
+        description="Generate a MADR 4.0 ADR from a commit, text, file, or the whole history.",
     )
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument(
@@ -704,6 +976,38 @@ def build_parser() -> argparse.ArgumentParser:
     )
     source.add_argument(
         "--from-file", metavar="PATH", help="generate from a requirement document"
+    )
+    source.add_argument(
+        "--all-commits",
+        action="store_true",
+        help="scan reachable history oldest-first, one ADR per significant commit",
+    )
+    parser.add_argument(
+        "--since",
+        metavar="REV",
+        help="with --all-commits: exclude REV and its ancestors",
+    )
+    parser.add_argument(
+        "--until",
+        metavar="REV",
+        help="with --all-commits: last commit to inspect (default: HEAD)",
+    )
+    parser.add_argument(
+        "--include-merges",
+        action="store_true",
+        help="with --all-commits: include merge commits (default: skip)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=50,
+        help="with --all-commits: max ADRs to generate, 0 = unlimited (default: 50)",
+    )
+    parser.add_argument(
+        "--git-encoding",
+        metavar="ENC",
+        help="force decoding of raw git output (e.g. gbk); "
+        "default: UTF-8 then GB18030",
     )
     parser.add_argument(
         "--dir", default="docs/adr", help="ADR directory (default: docs/adr)"
@@ -724,7 +1028,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="prose language; MADR headings stay English (default: zh)",
     )
     parser.add_argument(
-        "--dry-run", action="store_true", help="print the ADR instead of writing it"
+        "--dry-run", action="store_true", help="print the ADR/candidates instead of writing"
     )
     parser.add_argument(
         "--no-llm",
@@ -734,7 +1038,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="generate even when the signal filter says the change is noise",
+        help="bypass the signal filter (use sparingly with --all-commits)",
     )
     parser.add_argument(
         "--no-index", action="store_true", help="do not refresh index.md"
@@ -746,6 +1050,56 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     repo = Path(args.repo)
     adr_dir = Path(args.dir)
+
+    if args.git_encoding:
+        try:
+            codecs.lookup(args.git_encoding)
+        except LookupError:
+            print(
+                f"adr-gen: error: unknown encoding {args.git_encoding!r}",
+                file=sys.stderr,
+            )
+            return 2
+        os.environ["ADR_GIT_ENCODING"] = args.git_encoding
+
+    if args.all_commits:
+        if args.slug:
+            print(
+                "adr-gen: error: --slug cannot be combined with --all-commits",
+                file=sys.stderr,
+            )
+            return 2
+        if args.limit < 0:
+            print("adr-gen: error: --limit must be >= 0", file=sys.stderr)
+            return 2
+        try:
+            result = generate_history(
+                adr_dir,
+                repo,
+                since=args.since,
+                until=args.until,
+                include_merges=args.include_merges,
+                limit=args.limit,
+                dry_run=args.dry_run,
+                no_llm=args.no_llm,
+                force=args.force,
+                model=args.model,
+                language=args.language,
+                update_index=not args.no_index,
+            )
+        except GenerationError as exc:
+            print(f"adr-gen: error: {exc}", file=sys.stderr)
+            return 2
+        _print_batch(result, args.dry_run, args.limit)
+        return 1 if result.failed else 0
+
+    if args.since or args.until or args.include_merges:
+        print(
+            "adr-gen: error: --since, --until and --include-merges require "
+            "--all-commits",
+            file=sys.stderr,
+        )
+        return 2
 
     try:
         if args.from_commit is not None:
@@ -774,6 +1128,10 @@ def main(argv: list[str] | None = None) -> int:
     except GenerationError as exc:
         print(f"adr-gen: error: {exc}", file=sys.stderr)
         return 1
+
+    if result.status == "already":
+        print(f"adr-gen: already recorded by {result.path}")
+        return 0
 
     if result.status == "skipped":
         print(

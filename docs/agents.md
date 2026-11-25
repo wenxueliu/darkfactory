@@ -93,7 +93,7 @@
 | `sw-document-project` | Project documentation generator — brownfield scanning at 3 levels (quick/deep/exhaustive). Based on BMAD document-project. (NEW) | 项目文档生成, document project, brownfield documentation |
 | `sw-writing-skills` | Meta-skill for skill authoring — TDD applied to process documentation. Based on Superpowers writing-skills. (NEW) | writing skills, 编写技能, create skill, skill authoring |
 | `sw-grill-docs` | Documentation consistency griller — grills design/plan against `knowledge/CONTEXT.md` and ADRs, sharpens terminology, stress-tests with scenarios, updates docs inline. Used in both design and planning phases. (NEW) | 文档对照, grill docs, 文档质询, 术语审查, context consistency |
-| `sw-adr-engineering` | ADR lifecycle — MADR 4.0 template, generation from commits/text, deterministic index, R1/R2 structure checks, and adr-drift R3/R4 code-drift gates. | ADR, MADR, 架构决策记录, 决策记录, decision record |
+| `sw-adr-engineering` | ADR lifecycle — MADR 4.0 template, single-commit/history generation (GBK-aware), deterministic index, R1/R2 structure checks, and adr-drift R3/R4 code-drift gates. | ADR, MADR, 架构决策记录, 决策记录, decision record, history backfill |
 | `using-harness` | Bootstrap skill — injected at session start | bootstrap, 初始化 |
 
 ---

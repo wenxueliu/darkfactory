@@ -5,6 +5,8 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -22,7 +24,11 @@ from adrkit.gen import (  # noqa: E402
     assess,
     call_llm,
     generate,
+    generate_history,
+    git_change,
+    git_history,
     main as gen_main,
+    recent_commits,
     scaffold,
     slugify,
 )
@@ -85,6 +91,51 @@ def write_adr(
         encoding="utf-8",
     )
     return path
+
+
+def _run_git(repo: Path, *args: str, input: bytes | None = None):
+    return subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        input=input,
+        capture_output=True,
+        check=True,
+    )
+
+
+def _init_git_repo(repo: Path) -> None:
+    _run_git(repo, "init", "-q")
+    _run_git(repo, "config", "user.email", "tester@example.com")
+    _run_git(repo, "config", "user.name", "Tester")
+
+
+def _commit_file(repo: Path, relpath: str, content: str, message: str) -> str:
+    path = repo / relpath
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    _run_git(repo, "add", "--", relpath)
+    _run_git(repo, "commit", "-qm", message)
+    return _run_git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+
+
+def _raw_gbk_commit(repo: Path, relpath: str, message: bytes) -> str:
+    """Create a commit object with raw GBK bytes and no encoding header."""
+    path = repo / relpath
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("gbk payload", encoding="utf-8")
+    _run_git(repo, "add", "--", relpath)
+    tree = _run_git(repo, "write-tree").stdout.decode().strip()
+    parent = _run_git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+    who = "Tester <tester@example.com> 1795595110 +0800"
+    raw = (
+        f"tree {tree}\nparent {parent}\nauthor {who}\ncommitter {who}\n\n"
+    ).encode("ascii") + message + b"\n"
+    sha = _run_git(
+        repo, "hash-object", "-t", "commit", "-w", "--stdin", input=raw
+    ).stdout.decode().strip()
+    branch = _run_git(repo, "symbolic-ref", "--short", "HEAD").stdout.decode().strip()
+    _run_git(repo, "update-ref", f"refs/heads/{branch}", sha)
+    return sha
 
 
 GOOD_ADR = """\
@@ -402,6 +453,135 @@ class GenTests(unittest.TestCase):
         )
         text = scaffold("Add migration", change, assess(change))
         self.assertIn("database migration", text)
+
+
+@unittest.skipUnless(shutil.which("git"), "git is required for history tests")
+class GitHistoryTests(unittest.TestCase):
+    def test_gbk_commit_message_is_decoded(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            _init_git_repo(repo)
+            _commit_file(repo, "base.txt", "x", "chore: init")
+            _raw_gbk_commit(
+                repo, "gbk.txt", "feat: 支持中文提交信息".encode("gbk")
+            )
+
+            change = git_change(repo, "HEAD")
+            self.assertIn("支持中文提交信息", change.message)
+            self.assertTrue(
+                any("支持中文提交信息" in line for line in recent_commits(repo))
+            )
+
+    def test_source_commit_deduplicates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            _init_git_repo(repo)
+            commit = _commit_file(repo, "db/migrations/0001.sql", "create", "feat: migrate")
+            adr_dir = repo / "docs" / "adr"
+            change = Change(
+                source="commit",
+                commit=commit,
+                message="feat: migrate database",
+                files=[("A", "db/migrations/0001.sql")],
+            )
+            fake = lambda _messages, _model: GOOD_ADR  # noqa: E731
+
+            first = generate(change, adr_dir, repo, llm_fn=fake)
+            self.assertEqual(first.status, "written")
+            assert first.path is not None
+            self.assertIn(f"source-commit: {commit}", first.path.read_text())
+
+            second = generate(change, adr_dir, repo, llm_fn=fake)
+            self.assertEqual(second.status, "already")
+            self.assertEqual(second.path, first.path)
+
+    def test_history_range(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            _init_git_repo(repo)
+            first = _commit_file(repo, "base.txt", "x", "chore: init")
+            second = _commit_file(
+                repo, "db/migrations/0001.sql", "create", "feat: add tenants"
+            )
+            third = _commit_file(
+                repo, "pyproject.toml", "[project]\nname='x'\n", "feat: adopt uv"
+            )
+
+            self.assertEqual(git_history(repo), [first, second, third])
+            self.assertEqual(git_history(repo, since=first), [second, third])
+            self.assertEqual(
+                git_history(repo, since=first, until=second), [second]
+            )
+
+    def test_history_dry_run_then_generate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            _init_git_repo(repo)
+            _commit_file(repo, "base.txt", "x", "chore: init")
+            _commit_file(repo, "docs/readme.md", "x", "docs: update")
+            _commit_file(
+                repo, "db/migrations/0001.sql", "create", "feat: add tenants"
+            )
+            _commit_file(
+                repo, "pyproject.toml", "[project]\nname='x'\n", "feat: adopt uv"
+            )
+            adr_dir = repo / "docs" / "adr"
+            fake = lambda _messages, _model: GOOD_ADR  # noqa: E731
+
+            dry = generate_history(
+                adr_dir, repo, limit=10, dry_run=True, llm_fn=fake
+            )
+            self.assertEqual(dry.scanned, 4)
+            self.assertEqual(len(dry.candidates), 2)
+            self.assertFalse(adr_dir.exists())
+
+            result = generate_history(adr_dir, repo, limit=10, llm_fn=fake)
+            self.assertEqual(len(result.generated), 2)
+            self.assertEqual(result.failed, [])
+            self.assertEqual(len(list(adr_dir.glob("0*.md"))), 2)
+            self.assertTrue((adr_dir / "index.md").is_file())
+
+            rerun = generate_history(
+                adr_dir, repo, limit=10, dry_run=True, llm_fn=fake
+            )
+            self.assertEqual(rerun.already, 2)
+            self.assertEqual(rerun.candidates, [])
+
+    def test_history_limit_and_cli_dry_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            _init_git_repo(repo)
+            _commit_file(repo, "base.txt", "x", "chore: init")
+            _commit_file(
+                repo, "db/migrations/0001.sql", "create", "feat: add tenants"
+            )
+            _commit_file(
+                repo, "pyproject.toml", "[project]\nname='x'\n", "feat: adopt uv"
+            )
+            adr_dir = repo / "docs" / "adr"
+
+            result = generate_history(adr_dir, repo, limit=1, dry_run=True)
+            self.assertEqual(len(result.candidates), 1)
+            self.assertTrue(result.limit_hit)
+            self.assertFalse(adr_dir.exists())
+
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                code = gen_main(
+                    [
+                        "--all-commits",
+                        "--repo",
+                        str(repo),
+                        "--dir",
+                        str(adr_dir),
+                        "--dry-run",
+                        "--limit",
+                        "10",
+                    ]
+                )
+            self.assertEqual(code, 0)
+            self.assertIn("dry run", buffer.getvalue())
+            self.assertIn("would be generated", buffer.getvalue())
 
 
 class DepsTests(unittest.TestCase):

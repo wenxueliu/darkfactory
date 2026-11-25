@@ -11,7 +11,7 @@ arbiter.
 | `operation` | enum | yes | — | `init` \| `generate` \| `index` \| `check` \| `enforce` \| `ci` |
 | `repo_root` | path | no | `.` (cwd) | must contain the ADR directory and, for `--from-commit`, a git work tree |
 | `adr_dir` | path | no | `docs/adr` | must exist for `index`/`check`; created by `init`/`generate` |
-| `source` | object | for `generate` | — | exactly one of `{kind: commit, ref}` \| `{kind: text, text}` \| `{kind: file, path}` |
+| `source` | object | for `generate` | — | exactly one of `{kind: commit, ref}` \| `{kind: text, text}` \| `{kind: file, path}` \| `{kind: history, since?, until?, limit?}` |
 | `language` | enum | no | `zh` | `zh` \| `en`; MADR headings stay English |
 | `model` | string | no | `ADR_LLM_MODEL` or `gpt-4o-mini` | only used when calling an LLM |
 | `drift_config` | path | for `enforce` | `arch.yaml` | at repo root; cannot be renamed in adr-drift 0.1.0 |
@@ -67,6 +67,12 @@ Preconditions:
 | `--no-llm` | bool | false | deterministic scaffold, no network |
 | `--force` | bool | false | bypass the signal filter |
 | `--no-index` | bool | false | do not refresh `index.md` |
+| `--all-commits` | bool | false | scan reachable history, one ADR per significant commit |
+| `--since REV` | string | — | with `--all-commits`: exclude REV and ancestors |
+| `--until REV` | string | `HEAD` | with `--all-commits`: last commit to inspect |
+| `--include-merges` | bool | false | with `--all-commits`: include merges |
+| `--limit N` | int | 50 | with `--all-commits`: max candidates, `0` = unlimited |
+| `--git-encoding ENC` | string | UTF-8 → GB18030 | force legacy commit-message decoding |
 
 Environment: `ADR_LLM_API_KEY` (or `OPENAI_API_KEY`), `ADR_LLM_BASE_URL` (or
 `OPENAI_BASE_URL`), `ADR_LLM_MODEL`, `ADR_LLM_TIMEOUT` (seconds, default 60),
@@ -108,6 +114,35 @@ Guarantees:
 - `--dry-run` creates no directories and no files.
 - `--no-llm` performs no network access.
 - Validation failure is retried once with a repair prompt, then aborted.
+
+#### 2.2.1 History backfill (`--all-commits`)
+
+**Inputs:** `--since`, `--until` (default `HEAD`), `--include-merges`,
+`--limit` (default 50, `0` = unlimited), `--dry-run`, `--no-llm`, `--force`,
+`--no-index`, `--git-encoding`. Mutually exclusive with `--from-*`; `--slug` is
+rejected in this mode.
+
+**Outputs:**
+
+- One `<dir>/NNNN-<slug>.md` per significant commit, `status: proposed`, with
+  `source-commit: <full-sha>` in frontmatter.
+- `index.md` regenerated **once** after a non-dry run (unless `--no-index`).
+- stdout summary:
+
+```text
+adr-gen: scanned 42 commit(s): 2 already recorded, 35 noise, 5 generated
+adr-gen: wrote docs/adr/0007-migrate-gateway-to-rust.md (status: proposed)
+...
+adr-gen: limit 50 reached; re-run to continue (recorded commits are skipped) or pass a larger --limit
+```
+
+- `--dry-run` stdout lists candidates with scores; it creates no directory and
+  makes no LLM call.
+- Exit codes: `0` completed, `1` at least one commit failed, `2` invalid range,
+  encoding, or `--slug` misuse.
+- Idempotency: commits already named by `source-commit` in any ADR are reported
+  as `already recorded` and skipped. Three consecutive failures, a missing API
+  key, or missing `openai` aborts the run.
 
 ### 2.3 `adr-index`
 
@@ -258,6 +293,7 @@ decision-makers: [name]
 consulted: [name]
 informed: [name]
 supersedes: [ADR-NNNN]        # optional; required for the R2.2 backlink
+source-commit: <full-sha>     # written by adr-gen; makes batch runs idempotent
 ---
 ```
 
@@ -293,6 +329,7 @@ by adr-drift 0.1.0.
 | --- | --- | --- | --- |
 | `adr-init` | bundled template | `template/adr-template.md` | no |
 | `adr-gen` | git/input, ADRs | new ADR, `index.md` | only LLM mode |
+| `adr-gen --all-commits` | git history, ADRs | new ADRs, `index.md` once | only LLM mode |
 | `adr-index` | ADR files | `index.md` | no |
 | `adr-check` | ADR files | nothing | no |
 | `adrkit deps` | imports | site-packages (with `--install`) | only with `--install` |
@@ -339,3 +376,6 @@ Rules:
   never omit the field silently. `drift.config` names the file actually used.
 - `open_questions[]` carries human decisions that block `accepted` status.
 - The handoff must not claim "enforced" when `drift.ran` is false.
+- When `--all-commits` ran, include
+  `batch: {scanned, already, noise, generated, failed, limit_hit, aborted}`;
+  `generated` is a count, not the `artifacts` list.

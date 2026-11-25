@@ -44,6 +44,10 @@ SKIP_NAMES = {"index.md", "readme.md"}
 _SUPERSEDES_BODY_RE = re.compile(
     r"(?im)^[ \t]*(?:[-*][ \t]*)?supersedes?[ \t]*:?[ \t]*(?:ADR[-\s]?)?(\d{4})\b"
 )
+_SOURCE_COMMIT_BODY_RE = re.compile(
+    r"(?im)^[ \t]*(?:[-*][ \t]*)?(?:source-commits?|source|commit)"
+    r"[ \t]*:?[ \t]*([0-9a-f]{7,40})\b"
+)
 
 
 @dataclasses.dataclass
@@ -60,6 +64,7 @@ class Adr:
     frontmatter: dict[str, Any]
     body: str
     supersedes: list[int]
+    source_commits: list[str]
     filename_error: str | None = None
 
     @property
@@ -257,6 +262,26 @@ def _extract_supersedes(
     return sorted(set(numbers))
 
 
+def _extract_source_commits(
+    frontmatter: dict[str, Any], body: str
+) -> list[str]:
+    """Commit SHAs recorded by ``adr-gen``, used to keep batch runs idempotent."""
+    found: list[str] = []
+    for key in ("source-commit", "source-commits", "source_commit"):
+        value = frontmatter.get(key)
+        if value is None:
+            continue
+        values = value if isinstance(value, (list, tuple)) else [value]
+        for item in values:
+            for match in re.findall(
+                r"\b([0-9a-f]{7,40})\b", str(item), re.IGNORECASE
+            ):
+                found.append(match.lower())
+    for match in _SOURCE_COMMIT_BODY_RE.finditer(body):
+        found.append(match.group(1).lower())
+    return list(dict.fromkeys(found))
+
+
 def parse_adr(path: Path, adr_dir: Path) -> Adr:
     """Parse one ADR file.  Unreadable files surface as empty records."""
     relpath = path.relative_to(adr_dir).as_posix()
@@ -282,6 +307,7 @@ def parse_adr(path: Path, adr_dir: Path) -> Adr:
         frontmatter=frontmatter,
         body=body,
         supersedes=_extract_supersedes(frontmatter, body),
+        source_commits=_extract_source_commits(frontmatter, body),
         filename_error=(
             None
             if match

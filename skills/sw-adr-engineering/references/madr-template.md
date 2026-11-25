@@ -26,6 +26,7 @@ informed: [team-platform]
 | `decision-makers` | optional | people who own the decision |
 | `consulted` | optional | two-way communication (subject-matter experts) |
 | `informed` | optional | one-way communication |
+| `source-commit` | generated | full SHA written by `adr-gen`; used to keep `--all-commits` idempotent |
 
 `adr-check` also accepts a legacy `## Status` section (MADR 3.x / adr-tools) so
 existing repositories do not need a migration.

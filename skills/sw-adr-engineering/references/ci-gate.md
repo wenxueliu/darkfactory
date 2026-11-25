@@ -39,7 +39,7 @@ jobs:
 
       - name: Install tooling
         # Vendor adrkit at tools/adrkit, or install from the internal index:
-        #   pip install "adrkit==0.1.1" "adr-drift==0.1.0"
+        #   pip install "adrkit==0.2.0" "adr-drift==0.1.0"
         # CI installs explicitly; the runtime `adrkit deps` auto-install is for
         # local runs and must not be the only thing keeping the gate honest.
         run: pip install ./tools/adrkit "pyyaml>=6.0" "adr-drift==0.1.0"

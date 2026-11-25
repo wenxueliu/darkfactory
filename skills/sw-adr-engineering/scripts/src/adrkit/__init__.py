@@ -5,6 +5,6 @@ available as ``python -m adrkit <command>``.  R3/R4 drift checks are
 delegated to the separate ``adr-drift`` package.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = ["__version__"]
