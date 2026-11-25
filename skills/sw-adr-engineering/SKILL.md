@@ -48,6 +48,7 @@ documents that ask nicely.
 | R1/R2 结构/引用校验 | `adr-check` | `references/adr-rules.md` |
 | R3/R4 代码漂移检查 | `adr-drift check` | `references/adr-drift.md` |
 | CI 门禁 | GitHub Actions | `references/ci-gate.md` |
+| 输入/输出契约 | — | `references/contracts.md` |
 
 ## Package Dependencies
 
@@ -201,9 +202,9 @@ sync, R1/R2, R3/R4, plus a nightly `drift --since <last-release-tag>` job.
 
 | Command | Important flags | Exit codes |
 | --- | --- | --- |
-| `adr-init` | `--dir`, `--force`, `--quiet` | 0 ok, 1 template conflict, 2 missing bundled template |
-| `adr-gen` | `--from-commit [SHA]`, `--from-text`, `--from-file`, `--dry-run`, `--no-llm`, `--force`, `--slug`, `--model`, `--language zh\|en`, `--no-index` | 0 written/skipped, 1 generation/validation error, 2 bad git ref/input |
-| `adr-index` | `--dir`, `--check`, `--no-recursive` | 0 ok, 1 stale with `--check`, 2 missing dir |
+| `adr-init` | `--dir`, `--force`, `--quiet` | 0 ok/no-op, 1 template conflict, 2 write failure |
+| `adr-gen` | `--from-commit [SHA]`, `--from-text`, `--from-file`, `--dir`, `--repo`, `--slug`, `--model`, `--language zh\|en`, `--dry-run`, `--no-llm`, `--force`, `--no-index` | 0 written/skipped, 1 generation/validation error, 2 bad git ref/input |
+| `adr-index` | `--dir`, `--check`, `--no-recursive` | 0 ok, 1 stale with `--check`, 2 missing dir/write failure |
 | `adr-check` | `--dir`, `--strict`, `--json`, `--no-recursive` | 0 clean, 1 violations (or warnings with `--strict`), 2 missing dir |
 | `python -m adrkit deps` | `--install`, `--only NAME[,NAME]`, `--json` | 0 all available/installed, 1 still missing, 2 unknown package |
 
@@ -212,22 +213,48 @@ in the report so a skip is auditable.
 
 ## Input Contract
 
-| Input | Required | Description |
-| --- | --- | --- |
-| `operation` | yes | `init`, `generate`, `index`, `check`, `enforce`, or `ci` |
-| `adr_dir` | no | default `docs/adr`; locate an existing root first |
-| `decision_source` | for generate | commit SHA, free text, or requirement file |
-| `language` | no | prose language `zh`/`en`; MADR headings stay English |
-| `llm` | no | `ADR_LLM_API_KEY`, optional `ADR_LLM_BASE_URL`/`ADR_LLM_MODEL` |
-| `drift_config` | for enforce | `arch.yaml` + optional ADR `## Constraints` |
+`operation` 是唯一必填的逻辑输入；其余字段按操作取默认值。完整参数、前置条件、
+JSON schema 与逐命令副作用见 [`references/contracts.md`](references/contracts.md)。
+
+| Input | Type | Required | Default | Used by |
+| --- | --- | --- | --- | --- |
+| `operation` | enum | yes | — | `init` \| `generate` \| `index` \| `check` \| `enforce` \| `ci` |
+| `repo_root` | path | no | `.` | generate / enforce / ci |
+| `adr_dir` | path | no | `docs/adr` | all |
+| `source` | object | for generate | — | exactly one of `{kind: commit, ref}`, `{kind: text, text}`, `{kind: file, path}` |
+| `language` | enum | no | `zh` | generate (`zh` \| `en`) |
+| `model` | string | no | `ADR_LLM_MODEL` / `gpt-4o-mini` | generate LLM mode |
+| `api_key` | secret | for generate LLM | — | `ADR_LLM_API_KEY` or `OPENAI_API_KEY` |
+| `drift_config` | path | for enforce | `arch.yaml` | enforce |
+
+Preconditions: a commit source needs a resolvable git ref; `enforce` needs
+`adr-drift==0.1.0` plus at least one rule (no rules is exit 2, not a pass);
+`ci` needs a committed `index.md`.
 
 ## Output Contract
 
-- New ADR file `NNNN-kebab-slug.md`, `status: proposed`, MADR sections filled.
-- `docs/adr/index.md` regenerated deterministically.
-- `adr-check` output with rule IDs and exit code.
-- If R3/R4 ran: `adr-drift` output/exit code, and the config path used.
-- Every completion claim cites a fresh command run (no "should pass").
+| Operation | Writes | stdout | Exit codes |
+| --- | --- | --- | --- |
+| `init` | `template/adr-template.md` | `wrote` / `up to date` | 0 ok, 1 conflict, 2 write failure |
+| `generate` | new `NNNN-slug.md` (+ `index.md` unless `--no-index`) | `wrote` / `skipped` / dry-run markdown | 0 written-or-skipped, 1 generation error, 2 bad source |
+| `index` | `index.md` (only when changed) | `wrote` / `up to date` | 0 ok, 1 stale with `--check`, 2 missing dir/write failure |
+| `check` | nothing | human report or `--json` object | 0 clean, 1 violations, 2 missing dir |
+| `deps` | site-packages only with `--install` | table or `--json` object | 0 available, 1 missing, 2 unknown package |
+| `enforce` | nothing | delegated `adr-drift` report | 0 clean, 1 violations/crash, 2 config error |
+
+Machine-readable schemas (ADR frontmatter, `index.md`, `adr-check --json`,
+`adrkit deps --json`, `adr-drift --format json`) are in
+[`references/contracts.md`](references/contracts.md).
+
+Guarantees: generated status is always `proposed`; existing ADRs are never
+overwritten; `--dry-run`/`--check`/`check` write nothing; `index.md` is
+byte-identical on a second run; every completion claim cites a fresh command
+run (no "should pass").
+
+**Agent handoff:** finish with `status` (`DONE` / `DONE_WITH_CONCERNS` /
+`NEEDS_CONTEXT` / `BLOCKED`), `artifacts`, `commands[]` (real command, exit
+code, summary), `package_deps`, `drift` (`ran`/`exit`/`config`), and
+`open_questions`. Schema: [`references/contracts.md#5-agent-handoff-skill-level-output`](references/contracts.md#5-agent-handoff-skill-level-output).
 
 ## Acceptance Criteria
 

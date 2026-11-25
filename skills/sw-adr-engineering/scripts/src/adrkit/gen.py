@@ -660,17 +660,26 @@ def generate(
             status="preview", signal=signal, path=path, markdown=markdown
         )
 
-    if path.exists():
-        raise GenerationError(f"refusing to overwrite existing file: {path}")
-
-    adr_dir.mkdir(parents=True, exist_ok=True)
-    if not write_if_changed(path, markdown):
-        raise GenerationError(f"refusing to overwrite existing file: {path}")
+    try:
+        if path.exists():
+            raise GenerationError(f"refusing to overwrite existing file: {path}")
+        adr_dir.mkdir(parents=True, exist_ok=True)
+        if not write_if_changed(path, markdown):
+            raise GenerationError(f"refusing to overwrite existing file: {path}")
+    except OSError as exc:
+        raise GenerationError(f"cannot write {path}: {exc}") from exc
 
     if update_index:
         from .index import regenerate
 
-        regenerate(adr_dir, quiet=True)
+        try:
+            regenerate(adr_dir, quiet=True)
+        except OSError as exc:
+            try:
+                path.unlink()
+            except OSError:
+                pass
+            raise GenerationError(f"cannot update index in {adr_dir}: {exc}") from exc
 
     return GenerationResult(
         status="written", signal=signal, path=path, markdown=markdown

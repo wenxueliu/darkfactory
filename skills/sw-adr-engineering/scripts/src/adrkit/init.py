@@ -49,7 +49,11 @@ def initialize(adr_dir: Path, force: bool = False, quiet: bool = False) -> int:
         )
         return 1
 
-    target.write_text(content, encoding="utf-8", newline="\n")
+    try:
+        target.write_text(content, encoding="utf-8", newline="\n")
+    except OSError as exc:
+        print(f"adr-init: error: cannot write {target}: {exc}", file=sys.stderr)
+        return 2
     if not quiet:
         print(f"adr-init: wrote {target}")
         print(

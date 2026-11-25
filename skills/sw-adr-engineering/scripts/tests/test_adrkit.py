@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
+import json
 import sys
 import tempfile
 import unittest
@@ -11,16 +14,19 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from adrkit import deps  # noqa: E402
-from adrkit.check import check_adrs  # noqa: E402
+from adrkit.check import check_adrs, main as check_main  # noqa: E402
+from adrkit.deps import main as deps_main  # noqa: E402
 from adrkit.gen import (  # noqa: E402
     Change,
     GenerationError,
     assess,
     call_llm,
     generate,
+    main as gen_main,
     scaffold,
     slugify,
 )
+from adrkit.index import main as index_main  # noqa: E402
 from adrkit.index import regenerate  # noqa: E402
 from adrkit.init import initialize  # noqa: E402
 from adrkit.model import load_adrs, render_index  # noqa: E402
@@ -373,6 +379,21 @@ class GenTests(unittest.TestCase):
             assert result.path is not None
             self.assertIn("status: proposed", result.path.read_text(encoding="utf-8"))
 
+    def test_index_failure_rolls_back_new_adr(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            adr_dir = Path(tmp) / "docs" / "adr"
+            with patch(
+                "adrkit.index.regenerate", side_effect=OSError("disk full")
+            ):
+                with self.assertRaises(GenerationError):
+                    generate(
+                        Change(source="text", message="Use PostgreSQL"),
+                        adr_dir,
+                        Path(tmp),
+                        llm_fn=lambda _messages, _model: GOOD_ADR,
+                    )
+            self.assertEqual(list(adr_dir.glob("0001-*.md")), [])
+
     def test_scaffold_contains_signal_reasons(self) -> None:
         change = Change(
             source="commit",
@@ -447,6 +468,65 @@ class DepsTests(unittest.TestCase):
                         call_llm(
                             [{"role": "user", "content": "hello"}], "model"
                         )
+
+
+class CliContractTests(unittest.TestCase):
+    def test_check_json_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            adr_dir = Path(tmp)
+            write_adr(adr_dir, "0001-use-postgres.md")
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                code = check_main(["--dir", str(adr_dir), "--json"])
+            payload = json.loads(buffer.getvalue())
+            self.assertEqual(code, 0)
+            self.assertEqual(
+                set(payload), {"ok", "errors", "warnings", "adr_dir", "issues"}
+            )
+            self.assertTrue(payload["ok"])
+            self.assertEqual(payload["issues"], [])
+
+    def test_index_check_is_read_only_and_exits_one(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            adr_dir = Path(tmp)
+            write_adr(adr_dir, "0001-use-postgres.md")
+            with contextlib.redirect_stdout(
+                io.StringIO()
+            ), contextlib.redirect_stderr(io.StringIO()):
+                code = index_main(["--dir", str(adr_dir), "--check"])
+            self.assertEqual(code, 1)
+            self.assertFalse((adr_dir / "index.md").exists())
+
+    def test_deps_json_shape(self) -> None:
+        with patch("adrkit.deps.available", return_value=True):
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                code = deps_main(["--json"])
+        payload = json.loads(buffer.getvalue())
+        self.assertEqual(code, 0)
+        self.assertEqual(set(payload), {"installed", "missing", "packages"})
+        self.assertEqual(
+            set(payload["packages"]), {"openai", "pyyaml", "adr-drift"}
+        )
+
+    def test_gen_dry_run_stdout_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            adr_dir = Path(tmp) / "docs" / "adr"
+            buffer = io.StringIO()
+            with patch("adrkit.gen.call_llm", return_value=GOOD_ADR):
+                with contextlib.redirect_stdout(buffer):
+                    code = gen_main(
+                        [
+                            "--from-text",
+                            "Use PostgreSQL",
+                            "--dir",
+                            str(adr_dir),
+                            "--dry-run",
+                        ]
+                    )
+            self.assertEqual(code, 0)
+            self.assertIn("adr-gen: would write", buffer.getvalue())
+            self.assertFalse(adr_dir.exists())
 
 
 if __name__ == "__main__":

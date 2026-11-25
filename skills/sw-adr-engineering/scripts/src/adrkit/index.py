@@ -89,7 +89,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"adr-index: {index_path} is up to date")
         return 0
 
-    changed = write_if_changed(index_path, expected)
+    try:
+        changed = write_if_changed(index_path, expected)
+    except OSError as exc:
+        print(f"adr-index: error: cannot write {index_path}: {exc}", file=sys.stderr)
+        return 2
     if changed:
         print(f"adr-index: wrote {index_path}")
     else:
